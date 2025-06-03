@@ -2,8 +2,8 @@
 API routes for the ManaForge application.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.database import get_database
@@ -20,6 +20,29 @@ game_engine = SimpleGameEngine()
 async def get_card_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> CardService:
     """Get card service dependency."""
     return CardService(db)
+
+
+# Helper function to broadcast game updates via WebSocket
+async def broadcast_game_update(game_id: str, game_state: GameState, action_info: dict = None):
+    """Broadcast game state update to all connected clients."""
+    try:
+        from app.api.websocket import manager
+        
+        message = {
+            "type": "game_state_update",
+            "game_state": game_state.model_dump(),
+            "timestamp": game_state.turn if hasattr(game_state, 'turn') else None
+        }
+        
+        # Add action information if provided
+        if action_info:
+            message["action_result"] = action_info
+        
+        await manager.broadcast_to_game(game_id, message)
+        print(f"Broadcasted game state update for game {game_id}")
+        
+    except Exception as e:
+        print(f"Error broadcasting game update: {e}")
 
 
 @router.get("/cards/search")
@@ -45,8 +68,12 @@ async def get_card(
 
 
 @router.post("/games")
-async def create_game(game_id: str) -> GameState:
+async def create_game(game_id: Optional[str] = Query(None)) -> GameState:
     """Create a new game with sample decks."""
+    # Generate a default game_id if not provided
+    if game_id is None:
+        import uuid
+        game_id = f"game-{str(uuid.uuid4())[:8]}"
     
     # Create simple test decks
     deck1_cards = [
@@ -78,6 +105,14 @@ async def get_game(game_id: str) -> GameState:
     return game_engine.games[game_id]
 
 
+@router.get("/games/{game_id}/state")
+async def get_game_state(game_id: str) -> GameState:
+    """Get current game state (alias for auto-refresh)."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    return game_engine.games[game_id]
+
+
 @router.post("/games/{game_id}/actions")
 async def perform_action(game_id: str, action: GameAction) -> GameState:
     """Perform an action in the game."""
@@ -86,3 +121,117 @@ async def perform_action(game_id: str, action: GameAction) -> GameState:
         return game_state
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/games/{game_id}/pass-phase")
+async def pass_phase(game_id: str, request: Optional[dict] = None) -> dict:
+    """Pass the current phase."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if request and "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the active_player index from GameState
+        player_id = str(current_state.active_player)
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="pass_turn"
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "pass_phase",
+            "player": player_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/games/{game_id}/draw-card")
+async def draw_card(game_id: str, request: Optional[dict] = None) -> dict:
+    """Draw a card for the current player."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if request and "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the active_player index from GameState
+        player_id = str(current_state.active_player)
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="draw_card"
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "draw_card",
+            "player": player_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/games/{game_id}/play-card")
+async def play_card(game_id: str, request: dict) -> dict:
+    """Play a card for the current player."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the active_player index from GameState
+        player_id = str(current_state.active_player)
+    
+    card_name = request.get("card_name")
+    card_id = request.get("card_id")
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="play_card",
+        card_id=card_id or card_name,
+        additional_data={"card_name": card_name} if card_name else {}
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "play_card",
+            "player": player_id,
+            "card": card_name or card_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}

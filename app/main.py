@@ -81,9 +81,29 @@ async def game_interface(request: Request, game_id: str):
     
     game_state = game_engine.games[game_id]
     
+    # Convert Pydantic objects to dictionaries for template rendering
+    game_dict = {
+        'id': game_state.id,
+        'turn': game_state.turn,
+        'phase': game_state.phase.value if hasattr(game_state.phase, 'value') else str(game_state.phase),
+        'active_player': game_state.active_player,
+        'priority_player': game_state.priority_player,
+        'players': [
+            {
+                'name': player.name,
+                'life': player.life,
+                'hand': [card.model_dump() for card in player.hand],
+                'battlefield': [card.model_dump() for card in player.battlefield],
+                'library': len(player.library),
+                'graveyard': len(player.graveyard)
+            }
+            for player in game_state.players
+        ]
+    }
+    
     return templates.TemplateResponse(
         "game.html",
-        {"request": request, "game": game_state}
+        {"request": request, "game": game_dict}
     )
 
 
