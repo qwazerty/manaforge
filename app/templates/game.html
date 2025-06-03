@@ -1,0 +1,753 @@
+{% extends "base_arena.html" %}
+
+{% block title %}{{ game.id }} - Battle Arena{% endblock %}
+
+{% block content %}
+<div x-data="gameInterface()" class="min-h-screen bg-arena-gradient relative">
+    
+    <!-- Game Header -->
+    <div class="arena-surface border-b border-arena-accent/20 sticky top-0 z-30">
+        <div class="max-w-[1600px] mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-accent-gradient rounded-lg flex items-center justify-center shadow-arena">
+                            <span class="text-xl">⚔️</span>
+                        </div>
+                        <div>
+                            <h1 class="font-magic text-xl font-bold text-arena-accent">{{ game.id }}</h1>
+                            <div class="flex items-center space-x-4 text-sm">
+                                <span class="arena-surface px-2 py-1 rounded border border-arena-accent/30">
+                                    🔄 Turn {{ game.turn }}
+                                </span>
+                                <span class="bg-yellow-600/20 border border-yellow-500/50 text-yellow-400 px-2 py-1 rounded font-semibold">
+                                    {{ game.phase.value|title }} Phase
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 {{ 'text-green-400' if game.active_player == 0 else 'text-red-400' }}">
+                        <div class="w-3 h-3 {{ 'bg-green-500 animate-pulse' if game.active_player == 0 else 'bg-red-500' }} rounded-full"></div>
+                        <span class="font-magic font-semibold">{{ game.players[game.active_player].name }}'s Turn</span>
+                    </div>
+                    <button 
+                        class="arena-button px-4 py-2 rounded-lg font-semibold text-sm" 
+                        onclick="toggleHelp()"
+                    >
+                        <span class="mr-2">❓</span>Help
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Panel -->
+    <div id="help-panel" class="hidden arena-surface border-b border-arena-accent/20 animate-slide-up">
+        <div class="max-w-[1600px] mx-auto px-4 py-6">
+            <h3 class="font-magic text-xl font-bold text-arena-accent mb-4 flex items-center">
+                <span class="mr-2">🎮</span>Planeswalker's Guide
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div class="arena-card rounded-lg p-4">
+                    <h4 class="font-semibold text-arena-accent mb-3 flex items-center">
+                        <span class="mr-2">🃏</span>Card Actions
+                    </h4>
+                    <ul class="space-y-2 text-arena-text-dim">
+                        <li class="flex items-start"><span class="mr-2">•</span>Click cards in hand to cast them</li>
+                        <li class="flex items-start"><span class="mr-2">•</span>Hover for detailed card information</li>
+                        <li class="flex items-start"><span class="mr-2">•</span>Battlefield shows summoned creatures</li>
+                    </ul>
+                </div>
+                <div class="arena-card rounded-lg p-4">
+                    <h4 class="font-semibold text-arena-accent mb-3 flex items-center">
+                        <span class="mr-2">⚡</span>Game Actions
+                    </h4>
+                    <ul class="space-y-2 text-arena-text-dim">
+                        <li class="flex items-start"><span class="mr-2">•</span>Pass Phase to advance turn</li>
+                        <li class="flex items-start"><span class="mr-2">•</span>Draw Card to refill hand</li>
+                        <li class="flex items-start"><span class="mr-2">•</span>Use chat for communication</li>
+                    </ul>
+                </div>
+                <div class="arena-card rounded-lg p-4">
+                    <h4 class="font-semibold text-arena-accent mb-3 flex items-center">
+                        <span class="mr-2">🔗</span>Connection Status
+                    </h4>
+                    <div id="ws-status" class="flex items-center text-arena-text-dim">
+                        <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                        <span>Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Game Board -->
+    <div class="max-w-[1600px] mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            
+            <!-- Game Board Area -->
+            <div class="xl:col-span-3 space-y-6">
+                
+                <!-- Opponent Area -->
+                <div class="arena-card rounded-xl p-6 border-l-4 border-red-500">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-magic text-2xl font-bold text-red-400 flex items-center">
+                            <span class="mr-3">🎯</span>{{ game.players[1].name }}
+                        </h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-red-500/20 border border-red-500/50 px-4 py-2 rounded-lg">
+                                <span class="text-red-300 text-sm">❤️ Life</span>
+                                <div class="text-2xl font-bold text-white">{{ game.players[1].life }}</div>
+                            </div>
+                            <div class="bg-blue-500/20 border border-blue-500/50 px-4 py-2 rounded-lg">
+                                <span class="text-blue-300 text-sm">🃏 Hand</span>
+                                <div class="text-xl font-bold text-white">{{ game.players[1].hand|length }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Opponent's Battlefield -->
+                    <div class="mb-6">
+                        <h4 class="font-magic font-semibold mb-4 text-red-300 flex items-center">
+                            <span class="mr-2">⚔️</span>Battlefield
+                            <span class="ml-2 text-sm bg-red-500/20 border border-red-500/50 px-2 py-1 rounded">
+                                {{ game.players[1].battlefield|length }} creatures
+                            </span>
+                        </h4>
+                        <div class="arena-surface rounded-xl p-6 border-2 border-dashed border-red-400/30 min-h-[180px]">
+                            <div class="flex flex-wrap gap-4">
+                                {% for card in game.players[1].battlefield %}
+                                    <div class="arena-card arena-card-hoverable w-36 h-48 p-4 hover:scale-105 transition-all duration-300 cursor-pointer border border-red-400/50 hover:border-red-400 hover:shadow-card-hover group">
+                                        <div class="h-full flex flex-col justify-between">
+                                            <div class="text-center">
+                                                <h5 class="font-magic font-bold text-sm text-arena-accent mb-2">{{ card.name }}</h5>
+                                                <div class="text-xs text-arena-text-dim mb-1">💎 {{ card.mana_cost or '0' }}</div>
+                                                <div class="text-xs text-arena-text-muted">{{ card.card_type }}</div>
+                                            </div>
+                                            {% if card.power is not none and card.toughness is not none %}
+                                                <div class="text-center">
+                                                    <span class="bg-red-500 text-white px-2 py-1 rounded text-sm font-bold shadow-sm">
+                                                        {{ card.power }}/{{ card.toughness }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                {% if game.players[1].battlefield|length == 0 %}
+                                    <div class="w-full text-center py-12 text-red-400/60">
+                                        <span class="text-4xl mb-4 block">🏜️</span>
+                                        <p class="font-magic">No creatures summoned</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Opponent's Hand (Hidden) -->
+                    <div>
+                        <h4 class="font-magic font-semibold mb-4 text-red-300 flex items-center">
+                            <span class="mr-2">🃏</span>Hand
+                        </h4>
+                        <div class="flex gap-2">
+                            {% for _ in game.players[1].hand %}
+                                <div class="w-12 h-16 bg-card-gradient rounded-lg border border-arena-accent/30 shadow-card transform hover:scale-110 transition-transform cursor-pointer">
+                                    <div class="w-full h-full rounded-lg bg-gradient-to-b from-blue-900/50 to-blue-800/50 flex items-center justify-center">
+                                        <span class="text-xs text-blue-300">🔮</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            {% if game.players[1].hand|length == 0 %}
+                                <div class="text-red-400/60 italic">Empty hand</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Player Area (You) -->
+                <div class="arena-card rounded-xl p-6 border-l-4 border-green-500">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-magic text-2xl font-bold text-green-400 flex items-center">
+                            <span class="mr-3">🛡️</span>{{ game.players[0].name }}
+                        </h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-green-500/20 border border-green-500/50 px-4 py-2 rounded-lg">
+                                <span class="text-green-300 text-sm">❤️ Life</span>
+                                <div class="text-2xl font-bold text-white">{{ game.players[0].life }}</div>
+                            </div>
+                            <div class="bg-purple-500/20 border border-purple-500/50 px-4 py-2 rounded-lg">
+                                <span class="text-purple-300 text-sm">📚 Library</span>
+                                <div class="text-xl font-bold text-white">{{ [60 - game.players[0].hand|length - game.players[0].battlefield|length, 0]|max }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Your Battlefield -->
+                    <div class="mb-6">
+                        <h4 class="font-magic font-semibold mb-4 text-green-300 flex items-center">
+                            <span class="mr-2">⚔️</span>Your Battlefield
+                            <span class="ml-2 text-sm bg-green-500/20 border border-green-500/50 px-2 py-1 rounded">
+                                {{ game.players[0].battlefield|length }} creatures
+                            </span>
+                        </h4>
+                        <div class="arena-surface rounded-xl p-6 border-2 border-dashed border-green-400/30 min-h-[180px]">
+                            <div class="flex flex-wrap gap-4">
+                                {% for card in game.players[0].battlefield %}
+                                    <div class="arena-card arena-card-hoverable w-36 h-48 p-4 hover:scale-105 transition-all duration-300 cursor-pointer border border-green-400/50 hover:border-green-400 hover:shadow-card-hover group">
+                                        <div class="h-full flex flex-col justify-between">
+                                            <div class="text-center">
+                                                <h5 class="font-magic font-bold text-sm text-arena-accent mb-2">{{ card.name }}</h5>
+                                                <div class="text-xs text-arena-text-dim mb-1">💎 {{ card.mana_cost or '0' }}</div>
+                                                <div class="text-xs text-arena-text-muted">{{ card.card_type }}</div>
+                                            </div>
+                                            {% if card.power is not none and card.toughness is not none %}
+                                                <div class="text-center">
+                                                    <span class="bg-green-500 text-white px-2 py-1 rounded text-sm font-bold shadow-sm">
+                                                        {{ card.power }}/{{ card.toughness }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                {% if game.players[0].battlefield|length == 0 %}
+                                    <div class="w-full text-center py-12 text-green-400/60">
+                                        <span class="text-4xl mb-4 block">🌟</span>
+                                        <p class="font-magic">Summon your army here</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Your Hand -->
+                    <div>
+                        <h4 class="font-magic font-semibold mb-4 text-green-300 flex items-center">
+                            <span class="mr-2">🃏</span>Your Hand
+                            <span class="ml-2 text-sm bg-green-500/20 border border-green-500/50 px-2 py-1 rounded">
+                                {{ game.players[0].hand|length }} cards
+                            </span>
+                        </h4>
+                        <div class="flex flex-wrap gap-3">
+                            {% for card in game.players[0].hand %}
+                                <div class="arena-card arena-card-hoverable w-40 h-56 p-4 hover:scale-110 hover:-translate-y-3 transition-all duration-300 cursor-pointer border border-arena-accent/50 hover:border-arena-accent hover:shadow-arena-lg group"
+                                     onclick="playCard('{{ card.id }}')" 
+                                     data-card-id="{{ card.id }}"
+                                     title="Click to cast: {{ card.name }}">
+                                    <div class="h-full flex flex-col justify-between">
+                                        <div class="text-center">
+                                            <h5 class="font-magic font-bold text-sm text-arena-accent mb-2 group-hover:text-arena-accent-light">{{ card.name }}</h5>
+                                            <div class="text-xs text-arena-text-dim mb-2">💎 {{ card.mana_cost or 'Free' }}</div>
+                                            <div class="text-xs text-arena-text-muted mb-3">{{ card.card_type|title }}</div>
+                                            {% if card.text %}
+                                                <div class="text-xs text-arena-text leading-tight overflow-hidden h-12">
+                                                    {{ card.text[:60] }}{% if card.text|length > 60 %}...{% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        {% if card.power is not none and card.toughness is not none %}
+                                            <div class="text-center">
+                                                <span class="bg-accent-gradient text-arena-bg px-3 py-1 rounded text-sm font-bold shadow-sm">
+                                                    {{ card.power }}/{{ card.toughness }}
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            {% if game.players[0].hand|length == 0 %}
+                                <div class="w-full text-center py-12 text-arena-text-dim">
+                                    <span class="text-4xl mb-4 block">📜</span>
+                                    <p class="font-magic">Draw cards to cast spells</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Game Controls Sidebar -->
+            <div class="xl:col-span-1 space-y-6">
+                
+                <!-- Phase Actions -->
+                <div class="arena-card rounded-xl p-6">
+                    <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
+                        <span class="mr-2">🎮</span>Actions
+                        <div class="ml-2 w-3 h-3 {{ 'bg-green-500 animate-pulse' if game.active_player == 0 else 'bg-red-500' }} rounded-full"></div>
+                    </h4>
+                    <div class="space-y-3">
+                        <button 
+                            class="arena-button w-full py-3 px-4 rounded-lg font-semibold {{ 'opacity-50 cursor-not-allowed' if game.active_player != 0 else '' }}"
+                            onclick="passPhase()"
+                            {{ 'disabled' if game.active_player != 0 else '' }}
+                        >
+                            <span class="mr-2">⏭️</span>Pass Phase
+                        </button>
+                        <button 
+                            class="arena-button w-full py-3 px-4 rounded-lg font-semibold {{ 'opacity-50 cursor-not-allowed' if game.active_player != 0 else '' }}"
+                            onclick="drawCard()"
+                            {{ 'disabled' if game.active_player != 0 else '' }}
+                        >
+                            <span class="mr-2">🃏</span>Draw Card
+                        </button>
+                        <button 
+                            class="w-full bg-purple-500/20 border border-purple-500/50 text-purple-300 font-semibold py-3 px-4 rounded-lg"
+                            hx-get="/game-interface/{{ game.id }}"
+                            hx-target="#game-area"
+                            hx-swap="innerHTML"
+                        >
+                            <span class="mr-2">🔄</span>Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Game Info -->
+                <div class="arena-card rounded-xl p-6">
+                    <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
+                        <span class="mr-2">📊</span>Battle Status
+                    </h4>
+                    <div class="space-y-4 text-sm">
+                        <div class="flex justify-between items-center">
+                            <span class="text-arena-text-dim">Turn</span>
+                            <span class="font-bold text-yellow-400">{{ game.turn }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-arena-text-dim">Phase</span>
+                            <span class="font-bold text-blue-400">{{ game.phase.value|title }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-arena-text-dim">Priority</span>
+                            <span class="font-bold {{ 'text-green-400' if game.priority_player == 0 else 'text-red-400' }}">
+                                Player {{ game.priority_player + 1 }}
+                            </span>
+                        </div>
+                        <div class="border-t border-arena-accent/20 pt-4">
+                            <div class="text-center">
+                                <div class="text-xs text-arena-text-muted mb-1">Battle Status</div>
+                                <div class="flex items-center justify-center">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                                    <span class="text-sm font-bold text-green-400">Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Chat -->
+                <div class="arena-card rounded-xl p-6">
+                    <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
+                        <span class="mr-2">💬</span>Battle Chat
+                        <div id="chat-indicator" class="ml-2 w-2 h-2 bg-gray-500 rounded-full"></div>
+                    </h4>
+                    <div id="chat-messages" class="h-48 overflow-y-auto arena-surface border border-arena-accent/20 rounded-lg p-3 mb-4 text-sm">
+                        <div class="text-center text-arena-text-muted py-4">
+                            <span class="text-2xl mb-2 block">💫</span>
+                            <p class="text-xs">Communicate with your opponent</p>
+                        </div>
+                    </div>
+                    <div class="flex">
+                        <input 
+                            type="text" 
+                            id="chat-input"
+                            placeholder="Type your message..."
+                            class="flex-1 px-4 py-2 bg-arena-surface border border-arena-accent/30 rounded-l-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                            onkeypress="if(event.key==='Enter') sendChatMessage()"
+                        >
+                        <button 
+                            class="arena-button px-4 py-2 rounded-r-lg transition-all duration-200"
+                            onclick="sendChatMessage()"
+                        >
+                            📤
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Feedback -->
+    <div id="action-feedback" class="fixed top-20 right-4 z-50 hidden transform transition-all duration-300">
+        <!-- Feedback messages will be shown here -->
+    </div>
+
+    <!-- Card Details Modal -->
+    <div id="card-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeCardModal()">
+        <div class="arena-card rounded-xl p-6 max-w-md w-full border border-arena-accent/50" onclick="event.stopPropagation()">
+            <div id="card-modal-content">
+                <!-- Card details will be loaded here -->
+            </div>
+            <button class="mt-6 w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-3 rounded-lg font-semibold transition-all duration-200" onclick="closeCardModal()">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enhanced game interface functionality
+function gameInterface() {
+    return {
+        // Alpine.js reactive data
+        wsConnected: false,
+        gameState: null
+    };
+}
+
+// WebSocket connection management with better error handling
+let gameWsReconnectAttempts = 0;
+const gameMaxReconnectAttempts = 5;
+
+function connectWebSocketWithRetry() {
+    connectWebSocket('{{ game.id }}');
+    
+    setTimeout(() => {
+        updateWebSocketStatus();
+    }, 1000);
+}
+
+function updateWebSocketStatus() {
+    const statusElement = document.getElementById('ws-status');
+    if (!statusElement) return;
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        statusElement.innerHTML = '<div class="w-3 h-3 bg-green-500 rounded-full mr-2 animate-pulse"></div><span class="text-green-400">Connected</span>';
+        gameWsReconnectAttempts = 0; // Reset on successful connection
+    } else {
+        statusElement.innerHTML = '<div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div><span class="text-red-400">Disconnected</span>';
+        
+        // Attempt reconnection with exponential backoff
+        if (gameWsReconnectAttempts < gameMaxReconnectAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, gameWsReconnectAttempts), 10000);
+            setTimeout(() => {
+                gameWsReconnectAttempts++;
+                console.log(`🔄 Reconnection attempt ${gameWsReconnectAttempts}/${gameMaxReconnectAttempts}`);
+                connectWebSocketWithRetry();
+            }, delay);
+        }
+    }
+}
+
+function showActionFeedback(message, type = 'success') {
+    const feedback = document.getElementById('action-feedback');
+    if (!feedback) return;
+    
+    const colors = {
+        success: 'arena-surface border border-green-500/50 text-green-400',
+        error: 'arena-surface border border-red-500/50 text-red-400',
+        info: 'arena-surface border border-blue-500/50 text-blue-400',
+        warning: 'arena-surface border border-yellow-500/50 text-yellow-400'
+    };
+    
+    feedback.className = `fixed top-20 right-4 z-50 ${colors[type]} px-6 py-3 rounded-lg shadow-arena animate-slide-up`;
+    feedback.textContent = message;
+    feedback.classList.remove('hidden');
+    
+    setTimeout(() => {
+        feedback.style.opacity = '0';
+        feedback.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            feedback.classList.add('hidden');
+            feedback.style.opacity = '';
+            feedback.style.transform = '';
+        }, 300);
+    }, 3000);
+}
+
+function playCard(cardId) {
+    // Enhanced visual feedback
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (cardElement) {
+        cardElement.style.transform = 'scale(0.95) rotate(3deg)';
+        cardElement.style.opacity = '0.8';
+        cardElement.style.filter = 'brightness(1.2)';
+    }
+    
+    showActionFeedback('Casting spell...', 'info');
+    
+    fetch('/api/v1/games/{{ game.id }}/actions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: 'player1',
+            action_type: 'play_card',
+            card_id: cardId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showActionFeedback('✨ Spell cast successfully!', 'success');
+        
+        // Add dramatic card effect
+        if (cardElement) {
+            cardElement.style.transform = 'scale(1.1)';
+            cardElement.style.boxShadow = '0 0 20px rgba(201, 170, 113, 0.8)';
+            
+            setTimeout(() => {
+                cardElement.style.transition = 'all 0.6s ease-out';
+                cardElement.style.transform = 'scale(0) rotate(360deg)';
+                cardElement.style.opacity = '0';
+            }, 300);
+        }
+        
+        // Refresh game state
+        setTimeout(() => {
+            htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
+        }, 800);
+        
+        // Notify via WebSocket
+        sendGameAction('play_card', cardId);
+    })
+    .catch(error => {
+        showActionFeedback('❌ Failed to cast spell: ' + error.message, 'error');
+        
+        // Reset card visual state
+        if (cardElement) {
+            cardElement.style.transform = '';
+            cardElement.style.opacity = '';
+            cardElement.style.filter = '';
+        }
+    });
+}
+
+function passPhase() {
+    showActionFeedback('Passing phase...', 'info');
+    
+    fetch('/api/v1/games/{{ game.id }}/actions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: 'player1',
+            action_type: 'pass_turn'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showActionFeedback('⏭️ Phase passed!', 'success');
+        setTimeout(() => {
+            htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
+        }, 500);
+        sendGameAction('pass_turn');
+    })
+    .catch(error => {
+        showActionFeedback('❌ Failed to pass phase: ' + error.message, 'error');
+    });
+}
+
+function drawCard() {
+    showActionFeedback('Drawing card...', 'info');
+    
+    fetch('/api/v1/games/{{ game.id }}/actions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: 'player1',
+            action_type: 'draw_card'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showActionFeedback('🃏 Card drawn!', 'success');
+        setTimeout(() => {
+            htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
+        }, 500);
+        sendGameAction('draw_card');
+    })
+    .catch(error => {
+        showActionFeedback('❌ Failed to draw card: ' + error.message, 'error');
+    });
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (message && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'chat',
+            player: '{{ game.players[0].name }}',
+            message: message
+        }));
+        
+        addChatMessage('{{ game.players[0].name }}', message, true);
+        input.value = '';
+        
+        // Animate chat indicator
+        const indicator = document.getElementById('chat-indicator');
+        if (indicator) {
+            indicator.className = 'ml-2 w-2 h-2 bg-green-500 rounded-full animate-ping';
+            setTimeout(() => {
+                indicator.className = 'ml-2 w-2 h-2 bg-gray-500 rounded-full';
+            }, 1000);
+        }
+    }
+}
+
+function addChatMessage(player, message, isLocal = false) {
+    const chatContainer = document.getElementById('chat-messages');
+    if (!chatContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `mb-3 p-3 rounded-lg ${isLocal ? 'bg-blue-500/20 border border-blue-500/50 text-blue-200' : 'bg-arena-surface-light border border-arena-accent/30 text-arena-text'}`;
+    
+    const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    messageDiv.innerHTML = `
+        <div class="text-xs text-arena-text-muted mb-1 flex justify-between">
+            <span class="font-semibold">${player}</span>
+            <span>${timestamp}</span>
+        </div>
+        <div class="text-sm">${message}</div>
+    `;
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Remove oldest messages if too many
+    while (chatContainer.children.length > 50) {
+        chatContainer.removeChild(chatContainer.firstChild);
+    }
+}
+
+function toggleHelp() {
+    const helpPanel = document.getElementById('help-panel');
+    if (helpPanel) {
+        helpPanel.classList.toggle('hidden');
+    }
+}
+
+function showCardDetails(card) {
+    const modal = document.getElementById('card-modal');
+    const content = document.getElementById('card-modal-content');
+    if (!modal || !content) return;
+    
+    content.innerHTML = `
+        <div class="text-center mb-6">
+            <h3 class="font-magic text-2xl font-bold text-arena-accent mb-2">${card.name}</h3>
+            <div class="text-arena-text-dim">${card.card_type}</div>
+        </div>
+        <div class="space-y-4 text-arena-text">
+            <div class="arena-surface rounded-lg p-4">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-arena-text-dim">Mana Cost:</span>
+                        <div class="font-semibold">${card.mana_cost || 'Free'}</div>
+                    </div>
+                    <div>
+                        <span class="text-arena-text-dim">Rarity:</span>
+                        <div class="font-semibold">${card.rarity || 'Common'}</div>
+                    </div>
+                </div>
+            </div>
+            ${card.power !== null && card.toughness !== null ? 
+                `<div class="text-center">
+                    <span class="text-arena-text-dim">Power / Toughness</span>
+                    <div class="text-2xl font-bold text-arena-accent">${card.power} / ${card.toughness}</div>
+                </div>` : ''}
+            ${card.text ? 
+                `<div class="arena-surface rounded-lg p-4">
+                    <div class="text-arena-text-dim text-sm mb-2">Card Text:</div>
+                    <div class="text-arena-text leading-relaxed">${card.text}</div>
+                </div>` : ''}
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeCardModal() {
+    const modal = document.getElementById('card-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Enhanced WebSocket message handling
+function handleWebSocketMessage(data) {
+    console.log('📨 WebSocket message:', data);
+    
+    switch(data.type) {
+        case 'game_update':
+            showActionFeedback('⚡ Game updated!', 'info');
+            setTimeout(() => {
+                htmx.trigger('#game-area', 'refresh');
+            }, 500);
+            break;
+            
+        case 'chat':
+            addChatMessage(data.player, data.message, false);
+            break;
+            
+        case 'player_joined':
+            showActionFeedback(`🎯 ${data.player} joined the battle!`, 'info');
+            break;
+            
+        case 'player_left':
+            showActionFeedback(`👋 ${data.player} left the battle!`, 'warning');
+            break;
+            
+        case 'card_played':
+            showActionFeedback(`🃏 ${data.player} cast ${data.card_name}!`, 'info');
+            break;
+            
+        default:
+            console.log('🔍 Unknown message type:', data.type);
+    }
+}
+
+// Initialize everything on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎮 Initializing Magic Arena game interface...');
+    
+    // Connect WebSocket
+    connectWebSocketWithRetry();
+    
+    // Add enhanced hover effects for cards
+    document.querySelectorAll('[data-card-id]').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05) translateY(-8px)';
+            this.style.zIndex = '10';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = '';
+            this.style.zIndex = '';
+        });
+    });
+    
+    // Add click handlers for battlefield cards
+    document.querySelectorAll('.arena-card').forEach(card => {
+        const nameElement = card.querySelector('.font-magic');
+        if (nameElement && !card.hasAttribute('data-card-id')) {
+            card.addEventListener('click', function() {
+                showCardDetails({
+                    name: nameElement.textContent,
+                    card_type: 'Creature',
+                    mana_cost: '2',
+                    text: 'Click for detailed card information...',
+                    rarity: 'Common'
+                });
+            });
+        }
+    });
+    
+    console.log('✨ Game interface initialized successfully!');
+});
+
+// Auto-refresh game state every 30 seconds
+setInterval(() => {
+    if (document.visibilityState === 'visible') {
+        htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
+    }
+}, 30000);
+</script>
+{% endblock %}
