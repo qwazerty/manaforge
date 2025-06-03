@@ -1,0 +1,393 @@
+{% extends "base_arena.html" %}
+
+{% block title %}Card Search - ManaForge{% endblock %}
+
+{% block content %}
+<div class="min-h-screen pt-20">
+    <!-- Header -->
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-accent-gradient rounded-full mb-6 shadow-arena">
+                <span class="text-4xl">📜</span>
+            </div>
+            <h1 class="font-magic text-4xl font-bold text-arena-accent mb-4">
+                Spell Grimoire
+            </h1>
+            <p class="text-xl text-arena-text-dim max-w-2xl mx-auto">
+                Explore the vast multiverse of Magic cards. Search through thousands of spells, creatures, and artifacts.
+            </p>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="max-w-4xl mx-auto px-4 mb-12">
+        <div class="arena-card rounded-xl p-8">
+            <div class="flex flex-col md:flex-row gap-4 mb-8">
+                <div class="flex-1 relative">
+                    <input 
+                        type="text" 
+                        id="searchQuery" 
+                        placeholder="Search for cards... (e.g., Lightning Bolt, Angel, Forest)" 
+                        value="lightning"
+                        class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-lg"
+                        hx-get="/api/v1/cards/search"
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#searchResults"
+                        hx-include="this"
+                        name="q"
+                        onkeypress="if(event.key==='Enter') searchCards()"
+                    >
+                    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
+                        🔍
+                    </div>
+                </div>
+                <button 
+                    onclick="searchCards()"
+                    class="arena-button px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 whitespace-nowrap"
+                >
+                    <span class="mr-2">✨</span>Cast Search
+                </button>
+            </div>
+
+            <!-- Search Filters -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="arena-surface rounded-lg p-3">
+                    <label class="block text-sm font-semibold text-arena-accent mb-2">Type</label>
+                    <select class="w-full bg-arena-surface border border-arena-accent/30 rounded text-arena-text text-sm py-2 px-3">
+                        <option value="">All Types</option>
+                        <option value="creature">Creature</option>
+                        <option value="instant">Instant</option>
+                        <option value="sorcery">Sorcery</option>
+                        <option value="enchantment">Enchantment</option>
+                        <option value="artifact">Artifact</option>
+                        <option value="land">Land</option>
+                        <option value="planeswalker">Planeswalker</option>
+                    </select>
+                </div>
+                <div class="arena-surface rounded-lg p-3">
+                    <label class="block text-sm font-semibold text-arena-accent mb-2">Rarity</label>
+                    <select class="w-full bg-arena-surface border border-arena-accent/30 rounded text-arena-text text-sm py-2 px-3">
+                        <option value="">All Rarities</option>
+                        <option value="common">Common</option>
+                        <option value="uncommon">Uncommon</option>
+                        <option value="rare">Rare</option>
+                        <option value="mythic">Mythic Rare</option>
+                    </select>
+                </div>
+                <div class="arena-surface rounded-lg p-3">
+                    <label class="block text-sm font-semibold text-arena-accent mb-2">Color</label>
+                    <select class="w-full bg-arena-surface border border-arena-accent/30 rounded text-arena-text text-sm py-2 px-3">
+                        <option value="">All Colors</option>
+                        <option value="W">White</option>
+                        <option value="U">Blue</option>
+                        <option value="B">Black</option>
+                        <option value="R">Red</option>
+                        <option value="G">Green</option>
+                        <option value="C">Colorless</option>
+                    </select>
+                </div>
+                <div class="arena-surface rounded-lg p-3">
+                    <label class="block text-sm font-semibold text-arena-accent mb-2">Mana Cost</label>
+                    <select class="w-full bg-arena-surface border border-arena-accent/30 rounded text-arena-text text-sm py-2 px-3">
+                        <option value="">Any Cost</option>
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5+</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    <div class="max-w-6xl mx-auto px-4 pb-16">
+        <div 
+            id="searchResults" 
+            class="arena-surface rounded-xl p-6 min-h-[400px] border border-arena-accent/20"
+            hx-get="/api/v1/cards/search?q=lightning"
+            hx-trigger="load"
+        >
+            <div class="text-center py-16 text-arena-text-dim">
+                <div class="w-16 h-16 border-4 border-arena-accent/30 border-t-arena-accent rounded-full animate-spin mx-auto mb-4"></div>
+                <div class="animate-pulse text-lg">Searching the multiverse...</div>
+                <p class="text-sm mt-2 opacity-75">Summoning cards from across the planes</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Search Examples -->
+    <div class="max-w-4xl mx-auto px-4 pb-16">
+        <div class="arena-card rounded-xl p-6">
+            <h3 class="font-magic text-xl font-bold text-arena-accent mb-4 text-center">
+                <span class="mr-2">💫</span>Quick Search Examples
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onclick="quickSearch('angel')" class="arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent rounded-lg p-3 text-center transition-all duration-200">
+                    <div class="text-2xl mb-1">👼</div>
+                    <div class="text-sm text-arena-text">Angels</div>
+                </button>
+                <button onclick="quickSearch('dragon')" class="arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent rounded-lg p-3 text-center transition-all duration-200">
+                    <div class="text-2xl mb-1">🐲</div>
+                    <div class="text-sm text-arena-text">Dragons</div>
+                </button>
+                <button onclick="quickSearch('lightning')" class="arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent rounded-lg p-3 text-center transition-all duration-200">
+                    <div class="text-2xl mb-1">⚡</div>
+                    <div class="text-sm text-arena-text">Lightning</div>
+                </button>
+                <button onclick="quickSearch('forest')" class="arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent rounded-lg p-3 text-center transition-all duration-200">
+                    <div class="text-2xl mb-1">🌲</div>
+                    <div class="text-sm text-arena-text">Lands</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Details Modal -->
+    <div id="card-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeCardModal()">
+        <div class="arena-card rounded-xl p-6 max-w-lg w-full border border-arena-accent/50" onclick="event.stopPropagation()">
+            <div id="card-modal-content">
+                <!-- Card details will be loaded here -->
+            </div>
+            <button class="mt-6 w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-3 rounded-lg font-semibold transition-all duration-200" onclick="closeCardModal()">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function searchCards() {
+    const query = document.getElementById('searchQuery').value;
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (!query) {
+        resultsDiv.innerHTML = `
+            <div class="text-center py-16 text-arena-text-dim">
+                <span class="text-6xl mb-4 block">🔍</span>
+                <p class="text-lg">Enter a search term to explore the multiverse</p>
+            </div>
+        `;
+        return;
+    }
+    
+    try {
+        resultsDiv.innerHTML = `
+            <div class="text-center py-16">
+                <div class="w-16 h-16 border-4 border-arena-accent/30 border-t-arena-accent rounded-full animate-spin mx-auto mb-4"></div>
+                <div class="text-arena-text-dim text-lg animate-pulse">Searching the multiverse...</div>
+                <p class="text-arena-text-muted text-sm mt-2">Summoning "${query}" from across the planes</p>
+            </div>
+        `;
+        
+        const response = await fetch(`/api/v1/cards/search?q=${encodeURIComponent(query)}&limit=50`);
+        const cards = await response.json();
+        
+        if (cards.length === 0) {
+            resultsDiv.innerHTML = `
+                <div class="text-center py-16 text-arena-text-dim">
+                    <span class="text-6xl mb-4 block">🌌</span>
+                    <p class="text-lg mb-2">No cards found in the multiverse</p>
+                    <p class="text-sm text-arena-text-muted">Try searching for: "lightning", "angel", "forest", or "dragon"</p>
+                </div>
+            `;
+            return;
+        }
+        
+        resultsDiv.innerHTML = `
+            <div class="mb-6 text-center">
+                <h3 class="font-magic text-xl text-arena-accent mb-2">
+                    ✨ Found ${cards.length} cards in the multiverse
+                </h3>
+                <p class="text-arena-text-dim">Click any card for detailed information</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                ${cards.map((card, index) => `
+                    <div class="arena-card rounded-xl p-4 hover:scale-105 transition-all duration-300 cursor-pointer border border-arena-accent/30 hover:border-arena-accent hover:shadow-arena-lg group animate-fade-in" 
+                         style="animation-delay: ${index * 50}ms;"
+                         onclick="showCardDetails(${JSON.stringify(card).replace(/"/g, '&quot;')})">
+                        <div class="text-center mb-4">
+                            <h4 class="font-magic text-lg font-bold text-arena-accent mb-2 group-hover:text-arena-accent-light">${card.name}</h4>
+                            <div class="flex items-center justify-center space-x-2 mb-2">
+                                ${card.mana_cost ? `<span class="text-arena-text-dim text-sm">💎 ${card.mana_cost}</span>` : '<span class="text-arena-text-dim text-sm">💎 Free</span>'}
+                                <span class="text-xs px-2 py-1 rounded ${getRarityColor(card.rarity)}">${card.rarity || 'Common'}</span>
+                            </div>
+                            <div class="text-sm text-arena-text-muted bg-arena-surface-light px-3 py-1 rounded-full">${card.card_type || 'Unknown'}</div>
+                        </div>
+                        
+                        ${card.text ? `
+                            <div class="text-xs text-arena-text leading-relaxed mb-3 h-16 overflow-hidden">
+                                ${card.text.length > 100 ? card.text.substring(0, 100) + '...' : card.text}
+                            </div>
+                        ` : ''}
+                        
+                        ${card.power !== null && card.toughness !== null ? `
+                            <div class="text-center">
+                                <span class="bg-accent-gradient text-arena-bg px-3 py-1 rounded-full text-sm font-bold shadow-sm">
+                                    ${card.power}/${card.toughness}
+                                </span>
+                            </div>
+                        ` : ''}
+                        
+                        ${card.colors && card.colors.length > 0 ? `
+                            <div class="flex justify-center mt-2 space-x-1">
+                                ${card.colors.map(color => `<span class="w-4 h-4 rounded-full ${getColorClass(color)}" title="${getColorName(color)}"></span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+    } catch (error) {
+        resultsDiv.innerHTML = `
+            <div class="text-center py-16 text-red-400">
+                <span class="text-6xl mb-4 block">💥</span>
+                <p class="text-lg mb-2">Planeswalker spell failed!</p>
+                <p class="text-sm text-arena-text-muted">Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function quickSearch(term) {
+    document.getElementById('searchQuery').value = term;
+    searchCards();
+}
+
+function getRarityColor(rarity) {
+    switch(rarity?.toLowerCase()) {
+        case 'common': return 'bg-gray-500/20 text-gray-400 border border-gray-500/50';
+        case 'uncommon': return 'bg-green-500/20 text-green-400 border border-green-500/50';
+        case 'rare': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50';
+        case 'mythic': case 'mythic rare': return 'bg-red-500/20 text-red-400 border border-red-500/50';
+        default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/50';
+    }
+}
+
+function getColorClass(color) {
+    switch(color) {
+        case 'W': return 'bg-yellow-200 border border-yellow-400';
+        case 'U': return 'bg-blue-400 border border-blue-600';
+        case 'B': return 'bg-purple-800 border border-purple-900';
+        case 'R': return 'bg-red-500 border border-red-700';
+        case 'G': return 'bg-green-500 border border-green-700';
+        default: return 'bg-gray-400 border border-gray-600';
+    }
+}
+
+function getColorName(color) {
+    switch(color) {
+        case 'W': return 'White';
+        case 'U': return 'Blue';
+        case 'B': return 'Black';
+        case 'R': return 'Red';
+        case 'G': return 'Green';
+        default: return 'Colorless';
+    }
+}
+
+function showCardDetails(card) {
+    const modal = document.getElementById('card-modal');
+    const content = document.getElementById('card-modal-content');
+    if (!modal || !content) return;
+    
+    content.innerHTML = `
+        <div class="text-center mb-6">
+            <h3 class="font-magic text-3xl font-bold text-arena-accent mb-3">${card.name}</h3>
+            <div class="flex items-center justify-center space-x-4 mb-3">
+                <span class="text-arena-text-dim text-lg">💎 ${card.mana_cost || 'Free'}</span>
+                <span class="px-3 py-1 rounded-full text-sm ${getRarityColor(card.rarity)}">${card.rarity || 'Common'}</span>
+            </div>
+            <div class="text-arena-text-muted bg-arena-surface-light px-4 py-2 rounded-full inline-block">${card.card_type || 'Unknown Type'}</div>
+        </div>
+        
+        <div class="space-y-4 text-arena-text">
+            ${card.text ? `
+                <div class="arena-surface rounded-lg p-4 border border-arena-accent/20">
+                    <h4 class="font-semibold text-arena-accent mb-2">Card Text</h4>
+                    <div class="text-arena-text leading-relaxed">${card.text}</div>
+                </div>
+            ` : ''}
+            
+            ${card.power !== null && card.toughness !== null ? `
+                <div class="arena-surface rounded-lg p-4 border border-arena-accent/20">
+                    <h4 class="font-semibold text-arena-accent mb-2">Power/Toughness</h4>
+                    <div class="text-center">
+                        <span class="bg-accent-gradient text-arena-bg px-6 py-2 rounded-full text-xl font-bold">
+                            ${card.power}/${card.toughness}
+                        </span>
+                    </div>
+                </div>
+            ` : ''}
+            
+            ${card.colors && card.colors.length > 0 ? `
+                <div class="arena-surface rounded-lg p-4 border border-arena-accent/20">
+                    <h4 class="font-semibold text-arena-accent mb-2">Mana Colors</h4>
+                    <div class="flex justify-center space-x-2">
+                        ${card.colors.map(color => `
+                            <div class="flex items-center space-x-2">
+                                <span class="w-6 h-6 rounded-full ${getColorClass(color)}"></span>
+                                <span class="text-sm">${getColorName(color)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="arena-surface rounded-lg p-4 border border-arena-accent/20">
+                <h4 class="font-semibold text-arena-accent mb-2">Card Details</h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-arena-text-dim">Mana Cost:</span>
+                        <span class="font-semibold ml-2">${card.cmc || 0}</span>
+                    </div>
+                    <div>
+                        <span class="text-arena-text-dim">Rarity:</span>
+                        <span class="font-semibold ml-2">${card.rarity || 'Common'}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeCardModal() {
+    const modal = document.getElementById('card-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Enhanced HTMX integration for search results
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.target.id === 'searchResults') {
+        // Add staggered animations to cards
+        const cards = event.target.querySelectorAll('.arena-card');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 50}ms`;
+            card.classList.add('animate-fade-in');
+        });
+    }
+});
+
+// Auto-search on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🃏 Card search interface initialized');
+    
+    // Let HTMX handle the initial load, then fallback to JS search if needed
+    setTimeout(() => {
+        const resultsDiv = document.getElementById('searchResults');
+        if (resultsDiv && resultsDiv.innerHTML.includes('Searching the multiverse')) {
+            searchCards();
+        }
+    }, 1000);
+});
+</script>
+{% endblock %}

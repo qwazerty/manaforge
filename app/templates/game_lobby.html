@@ -1,0 +1,360 @@
+{% extends "base_arena.html" %}
+
+{% block title %}Game Lobby - ManaForge{% endblock %}
+
+{% block content %}
+<!-- Lobby Header -->
+<div class="py-12 px-4">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-12 animate-fade-in">
+            <h1 class="font-magic text-4xl md:text-5xl font-bold text-arena-accent mb-4">
+                ⚔️ Planeswalker Lobby
+            </h1>
+            <p class="text-xl text-arena-text-dim">
+                Forge new battles or join existing conflicts across the multiverse
+            </p>
+        </div>
+        
+        <!-- Main Lobby Actions -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-12">
+            
+            <!-- Create Game Section -->
+            <div class="arena-card rounded-xl p-8 animate-slide-up">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
+                        <span class="text-3xl">🛡️</span>
+                    </div>
+                    <h2 class="font-magic text-2xl font-bold text-arena-accent mb-2">Forge New Battle</h2>
+                    <p class="text-arena-text-dim">Create a new battlefield and invite challengers to test their might</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="gameId" 
+                            placeholder="Enter Battlefield Name..." 
+                            value="epic-duel-arena"
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                        >
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
+                            ⚔️
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onclick="createGame()"
+                        class="arena-button w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-300 group"
+                    >
+                        <span class="mr-2 group-hover:animate-pulse">🔮</span>
+                        Forge Battle
+                    </button>
+                    
+                    <div id="create-status" class="text-center"></div>
+                </div>
+            </div>
+            
+            <!-- Join Game Section -->
+            <div class="arena-card rounded-xl p-8 animate-slide-up" style="animation-delay: 200ms;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
+                        <span class="text-3xl">🗡️</span>
+                    </div>
+                    <h2 class="font-magic text-2xl font-bold text-arena-accent mb-2">Join the Fray</h2>
+                    <p class="text-arena-text-dim">Enter an existing battlefield and challenge its planeswalker</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="joinGameId" 
+                            placeholder="Enter Battlefield ID..."
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                        >
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
+                            🏹
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onclick="joinGame()"
+                        class="arena-button w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-300 group"
+                    >
+                        <span class="mr-2 group-hover:animate-pulse">⚡</span>
+                        Join Battle
+                    </button>
+                    
+                    <div id="join-status" class="text-center"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Features Overview -->
+        <div class="arena-card rounded-xl p-8 mb-8 animate-fade-in" style="animation-delay: 400ms;">
+            <h2 class="font-magic text-2xl font-bold text-center text-arena-accent mb-8">
+                🌟 Magical Features Unlocked
+            </h2>
+            
+            <div class="grid md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <div class="text-center group">
+                    <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <span class="text-green-400 text-xl">✅</span>
+                    </div>
+                    <h3 class="font-semibold text-arena-text text-sm">Card Search</h3>
+                    <p class="text-arena-text-muted text-xs">& Database</p>
+                </div>
+                
+                <div class="text-center group">
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <span class="text-blue-400 text-xl">✅</span>
+                    </div>
+                    <h3 class="font-semibold text-arena-text text-sm">Real-time</h3>
+                    <p class="text-arena-text-muted text-xs">Game Engine</p>
+                </div>
+                
+                <div class="text-center group">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <span class="text-purple-400 text-xl">✅</span>
+                    </div>
+                    <h3 class="font-semibold text-arena-text text-sm">Deck</h3>
+                    <p class="text-arena-text-muted text-xs">Management</p>
+                </div>
+                
+                <div class="text-center group">
+                    <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <span class="text-yellow-400 text-xl">✅</span>
+                    </div>
+                    <h3 class="font-semibold text-arena-text text-sm">WebSocket</h3>
+                    <p class="text-arena-text-muted text-xs">Support</p>
+                </div>
+                
+                <div class="text-center group">
+                    <div class="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <span class="text-red-400 text-xl">✅</span>
+                    </div>
+                    <h3 class="font-semibold text-arena-text text-sm">Modern</h3>
+                    <p class="text-arena-text-muted text-xs">FastAPI Backend</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card Search Demo -->
+        <div class="arena-card rounded-xl p-8 animate-fade-in" style="animation-delay: 600ms;">
+            <div class="flex items-center justify-center mb-6">
+                <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mr-4 shadow-arena">
+                    <span class="text-xl">📜</span>
+                </div>
+                <div>
+                    <h2 class="font-magic text-2xl font-bold text-arena-accent">Spell Grimoire</h2>
+                    <p class="text-arena-text-dim">Explore the vast library of magical cards</p>
+                </div>
+            </div>
+            
+            <div class="max-w-2xl mx-auto">
+                <div class="flex space-x-4 mb-6">
+                    <div class="flex-1 relative">
+                        <input 
+                            type="text" 
+                            id="searchQuery" 
+                            placeholder="Search for cards... (e.g., Lightning Bolt)" 
+                            value="lightning"
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                            hx-get="/api/v1/cards/search"
+                            hx-trigger="keyup changed delay:500ms"
+                            hx-target="#searchResults"
+                            hx-include="this"
+                            name="q"
+                        >
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
+                            🔍
+                        </div>
+                    </div>
+                    <button 
+                        onclick="searchCards()"
+                        class="arena-button px-8 py-4 rounded-lg font-semibold transition-all duration-300"
+                    >
+                        Cast Search
+                    </button>
+                </div>
+                
+                <div 
+                    id="searchResults" 
+                    class="arena-surface rounded-lg p-4 max-h-96 overflow-y-auto border border-arena-accent/20"
+                    hx-get="/api/v1/cards/search?q=lightning"
+                    hx-trigger="load"
+                >
+                    <div class="text-center py-8 text-arena-text-dim">
+                        <div class="animate-pulse">Searching the multiverse...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function createGame() {
+    const gameId = document.getElementById('gameId').value;
+    const statusDiv = document.getElementById('create-status');
+    
+    if (!gameId) {
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                ⚠️ Please enter a battlefield name
+            </div>
+        `;
+        return;
+    }
+    
+    statusDiv.innerHTML = `
+        <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
+            🔮 Forging battlefield...
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`/api/v1/games?game_id=${gameId}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            statusDiv.innerHTML = `
+                <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
+                    ✨ Battlefield forged! Redirecting...
+                </div>
+            `;
+            
+            setTimeout(() => {
+                window.location.href = `/game-interface/${gameId}`;
+            }, 1000);
+        } else {
+            statusDiv.innerHTML = `
+                <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                    ❌ Failed to forge battlefield
+                </div>
+            `;
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                💥 Error: ${error.message}
+            </div>
+        `;
+    }
+}
+
+async function joinGame() {
+    const gameId = document.getElementById('joinGameId').value;
+    const statusDiv = document.getElementById('join-status');
+    
+    if (!gameId) {
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                ⚠️ Please enter a battlefield ID
+            </div>
+        `;
+        return;
+    }
+    
+    statusDiv.innerHTML = `
+        <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
+            ⚡ Entering battlefield...
+        </div>
+    `;
+    
+    setTimeout(() => {
+        window.location.href = `/game-interface/${gameId}`;
+    }, 800);
+}
+
+async function searchCards() {
+    const query = document.getElementById('searchQuery').value;
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (!query) {
+        resultsDiv.innerHTML = '<div class="text-center text-arena-text-dim py-4">Please enter a search query</div>';
+        return;
+    }
+    
+    try {
+        resultsDiv.innerHTML = `
+            <div class="text-center py-8">
+                <div class="w-8 h-8 border-2 border-arena-accent/30 border-t-arena-accent rounded-full animate-spin mx-auto mb-2"></div>
+                <div class="text-arena-text-dim animate-pulse">Searching the multiverse...</div>
+            </div>
+        `;
+        
+        const response = await fetch(`/api/v1/cards/search?q=${encodeURIComponent(query)}`);
+        const cards = await response.json();
+        
+        if (cards.length === 0) {
+            resultsDiv.innerHTML = `
+                <div class="text-center py-8 text-arena-text-dim">
+                    <span class="text-4xl mb-4 block">🔍</span>
+                    No cards found in the multiverse
+                </div>
+            `;
+            return;
+        }
+        
+        resultsDiv.innerHTML = cards.map((card, index) => `
+            <div class="arena-card rounded-lg p-4 mb-3 hover:scale-[1.02] transition-all duration-200 animate-fade-in" style="animation-delay: ${index * 100}ms;">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <h3 class="font-magic text-lg font-bold text-arena-accent">${card.name}</h3>
+                            ${card.mana_cost ? `<span class="text-arena-text-dim">${card.mana_cost}</span>` : ''}
+                        </div>
+                        <div class="flex items-center space-x-4 mb-2">
+                            <span class="text-sm text-arena-text-dim bg-arena-surface-light px-2 py-1 rounded">${card.card_type}</span>
+                            <span class="text-sm text-arena-accent">${card.rarity}</span>
+                        </div>
+                        ${card.text ? `<p class="text-arena-text text-sm leading-relaxed">${card.text}</p>` : ''}
+                    </div>
+                    <div class="ml-4 flex flex-col items-center space-y-1">
+                        ${card.power !== null && card.toughness !== null ? 
+                            `<div class="bg-arena-accent text-arena-bg px-2 py-1 rounded text-sm font-bold">${card.power}/${card.toughness}</div>` : 
+                            ''
+                        }
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        resultsDiv.innerHTML = `
+            <div class="text-center py-8 text-red-400">
+                <span class="text-4xl mb-4 block">💥</span>
+                Error searching cards: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Enhanced HTMX integration for search results
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.target.id === 'searchResults') {
+        // Add staggered animations to cards
+        const cards = event.target.querySelectorAll('.arena-card');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 100}ms`;
+            card.classList.add('animate-fade-in');
+        });
+    }
+});
+
+// Auto-search on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Let HTMX handle the initial load
+    setTimeout(() => {
+        const resultsDiv = document.getElementById('searchResults');
+        if (resultsDiv && resultsDiv.innerHTML.includes('Searching the multiverse')) {
+            searchCards();
+        }
+    }, 1000);
+});
+</script>
+{% endblock %}

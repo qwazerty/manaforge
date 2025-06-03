@@ -1,0 +1,113 @@
+"""
+Core models for the Magic The Gathering game.
+"""
+
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+from enum import Enum
+
+
+class CardType(str, Enum):
+    """Card types in Magic The Gathering."""
+    CREATURE = "creature"
+    INSTANT = "instant"
+    SORCERY = "sorcery"
+    ENCHANTMENT = "enchantment"
+    ARTIFACT = "artifact"
+    PLANESWALKER = "planeswalker"
+    LAND = "land"
+
+
+class Rarity(str, Enum):
+    """Card rarities."""
+    COMMON = "common"
+    UNCOMMON = "uncommon"
+    RARE = "rare"
+    MYTHIC = "mythic"
+
+
+class Color(str, Enum):
+    """Magic colors."""
+    WHITE = "W"
+    BLUE = "U"
+    BLACK = "B"
+    RED = "R"
+    GREEN = "G"
+
+
+class Card(BaseModel):
+    """A Magic The Gathering card."""
+    id: str = Field(..., description="Unique card identifier")
+    name: str = Field(..., description="Card name")
+    mana_cost: str = Field(default="", description="Mana cost (e.g., '2RG')")
+    cmc: int = Field(default=0, description="Converted mana cost")
+    card_type: CardType = Field(..., description="Primary card type")
+    subtype: str = Field(default="", description="Card subtype")
+    text: str = Field(default="", description="Card text/abilities")
+    power: Optional[int] = Field(default=None, description="Creature power")
+    toughness: Optional[int] = Field(default=None, description="Creature toughness")
+    colors: List[Color] = Field(default_factory=list, description="Card colors")
+    rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
+    image_url: Optional[str] = Field(default=None, description="Card image URL")
+
+
+class Deck(BaseModel):
+    """A Magic deck."""
+    id: Optional[str] = Field(default=None, description="Deck ID")
+    name: str = Field(..., description="Deck name")
+    cards: List[Dict[str, Any]] = Field(default_factory=list, description="Cards with quantities")
+    format: str = Field(default="standard", description="Deck format")
+    
+
+class GameZone(str, Enum):
+    """Game zones where cards can be."""
+    LIBRARY = "library"
+    HAND = "hand"
+    BATTLEFIELD = "battlefield"
+    GRAVEYARD = "graveyard"
+    EXILE = "exile"
+    STACK = "stack"
+
+
+class GamePhase(str, Enum):
+    """Game phases."""
+    UNTAP = "untap"
+    UPKEEP = "upkeep"
+    DRAW = "draw"
+    MAIN1 = "main1"
+    COMBAT = "combat"
+    MAIN2 = "main2"
+    END = "end"
+    CLEANUP = "cleanup"
+
+
+class Player(BaseModel):
+    """A player in a game."""
+    id: str = Field(..., description="Player ID")
+    name: str = Field(..., description="Player name")
+    life: int = Field(default=20, description="Life total")
+    hand: List[Card] = Field(default_factory=list, description="Cards in hand")
+    battlefield: List[Card] = Field(default_factory=list, description="Cards on battlefield")
+    graveyard: List[Card] = Field(default_factory=list, description="Cards in graveyard")
+    library: List[Card] = Field(default_factory=list, description="Cards in library")
+    mana_pool: Dict[str, int] = Field(default_factory=dict, description="Available mana")
+
+
+class GameState(BaseModel):
+    """Current state of a Magic game."""
+    id: str = Field(..., description="Game ID")
+    players: List[Player] = Field(..., description="Players in the game")
+    active_player: int = Field(default=0, description="Index of active player")
+    phase: GamePhase = Field(default=GamePhase.UNTAP, description="Current phase")
+    turn: int = Field(default=1, description="Turn number")
+    stack: List[Dict[str, Any]] = Field(default_factory=list, description="Spells on the stack")
+    priority_player: int = Field(default=0, description="Player with priority")
+
+
+class GameAction(BaseModel):
+    """An action taken in the game."""
+    player_id: str = Field(..., description="Player taking the action")
+    action_type: str = Field(..., description="Type of action")
+    card_id: Optional[str] = Field(default=None, description="Card involved in action")
+    target: Optional[str] = Field(default=None, description="Target of the action")
+    additional_data: Dict[str, Any] = Field(default_factory=dict, description="Additional action data")

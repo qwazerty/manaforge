@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="widt        .arena-card {
+            background: linear-gradient(135deg, #1a1f2e 0%, #252a3a 100%);
+            border: 1px solid rgba(201, 170, 113, 0.2);
+            transition: all 0.2s ease;
+        }
+        
+        .arena-card-hoverable:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(201, 170, 113, 0.6);
+            box-shadow: 0 8px 25px rgba(201, 170, 113, 0.4);
+        }dth, initial-scale=1.0">
+    <title>{% block title %}ManaForge - The Gathering{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Alpine.js for minimal JavaScript -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.1/dist/cdn.min.js"></script>
+    
+    <!-- Google Fonts - Magic Arena inspired -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Magic Arena Color Palette
+                        'arena': {
+                            'bg': '#0a0e1a',
+                            'surface': '#1a1f2e',
+                            'surface-light': '#252a3a',
+                            'surface-lighter': '#2f3441',
+                            'accent': '#c9aa71',
+                            'accent-light': '#ddc78b',
+                            'accent-dark': '#9d7c3f',
+                            'text': '#e8e8e8',
+                            'text-dim': '#a8a8a8',
+                            'text-muted': '#6b7280',
+                            'border': '#374151',
+                            'danger': '#ef4444',
+                            'success': '#10b981'
+                        },
+                        // Mana Colors
+                        'mana': {
+                            'white': '#fffbd5',
+                            'blue': '#0e68ab',
+                            'black': '#150b00',
+                            'red': '#d3202a',
+                            'green': '#00733e',
+                            'colorless': '#ccc2c0'
+                        }
+                    },
+                    fontFamily: {
+                        'magic': ['Cinzel', 'serif'],
+                        'ui': ['Inter', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'arena': '0 4px 20px rgba(201, 170, 113, 0.3)',
+                        'arena-lg': '0 10px 40px rgba(201, 170, 113, 0.4)',
+                        'card': '0 2px 10px rgba(0, 0, 0, 0.5)',
+                        'card-hover': '0 8px 25px rgba(201, 170, 113, 0.4)',
+                        'inner-arena': 'inset 0 2px 4px rgba(201, 170, 113, 0.1)'
+                    },
+                    backgroundImage: {
+                        'arena-gradient': 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 50%, #252a3a 100%)',
+                        'card-gradient': 'linear-gradient(135deg, #1a1f2e 0%, #252a3a 100%)',
+                        'accent-gradient': 'linear-gradient(135deg, #c9aa71 0%, #ddc78b 100%)'
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'card-draw': 'cardDraw 0.6s ease-out',
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.4s ease-out',
+                        'pulse-arena': 'pulseArena 2s ease-in-out infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 20px rgba(201, 170, 113, 0.2); }
+            to { box-shadow: 0 0 30px rgba(201, 170, 113, 0.4); }
+        }
+        
+        @keyframes cardDraw {
+            from { transform: translateY(50px) rotate(5deg); opacity: 0; }
+            to { transform: translateY(0) rotate(0deg); opacity: 1; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes pulseArena {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* Custom Arena Styles */
+        .arena-border {
+            border: 2px solid transparent;
+            background: linear-gradient(#1a1f2e, #1a1f2e) padding-box,
+                        linear-gradient(135deg, #c9aa71, #ddc78b) border-box;
+        }
+        
+        .arena-card {
+            background: linear-gradient(135deg, #1a1f2e 0%, #252a3a 100%);
+            border: 1px solid rgba(201, 170, 113, 0.3);
+        }
+        
+        .arena-card-hoverable {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .arena-card-hoverable:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(201, 170, 113, 0.6);
+            box-shadow: 0 8px 25px rgba(201, 170, 113, 0.4);
+        }
+        
+        .arena-button {
+            background: linear-gradient(135deg, #c9aa71 0%, #ddc78b 100%);
+            color: #1a1f2e;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        
+        .arena-button:hover {
+            background: linear-gradient(135deg, #ddc78b 0%, #c9aa71 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(201, 170, 113, 0.4);
+        }
+        
+        .arena-surface {
+            background: rgba(26, 31, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(201, 170, 113, 0.2);
+        }
+        
+        /* Mana symbols */
+        .mana-symbol {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .mana-w { background: radial-gradient(circle, #fffbd5 0%, #f4e6a1 100%); color: #2d1810; }
+        .mana-u { background: radial-gradient(circle, #0e68ab 0%, #0a4d7c 100%); }
+        .mana-b { background: radial-gradient(circle, #150b00 0%, #2c1810 100%); }
+        .mana-r { background: radial-gradient(circle, #d3202a 0%, #a01521 100%); }
+        .mana-g { background: radial-gradient(circle, #00733e 0%, #005530 100%); }
+        .mana-c { background: radial-gradient(circle, #ccc2c0 0%, #9a8e8c 100%); color: #2d1810; }
+        
+        /* Particle effects */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(201, 170, 113, 0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-arena-bg text-arena-text font-ui min-h-screen overflow-x-hidden">
+    <!-- Particle Background Effect -->
+    <div class="particles">
+        <div class="particle w-2 h-2 top-1/4 left-1/4 opacity-30" style="animation-delay: -0.5s;"></div>
+        <div class="particle w-1 h-1 top-3/4 left-1/3 opacity-20" style="animation-delay: -1.5s;"></div>
+        <div class="particle w-3 h-3 top-1/2 left-3/4 opacity-25" style="animation-delay: -2.5s;"></div>
+        <div class="particle w-1 h-1 top-1/6 left-2/3 opacity-15" style="animation-delay: -3.5s;"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="relative z-10">
+        <!-- Navigation Header -->
+        <nav class="arena-surface border-b border-arena-accent/20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Logo -->
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                            <div class="w-10 h-10 bg-accent-gradient rounded-lg flex items-center justify-center shadow-arena">
+                                <span class="text-2xl">⚔️</span>
+                            </div>
+                            <div>
+                                <h1 class="font-magic text-xl font-bold text-arena-accent">ManaForge</h1>
+                                <p class="text-xs text-arena-text-dim">The Gathering</p>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <!-- Navigation Links -->
+                    <div class="hidden md:flex items-center space-x-6">
+                        <a href="/" class="nav-link">
+                            <span class="mr-2">🏠</span>Home
+                        </a>
+                        <a href="/game" class="nav-link">
+                            <span class="mr-2">⚔️</span>Play
+                        </a>
+                        <a href="/docs" class="nav-link">
+                            <span class="mr-2">📜</span>API
+                        </a>
+                    </div>
+                    
+                    <!-- User Actions -->
+                    <div class="flex items-center space-x-4">
+                        <button class="arena-button px-4 py-2 rounded-lg font-semibold text-sm">
+                            <span class="mr-2">👤</span>Guest
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="min-h-screen">
+            {% block content %}{% endblock %}
+        </main>
+        
+        <!-- Footer -->
+        <footer class="arena-surface border-t border-arena-accent/20 mt-12">
+            <div class="max-w-7xl mx-auto px-4 py-8">
+                <div class="text-center text-arena-text-dim">
+                    <p class="font-magic text-arena-accent mb-2">ManaForge</p>
+                    <p class="text-sm">A modern Magic: The Gathering experience</p>
+                    <p class="text-xs mt-2 opacity-60">Built with FastAPI, MongoDB, and passion for the game</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Global JavaScript and WebSocket -->
+    <script>
+        // Global WebSocket connection
+        let ws = null;
+        let gameId = null;
+        
+        // Navigation link styling
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.className += ' px-3 py-2 rounded-md text-sm font-medium text-arena-text hover:text-arena-accent hover:bg-arena-surface-light transition-all duration-200';
+                
+                // Highlight active page
+                if (link.href === window.location.href) {
+                    link.className += ' text-arena-accent bg-arena-surface-light';
+                }
+            });
+        });
+        
+        function connectWebSocket(id) {
+            if (ws) {
+                ws.close();
+            }
+            
+            gameId = id;
+            ws = new WebSocket(`ws://localhost:8000/ws/game/${gameId}`);
+            
+            ws.onopen = function(event) {
+                console.log('🔮 Connected to game:', gameId);
+                showNotification('Connected to game', 'success');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = function(event) {
+                console.log('🔌 WebSocket closed');
+                showNotification('Disconnected from game', 'warning');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('❌ WebSocket error:', error);
+                showNotification('Connection error', 'error');
+            };
+        }
+        
+        function handleWebSocketMessage(data) {
+            console.log('📨 Received:', data);
+            
+            if (data.type === 'game_update') {
+                // Refresh game state with animation
+                const gameArea = document.getElementById('game-area');
+                if (gameArea) {
+                    htmx.trigger(gameArea, 'refresh');
+                }
+            } else if (data.type === 'chat') {
+                addChatMessage(data.player, data.message);
+            } else if (data.type === 'player_action') {
+                showGameAction(data.player, data.action, data.card);
+            }
+        }
+        
+        function sendGameAction(action, cardId = null, extraData = {}) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = {
+                    type: 'game_action',
+                    action: action,
+                    card_id: cardId,
+                    player: 'player1', // For POC
+                    timestamp: Date.now(),
+                    ...extraData
+                };
+                
+                ws.send(JSON.stringify(message));
+                console.log('🎮 Sent action:', message);
+            } else {
+                showNotification('Not connected to game', 'error');
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-arena z-50 animate-slide-up`;
+            
+            const colors = {
+                'success': 'bg-arena-surface border border-green-500 text-green-400',
+                'error': 'bg-arena-surface border border-red-500 text-red-400',
+                'warning': 'bg-arena-surface border border-yellow-500 text-yellow-400',
+                'info': 'bg-arena-surface border border-arena-accent text-arena-accent'
+            };
+            
+            notification.className += ` ${colors[type] || colors.info}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        function showGameAction(player, action, card = null) {
+            const message = card ? 
+                `${player} ${action} ${card.name}` : 
+                `${player} ${action}`;
+            
+            showNotification(message, 'info');
+        }
+        
+        // Enhanced card interactions
+        function playCard(cardId) {
+            sendGameAction('play_card', cardId);
+            
+            // Visual feedback
+            const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (cardElement) {
+                cardElement.style.transform = 'scale(1.05)';
+                cardElement.style.boxShadow = '0 0 20px rgba(201, 170, 113, 0.6)';
+                
+                setTimeout(() => {
+                    cardElement.style.transform = '';
+                    cardElement.style.boxShadow = '';
+                }, 300);
+            }
+        }
+        
+        // HTMX Extensions
+        document.addEventListener('htmx:afterRequest', function(event) {
+            // Content updated without animation
+            if (event.detail.target) {
+                // Removed automatic fade-in animation
+            }
+        });
+        
+        // Add loading states
+        document.addEventListener('htmx:beforeRequest', function(event) {
+            const target = event.detail.target;
+            if (target) {
+                target.style.opacity = '0.7';
+            }
+        });
+        
+        document.addEventListener('htmx:afterRequest', function(event) {
+            const target = event.detail.target;
+            if (target) {
+                target.style.opacity = '1';
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ title }}{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    
+    <!-- Alpine.js for minimal JavaScript -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.1/dist/cdn.min.js"></script>
+    
+    <style>
+        /* Custom styles for Magic cards */
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        /* Mana symbols */
+        .mana-symbol {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            margin: 0 1px;
+        }
+        .mana-w { background-color: #fffbd5; color: #000; }
+        .mana-u { background-color: #0e68ab; }
+        .mana-b { background-color: #150b00; }
+        .mana-r { background-color: #d3202a; }
+        .mana-g { background-color: #00733e; }
+        .mana-c { background-color: #beb9b2; color: #000; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-blue-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">
+                <a href="/" class="hover:text-blue-200">🔮 ManaForge</a>
+            </h1>
+            <div class="space-x-4">
+                <a href="/" class="hover:text-blue-200">Home</a>
+                <a href="/game" class="hover:text-blue-200">Play Game</a>
+                <a href="/cards" class="hover:text-blue-200">Card Search</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="container mx-auto p-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- WebSocket connection for real-time updates -->
+    <script>
+        // Global WebSocket connection
+        let ws = null;
+        let gameId = null;
+        
+        function connectWebSocket(id) {
+            if (ws) {
+                ws.close();
+            }
+            
+            gameId = id;
+            ws = new WebSocket(`ws://localhost:8000/ws/game/${gameId}`);
+            
+            ws.onopen = function(event) {
+                console.log('WebSocket connected to game:', gameId);
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = function(event) {
+                console.log('WebSocket closed');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        function handleWebSocketMessage(data) {
+            if (data.type === 'game_update') {
+                // Refresh game state
+                htmx.trigger('#game-area', 'refresh');
+            } else if (data.type === 'chat') {
+                // Add chat message
+                addChatMessage(data.player, data.message);
+            }
+        }
+        
+        function sendGameAction(action, cardId = null) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'game_action',
+                    action: action,
+                    card_id: cardId,
+                    player: 'player1' // For POC, always player1
+                }));
+            }
+        }
+        
+        function addChatMessage(player, message) {
+            const chatContainer = document.getElementById('chat-messages');
+            if (chatContainer) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'mb-2';
+                messageDiv.innerHTML = `<strong>${player}:</strong> ${message}`;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
