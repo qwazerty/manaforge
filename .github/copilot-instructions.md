@@ -195,6 +195,20 @@ Mise à jour de la base de cartes (cron quotidien ou hebdomadaire) :
 
 # Règles de conduite pour l'Agent IA
 
+## Instructions
+
+Quand tu veux consulter les logs ou l'état de l'application, utilise les commandes suivantes :
+```bash
+# Pour consulter les logs du backend web
+docker compose logs web
+
+# Pour démarrer l'application en mode développement. Nécessaire de le faire après chaque modification du code
+docker compose up --build -d
+
+# Pour exécuter les tests unitaires
+pytest
+```
+
 * Poser des questions de clarification chaque fois qu'un point n'est pas assez précis (ne jamais faire d'hypothèses risquées).
 * Documenter toute décision technique (pourquoi tel moteur, pourquoi telle librairie).
 * Privilégier les solutions open source éprouvées

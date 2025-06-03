@@ -1,753 +1,832 @@
 {% extends "base_arena.html" %}
 
-{% block title %}{{ game.id }} - Battle Arena{% endblock %}
+{% block title %}ManaForge - Game Arena{% endblock %}
+
+{% block head %}
+<style>
+    /* Player selection styles */
+    .player-selector {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 0.5rem;
+    }
+    
+    .player-btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: 2px solid transparent;
+        border-radius: 0.375rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+    
+    .player-btn.player1 {
+        background: rgba(34, 197, 94, 0.2);
+        color: rgb(34, 197, 94);
+        border-color: rgba(34, 197, 94, 0.3);
+    }
+    
+    .player-btn.player1.active {
+        background: rgba(34, 197, 94, 0.4);
+        border-color: rgb(34, 197, 94);
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+    }
+    
+    .player-btn.player2 {
+        background: rgba(239, 68, 68, 0.2);
+        color: rgb(239, 68, 68);
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    .player-btn.player2.active {
+        background: rgba(239, 68, 68, 0.4);
+        border-color: rgb(239, 68, 68);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    }
+    
+    .player-btn.spectator {
+        background: rgba(147, 51, 234, 0.2);
+        color: rgb(147, 51, 234);
+        border-color: rgba(147, 51, 234, 0.3);
+    }
+    
+    .player-btn.spectator.active {
+        background: rgba(147, 51, 234, 0.4);
+        border-color: rgb(147, 51, 234);
+        box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div x-data="gameInterface()" class="min-h-screen bg-arena-gradient relative">
+    <!-- Notification area -->
+    <div id="notification-area" class="fixed top-4 right-4 z-50"></div>
     
-    <!-- Game Header -->
-    <div class="arena-surface border-b border-arena-accent/20 sticky top-0 z-30">
-        <div class="max-w-[1600px] mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-6">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-accent-gradient rounded-lg flex items-center justify-center shadow-arena">
-                            <span class="text-xl">⚔️</span>
-                        </div>
-                        <div>
-                            <h1 class="font-magic text-xl font-bold text-arena-accent">{{ game.id }}</h1>
-                            <div class="flex items-center space-x-4 text-sm">
-                                <span class="arena-surface px-2 py-1 rounded border border-arena-accent/30">
-                                    🔄 Turn {{ game.turn }}
-                                </span>
-                                <span class="bg-yellow-600/20 border border-yellow-500/50 text-yellow-400 px-2 py-1 rounded font-semibold">
-                                    {{ game.phase.value|title }} Phase
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
+    <!-- Game Turn Header -->
+    <div class="bg-gradient-to-r from-arena-primary/20 to-arena-secondary/20 border-b border-arena-accent/30 p-4">
+        <div class="max-w-[1600px] mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-6">
+                <h1 class="font-magic text-3xl font-bold text-arena-accent">⚔️ Arena Duel</h1>
                 <div class="flex items-center space-x-4">
-                    <div class="flex items-center space-x-2 {{ 'text-green-400' if game.active_player == 0 else 'text-red-400' }}">
-                        <div class="w-3 h-3 {{ 'bg-green-500 animate-pulse' if game.active_player == 0 else 'bg-red-500' }} rounded-full"></div>
-                        <span class="font-magic font-semibold">{{ game.players[game.active_player].name }}'s Turn</span>
+                    <div class="bg-yellow-500/20 border border-yellow-500/50 px-4 py-2 rounded-lg">
+                        <span class="text-yellow-300 font-semibold">Turn {{ game['turn'] }}</span>
                     </div>
-                    <button 
-                        class="arena-button px-4 py-2 rounded-lg font-semibold text-sm" 
-                        onclick="toggleHelp()"
-                    >
-                        <span class="mr-2">❓</span>Help
-                    </button>
+                    <div class="bg-blue-500/20 border border-blue-500/50 px-4 py-2 rounded-lg">
+                        <span class="text-blue-300 font-semibold">{{ game['phase'] }} Phase</span>
+                    </div>
                 </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="font-magic font-semibold">{{ game['players'][game['active_player']]['name'] }}'s Turn</span>
+                <div class="w-4 h-4 {{ 'bg-green-500 animate-pulse' if game['active_player'] == 0 else 'bg-red-500 animate-pulse' }} rounded-full"></div>
             </div>
         </div>
     </div>
 
-    <!-- Help Panel -->
-    <div id="help-panel" class="hidden arena-surface border-b border-arena-accent/20 animate-slide-up">
-        <div class="max-w-[1600px] mx-auto px-4 py-6">
-            <h3 class="font-magic text-xl font-bold text-arena-accent mb-4 flex items-center">
-                <span class="mr-2">🎮</span>Planeswalker's Guide
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-                <div class="arena-card rounded-lg p-4">
-                    <h4 class="font-semibold text-arena-accent mb-3 flex items-center">
-                        <span class="mr-2">🃏</span>Card Actions
-                    </h4>
-                    <ul class="space-y-2 text-arena-text-dim">
-                        <li class="flex items-start"><span class="mr-2">•</span>Click cards in hand to cast them</li>
-                        <li class="flex items-start"><span class="mr-2">•</span>Hover for detailed card information</li>
-                        <li class="flex items-start"><span class="mr-2">•</span>Battlefield shows summoned creatures</li>
-                    </ul>
-                </div>
-                <div class="arena-card rounded-lg p-4">
-                    <h4 class="font-semibold text-arena-accent mb-3 flex items-center">
-                        <span class="mr-2">⚡</span>Game Actions
-                    </h4>
-                    <ul class="space-y-2 text-arena-text-dim">
-                        <li class="flex items-start"><span class="mr-2">•</span>Pass Phase to advance turn</li>
-                        <li class="flex items-start"><span class="mr-2">•</span>Draw Card to refill hand</li>
-                        <li class="flex items-start"><span class="mr-2">•</span>Use chat for communication</li>
-                    </ul>
-                </div>
-                <div class="arena-card rounded-lg p-4">
-                    <h4 class="font-semibold text-arena-accent mb-3 flex items-center">
-                        <span class="mr-2">🔗</span>Connection Status
-                    </h4>
-                    <div id="ws-status" class="flex items-center text-arena-text-dim">
-                        <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                        <span>Connecting...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main Game Board -->
     <div class="max-w-[1600px] mx-auto px-4 py-6">
         <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
-            
-            <!-- Game Board Area -->
-            <div class="xl:col-span-3 space-y-6">
-                
-                <!-- Opponent Area -->
-                <div class="arena-card rounded-xl p-6 border-l-4 border-red-500">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="font-magic text-2xl font-bold text-red-400 flex items-center">
-                            <span class="mr-3">🎯</span>{{ game.players[1].name }}
-                        </h3>
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-red-500/20 border border-red-500/50 px-4 py-2 rounded-lg">
-                                <span class="text-red-300 text-sm">❤️ Life</span>
-                                <div class="text-2xl font-bold text-white">{{ game.players[1].life }}</div>
-                            </div>
-                            <div class="bg-blue-500/20 border border-blue-500/50 px-4 py-2 rounded-lg">
-                                <span class="text-blue-300 text-sm">🃏 Hand</span>
-                                <div class="text-xl font-bold text-white">{{ game.players[1].hand|length }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Opponent's Battlefield -->
-                    <div class="mb-6">
-                        <h4 class="font-magic font-semibold mb-4 text-red-300 flex items-center">
-                            <span class="mr-2">⚔️</span>Battlefield
-                            <span class="ml-2 text-sm bg-red-500/20 border border-red-500/50 px-2 py-1 rounded">
-                                {{ game.players[1].battlefield|length }} creatures
-                            </span>
-                        </h4>
-                        <div class="arena-surface rounded-xl p-6 border-2 border-dashed border-red-400/30 min-h-[180px]">
-                            <div class="flex flex-wrap gap-4">
-                                {% for card in game.players[1].battlefield %}
-                                    <div class="arena-card arena-card-hoverable w-36 h-48 p-4 hover:scale-105 transition-all duration-300 cursor-pointer border border-red-400/50 hover:border-red-400 hover:shadow-card-hover group">
-                                        <div class="h-full flex flex-col justify-between">
-                                            <div class="text-center">
-                                                <h5 class="font-magic font-bold text-sm text-arena-accent mb-2">{{ card.name }}</h5>
-                                                <div class="text-xs text-arena-text-dim mb-1">💎 {{ card.mana_cost or '0' }}</div>
-                                                <div class="text-xs text-arena-text-muted">{{ card.card_type }}</div>
-                                            </div>
-                                            {% if card.power is not none and card.toughness is not none %}
-                                                <div class="text-center">
-                                                    <span class="bg-red-500 text-white px-2 py-1 rounded text-sm font-bold shadow-sm">
-                                                        {{ card.power }}/{{ card.toughness }}
-                                                    </span>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                                {% if game.players[1].battlefield|length == 0 %}
-                                    <div class="w-full text-center py-12 text-red-400/60">
-                                        <span class="text-4xl mb-4 block">🏜️</span>
-                                        <p class="font-magic">No creatures summoned</p>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Opponent's Hand (Hidden) -->
-                    <div>
-                        <h4 class="font-magic font-semibold mb-4 text-red-300 flex items-center">
-                            <span class="mr-2">🃏</span>Hand
-                        </h4>
-                        <div class="flex gap-2">
-                            {% for _ in game.players[1].hand %}
-                                <div class="w-12 h-16 bg-card-gradient rounded-lg border border-arena-accent/30 shadow-card transform hover:scale-110 transition-transform cursor-pointer">
-                                    <div class="w-full h-full rounded-lg bg-gradient-to-b from-blue-900/50 to-blue-800/50 flex items-center justify-center">
-                                        <span class="text-xs text-blue-300">🔮</span>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                            {% if game.players[1].hand|length == 0 %}
-                                <div class="text-red-400/60 italic">Empty hand</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Player Area (You) -->
-                <div class="arena-card rounded-xl p-6 border-l-4 border-green-500">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="font-magic text-2xl font-bold text-green-400 flex items-center">
-                            <span class="mr-3">🛡️</span>{{ game.players[0].name }}
-                        </h3>
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-green-500/20 border border-green-500/50 px-4 py-2 rounded-lg">
-                                <span class="text-green-300 text-sm">❤️ Life</span>
-                                <div class="text-2xl font-bold text-white">{{ game.players[0].life }}</div>
-                            </div>
-                            <div class="bg-purple-500/20 border border-purple-500/50 px-4 py-2 rounded-lg">
-                                <span class="text-purple-300 text-sm">📚 Library</span>
-                                <div class="text-xl font-bold text-white">{{ [60 - game.players[0].hand|length - game.players[0].battlefield|length, 0]|max }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Your Battlefield -->
-                    <div class="mb-6">
-                        <h4 class="font-magic font-semibold mb-4 text-green-300 flex items-center">
-                            <span class="mr-2">⚔️</span>Your Battlefield
-                            <span class="ml-2 text-sm bg-green-500/20 border border-green-500/50 px-2 py-1 rounded">
-                                {{ game.players[0].battlefield|length }} creatures
-                            </span>
-                        </h4>
-                        <div class="arena-surface rounded-xl p-6 border-2 border-dashed border-green-400/30 min-h-[180px]">
-                            <div class="flex flex-wrap gap-4">
-                                {% for card in game.players[0].battlefield %}
-                                    <div class="arena-card arena-card-hoverable w-36 h-48 p-4 hover:scale-105 transition-all duration-300 cursor-pointer border border-green-400/50 hover:border-green-400 hover:shadow-card-hover group">
-                                        <div class="h-full flex flex-col justify-between">
-                                            <div class="text-center">
-                                                <h5 class="font-magic font-bold text-sm text-arena-accent mb-2">{{ card.name }}</h5>
-                                                <div class="text-xs text-arena-text-dim mb-1">💎 {{ card.mana_cost or '0' }}</div>
-                                                <div class="text-xs text-arena-text-muted">{{ card.card_type }}</div>
-                                            </div>
-                                            {% if card.power is not none and card.toughness is not none %}
-                                                <div class="text-center">
-                                                    <span class="bg-green-500 text-white px-2 py-1 rounded text-sm font-bold shadow-sm">
-                                                        {{ card.power }}/{{ card.toughness }}
-                                                    </span>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                                {% if game.players[0].battlefield|length == 0 %}
-                                    <div class="w-full text-center py-12 text-green-400/60">
-                                        <span class="text-4xl mb-4 block">🌟</span>
-                                        <p class="font-magic">Summon your army here</p>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Your Hand -->
-                    <div>
-                        <h4 class="font-magic font-semibold mb-4 text-green-300 flex items-center">
-                            <span class="mr-2">🃏</span>Your Hand
-                            <span class="ml-2 text-sm bg-green-500/20 border border-green-500/50 px-2 py-1 rounded">
-                                {{ game.players[0].hand|length }} cards
-                            </span>
-                        </h4>
-                        <div class="flex flex-wrap gap-3">
-                            {% for card in game.players[0].hand %}
-                                <div class="arena-card arena-card-hoverable w-40 h-56 p-4 hover:scale-110 hover:-translate-y-3 transition-all duration-300 cursor-pointer border border-arena-accent/50 hover:border-arena-accent hover:shadow-arena-lg group"
-                                     onclick="playCard('{{ card.id }}')" 
-                                     data-card-id="{{ card.id }}"
-                                     title="Click to cast: {{ card.name }}">
-                                    <div class="h-full flex flex-col justify-between">
-                                        <div class="text-center">
-                                            <h5 class="font-magic font-bold text-sm text-arena-accent mb-2 group-hover:text-arena-accent-light">{{ card.name }}</h5>
-                                            <div class="text-xs text-arena-text-dim mb-2">💎 {{ card.mana_cost or 'Free' }}</div>
-                                            <div class="text-xs text-arena-text-muted mb-3">{{ card.card_type|title }}</div>
-                                            {% if card.text %}
-                                                <div class="text-xs text-arena-text leading-tight overflow-hidden h-12">
-                                                    {{ card.text[:60] }}{% if card.text|length > 60 %}...{% endif %}
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                        {% if card.power is not none and card.toughness is not none %}
-                                            <div class="text-center">
-                                                <span class="bg-accent-gradient text-arena-bg px-3 py-1 rounded text-sm font-bold shadow-sm">
-                                                    {{ card.power }}/{{ card.toughness }}
-                                                </span>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                            {% if game.players[0].hand|length == 0 %}
-                                <div class="w-full text-center py-12 text-arena-text-dim">
-                                    <span class="text-4xl mb-4 block">📜</span>
-                                    <p class="font-magic">Draw cards to cast spells</p>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+            <!-- Main Game Area -->
+            <div class="xl:col-span-3" id="game-board">
+                <!-- Dynamic content will be generated by JavaScript -->
             </div>
             
             <!-- Game Controls Sidebar -->
             <div class="xl:col-span-1 space-y-6">
-                
-                <!-- Phase Actions -->
+                <!-- Player Role Display (Read-only) -->
                 <div class="arena-card rounded-xl p-6">
                     <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
-                        <span class="mr-2">🎮</span>Actions
-                        <div class="ml-2 w-3 h-3 {{ 'bg-green-500 animate-pulse' if game.active_player == 0 else 'bg-red-500' }} rounded-full"></div>
+                        <span class="mr-2">👤</span>Your Role
                     </h4>
-                    <div class="space-y-3">
-                        <button 
-                            class="arena-button w-full py-3 px-4 rounded-lg font-semibold {{ 'opacity-50 cursor-not-allowed' if game.active_player != 0 else '' }}"
-                            onclick="passPhase()"
-                            {{ 'disabled' if game.active_player != 0 else '' }}
-                        >
-                            <span class="mr-2">⏭️</span>Pass Phase
-                        </button>
-                        <button 
-                            class="arena-button w-full py-3 px-4 rounded-lg font-semibold {{ 'opacity-50 cursor-not-allowed' if game.active_player != 0 else '' }}"
-                            onclick="drawCard()"
-                            {{ 'disabled' if game.active_player != 0 else '' }}
-                        >
-                            <span class="mr-2">🃏</span>Draw Card
-                        </button>
-                        <button 
-                            class="w-full bg-purple-500/20 border border-purple-500/50 text-purple-300 font-semibold py-3 px-4 rounded-lg"
-                            hx-get="/game-interface/{{ game.id }}"
-                            hx-target="#game-area"
-                            hx-swap="innerHTML"
-                        >
-                            <span class="mr-2">🔄</span>Refresh
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Game Info -->
-                <div class="arena-card rounded-xl p-6">
-                    <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
-                        <span class="mr-2">📊</span>Battle Status
-                    </h4>
-                    <div class="space-y-4 text-sm">
-                        <div class="flex justify-between items-center">
-                            <span class="text-arena-text-dim">Turn</span>
-                            <span class="font-bold text-yellow-400">{{ game.turn }}</span>
+                    <div class="text-center">
+                        <div id="current-role-display" class="px-4 py-3 rounded-lg border-2 mb-3">
+                            <!-- Will be populated by JavaScript -->
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-arena-text-dim">Phase</span>
-                            <span class="font-bold text-blue-400">{{ game.phase.value|title }}</span>
+                        <div class="text-sm text-arena-text-dim">
+                            <span id="role-description"><!-- Will be populated by JavaScript --></span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-arena-text-dim">Priority</span>
-                            <span class="font-bold {{ 'text-green-400' if game.priority_player == 0 else 'text-red-400' }}">
-                                Player {{ game.priority_player + 1 }}
-                            </span>
-                        </div>
-                        <div class="border-t border-arena-accent/20 pt-4">
-                            <div class="text-center">
-                                <div class="text-xs text-arena-text-muted mb-1">Battle Status</div>
-                                <div class="flex items-center justify-center">
-                                    <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                                    <span class="text-sm font-bold text-green-400">Active</span>
-                                </div>
-                            </div>
+                        <div class="text-xs text-arena-text-muted mt-2">
+                            💡 Role was selected in the lobby
                         </div>
                     </div>
                 </div>
-                
-                <!-- Enhanced Chat -->
-                <div class="arena-card rounded-xl p-6">
-                    <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
-                        <span class="mr-2">💬</span>Battle Chat
-                        <div id="chat-indicator" class="ml-2 w-2 h-2 bg-gray-500 rounded-full"></div>
-                    </h4>
-                    <div id="chat-messages" class="h-48 overflow-y-auto arena-surface border border-arena-accent/20 rounded-lg p-3 mb-4 text-sm">
-                        <div class="text-center text-arena-text-muted py-4">
-                            <span class="text-2xl mb-2 block">💫</span>
-                            <p class="text-xs">Communicate with your opponent</p>
-                        </div>
-                    </div>
-                    <div class="flex">
-                        <input 
-                            type="text" 
-                            id="chat-input"
-                            placeholder="Type your message..."
-                            class="flex-1 px-4 py-2 bg-arena-surface border border-arena-accent/30 rounded-l-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
-                            onkeypress="if(event.key==='Enter') sendChatMessage()"
-                        >
-                        <button 
-                            class="arena-button px-4 py-2 rounded-r-lg transition-all duration-200"
-                            onclick="sendChatMessage()"
-                        >
-                            📤
-                        </button>
-                    </div>
+
+                <!-- Action Panel -->
+                <div id="action-panel" class="arena-card rounded-xl p-6">
+                    <!-- Dynamic content will be generated by JavaScript -->
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Action Feedback -->
-    <div id="action-feedback" class="fixed top-20 right-4 z-50 hidden transform transition-all duration-300">
-        <!-- Feedback messages will be shown here -->
-    </div>
-
-    <!-- Card Details Modal -->
-    <div id="card-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeCardModal()">
-        <div class="arena-card rounded-xl p-6 max-w-md w-full border border-arena-accent/50" onclick="event.stopPropagation()">
-            <div id="card-modal-content">
-                <!-- Card details will be loaded here -->
-            </div>
-            <button class="mt-6 w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-3 rounded-lg font-semibold transition-all duration-200" onclick="closeCardModal()">
-                Close
-            </button>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Chat Section -->
+<div class="fixed bottom-0 right-0 w-80 h-96 bg-arena-surface border-l border-t border-arena-accent/30 flex flex-col z-40" 
+     x-data="{ chatOpen: false }" 
+     :class="{ 'translate-x-full': !chatOpen }">
+    
+    <!-- Chat Toggle Button -->
+    <button @click="chatOpen = !chatOpen" 
+            class="absolute -left-12 top-4 bg-arena-primary hover:bg-arena-secondary text-white p-3 rounded-l-lg transition-colors">
+        <span x-text="chatOpen ? '✕' : '💬'"></span>
+    </button>
+    
+    <!-- Chat Header -->
+    <div class="bg-arena-primary/80 p-4 border-b border-arena-accent/30">
+        <h3 class="font-magic font-semibold text-arena-accent flex items-center">
+            <span class="mr-2">💬</span>Battle Chat
+        </h3>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm">
+        <div class="text-arena-text-dim text-center py-4">
+            <span class="text-2xl block mb-2">⚔️</span>
+            <p>Battle chat ready</p>
+        </div>
+    </div>
+    
+    <!-- Chat Input -->
+    <div class="p-4 border-t border-arena-accent/30">
+        <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+            <input type="text" 
+                   id="chat-input" 
+                   placeholder="Type your message..." 
+                   class="flex-1 bg-arena-surface border border-arena-accent/30 rounded px-3 py-2 text-arena-text focus:border-arena-accent focus:outline-none">
+            <button type="submit" 
+                    class="bg-arena-primary hover:bg-arena-secondary text-white px-4 py-2 rounded font-semibold transition-colors">
+                Send
+            </button>
+        </form>
+    </div>
+</div>
+
 <script>
-// Enhanced game interface functionality
-function gameInterface() {
-    return {
-        // Alpine.js reactive data
-        wsConnected: false,
-        gameState: null
-    };
+// Global variables
+let currentSelectedPlayer = 'player1';
+let gameState = {{ game|tojson }};
+let autoRefreshInterval = null;
+let isPageVisible = true;
+let websocket = null;
+let gameId = '{{ game.id }}';
+
+// URL parameter management
+function getPlayerFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const player = urlParams.get('player');
+    return ['player1', 'player2', 'spectator'].includes(player) ? player : 'player1';
 }
 
-// WebSocket connection management with better error handling
-let gameWsReconnectAttempts = 0;
-const gameMaxReconnectAttempts = 5;
-
-function connectWebSocketWithRetry() {
-    connectWebSocket('{{ game.id }}');
-    
-    setTimeout(() => {
-        updateWebSocketStatus();
-    }, 1000);
+function setPlayerInUrl(playerType) {
+    const url = new URL(window.location);
+    url.searchParams.set('player', playerType);
+    window.history.replaceState({}, '', url);
 }
 
-function updateWebSocketStatus() {
-    const statusElement = document.getElementById('ws-status');
-    if (!statusElement) return;
+// Initialize the interface
+document.addEventListener('DOMContentLoaded', function() {
+    // Get player from URL or default to player1
+    const playerFromUrl = getPlayerFromUrl();
+    currentSelectedPlayer = playerFromUrl;
     
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        statusElement.innerHTML = '<div class="w-3 h-3 bg-green-500 rounded-full mr-2 animate-pulse"></div><span class="text-green-400">Connected</span>';
-        gameWsReconnectAttempts = 0; // Reset on successful connection
-    } else {
-        statusElement.innerHTML = '<div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div><span class="text-red-400">Disconnected</span>';
-        
-        // Attempt reconnection with exponential backoff
-        if (gameWsReconnectAttempts < gameMaxReconnectAttempts) {
-            const delay = Math.min(1000 * Math.pow(2, gameWsReconnectAttempts), 10000);
-            setTimeout(() => {
-                gameWsReconnectAttempts++;
-                console.log(`🔄 Reconnection attempt ${gameWsReconnectAttempts}/${gameMaxReconnectAttempts}`);
-                connectWebSocketWithRetry();
-            }, delay);
+    // Update role display
+    updateRoleDisplay();
+    
+    // Generate dynamic content
+    generateGameBoard();
+    generateActionPanel();
+    
+    // Initialize WebSocket connection
+    initWebSocket();
+    
+    // Start auto-refresh as fallback
+    startAutoRefresh();
+    
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', function() {
+        isPageVisible = !document.hidden;
+        if (isPageVisible) {
+            // Resume auto-refresh when page becomes visible
+            startAutoRefresh();
+            // Reconnect WebSocket if needed
+            if (!websocket || websocket.readyState === WebSocket.CLOSED) {
+                initWebSocket();
+            }
+            // Immediate refresh when coming back
+            refreshGameData();
+        } else {
+            // Pause auto-refresh when page is hidden
+            stopAutoRefresh();
         }
-    }
-}
+    });
+    
+    // Keyboard shortcuts for testing (optional)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === '1') changePlayer('player1');
+        if (e.key === '2') changePlayer('player2');
+        if (e.key === '3') changePlayer('spectator');
+    });
+});
 
-function showActionFeedback(message, type = 'success') {
-    const feedback = document.getElementById('action-feedback');
-    if (!feedback) return;
+// WebSocket functionality
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/game/${gameId}?player=${currentSelectedPlayer}`;
     
-    const colors = {
-        success: 'arena-surface border border-green-500/50 text-green-400',
-        error: 'arena-surface border border-red-500/50 text-red-400',
-        info: 'arena-surface border border-blue-500/50 text-blue-400',
-        warning: 'arena-surface border border-yellow-500/50 text-yellow-400'
-    };
-    
-    feedback.className = `fixed top-20 right-4 z-50 ${colors[type]} px-6 py-3 rounded-lg shadow-arena animate-slide-up`;
-    feedback.textContent = message;
-    feedback.classList.remove('hidden');
-    
-    setTimeout(() => {
-        feedback.style.opacity = '0';
-        feedback.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            feedback.classList.add('hidden');
-            feedback.style.opacity = '';
-            feedback.style.transform = '';
-        }, 300);
-    }, 3000);
-}
-
-function playCard(cardId) {
-    // Enhanced visual feedback
-    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
-    if (cardElement) {
-        cardElement.style.transform = 'scale(0.95) rotate(3deg)';
-        cardElement.style.opacity = '0.8';
-        cardElement.style.filter = 'brightness(1.2)';
-    }
-    
-    showActionFeedback('Casting spell...', 'info');
-    
-    fetch('/api/v1/games/{{ game.id }}/actions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            player_id: 'player1',
-            action_type: 'play_card',
-            card_id: cardId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        showActionFeedback('✨ Spell cast successfully!', 'success');
+    try {
+        websocket = new WebSocket(wsUrl);
         
-        // Add dramatic card effect
-        if (cardElement) {
-            cardElement.style.transform = 'scale(1.1)';
-            cardElement.style.boxShadow = '0 0 20px rgba(201, 170, 113, 0.8)';
+        websocket.onopen = function(event) {
+            console.log('WebSocket connected as', currentSelectedPlayer);
+            showAutoRefreshIndicator('🔗 Connected', 'success');
             
+            // Send join notification
+            websocket.send(JSON.stringify({
+                type: 'player_joined',
+                player: currentSelectedPlayer,
+                timestamp: Date.now()
+            }));
+            
+            // Request current game state
+            requestGameState();
+        };
+        
+        websocket.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            handleWebSocketMessage(message);
+        };
+        
+        websocket.onclose = function(event) {
+            console.log('WebSocket disconnected');
+            showAutoRefreshIndicator('🔌 Disconnected', 'warning');
+            
+            // Attempt to reconnect after a delay
             setTimeout(() => {
-                cardElement.style.transition = 'all 0.6s ease-out';
-                cardElement.style.transform = 'scale(0) rotate(360deg)';
-                cardElement.style.opacity = '0';
-            }, 300);
-        }
+                if (isPageVisible) {
+                    console.log('Attempting to reconnect WebSocket...');
+                    initWebSocket();
+                }
+            }, 3000);
+        };
         
-        // Refresh game state
-        setTimeout(() => {
-            htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
-        }, 800);
+        websocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            showAutoRefreshIndicator('❌ Connection Error', 'error');
+        };
         
-        // Notify via WebSocket
-        sendGameAction('play_card', cardId);
-    })
-    .catch(error => {
-        showActionFeedback('❌ Failed to cast spell: ' + error.message, 'error');
-        
-        // Reset card visual state
-        if (cardElement) {
-            cardElement.style.transform = '';
-            cardElement.style.opacity = '';
-            cardElement.style.filter = '';
-        }
-    });
+    } catch (error) {
+        console.error('Failed to initialize WebSocket:', error);
+        showAutoRefreshIndicator('❌ WebSocket Init Failed', 'error');
+    }
 }
 
-function passPhase() {
-    showActionFeedback('Passing phase...', 'info');
-    
-    fetch('/api/v1/games/{{ game.id }}/actions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            player_id: 'player1',
-            action_type: 'pass_turn'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        showActionFeedback('⏭️ Phase passed!', 'success');
-        setTimeout(() => {
-            htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
-        }, 500);
-        sendGameAction('pass_turn');
-    })
-    .catch(error => {
-        showActionFeedback('❌ Failed to pass phase: ' + error.message, 'error');
-    });
-}
-
-function drawCard() {
-    showActionFeedback('Drawing card...', 'info');
-    
-    fetch('/api/v1/games/{{ game.id }}/actions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            player_id: 'player1',
-            action_type: 'draw_card'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        showActionFeedback('🃏 Card drawn!', 'success');
-        setTimeout(() => {
-            htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
-        }, 500);
-        sendGameAction('draw_card');
-    })
-    .catch(error => {
-        showActionFeedback('❌ Failed to draw card: ' + error.message, 'error');
-    });
-}
-
-function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    
-    if (message && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: 'chat',
-            player: '{{ game.players[0].name }}',
-            message: message
+function requestGameState() {
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+            type: 'request_game_state',
+            timestamp: Date.now()
         }));
-        
-        addChatMessage('{{ game.players[0].name }}', message, true);
-        input.value = '';
-        
-        // Animate chat indicator
-        const indicator = document.getElementById('chat-indicator');
-        if (indicator) {
-            indicator.className = 'ml-2 w-2 h-2 bg-green-500 rounded-full animate-ping';
-            setTimeout(() => {
-                indicator.className = 'ml-2 w-2 h-2 bg-gray-500 rounded-full';
-            }, 1000);
-        }
     }
 }
 
-function addChatMessage(player, message, isLocal = false) {
-    const chatContainer = document.getElementById('chat-messages');
-    if (!chatContainer) return;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `mb-3 p-3 rounded-lg ${isLocal ? 'bg-blue-500/20 border border-blue-500/50 text-blue-200' : 'bg-arena-surface-light border border-arena-accent/30 text-arena-text'}`;
-    
-    const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    messageDiv.innerHTML = `
-        <div class="text-xs text-arena-text-muted mb-1 flex justify-between">
-            <span class="font-semibold">${player}</span>
-            <span>${timestamp}</span>
-        </div>
-        <div class="text-sm">${message}</div>
-    `;
-    
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    
-    // Remove oldest messages if too many
-    while (chatContainer.children.length > 50) {
-        chatContainer.removeChild(chatContainer.firstChild);
+function sendGameAction(actionType, actionData = {}) {
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+            type: 'game_action',
+            action: actionType,
+            data: actionData,
+            timestamp: Date.now()
+        }));
+    } else {
+        showNotification('WebSocket not connected', 'error');
     }
 }
 
-function toggleHelp() {
-    const helpPanel = document.getElementById('help-panel');
-    if (helpPanel) {
-        helpPanel.classList.toggle('hidden');
-    }
-}
-
-function showCardDetails(card) {
-    const modal = document.getElementById('card-modal');
-    const content = document.getElementById('card-modal-content');
-    if (!modal || !content) return;
-    
-    content.innerHTML = `
-        <div class="text-center mb-6">
-            <h3 class="font-magic text-2xl font-bold text-arena-accent mb-2">${card.name}</h3>
-            <div class="text-arena-text-dim">${card.card_type}</div>
-        </div>
-        <div class="space-y-4 text-arena-text">
-            <div class="arena-surface rounded-lg p-4">
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <span class="text-arena-text-dim">Mana Cost:</span>
-                        <div class="font-semibold">${card.mana_cost || 'Free'}</div>
-                    </div>
-                    <div>
-                        <span class="text-arena-text-dim">Rarity:</span>
-                        <div class="font-semibold">${card.rarity || 'Common'}</div>
-                    </div>
-                </div>
-            </div>
-            ${card.power !== null && card.toughness !== null ? 
-                `<div class="text-center">
-                    <span class="text-arena-text-dim">Power / Toughness</span>
-                    <div class="text-2xl font-bold text-arena-accent">${card.power} / ${card.toughness}</div>
-                </div>` : ''}
-            ${card.text ? 
-                `<div class="arena-surface rounded-lg p-4">
-                    <div class="text-arena-text-dim text-sm mb-2">Card Text:</div>
-                    <div class="text-arena-text leading-relaxed">${card.text}</div>
-                </div>` : ''}
-        </div>
-    `;
-    
-    modal.classList.remove('hidden');
-}
-
-function closeCardModal() {
-    const modal = document.getElementById('card-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-}
-
-// Enhanced WebSocket message handling
-function handleWebSocketMessage(data) {
-    console.log('📨 WebSocket message:', data);
-    
-    switch(data.type) {
-        case 'game_update':
-            showActionFeedback('⚡ Game updated!', 'info');
-            setTimeout(() => {
-                htmx.trigger('#game-area', 'refresh');
-            }, 500);
+function handleWebSocketMessage(message) {
+    switch (message.type) {
+        case 'game_state_update':
+            // Update game state from WebSocket
+            const newGameState = message.game_state;
+            if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
+                gameState = newGameState;
+                generateGameBoard();
+                generateActionPanel();
+                
+                // Show action feedback if provided
+                if (message.action_result) {
+                    const result = message.action_result;
+                    showNotification(`${result.player} performed: ${result.action}`, 'success');
+                }
+                
+                showAutoRefreshIndicator('⚡ Real-time Update', 'success');
+            }
+            break;
+            
+        case 'game_action_start':
+            // Show that an action is being processed
+            showNotification(`${message.player} is performing: ${message.action}...`, 'success');
+            break;
+            
+        case 'game_action_failed':
+            // Show action failure
+            showNotification(`Action failed: ${message.error}`, 'error');
+            break;
+            
+        case 'action_error':
+            // Handle action errors for current player
+            showNotification(`Error: ${message.message}`, 'error');
             break;
             
         case 'chat':
-            addChatMessage(data.player, data.message, false);
+            // Handle chat messages
+            addChatMessage(message.player, message.message);
             break;
             
-        case 'player_joined':
-            showActionFeedback(`🎯 ${data.player} joined the battle!`, 'info');
+        case 'player_status':
+            // Handle player join/leave
+            const action = message.action === 'joined' ? 'joined' : 'left';
+            showNotification(`${message.player} ${action} (${message.connected_players} connected)`);
             break;
             
-        case 'player_left':
-            showActionFeedback(`👋 ${data.player} left the battle!`, 'warning');
+        case 'connection_established':
+            showNotification(`Connected to game as ${message.player_id} (${message.connected_players} players online)`);
             break;
             
-        case 'card_played':
-            showActionFeedback(`🃏 ${data.player} cast ${data.card_name}!`, 'info');
+        case 'state_sync':
+            // Another player requested state sync
+            showAutoRefreshIndicator(`🔄 Sync by ${message.requested_by}`, 'success');
+            break;
+            
+        case 'ping':
+            // Respond to ping with pong
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: 'pong',
+                    timestamp: message.timestamp
+                }));
+            }
+            break;
+            
+        case 'pong':
+            // Handle pong response
+            console.log('Received pong from server');
+            break;
+            
+        case 'error':
+            // Handle server errors
+            showNotification(`Server error: ${message.message}`, 'error');
             break;
             
         default:
-            console.log('🔍 Unknown message type:', data.type);
+            console.log('Unknown WebSocket message:', message);
     }
 }
 
-// Initialize everything on page load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎮 Initializing Magic Arena game interface...');
+// Enhanced auto-refresh with WebSocket fallback
+async function refreshGameData() {
+    // First try to request via WebSocket
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+            type: 'request_game_state',
+            timestamp: Date.now()
+        }));
+        return;
+    }
     
-    // Connect WebSocket
-    connectWebSocketWithRetry();
+    // Fallback to HTTP request
+    try {
+        const response = await fetch(`/api/v1/games/${gameId}/state`);
+        if (response.ok) {
+            const newGameState = await response.json();
+            
+            // Check if game state actually changed to avoid unnecessary updates
+            if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
+                gameState = newGameState;
+                
+                // Regenerate interface with new data
+                generateGameBoard();
+                generateActionPanel();
+                
+                // Add subtle visual feedback for updates
+                showAutoRefreshIndicator('🔄 HTTP Update');
+            }
+        }
+    } catch (error) {
+        console.error('Auto-refresh error:', error);
+        // Don't show error notifications for auto-refresh to avoid spam
+    }
+}
+
+function showAutoRefreshIndicator(text = 'Updated', type = 'success') {
+    const indicator = document.createElement('div');
     
-    // Add enhanced hover effects for cards
-    document.querySelectorAll('[data-card-id]').forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.05) translateY(-8px)';
-            this.style.zIndex = '10';
+    const colors = {
+        'success': 'bg-blue-500/80',
+        'warning': 'bg-yellow-500/80',
+        'error': 'bg-red-500/80'
+    };
+    
+    indicator.innerHTML = `
+        <div class="fixed top-4 left-4 ${colors[type] || colors.success} text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-2 animate-fade-in z-50">
+            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span>${text}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(indicator);
+    
+    setTimeout(() => {
+        indicator.remove();
+    }, 2000);
+}
+
+// Enhanced chat functionality
+function addChatMessage(player, message) {
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.innerHTML = `
+        <div class="bg-arena-primary/20 border border-arena-accent/30 rounded p-2 animate-fade-in">
+            <span class="text-arena-accent font-semibold">${player}:</span>
+            <span class="text-arena-text ml-2">${message}</span>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function sendChatMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (message) {
+        // Send via WebSocket if available
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+            websocket.send(JSON.stringify({
+                type: 'chat',
+                player: currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1),
+                message: message,
+                timestamp: Date.now()
+            }));
+        } else {
+            // Fallback to local display
+            addChatMessage(currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1), message);
+        }
+        
+        input.value = '';
+    }
+}
+
+// Notification system
+function showNotification(message, type = 'success') {
+    const notificationArea = document.getElementById('notification-area');
+    const notification = document.createElement('div');
+    
+    const bgColor = type === 'error' ? 'bg-red-500/90' : 'bg-green-500/90';
+    const icon = type === 'error' ? '❌' : '✅';
+    
+    notification.innerHTML = `
+        <div class="${bgColor} text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2 animate-fade-in">
+            <span>${icon}</span>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    notificationArea.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Alpine.js component for game interface
+function gameInterface() {
+    return {
+        // Component state
+    };
+}
+
+// Function to update role display
+function updateRoleDisplay() {
+    const roleDisplay = document.getElementById('current-role-display');
+    const roleDescription = document.getElementById('role-description');
+    
+    if (!roleDisplay || !roleDescription) return;
+    
+    const roleData = {
+        'player1': {
+            class: 'bg-green-500/20 border-green-500/50 text-green-400',
+            title: '🛡️ Player 1',
+            description: 'You control the first player position'
+        },
+        'player2': {
+            class: 'bg-red-500/20 border-red-500/50 text-red-400',
+            title: '🎯 Player 2', 
+            description: 'You control the second player position'
+        },
+        'spectator': {
+            class: 'bg-purple-500/20 border-purple-500/50 text-purple-400',
+            title: '👁️ Spectator',
+            description: 'You are watching the battle unfold'
+        }
+    };
+    
+    const role = roleData[currentSelectedPlayer] || roleData['player1'];
+    roleDisplay.className = `px-4 py-3 rounded-lg border-2 mb-3 ${role.class}`;
+    roleDisplay.textContent = role.title;
+    roleDescription.textContent = role.description;
+}
+
+// Function to generate game board
+function generateGameBoard() {
+    const gameBoardContainer = document.getElementById('game-board');
+    if (!gameBoardContainer || !gameState) {
+        console.warn('Game board container or game state not found');
+        return;
+    }
+    try {
+        const players = gameState.players || [];
+        const currentPhase = gameState.phase || 'untap';
+        const currentTurn = gameState.turn || 1;
+        const activePlayer = gameState.active_player || 0;
+        // Détermination de l'index du joueur contrôlé
+        let controlledIdx = 0;
+        if (currentSelectedPlayer === 'player2') controlledIdx = 1;
+        else if (currentSelectedPlayer === 'player1') controlledIdx = 0;
+        // Opposant
+        const opponentIdx = controlledIdx === 0 ? 1 : 0;
+        gameBoardContainer.innerHTML = `
+            <!-- Opponent Area (Player ${opponentIdx + 1}) -->
+            <div class="arena-card rounded-xl p-6 mb-6">
+                <div class="text-center mb-4">
+                    <h3 class="font-magic text-xl font-bold ${opponentIdx === 0 ? 'text-green-400' : 'text-red-400'}">
+                        ${players[opponentIdx]?.name || 'Opponent'}
+                        ${activePlayer === opponentIdx ? '⭐ (Active)' : ''}
+                    </h3>
+                    <div class="flex justify-center space-x-4 text-sm">
+                        <span class="text-red-400">❤️ ${players[opponentIdx]?.life || 20} Life</span>
+                        <span class="text-blue-400">🃏 ${players[opponentIdx]?.hand?.length || 7} Cards</span>
+                        <span class="text-gray-400">📚 ${players[opponentIdx]?.library?.length || 53} Library</span>
+                    </div>
+                </div>
+                <!-- Opponent's Battlefield -->
+                <div class="bg-arena-surface/50 rounded-lg p-4 mb-4">
+                    <h4 class="text-arena-accent font-semibold mb-2">🏟️ Battlefield</h4>
+                    <div class="grid grid-cols-5 gap-2">
+                        ${(players[opponentIdx]?.battlefield || []).slice(0, 10).map(card => `
+                            <div class="bg-arena-primary/20 border border-arena-accent/30 rounded p-2 text-xs text-center">
+                                <div class="font-semibold text-arena-accent">${card.name || 'Unknown'}</div>
+                                ${card.power !== undefined && card.toughness !== undefined ? 
+                                    `<div class="text-arena-text-dim">${card.power}/${card.toughness}</div>` : 
+                                    ''}
+                            </div>
+                        `).join('') || '<div class="text-arena-text-dim text-center py-4">No permanents</div>'}
+                    </div>
+                </div>
+                <!-- Opponent's Hand (Hidden) -->
+                <div class="flex justify-center space-x-1">
+                    ${Array(players[opponentIdx]?.hand?.length || 7).fill().map(() => `
+                        <div class="w-8 h-12 bg-arena-primary/40 border border-arena-accent/30 rounded"></div>
+                    `).join('')}
+                </div>
+            </div>
+            <!-- Battlefield Center -->
+            <div class="arena-card rounded-xl p-6 mb-6">
+                <div class="text-center">
+                    <h3 class="font-magic text-xl font-bold text-arena-accent mb-4">🏟️ The Battlefield</h3>
+                    <!-- Stack -->
+                    ${gameState.stack && gameState.stack.length > 0 ? `
+                        <div class="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-4">
+                            <h4 class="text-yellow-300 font-semibold mb-2">📜 The Stack</h4>
+                            <div class="space-y-2">
+                                ${gameState.stack.map(spell => `
+                                    <div class="bg-arena-surface rounded p-2 text-sm">
+                                        ${spell.name || 'Unknown Spell'}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    <!-- Game Info -->
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="bg-yellow-500/20 rounded-lg p-3">
+                            <div class="text-yellow-300 font-semibold">Turn</div>
+                            <div class="text-2xl font-bold">${currentTurn}</div>
+                        </div>
+                        <div class="bg-blue-500/20 rounded-lg p-3">
+                            <div class="text-blue-300 font-semibold">Phase</div>
+                            <div class="text-lg font-bold capitalize">${currentPhase}</div>
+                        </div>
+                        <div class="bg-purple-500/20 rounded-lg p-3">
+                            <div class="text-purple-300 font-semibold">Priority</div>
+                            <div class="text-lg font-bold">Player ${(gameState.priority_player || 0) + 1}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Current Player Area -->
+            <div class="arena-card rounded-xl p-6">
+                <div class="text-center mb-4">
+                    <h3 class="font-magic text-xl font-bold ${controlledIdx === 0 ? 'text-green-400' : 'text-red-400'}">
+                        ${players[controlledIdx]?.name || 'You'}
+                        ${activePlayer === controlledIdx ? '⭐ (Active)' : ''}
+                    </h3>
+                    <div class="flex justify-center space-x-4 text-sm">
+                        <span class="text-red-400">❤️ ${players[controlledIdx]?.life || 20} Life</span>
+                        <span class="text-blue-400">🃏 ${players[controlledIdx]?.hand?.length || 7} Cards</span>
+                        <span class="text-gray-400">📚 ${players[controlledIdx]?.library?.length || 53} Library</span>
+                    </div>
+                </div>
+                <!-- Your Hand -->
+                <div class="bg-arena-surface/50 rounded-lg p-4 mb-4">
+                    <h4 class="text-arena-accent font-semibold mb-2">✋ Your Hand</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${(players[controlledIdx]?.hand || []).map((card, index) => `
+                            <div class="bg-arena-primary/20 border border-arena-accent/30 rounded p-3 text-xs cursor-pointer hover:bg-arena-primary/40 transition-colors"
+                                 onclick="playCardFromHand('${card.id || card.name}', ${index})">
+                                <div class="font-semibold text-arena-accent">${card.name || 'Unknown'}</div>
+                                <div class="text-arena-text-dim">${card.mana_cost || '0'}</div>
+                                <div class="text-arena-text-muted">${card.card_type || 'Unknown'}</div>
+                            </div>
+                        `).join('') || '<div class="text-arena-text-dim text-center py-4">No cards in hand</div>'}
+                    </div>
+                </div>
+                <!-- Your Battlefield -->
+                <div class="bg-arena-surface/50 rounded-lg p-4">
+                    <h4 class="text-arena-accent font-semibold mb-2">🏟️ Your Battlefield</h4>
+                    <div class="grid grid-cols-5 gap-2">
+                        ${(players[controlledIdx]?.battlefield || []).map(card => `
+                            <div class="bg-arena-primary/20 border border-arena-accent/30 rounded p-2 text-xs text-center cursor-pointer hover:bg-arena-primary/40 transition-colors">
+                                <div class="font-semibold text-arena-accent">${card.name || 'Unknown'}</div>
+                                ${card.power !== undefined && card.toughness !== undefined ? 
+                                    `<div class="text-arena-text-dim">${card.power}/${card.toughness}</div>` : 
+                                    ''}
+                            </div>
+                        `).join('') || '<div class="text-arena-text-dim text-center py-4">No permanents</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error generating game board:', error);
+        gameBoardContainer.innerHTML = `
+            <div class="arena-card rounded-xl p-6 text-center">
+                <h3 class="text-red-400 font-bold mb-2">⚠️ Error Loading Game Board</h3>
+                <p class="text-arena-text-dim">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Function to generate action panel
+function generateActionPanel() {
+    const actionPanelContainer = document.getElementById('action-panel');
+    if (!actionPanelContainer || !gameState) {
+        console.warn('Action panel container or game state not found');
+        return;
+    }
+    try {
+        const isActivePlayer = currentSelectedPlayer !== 'spectator';
+        const canAct = isActivePlayer; // Simplified for now
+        actionPanelContainer.innerHTML = `
+            <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
+                <span class="mr-2">⚡</span>Game Actions
+            </h4>
+            ${canAct ? `
+                <!-- Phase Actions -->
+                <div class="space-y-3 mb-6">
+                    <button onclick="performGameAction('pass_phase')" 
+                            class="w-full bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 rounded-lg font-semibold transition-all duration-200">
+                        ⏭️ Pass Phase
+                    </button>
+                    <button onclick="performGameAction('draw_card')" 
+                            class="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-500 text-green-300 hover:text-green-200 py-3 rounded-lg font-semibold transition-all duration-200">
+                        🃏 Draw Card
+                    </button>
+                </div>
+                <!-- Quick Actions -->
+                <div class="border-t border-arena-accent/30 pt-4">
+                    <h5 class="text-arena-accent font-semibold mb-3">Quick Actions</h5>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <button onclick="performGameAction('untap_all')" 
+                                class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
+                            🔄 Untap All
+                        </button>
+                        <button onclick="performGameAction('end_turn')" 
+                                class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
+                            ⏸️ End Turn
+                        </button>
+                    </div>
+                </div>
+            ` : `
+                <!-- Spectator View -->
+                <div class="text-center py-8">
+                    <div class="text-4xl mb-4">👁️</div>
+                    <h5 class="text-arena-accent font-semibold mb-2">Spectator Mode</h5>
+                    <p class="text-arena-text-dim text-sm">You are watching the battle unfold</p>
+                </div>
+            `}
+        `;
+    } catch (error) {
+        console.error('Error generating action panel:', error);
+        actionPanelContainer.innerHTML = `
+            <div class="text-center py-4">
+                <h5 class="text-red-400 font-bold mb-2">⚠️ Error</h5>
+                <p class="text-arena-text-dim text-sm">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Helper functions for game actions
+function performGameAction(actionType, actionData = {}) {
+    console.log(`Performing action: ${actionType}`, actionData);
+    
+    if (currentSelectedPlayer === 'spectator') {
+        showNotification('Spectators cannot perform actions', 'error');
+        return;
+    }
+    
+    // Send via WebSocket if available
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        sendGameAction(actionType, actionData);
+    } else {
+        // Fallback to HTTP request
+        performHttpGameAction(actionType, actionData);
+    }
+}
+
+async function performHttpGameAction(actionType, actionData = {}) {
+    try {
+        let endpoint;
+        let requestData = { player_id: currentSelectedPlayer, ...actionData };
+        
+        switch (actionType) {
+            case 'pass_phase':
+            case 'pass_turn':
+                endpoint = `/api/v1/games/${gameId}/pass-phase`;
+                break;
+            case 'draw_card':
+                endpoint = `/api/v1/games/${gameId}/draw-card`;
+                break;
+            case 'play_card':
+                endpoint = `/api/v1/games/${gameId}/play-card`;
+                break;
+            default:
+                throw new Error(`Unknown action type: ${actionType}`);
+        }
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
         });
         
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = '';
-            this.style.zIndex = '';
-        });
-    });
-    
-    // Add click handlers for battlefield cards
-    document.querySelectorAll('.arena-card').forEach(card => {
-        const nameElement = card.querySelector('.font-magic');
-        if (nameElement && !card.hasAttribute('data-card-id')) {
-            card.addEventListener('click', function() {
-                showCardDetails({
-                    name: nameElement.textContent,
-                    card_type: 'Creature',
-                    mana_cost: '2',
-                    text: 'Click for detailed card information...',
-                    rarity: 'Common'
-                });
-            });
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                showNotification(`Action performed: ${actionType}`, 'success');
+                // The WebSocket should handle the state update
+            } else {
+                showNotification(`Action failed: ${result.error}`, 'error');
+            }
+        } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-    });
-    
-    console.log('✨ Game interface initialized successfully!');
-});
-
-// Auto-refresh game state every 30 seconds
-setInterval(() => {
-    if (document.visibilityState === 'visible') {
-        htmx.ajax('GET', '/game-interface/{{ game.id }}', '#game-area');
+        
+    } catch (error) {
+        console.error('HTTP action error:', error);
+        showNotification(`Error: ${error.message}`, 'error');
     }
-}, 30000);
+}
+
+function playCardFromHand(cardId, handIndex) {
+    performGameAction('play_card', { 
+        card_id: cardId,
+        hand_index: handIndex 
+    });
+}
+
+// Auto-refresh functionality
+function startAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    autoRefreshInterval = setInterval(refreshGameData, 5000); // Every 5 seconds
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
 </script>
 {% endblock %}
