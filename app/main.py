@@ -22,6 +22,8 @@ async def lifespan(app: FastAPI):
     
     # Initialize sample data
     database = await get_database()
+    if database is None:
+        raise ValueError("Failed to connect to the database.")
     card_service = CardService(database)
     await card_service.initialize_sample_data()
     
