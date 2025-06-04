@@ -202,7 +202,7 @@ Quand tu veux consulter les logs ou l'état de l'application, utilise les comman
 # Pour consulter les logs du backend web
 docker compose logs web
 
-# Pour démarrer l'application en mode développement. Nécessaire de le faire après chaque modification du code
+# Pour démarrer l'application en mode développement. Pas nécessaire de redémarrer le conteneur à chaque modification de code.
 docker compose up --build -d
 
 # Pour exécuter les tests unitaires

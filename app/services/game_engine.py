@@ -107,8 +107,8 @@ class SimpleGameEngine:
         if not card_to_play:
             return
         
-        # For simplicity, just move card to battlefield
-        if card_to_play.card_type == CardType.CREATURE:
+        # Permanents (creatures and lands) go to battlefield
+        if card_to_play.card_type in [CardType.CREATURE, CardType.LAND]:
             player.battlefield.append(card_to_play)
         else:
             # Non-permanents go to graveyard after resolving
