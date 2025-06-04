@@ -68,26 +68,39 @@ async def get_card(
 
 
 @router.post("/games")
-async def create_game(game_id: Optional[str] = Query(None)) -> GameState:
+async def create_game(
+    game_id: Optional[str] = Query(None),
+    card_service: CardService = Depends(get_card_service)
+) -> GameState:
     """Create a new game with sample decks."""
     # Generate a default game_id if not provided
     if game_id is None:
         import uuid
         game_id = f"game-{str(uuid.uuid4())[:8]}"
     
-    # Create simple test decks
+    # Get cards from database with images
+    lightning_bolt = await card_service.get_card_by_id("lightning_bolt")
+    grizzly_bears = await card_service.get_card_by_id("grizzly_bears")
+    mountain = await card_service.get_card_by_id("mountain")
+    forest = await card_service.get_card_by_id("forest")
+    counterspell = await card_service.get_card_by_id("counterspell")
+    serra_angel = await card_service.get_card_by_id("serra_angel")
+    island = await card_service.get_card_by_id("island")
+    plains = await card_service.get_card_by_id("plains")
+    
+    # Create test decks with database cards
     deck1_cards = [
-        {"card": {"id": "lightning_bolt", "name": "Lightning Bolt", "mana_cost": "R", "cmc": 1, "card_type": "instant", "text": "Lightning Bolt deals 3 damage to any target.", "colors": ["R"], "rarity": "common"}, "quantity": 4},
-        {"card": {"id": "grizzly_bears", "name": "Grizzly Bears", "mana_cost": "1G", "cmc": 2, "card_type": "creature", "subtype": "Bear", "power": 2, "toughness": 2, "colors": ["G"], "rarity": "common"}, "quantity": 4},
-        {"card": {"id": "mountain", "name": "Mountain", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Mountain", "text": "T: Add R.", "colors": [], "rarity": "common"}, "quantity": 12},
-        {"card": {"id": "forest", "name": "Forest", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Forest", "text": "T: Add G.", "colors": [], "rarity": "common"}, "quantity": 12}
+        {"card": lightning_bolt.model_dump() if lightning_bolt else {"id": "lightning_bolt", "name": "Lightning Bolt", "mana_cost": "R", "cmc": 1, "card_type": "instant", "text": "Lightning Bolt deals 3 damage to any target.", "colors": ["R"], "rarity": "common"}, "quantity": 4},
+        {"card": grizzly_bears.model_dump() if grizzly_bears else {"id": "grizzly_bears", "name": "Grizzly Bears", "mana_cost": "1G", "cmc": 2, "card_type": "creature", "subtype": "Bear", "power": 2, "toughness": 2, "colors": ["G"], "rarity": "common"}, "quantity": 4},
+        {"card": mountain.model_dump() if mountain else {"id": "mountain", "name": "Mountain", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Mountain", "text": "T: Add R.", "colors": [], "rarity": "common"}, "quantity": 12},
+        {"card": forest.model_dump() if forest else {"id": "forest", "name": "Forest", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Forest", "text": "T: Add G.", "colors": [], "rarity": "common"}, "quantity": 12}
     ]
     
     deck2_cards = [
-        {"card": {"id": "counterspell", "name": "Counterspell", "mana_cost": "UU", "cmc": 2, "card_type": "instant", "text": "Counter target spell.", "colors": ["U"], "rarity": "common"}, "quantity": 4},
-        {"card": {"id": "serra_angel", "name": "Serra Angel", "mana_cost": "3WW", "cmc": 5, "card_type": "creature", "subtype": "Angel", "text": "Flying, vigilance", "power": 4, "toughness": 4, "colors": ["W"], "rarity": "uncommon"}, "quantity": 4},
-        {"card": {"id": "island", "name": "Island", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Island", "text": "T: Add U.", "colors": [], "rarity": "common"}, "quantity": 12},
-        {"card": {"id": "plains", "name": "Plains", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Plains", "text": "T: Add W.", "colors": [], "rarity": "common"}, "quantity": 12}
+        {"card": counterspell.model_dump() if counterspell else {"id": "counterspell", "name": "Counterspell", "mana_cost": "UU", "cmc": 2, "card_type": "instant", "text": "Counter target spell.", "colors": ["U"], "rarity": "common"}, "quantity": 4},
+        {"card": serra_angel.model_dump() if serra_angel else {"id": "serra_angel", "name": "Serra Angel", "mana_cost": "3WW", "cmc": 5, "card_type": "creature", "subtype": "Angel", "text": "Flying, vigilance", "power": 4, "toughness": 4, "colors": ["W"], "rarity": "uncommon"}, "quantity": 4},
+        {"card": island.model_dump() if island else {"id": "island", "name": "Island", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Island", "text": "T: Add U.", "colors": [], "rarity": "common"}, "quantity": 12},
+        {"card": plains.model_dump() if plains else {"id": "plains", "name": "Plains", "mana_cost": "", "cmc": 0, "card_type": "land", "subtype": "Plains", "text": "T: Add W.", "colors": [], "rarity": "common"}, "quantity": 12}
     ]
     
     deck1 = Deck(name="Red-Green Deck", cards=deck1_cards)
@@ -140,7 +153,7 @@ async def pass_phase(game_id: str, request: Optional[dict] = None) -> dict:
     
     action = GameAction(
         player_id=player_id,
-        action_type="pass_turn"
+        action_type="pass_phase"
     )
     try:
         game_state = game_engine.process_action(game_id, action)

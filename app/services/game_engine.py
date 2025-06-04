@@ -59,6 +59,8 @@ class SimpleGameEngine:
             self._play_card(game_state, action)
         elif action.action_type == "pass_turn":
             self._pass_turn(game_state, action)
+        elif action.action_type == "pass_phase":
+            self._pass_phase(game_state, action)
         elif action.action_type == "draw_card":
             self._draw_card_action(game_state, action)
         elif action.action_type == "declare_attackers":
@@ -139,6 +141,25 @@ class SimpleGameEngine:
             current_index = phases.index(game_state.phase)
             if current_index < len(phases) - 1:
                 game_state.phase = phases[current_index + 1]
+    
+    def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
+        """Handle passing to the next phase (without ending turn)."""
+        # Move to next phase
+        phases = list(GamePhase)
+        current_index = phases.index(game_state.phase)
+        
+        if current_index < len(phases) - 1:
+            # Go to next phase
+            game_state.phase = phases[current_index + 1]
+        else:
+            # At cleanup phase, go to next player's turn
+            game_state.active_player = 1 - game_state.active_player
+            game_state.phase = GamePhase.UNTAP
+            game_state.turn += 1
+            
+            # Draw card for new turn
+            active_player = game_state.players[game_state.active_player]
+            self._draw_cards(active_player, 1)
     
     def _draw_card_action(self, game_state: GameState, action: GameAction) -> None:
         """Handle drawing a card."""
