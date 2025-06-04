@@ -218,7 +218,14 @@ function handleWebSocketMessage(message) {
             break;
             
         case 'chat':
-            addChatMessage(message.player, message.message);
+            // Only add chat messages from other players to avoid duplication
+            // (our own messages are added immediately when sending)
+            const messagePlayer = message.player;
+            const currentPlayerName = currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1);
+            
+            if (messagePlayer !== currentPlayerName) {
+                addChatMessage(message.player, message.message);
+            }
             break;
             
         case 'player_status':
@@ -371,19 +378,51 @@ function generateGameBoard() {
                     </div>
                 </div>
                 <!-- Opponent's Battlefield -->
-                <div class="bg-arena-surface/50 rounded-lg p-4 mb-4">
-                    <h4 class="text-arena-accent font-semibold mb-2">🏟️ Battlefield</h4>
-                    <div class="flex flex-wrap gap-2 justify-center">
-                        ${(players[opponentIdx]?.battlefield || []).slice(0, 10).map(card => 
-                            renderCardWithLoadingState(card, 'card-battlefield', true)
-                        ).join('') || '<div class="text-arena-text-dim text-center py-4">No permanents</div>'}
-                    </div>
-                </div>
                 <!-- Opponent's Hand (Hidden) -->
-                <div class="flex justify-center space-x-1">
-                    ${Array(players[opponentIdx]?.hand?.length || 7).fill().map(() => `
-                        <div class="w-8 h-12 bg-arena-primary/40 border border-arena-accent/30 rounded"></div>
+                <div class="flex justify-center space-x-2 mb-3 overflow-x-auto py-2">
+                    ${Array(players[opponentIdx]?.hand?.length || 7).fill().map((_, index) => `
+                        <div class="card-mini" 
+                             data-card-id="opponent-card-${index}" 
+                             style="width: 60px; height: 84px; transform: ${index % 2 === 0 ? 'rotate(-2deg)' : 'rotate(2deg)'}" 
+                             title="Opponent's Card">
+                            <div class="card-fallback" style="background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%); border: 2px solid #c9aa71; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%;">
+                                <span style="font-size: 18px;">🃏</span>
+                            </div>
+                        </div>
                     `).join('')}
+                </div>
+                <div class="bg-arena-surface/50 rounded-lg p-4 mb-4">
+                    <h4 class="text-arena-accent font-semibold mb-2">🏟️ Opponent's Battlefield</h4>
+                    
+                    <!-- Opponent's Lands -->
+                    <div class="battlefield-zone lands-zone">
+                        <h5>🌍 Lands</h5>
+                        <div class="zone-content">
+                            ${(() => {
+                                const lands = (players[opponentIdx]?.battlefield || []).filter(card => 
+                                    card.card_type === 'land' || card.card_type === 'LAND'
+                                );
+                                return lands.length > 0 
+                                    ? lands.map(card => renderCardWithLoadingState(card, 'card-battlefield', true)).join('')
+                                    : '<div class="zone-empty">No lands</div>';
+                            })()}
+                        </div>
+                    </div>
+                    
+                    <!-- Opponent's Other Permanents -->
+                    <div class="battlefield-zone permanents-zone">
+                        <h5>⚔️ Permanents</h5>
+                        <div class="zone-content">
+                            ${(() => {
+                                const permanents = (players[opponentIdx]?.battlefield || []).filter(card => 
+                                    card.card_type !== 'land' && card.card_type !== 'LAND'
+                                );
+                                return permanents.length > 0 
+                                    ? permanents.slice(0, 10).map(card => renderCardWithLoadingState(card, 'card-battlefield', true)).join('')
+                                    : '<div class="zone-empty">No permanents</div>';
+                            })()}
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -435,23 +474,48 @@ function generateGameBoard() {
                         <span class="text-gray-400">📚 ${players[controlledIdx]?.library?.length || 53} Library</span>
                     </div>
                 </div>
-                <!-- Your Hand -->
+                <!-- Your Battlefield -->
                 <div class="bg-arena-surface/50 rounded-lg p-4 mb-4">
+                    <h4 class="text-arena-accent font-semibold mb-2">🏟️ Your Battlefield</h4>
+                    
+                    <!-- Your Other Permanents -->
+                    <div class="battlefield-zone permanents-zone">
+                        <h5>⚔️ Your Permanents</h5>
+                        <div class="zone-content">
+                            ${(() => {
+                                const permanents = (players[controlledIdx]?.battlefield || []).filter(card => 
+                                    card.card_type !== 'land' && card.card_type !== 'LAND'
+                                );
+                                return permanents.length > 0 
+                                    ? permanents.map(card => renderCardWithLoadingState(card, 'card-battlefield', true)).join('')
+                                    : '<div class="zone-empty">No permanents in play</div>';
+                            })()}
+                        </div>
+                    </div>
+                    
+                    <!-- Your Lands -->
+                    <div class="battlefield-zone lands-zone">
+                        <h5>🌍 Your Lands</h5>
+                        <div class="zone-content">
+                            ${(() => {
+                                const lands = (players[controlledIdx]?.battlefield || []).filter(card => 
+                                    card.card_type === 'land' || card.card_type === 'LAND'
+                                );
+                                return lands.length > 0 
+                                    ? lands.map(card => renderCardWithLoadingState(card, 'card-battlefield', true)).join('')
+                                    : '<div class="zone-empty">No lands played</div>';
+                            })()}
+                        </div>
+                    </div>
+                </div>
+                <!-- Your Hand -->
+                <div class="bg-arena-surface/50 rounded-lg p-4">
                     <h4 class="text-arena-accent font-semibold mb-2">✋ Your Hand</h4>
                     <div class="flex flex-wrap gap-2 justify-center">
                         ${(players[controlledIdx]?.hand || []).map((card, index) => {
                             const cardHtml = renderCardWithLoadingState(card, 'card-mini', false);
                             return `<div onclick="playCardFromHand('${card.id || card.name}', ${index})">${cardHtml}</div>`;
                         }).join('') || '<div class="text-arena-text-dim text-center py-4">No cards in hand</div>'}
-                    </div>
-                </div>
-                <!-- Your Battlefield -->
-                <div class="bg-arena-surface/50 rounded-lg p-4">
-                    <h4 class="text-arena-accent font-semibold mb-2">🏟️ Your Battlefield</h4>
-                    <div class="flex flex-wrap gap-2 justify-center">
-                        ${(players[controlledIdx]?.battlefield || []).map(card => 
-                            renderCardWithLoadingState(card, 'card-battlefield', true)
-                        ).join('') || '<div class="text-arena-text-dim text-center py-4">No permanents</div>'}
                     </div>
                 </div>
             </div>
@@ -775,15 +839,19 @@ function sendChatMessage(event) {
     const message = input.value.trim();
     
     if (message) {
+        const playerName = currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1);
+        
+        // Always add message locally first for immediate feedback
+        addChatMessage(playerName, message);
+        
+        // Send via WebSocket if connected
         if (websocket && websocket.readyState === WebSocket.OPEN) {
             websocket.send(JSON.stringify({
                 type: 'chat',
-                player: currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1),
+                player: playerName,
                 message: message,
                 timestamp: Date.now()
             }));
-        } else {
-            addChatMessage(currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1), message);
         }
         
         input.value = '';
