@@ -210,6 +210,25 @@ async function searchCards() {
                     <div class="arena-card rounded-xl p-4 hover:scale-105 transition-all duration-300 cursor-pointer border border-arena-accent/30 hover:border-arena-accent hover:shadow-arena-lg group animate-fade-in" 
                          style="animation-delay: ${index * 50}ms;"
                          onclick="showCardDetails(${JSON.stringify(card).replace(/"/g, '&quot;')})">
+                        
+                        <!-- Card Image -->
+                        <div class="mb-4 overflow-hidden rounded-lg">
+                            ${card.image_url ? `
+                                <img src="${card.image_url}" 
+                                     alt="${card.name}" 
+                                     class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+                                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDIwMCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjgwIiBmaWxsPSIjMUExRjJFIi8+CjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSIyNjAiIHN0cm9rZT0iI0M5QUE3MSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTUwIiBmaWxsPSIjQzlBQTcxIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE0IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+4pqh77iPPC90ZXh0Pgo8dGV4dCB4PSIxMDAiIHk9IjE3MCIgZmlsbD0iI0M5QUE3MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K'; this.classList.add('opacity-50');"
+                                />
+                            ` : `
+                                <div class="w-full h-48 bg-arena-surface border-2 border-dashed border-arena-accent/30 rounded-lg flex items-center justify-center">
+                                    <div class="text-center text-arena-text-dim">
+                                        <span class="text-4xl block mb-2">🃏</span>
+                                        <span class="text-sm">No Image</span>
+                                    </div>
+                                </div>
+                            `}
+                        </div>
+                        
                         <div class="text-center mb-4">
                             <h4 class="font-magic text-lg font-bold text-arena-accent mb-2 group-hover:text-arena-accent-light">${card.name}</h4>
                             <div class="flex items-center justify-center space-x-2 mb-2">
@@ -298,6 +317,30 @@ function showCardDetails(card) {
     
     content.innerHTML = `
         <div class="text-center mb-6">
+            <!-- Card Image -->
+            ${card.image_url ? `
+                <div class="mb-6">
+                    <img src="${card.image_url}" 
+                         alt="${card.name}" 
+                         class="w-64 h-auto mx-auto rounded-lg shadow-lg border border-arena-accent/30"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                    />
+                    <div class="w-64 h-80 bg-arena-surface border-2 border-dashed border-arena-accent/30 rounded-lg mx-auto items-center justify-center text-arena-text-dim hidden">
+                        <span class="text-4xl block mb-2">🃏</span>
+                        <span class="text-sm">No Image Available</span>
+                    </div>
+                </div>
+            ` : `
+                <div class="mb-6">
+                    <div class="w-64 h-80 bg-arena-surface border-2 border-dashed border-arena-accent/30 rounded-lg mx-auto flex items-center justify-center text-arena-text-dim">
+                        <div class="text-center">
+                            <span class="text-4xl block mb-2">🃏</span>
+                            <span class="text-sm">No Image Available</span>
+                        </div>
+                    </div>
+                </div>
+            `}
+            
             <h3 class="font-magic text-3xl font-bold text-arena-accent mb-3">${card.name}</h3>
             <div class="flex items-center justify-center space-x-4 mb-3">
                 <span class="text-arena-text-dim text-lg">💎 ${card.mana_cost || 'Free'}</span>

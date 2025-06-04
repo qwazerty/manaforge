@@ -21,6 +21,10 @@ class CardService:
             return Card(**card_data)
         return None
     
+    async def get_card_by_id(self, card_id: str) -> Optional[Card]:
+        """Get a card by ID (alias for get_card)."""
+        return await self.get_card(card_id)
+    
     async def search_cards(self, query: str, limit: int = 20) -> List[Card]:
         """Search cards by name."""
         cursor = self.collection.find(
@@ -40,15 +44,38 @@ class CardService:
             cards.append(Card(**card_data))
         return cards
     
-    async def initialize_sample_data(self):
+    async def get_card_image_url(self, card_name: str) -> Optional[str]:
+        """Get Scryfall image URL for a card."""
+        # Format the card name for Scryfall API
+        formatted_name = card_name.lower().replace(" ", "+").replace("'", "").replace(",", "")
+        
+        # Scryfall API endpoint for card images
+        scryfall_url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
+        
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.get(scryfall_url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        # Return the normal resolution image URL
+                        if "image_uris" in data and "normal" in data["image_uris"]:
+                            return data["image_uris"]["normal"]
+                        elif "card_faces" in data and len(data["card_faces"]) > 0:
+                            # Handle double-faced cards
+                            return data["card_faces"][0].get("image_uris", {}).get("normal")
+        except Exception as e:
+            print(f"Error fetching image for {card_name}: {e}")
+        
+        return None
+    
+    async def initialize_sample_data(self) -> None:
         """Initialize database with sample cards for POC."""
         
-        # Check if cards already exist
-        count = await self.collection.count_documents({})
-        if count > 0:
-            return
+        print("🔄 Initializing/updating sample card data with images...")
         
-        sample_cards = [
+        # Always update cards to ensure they have image URLs
+        sample_cards_data = [
             {
                 "id": "lightning_bolt",
                 "name": "Lightning Bolt",
@@ -161,5 +188,19 @@ class CardService:
             }
         ]
         
-        await self.collection.insert_many(sample_cards)
-        print(f"Inserted {len(sample_cards)} sample cards")
+        # Fetch images from Scryfall API and add to cards
+        sample_cards = []
+        for card_data in sample_cards_data:
+            image_url = await self.get_card_image_url(card_data["name"])
+            card_data["image_url"] = image_url
+            sample_cards.append(card_data)
+            print(f"📷 {card_data['name']}: {'✅' if image_url else '❌'}")
+        
+        # Use upsert to update existing cards or insert new ones
+        for card in sample_cards:
+            await self.collection.replace_one(
+                {"id": card["id"]}, 
+                card, 
+                upsert=True
+            )
+        print(f"Upserted {len(sample_cards)} sample cards with images")
