@@ -35,6 +35,29 @@ async function joinOrCreateBattle() {
     const gameId = document.getElementById('gameId').value.trim();
     const decklistText = document.getElementById('decklistText').value.trim();
     const statusDiv = document.getElementById('battle-status');
+    const battleButton = document.querySelector('button[onclick="joinOrCreateBattle()"]');
+    
+    // Disable button and change appearance
+    function disableButton() {
+        battleButton.disabled = true;
+        battleButton.classList.add('opacity-50', 'cursor-not-allowed');
+        battleButton.innerHTML = `
+            <span class="mr-3 animate-spin">⚡</span>
+            Processing...
+            <span class="ml-3 animate-pulse">⏳</span>
+        `;
+    }
+    
+    // Enable button and restore appearance
+    function enableButton() {
+        battleButton.disabled = false;
+        battleButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        battleButton.innerHTML = `
+            <span class="mr-3 group-hover:animate-pulse">⚡</span>
+            Enter Battlefield
+            <span class="ml-3 group-hover:animate-pulse">⚔️</span>
+        `;
+    }
     
     // Validation
     if (!gameId) {
@@ -54,6 +77,9 @@ async function joinOrCreateBattle() {
         `;
         return;
     }
+    
+    // Disable button at start of process
+    disableButton();
     
     try {
         // Step 1: Parse the deck first
@@ -80,6 +106,7 @@ async function joinOrCreateBattle() {
                     ❌ Failed to parse deck: ${error.detail || 'Unknown error'}
                 </div>
             `;
+            enableButton(); // Re-enable button on error
             return;
         }
         
@@ -108,6 +135,7 @@ async function joinOrCreateBattle() {
                         ⚠️ Battlefield is full (2 players already)
                     </div>
                 `;
+                enableButton(); // Re-enable button on error
                 return;
             }
             playerRole = 'player2';
@@ -180,6 +208,7 @@ async function joinOrCreateBattle() {
                     ❌ ${error.detail || 'Failed to join battlefield'}
                 </div>
             `;
+            enableButton(); // Re-enable button on error
         }
         
     } catch (error) {
@@ -188,6 +217,7 @@ async function joinOrCreateBattle() {
                 💥 Error: ${error.message}
             </div>
         `;
+        enableButton(); // Re-enable button on error
     }
 }
 
@@ -246,6 +276,17 @@ async function waitForOpponent(gameId, playerRole) {
                     <br><a href="/game-interface/${gameId}?player=${playerRole}" class="text-arena-accent underline">Enter battlefield anyway</a>
                 </div>
             `;
+            // Re-enable the main button when timeout occurs
+            const battleButton = document.querySelector('button[onclick="joinOrCreateBattle()"]');
+            if (battleButton) {
+                battleButton.disabled = false;
+                battleButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                battleButton.innerHTML = `
+                    <span class="mr-3 group-hover:animate-pulse">⚡</span>
+                    Enter Battlefield
+                    <span class="ml-3 group-hover:animate-pulse">⚔️</span>
+                `;
+            }
         }
     }, 1000);
 }
