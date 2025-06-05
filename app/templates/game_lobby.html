@@ -15,164 +15,73 @@
             </p>
         </div>
         
-        <!-- Game Battle Section -->
-        <div class="arena-card rounded-xl p-8 mb-8 animate-slide-up">
-            <div class="text-center mb-6">
-                <div class="w-20 h-20 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
-                    <span class="text-4xl">⚔️</span>
-                </div>
-                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2">Enter Battle Arena</h2>
-                <p class="text-arena-text-dim">Join or create a battlefield automatically. Import your deck and challenge other planeswalkers!</p>
-            </div>
-            
-            <div class="max-w-2xl mx-auto space-y-6">
-                <!-- Game ID Input -->
-                <div class="relative">
-                    <input 
-                        type="text" 
-                        id="gameId" 
-                        placeholder="Enter Battlefield Name..." 
-                        value="epic-duel-arena"
-                        class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
-                    >
-                    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
-                        🎯
+        <!-- Main Arena Card -->
+        <div class="arena-card rounded-xl mb-8 animate-slide-up">
+            <!-- Play Content -->
+            <div class="p-8">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
+                        <span class="text-4xl">⚔️</span>
                     </div>
+                    <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2">Enter Battle Arena</h2>
+                    <p class="text-arena-text-dim">Join or create a battlefield automatically. Import your deck and challenge other planeswalkers!</p>
                 </div>
                 
-                <!-- Deck Import -->
-                <div class="space-y-4">
-                    <div class="text-center">
-                        <h3 class="font-magic text-xl font-bold text-arena-accent mb-2">📚 Import Your Deck</h3>
-                        <p class="text-arena-text-dim text-sm">Paste your decklist to battle with your custom arsenal</p>
-                    </div>
-                    
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <!-- Game ID Input -->
                     <div class="relative">
-                        <textarea 
-                            id="decklistText" 
-                            placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
-                            rows="6"
-                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 font-mono text-sm"
-                        ></textarea>
-                    </div>
-                </div>
-                
-                <!-- Main Action Button -->
-                <button 
-                    onclick="joinOrCreateBattle()"
-                    class="arena-button w-full py-6 px-8 rounded-lg font-semibold text-xl transition-all duration-300 group"
-                >
-                    <span class="mr-3 group-hover:animate-pulse">⚡</span>
-                    Enter Battlefield
-                    <span class="ml-3 group-hover:animate-pulse">⚔️</span>
-                </button>
-                
-                <div id="battle-status" class="text-center"></div>
-                
-                <!-- Deck Preview -->
-                <div id="deck-preview" class="hidden mt-6 p-4 bg-arena-surface/50 rounded-lg border border-arena-accent/20">
-                    <h3 class="font-semibold text-arena-accent mb-2">Deck Preview:</h3>
-                    <div id="deck-cards" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-40 overflow-y-auto"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Features Overview -->
-        <div class="arena-card rounded-xl p-8 mb-8 animate-fade-in" style="animation-delay: 400ms;">
-            <h2 class="font-magic text-2xl font-bold text-center text-arena-accent mb-8">
-                🌟 Magical Features Unlocked
-            </h2>
-            
-            <div class="grid md:grid-cols-3 lg:grid-cols-5 gap-6">
-                <div class="text-center group">
-                    <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                        <span class="text-green-400 text-xl">✅</span>
-                    </div>
-                    <h3 class="font-semibold text-arena-text text-sm">Card Search</h3>
-                    <p class="text-arena-text-muted text-xs">& Database</p>
-                </div>
-                
-                <div class="text-center group">
-                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                        <span class="text-blue-400 text-xl">✅</span>
-                    </div>
-                    <h3 class="font-semibold text-arena-text text-sm">Real-time</h3>
-                    <p class="text-arena-text-muted text-xs">Game Engine</p>
-                </div>
-                
-                <div class="text-center group">
-                    <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                        <span class="text-purple-400 text-xl">✅</span>
-                    </div>
-                    <h3 class="font-semibold text-arena-text text-sm">Deck</h3>
-                    <p class="text-arena-text-muted text-xs">Management</p>
-                </div>
-                
-                <div class="text-center group">
-                    <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                        <span class="text-yellow-400 text-xl">✅</span>
-                    </div>
-                    <h3 class="font-semibold text-arena-text text-sm">WebSocket</h3>
-                    <p class="text-arena-text-muted text-xs">Support</p>
-                </div>
-                
-                <div class="text-center group">
-                    <div class="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                        <span class="text-red-400 text-xl">✅</span>
-                    </div>
-                    <h3 class="font-semibold text-arena-text text-sm">Modern</h3>
-                    <p class="text-arena-text-muted text-xs">FastAPI Backend</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Card Search Demo -->
-        <div class="arena-card rounded-xl p-8 animate-fade-in" style="animation-delay: 600ms;">
-            <div class="flex items-center justify-center mb-6">
-                <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mr-4 shadow-arena">
-                    <span class="text-xl">📜</span>
-                </div>
-                <div>
-                    <h2 class="font-magic text-2xl font-bold text-arena-accent">Spell Grimoire</h2>
-                    <p class="text-arena-text-dim">Explore the vast library of magical cards</p>
-                </div>
-            </div>
-            
-            <div class="max-w-2xl mx-auto">
-                <div class="flex space-x-4 mb-6">
-                    <div class="flex-1 relative">
                         <input 
                             type="text" 
-                            id="searchQuery" 
-                            placeholder="Search for cards... (e.g., Lightning Bolt)" 
-                            value="lightning"
-                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
-                            hx-get="/api/v1/cards/search"
-                            hx-trigger="keyup changed delay:500ms"
-                            hx-target="#searchResults"
-                            hx-include="this"
-                            name="q"
+                            id="gameId" 
+                            placeholder="Enter Battlefield Name..." 
+                            value=""
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
                         >
                         <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
-                            🔍
+                            🎯
+                        </div>
+                        <button 
+                            onclick="generateRandomGameName()"
+                            class="absolute left-4 top-1/2 transform -translate-y-1/2 text-arena-accent hover:text-arena-accent-bright transition-colors"
+                            title="Generate random name"
+                        >
+                            🎲
+                        </button>
+                    </div>
+                    
+                    <!-- Deck Import -->
+                    <div class="space-y-4">
+                        <div class="text-center">
+                            <h3 class="font-magic text-xl font-bold text-arena-accent mb-2">📚 Import Your Deck</h3>
+                            <p class="text-arena-text-dim text-sm">Paste your decklist to battle with your custom arsenal</p>
+                        </div>
+                        
+                        <div class="relative">
+                            <textarea 
+                                id="decklistText" 
+                                placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
+                                rows="6"
+                                class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 font-mono text-sm"
+                            ></textarea>
                         </div>
                     </div>
+                    
+                    <!-- Main Action Button -->
                     <button 
-                        onclick="searchCards()"
-                        class="arena-button px-8 py-4 rounded-lg font-semibold transition-all duration-300"
+                        onclick="joinOrCreateBattle()"
+                        class="arena-button w-full py-6 px-8 rounded-lg font-semibold text-xl transition-all duration-300 group"
                     >
-                        Cast Search
+                        <span class="mr-3 group-hover:animate-pulse">⚡</span>
+                        Enter Battlefield
+                        <span class="ml-3 group-hover:animate-pulse">⚔️</span>
                     </button>
-                </div>
-                
-                <div 
-                    id="searchResults" 
-                    class="arena-surface rounded-lg p-4 max-h-96 overflow-y-auto border border-arena-accent/20"
-                    hx-get="/api/v1/cards/search?q=lightning"
-                    hx-trigger="load"
-                >
-                    <div class="text-center py-8 text-arena-text-dim">
-                        <div class="animate-pulse">Searching the multiverse...</div>
+                    
+                    <div id="battle-status" class="text-center"></div>
+                    
+                    <!-- Deck Preview -->
+                    <div id="deck-preview" class="hidden mt-6 p-4 bg-arena-surface/50 rounded-lg border border-arena-accent/20">
+                        <h3 class="font-semibold text-arena-accent mb-2">Deck Preview:</h3>
+                        <div id="deck-cards" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-40 overflow-y-auto"></div>
                     </div>
                 </div>
             </div>
@@ -183,315 +92,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Global variables
-let parsedDeck = null;
-
-// Main function for joining or creating battle
-async function joinOrCreateBattle() {
-    const gameId = document.getElementById('gameId').value.trim();
-    const decklistText = document.getElementById('decklistText').value.trim();
-    const statusDiv = document.getElementById('battle-status');
-    
-    // Validation
-    if (!gameId) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                ⚠️ Please enter a battlefield name
-            </div>
-        `;
-        return;
-    }
-    
-    if (!decklistText) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                ⚠️ Please paste your decklist
-            </div>
-        `;
-        return;
-    }
-    
-    try {
-        // Step 1: Parse the deck first
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-                🔍 Parsing your deck...
-            </div>
-        `;
-        
-        const deckResponse = await fetch('/api/v1/decks/parse', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                decklist_text: decklistText
-            })
-        });
-        
-        if (!deckResponse.ok) {
-            const error = await deckResponse.json();
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                    ❌ Failed to parse deck: ${error.detail || 'Unknown error'}
-                </div>
-            `;
-            return;
-        }
-        
-        parsedDeck = await deckResponse.json();
-        
-        // Show deck preview
-        showDeckPreview(parsedDeck);
-        
-        // Step 2: Check if game exists
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-                🎯 Checking battlefield status...
-            </div>
-        `;
-        
-        const gameCheckResponse = await fetch(`/api/v1/games/${gameId}`);
-        let playerRole = 'player1';
-        let actionText = 'Creating battlefield';
-        
-        if (gameCheckResponse.ok) {
-            // Game exists, join as player 2
-            const gameData = await gameCheckResponse.json();
-            if (gameData.players && gameData.players.length >= 2) {
-                statusDiv.innerHTML = `
-                    <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                        ⚠️ Battlefield is full (2 players already)
-                    </div>
-                `;
-                return;
-            }
-            playerRole = 'player2';
-            actionText = 'Joining battlefield as Player 2';
-        } else {
-            actionText = 'Creating battlefield as Player 1';
-        }
-        
-        // Step 3: Create/Join game with deck
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-                ⚔️ ${actionText}...
-            </div>
-        `;
-        
-        let gameResponse;
-        if (playerRole === 'player2') {
-            // Join existing game
-            gameResponse = await fetch(`/api/v1/games/${gameId}/join`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    decklist_text: decklistText
-                })
-            });
-        } else {
-            // Create new game
-            gameResponse = await fetch(`/api/v1/games?game_id=${gameId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    decklist_text: decklistText
-                })
-            });
-        }
-        
-        if (gameResponse.ok) {
-            const gameData = await gameResponse.json();
-            
-            if (gameData.players && gameData.players.length < 2) {
-                // Waiting for second player
-                statusDiv.innerHTML = `
-                    <div class="arena-surface border border-yellow-500/50 text-yellow-400 px-4 py-2 rounded-lg mt-2">
-                        ⏳ Waiting for opponent to join the battlefield...
-                    </div>
-                `;
-                
-                // Poll for second player
-                waitForOpponent(gameId, playerRole);
-            } else {
-                // Both players ready, start game
-                statusDiv.innerHTML = `
-                    <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
-                        ✨ Both players ready! Starting the duel...
-                    </div>
-                `;
-                
-                setTimeout(() => {
-                    window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
-                }, 1500);
-            }
-        } else {
-            const error = await gameResponse.json();
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                    ❌ ${error.detail || 'Failed to join battlefield'}
-                </div>
-            `;
-        }
-        
-    } catch (error) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                💥 Error: ${error.message}
-            </div>
-        `;
-    }
-}
-
-// Show deck preview
-function showDeckPreview(deck) {
-    const previewDiv = document.getElementById('deck-preview');
-    const cardsDiv = document.getElementById('deck-cards');
-    
-    cardsDiv.innerHTML = deck.cards.map(deckCard => `
-        <div class="flex justify-between items-center p-2 bg-arena-surface/30 rounded">
-            <span class="text-arena-text">${deckCard.quantity}x ${deckCard.card.name}</span>
-            <span class="text-arena-text-muted text-xs">${deckCard.card.mana_cost || 'No cost'}</span>
-        </div>
-    `).join('');
-    
-    previewDiv.classList.remove('hidden');
-}
-
-// Wait for opponent to join
-async function waitForOpponent(gameId, playerRole) {
-    const statusDiv = document.getElementById('battle-status');
-    let attempts = 0;
-    const maxAttempts = 60; // 60 seconds timeout
-    
-    const checkInterval = setInterval(async () => {
-        attempts++;
-        
-        try {
-            const response = await fetch(`/api/v1/games/${gameId}`);
-            if (response.ok) {
-                const gameData = await response.json();
-                
-                if (gameData.players && gameData.players.length >= 2) {
-                    clearInterval(checkInterval);
-                    
-                    statusDiv.innerHTML = `
-                        <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
-                            ⚔️ Opponent joined! Starting the duel...
-                        </div>
-                    `;
-                    
-                    setTimeout(() => {
-                        window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
-                    }, 1500);
-                }
-            }
-        } catch (error) {
-            console.error('Error checking game status:', error);
-        }
-        
-        if (attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-yellow-500/50 text-yellow-400 px-4 py-2 rounded-lg mt-2">
-                    ⏰ Timeout waiting for opponent. You can still join manually.
-                    <br><a href="/game-interface/${gameId}?player=${playerRole}" class="text-arena-accent underline">Enter battlefield anyway</a>
-                </div>
-            `;
-        }
-    }, 1000);
-}
-
-async function searchCards() {
-    const query = document.getElementById('searchQuery').value;
-    const resultsDiv = document.getElementById('searchResults');
-    
-    if (!query) {
-        resultsDiv.innerHTML = '<div class="text-center text-arena-text-dim py-4">Please enter a search query</div>';
-        return;
-    }
-    
-    try {
-        resultsDiv.innerHTML = `
-            <div class="text-center py-8">
-                <div class="w-8 h-8 border-2 border-arena-accent/30 border-t-arena-accent rounded-full animate-spin mx-auto mb-2"></div>
-                <div class="text-arena-text-dim animate-pulse">Searching the multiverse...</div>
-            </div>
-        `;
-        
-        const response = await fetch(`/api/v1/cards/search?q=${encodeURIComponent(query)}`);
-        const cards = await response.json();
-        
-        if (cards.length === 0) {
-            resultsDiv.innerHTML = `
-                <div class="text-center py-8 text-arena-text-dim">
-                    <span class="text-4xl mb-4 block">🔍</span>
-                    No cards found in the multiverse
-                </div>
-            `;
-            return;
-        }
-        
-        resultsDiv.innerHTML = cards.map((card, index) => `
-            <div class="arena-card rounded-lg p-4 mb-3 hover:scale-[1.02] transition-all duration-200 animate-fade-in" style="animation-delay: ${index * 100}ms;">
-                <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <div class="flex items-center space-x-2 mb-2">
-                            <h3 class="font-magic text-lg font-bold text-arena-accent">${card.name}</h3>
-                            ${card.mana_cost ? `<span class="text-arena-text-dim">${card.mana_cost}</span>` : ''}
-                        </div>
-                        <div class="flex items-center space-x-4 mb-2">
-                            <span class="text-sm text-arena-text-dim bg-arena-surface-light px-2 py-1 rounded">${card.card_type}</span>
-                            <span class="text-sm text-arena-accent">${card.rarity}</span>
-                        </div>
-                        ${card.text ? `<p class="text-arena-text text-sm leading-relaxed">${card.text}</p>` : ''}
-                    </div>
-                    <div class="ml-4 flex flex-col items-center space-y-1">
-                        ${card.power !== null && card.toughness !== null ? 
-                            `<div class="bg-arena-accent text-arena-bg px-2 py-1 rounded text-sm font-bold">${card.power}/${card.toughness}</div>` : 
-                            ''
-                        }
-                    </div>
-                </div>
-            </div>
-        `).join('');
-        
-    } catch (error) {
-        resultsDiv.innerHTML = `
-            <div class="text-center py-8 text-red-400">
-                <span class="text-4xl mb-4 block">💥</span>
-                Error searching cards: ${error.message}
-            </div>
-        `;
-    }
-}
-
-// Enhanced HTMX integration for search results
-document.addEventListener('htmx:afterSwap', function(event) {
-    if (event.target.id === 'searchResults') {
-        // Add staggered animations to cards
-        const cards = event.target.querySelectorAll('.arena-card');
-        cards.forEach((card, index) => {
-            card.style.animationDelay = `${index * 100}ms`;
-            card.classList.add('animate-fade-in');
-        });
-    }
-});
-
-// Auto-search on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Let HTMX handle the initial load
-    setTimeout(() => {
-        const resultsDiv = document.getElementById('searchResults');
-        if (resultsDiv && resultsDiv.innerHTML.includes('Searching the multiverse')) {
-            searchCards();
-        }
-    }, 1000);
-});
-</script>
+<script src="{{ url_for('static', path='js/game-lobby.js') }}"></script>
 {% endblock %}

@@ -70,34 +70,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Add some magical sparkle effects
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-redirect to home after 30 seconds of inactivity
-    let redirectTimer = setTimeout(() => {
-        showNotification('Returning to the home plane...', 'info');
-        setTimeout(() => {
-            window.location.href = '/';
-        }, 2000);
-    }, 30000);
-    
-    // Cancel redirect if user interacts
-    document.addEventListener('click', () => clearTimeout(redirectTimer));
-    document.addEventListener('keypress', () => clearTimeout(redirectTimer));
-    
-    // Add hover effects to mana symbols
-    document.querySelectorAll('.mana-symbol').forEach((symbol, index) => {
-        symbol.style.animationDelay = `${index * 200}ms`;
-        symbol.classList.add('animate-float');
-        
-        symbol.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.2) rotate(10deg)';
-        });
-        
-        symbol.addEventListener('mouseleave', function() {
-            this.style.transform = '';
-        });
-    });
-});
-</script>
+<script src="{{ url_for('static', path='js/error.js') }}"></script>
 {% endblock %}
