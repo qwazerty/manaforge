@@ -103,7 +103,7 @@ class TestDeckModel:
         
         deck = Deck(
             name="Red Burn",
-            cards=[card.model_dump()],
+            cards=[card],
             format="standard"
         )
         

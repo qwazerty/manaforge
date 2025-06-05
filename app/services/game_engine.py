@@ -6,7 +6,7 @@ This will be replaced by XMage integration later.
 import random
 from typing import List, Optional, Dict, Any
 from app.models.game import (
-    Card, Deck, Player, GameState, GameAction, 
+    Card, Deck, DeckCard, Player, GameState, GameAction, 
     GamePhase, CardType, Color
 )
 
@@ -47,6 +47,56 @@ class SimpleGameEngine:
         self.games[game_id] = game_state
         return game_state
     
+    def create_game_player1(self, game_id: str, player1_deck: Deck) -> GameState:
+        """Create a new game with only player 1, waiting for player 2."""
+        
+        # Create player 1
+        player1 = Player(
+            id="player1",
+            name="Player 1",
+            library=self._shuffle_deck(player1_deck.cards)
+        )
+        
+        # Initial draw for player 1
+        self._draw_cards(player1, 7)
+        
+        # Create game state with only player 1
+        game_state = GameState(
+            id=game_id,
+            players=[player1],
+            active_player=0,
+            phase=GamePhase.UNTAP
+        )
+        
+        self.games[game_id] = game_state
+        return game_state
+
+    def join_game(self, game_id: str, player2_deck: Deck) -> GameState:
+        """Join an existing game as player 2."""
+        if game_id not in self.games:
+            raise ValueError(f"Game {game_id} not found")
+        
+        game_state = self.games[game_id]
+        
+        # Check if game is already full
+        if len(game_state.players) >= 2:
+            raise ValueError("Game is already full")
+        
+        # Create player 2
+        player2 = Player(
+            id="player2",
+            name="Player 2", 
+            library=self._shuffle_deck(player2_deck.cards)
+        )
+        
+        # Initial draw for player 2
+        self._draw_cards(player2, 7)
+        
+        # Add player 2 to the game
+        game_state.players.append(player2)
+        
+        return game_state
+    
     def process_action(self, game_id: str, action: GameAction) -> GameState:
         """Process a player action and return updated game state."""
         
@@ -72,16 +122,13 @@ class SimpleGameEngine:
         
         return game_state
     
-    def _shuffle_deck(self, deck_cards: List[Dict[str, Any]]) -> List[Card]:
+    def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
         """Convert deck list to shuffled list of Card objects."""
         cards = []
         for deck_card in deck_cards:
-            card_data = deck_card["card"]
-            quantity = deck_card.get("quantity", 1)
-            
-            for _ in range(quantity):
-                card = Card(**card_data)
-                cards.append(card)
+            # Add quantity copies of each card
+            for _ in range(deck_card.quantity):
+                cards.append(deck_card.card)
         
         random.shuffle(cards)
         return cards

@@ -15,98 +15,64 @@
             </p>
         </div>
         
-        <!-- Player Selection - Global for all games -->
-        <div class="arena-card rounded-xl p-6 mb-8 animate-fade-in">
-            <h2 class="font-magic text-xl font-bold text-arena-accent mb-4 text-center flex items-center justify-center">
-                <span class="mr-2">👤</span>Choose Your Role
-            </h2>
-            <div class="flex gap-4 max-w-2xl mx-auto" id="player-selector">
-                <button class="player-btn player1 active" onclick="selectPlayer('player1')">
-                    🛡️ Player 1
-                </button>
-                <button class="player-btn player2" onclick="selectPlayer('player2')">
-                    🎯 Player 2  
-                </button>
-                <button class="player-btn spectator" onclick="selectPlayer('spectator')">
-                    👁️ Spectator
-                </button>
-            </div>
-            <div class="text-center text-sm text-arena-text-dim mt-3">
-                <span id="role-description">You will join as Player 1 - Master of the battlefield</span>
-            </div>
-        </div>
-        
-        <!-- Main Lobby Actions -->
-        <div class="grid lg:grid-cols-2 gap-8 mb-12">
-            
-            <!-- Create Game Section -->
-            <div class="arena-card rounded-xl p-8 animate-slide-up">
-                <div class="text-center mb-6">
-                    <div class="w-16 h-16 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
-                        <span class="text-3xl">🛡️</span>
-                    </div>
-                    <h2 class="font-magic text-2xl font-bold text-arena-accent mb-2">Forge New Battle</h2>
-                    <p class="text-arena-text-dim">Create a new battlefield and invite challengers to test their might</p>
+        <!-- Game Battle Section -->
+        <div class="arena-card rounded-xl p-8 mb-8 animate-slide-up">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
+                    <span class="text-4xl">⚔️</span>
                 </div>
-                
-                <div class="space-y-4">
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            id="gameId" 
-                            placeholder="Enter Battlefield Name..." 
-                            value="epic-duel-arena"
-                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
-                        >
-                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
-                            ⚔️
-                        </div>
-                    </div>
-                    
-                    <button 
-                        onclick="createGame()"
-                        class="arena-button w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-300 group"
-                    >
-                        <span class="mr-2 group-hover:animate-pulse">🔮</span>
-                        Forge Battle
-                    </button>
-                    
-                    <div id="create-status" class="text-center"></div>
-                </div>
+                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2">Enter Battle Arena</h2>
+                <p class="text-arena-text-dim">Join or create a battlefield automatically. Import your deck and challenge other planeswalkers!</p>
             </div>
             
-            <!-- Join Game Section -->
-            <div class="arena-card rounded-xl p-8 animate-slide-up" style="animation-delay: 200ms;">
-                <div class="text-center mb-6">
-                    <div class="w-16 h-16 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
-                        <span class="text-3xl">🗡️</span>
+            <div class="max-w-2xl mx-auto space-y-6">
+                <!-- Game ID Input -->
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="gameId" 
+                        placeholder="Enter Battlefield Name..." 
+                        value="epic-duel-arena"
+                        class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
+                    >
+                    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
+                        🎯
                     </div>
-                    <h2 class="font-magic text-2xl font-bold text-arena-accent mb-2">Join the Fray</h2>
-                    <p class="text-arena-text-dim">Enter an existing battlefield and challenge its planeswalker</p>
                 </div>
                 
+                <!-- Deck Import -->
                 <div class="space-y-4">
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            id="joinGameId" 
-                            placeholder="Enter Battlefield ID..."
-                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
-                        >
-                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
-                            🏹
-                        </div>
+                    <div class="text-center">
+                        <h3 class="font-magic text-xl font-bold text-arena-accent mb-2">📚 Import Your Deck</h3>
+                        <p class="text-arena-text-dim text-sm">Paste your decklist to battle with your custom arsenal</p>
                     </div>
                     
-                    <button 
-                        onclick="joinGame()"
-                        class="arena-button w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-300 group"
-                    >
-                        <span class="mr-2 group-hover:animate-pulse">⚡</span>
-                        Join Battle
-                    </button>
-                    
-                    <div id="join-status" class="text-center"></div>
+                    <div class="relative">
+                        <textarea 
+                            id="decklistText" 
+                            placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
+                            rows="6"
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 font-mono text-sm"
+                        ></textarea>
+                    </div>
+                </div>
+                
+                <!-- Main Action Button -->
+                <button 
+                    onclick="joinOrCreateBattle()"
+                    class="arena-button w-full py-6 px-8 rounded-lg font-semibold text-xl transition-all duration-300 group"
+                >
+                    <span class="mr-3 group-hover:animate-pulse">⚡</span>
+                    Enter Battlefield
+                    <span class="ml-3 group-hover:animate-pulse">⚔️</span>
+                </button>
+                
+                <div id="battle-status" class="text-center"></div>
+                
+                <!-- Deck Preview -->
+                <div id="deck-preview" class="hidden mt-6 p-4 bg-arena-surface/50 rounded-lg border border-arena-accent/20">
+                    <h3 class="font-semibold text-arena-accent mb-2">Deck Preview:</h3>
+                    <div id="deck-cards" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-40 overflow-y-auto"></div>
                 </div>
             </div>
         </div>
@@ -214,90 +180,20 @@
     </div>
 </div>
 
-<style>
-/* Player selection styles */
-#player-selector {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 0.5rem;
-}
-
-.player-btn {
-    flex: 1;
-    padding: 0.75rem;
-    border: 2px solid transparent;
-    border-radius: 0.375rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-}
-
-.player-btn.player1 {
-    background: rgba(34, 197, 94, 0.2);
-    color: rgb(34, 197, 94);
-    border-color: rgba(34, 197, 94, 0.3);
-}
-
-.player-btn.player1.active {
-    background: rgba(34, 197, 94, 0.4);
-    border-color: rgb(34, 197, 94);
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
-}
-
-.player-btn.player2 {
-    background: rgba(239, 68, 68, 0.2);
-    color: rgb(239, 68, 68);
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-.player-btn.player2.active {
-    background: rgba(239, 68, 68, 0.4);
-    border-color: rgb(239, 68, 68);
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
-}
-
-.player-btn.spectator {
-    background: rgba(147, 51, 234, 0.2);
-    color: rgb(147, 51, 234);
-    border-color: rgba(147, 51, 234, 0.3);
-}
-
-.player-btn.spectator.active {
-    background: rgba(147, 51, 234, 0.4);
-    border-color: rgb(147, 51, 234);
-    box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
-}
-</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Global player selection
-let selectedPlayer = 'player1';
+// Global variables
+let parsedDeck = null;
 
-function selectPlayer(playerType) {
-    selectedPlayer = playerType;
+// Main function for joining or creating battle
+async function joinOrCreateBattle() {
+    const gameId = document.getElementById('gameId').value.trim();
+    const decklistText = document.getElementById('decklistText').value.trim();
+    const statusDiv = document.getElementById('battle-status');
     
-    // Update button states
-    document.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.player-btn.${playerType}`).classList.add('active');
-    
-    // Update description
-    const descriptions = {
-        'player1': 'You will join as Player 1 - Master of the battlefield',
-        'player2': 'You will join as Player 2 - Challenger seeking victory',
-        'spectator': 'You will spectate - Observer of the magical duel'
-    };
-    document.getElementById('role-description').textContent = descriptions[playerType];
-}
-
-async function createGame() {
-    const gameId = document.getElementById('gameId').value;
-    const statusDiv = document.getElementById('create-status');
-    
+    // Validation
     if (!gameId) {
         statusDiv.innerHTML = `
             <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
@@ -307,34 +203,142 @@ async function createGame() {
         return;
     }
     
-    statusDiv.innerHTML = `
-        <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-            🔮 Forging battlefield...
-        </div>
-    `;
+    if (!decklistText) {
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                ⚠️ Please paste your decklist
+            </div>
+        `;
+        return;
+    }
     
     try {
-        const response = await fetch(`/api/v1/games?game_id=${gameId}`, {
-            method: 'POST'
+        // Step 1: Parse the deck first
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
+                🔍 Parsing your deck...
+            </div>
+        `;
+        
+        const deckResponse = await fetch('/api/v1/decks/parse', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                decklist_text: decklistText
+            })
         });
         
-        if (response.ok) {
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
-                    ✨ Battlefield forged! Entering as ${selectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + selectedPlayer.slice(-1)}...
-                </div>
-            `;
-            
-            setTimeout(() => {
-                window.location.href = `/game-interface/${gameId}?player=${selectedPlayer}`;
-            }, 1000);
-        } else {
+        if (!deckResponse.ok) {
+            const error = await deckResponse.json();
             statusDiv.innerHTML = `
                 <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                    ❌ Failed to forge battlefield
+                    ❌ Failed to parse deck: ${error.detail || 'Unknown error'}
+                </div>
+            `;
+            return;
+        }
+        
+        parsedDeck = await deckResponse.json();
+        
+        // Show deck preview
+        showDeckPreview(parsedDeck);
+        
+        // Step 2: Check if game exists
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
+                🎯 Checking battlefield status...
+            </div>
+        `;
+        
+        const gameCheckResponse = await fetch(`/api/v1/games/${gameId}`);
+        let playerRole = 'player1';
+        let actionText = 'Creating battlefield';
+        
+        if (gameCheckResponse.ok) {
+            // Game exists, join as player 2
+            const gameData = await gameCheckResponse.json();
+            if (gameData.players && gameData.players.length >= 2) {
+                statusDiv.innerHTML = `
+                    <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                        ⚠️ Battlefield is full (2 players already)
+                    </div>
+                `;
+                return;
+            }
+            playerRole = 'player2';
+            actionText = 'Joining battlefield as Player 2';
+        } else {
+            actionText = 'Creating battlefield as Player 1';
+        }
+        
+        // Step 3: Create/Join game with deck
+        statusDiv.innerHTML = `
+            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
+                ⚔️ ${actionText}...
+            </div>
+        `;
+        
+        let gameResponse;
+        if (playerRole === 'player2') {
+            // Join existing game
+            gameResponse = await fetch(`/api/v1/games/${gameId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    decklist_text: decklistText
+                })
+            });
+        } else {
+            // Create new game
+            gameResponse = await fetch(`/api/v1/games?game_id=${gameId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    decklist_text: decklistText
+                })
+            });
+        }
+        
+        if (gameResponse.ok) {
+            const gameData = await gameResponse.json();
+            
+            if (gameData.players && gameData.players.length < 2) {
+                // Waiting for second player
+                statusDiv.innerHTML = `
+                    <div class="arena-surface border border-yellow-500/50 text-yellow-400 px-4 py-2 rounded-lg mt-2">
+                        ⏳ Waiting for opponent to join the battlefield...
+                    </div>
+                `;
+                
+                // Poll for second player
+                waitForOpponent(gameId, playerRole);
+            } else {
+                // Both players ready, start game
+                statusDiv.innerHTML = `
+                    <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
+                        ✨ Both players ready! Starting the duel...
+                    </div>
+                `;
+                
+                setTimeout(() => {
+                    window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
+                }, 1500);
+            }
+        } else {
+            const error = await gameResponse.json();
+            statusDiv.innerHTML = `
+                <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
+                    ❌ ${error.detail || 'Failed to join battlefield'}
                 </div>
             `;
         }
+        
     } catch (error) {
         statusDiv.innerHTML = `
             <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
@@ -344,28 +348,63 @@ async function createGame() {
     }
 }
 
-async function joinGame() {
-    const gameId = document.getElementById('joinGameId').value;
-    const statusDiv = document.getElementById('join-status');
+// Show deck preview
+function showDeckPreview(deck) {
+    const previewDiv = document.getElementById('deck-preview');
+    const cardsDiv = document.getElementById('deck-cards');
     
-    if (!gameId) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                ⚠️ Please enter a battlefield ID
-            </div>
-        `;
-        return;
-    }
-    
-    statusDiv.innerHTML = `
-        <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-            ⚡ Entering battlefield as ${selectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + selectedPlayer.slice(-1)}...
+    cardsDiv.innerHTML = deck.cards.map(deckCard => `
+        <div class="flex justify-between items-center p-2 bg-arena-surface/30 rounded">
+            <span class="text-arena-text">${deckCard.quantity}x ${deckCard.card.name}</span>
+            <span class="text-arena-text-muted text-xs">${deckCard.card.mana_cost || 'No cost'}</span>
         </div>
-    `;
+    `).join('');
     
-    setTimeout(() => {
-        window.location.href = `/game-interface/${gameId}?player=${selectedPlayer}`;
-    }, 800);
+    previewDiv.classList.remove('hidden');
+}
+
+// Wait for opponent to join
+async function waitForOpponent(gameId, playerRole) {
+    const statusDiv = document.getElementById('battle-status');
+    let attempts = 0;
+    const maxAttempts = 60; // 60 seconds timeout
+    
+    const checkInterval = setInterval(async () => {
+        attempts++;
+        
+        try {
+            const response = await fetch(`/api/v1/games/${gameId}`);
+            if (response.ok) {
+                const gameData = await response.json();
+                
+                if (gameData.players && gameData.players.length >= 2) {
+                    clearInterval(checkInterval);
+                    
+                    statusDiv.innerHTML = `
+                        <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
+                            ⚔️ Opponent joined! Starting the duel...
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
+                    }, 1500);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking game status:', error);
+        }
+        
+        if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            statusDiv.innerHTML = `
+                <div class="arena-surface border border-yellow-500/50 text-yellow-400 px-4 py-2 rounded-lg mt-2">
+                    ⏰ Timeout waiting for opponent. You can still join manually.
+                    <br><a href="/game-interface/${gameId}?player=${playerRole}" class="text-arena-accent underline">Enter battlefield anyway</a>
+                </div>
+            `;
+        }
+    }, 1000);
 }
 
 async function searchCards() {
