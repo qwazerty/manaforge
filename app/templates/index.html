@@ -26,7 +26,7 @@
             </div>
             
             <!-- Quick Actions -->
-            <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 animate-slide-up">
+            <div class="max-w-2xl mx-auto animate-slide-up">
                 
                 <!-- Start Game Card -->
                 <div class="arena-card rounded-xl p-8 group">
@@ -43,25 +43,6 @@
                             class="arena-button w-full py-3 px-6 rounded-lg font-semibold text-lg transition-all duration-300 inline-block text-center"
                         >
                             <span class="mr-2">🎮</span>Create Game
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Card Search Card -->
-                <div class="arena-card rounded-xl p-8 group">
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-6 shadow-arena">
-                            <span class="text-3xl">📜</span>
-                        </div>
-                        <h2 class="font-magic text-2xl font-bold text-arena-accent mb-4">Explore the Multiverse</h2>
-                        <p class="text-arena-text-dim mb-6 leading-relaxed">
-                            Discover thousands of cards across Magic's rich history
-                        </p>
-                        <a 
-                            href="/cards"
-                            class="arena-button w-full py-3 px-6 rounded-lg font-semibold text-lg transition-all duration-300 inline-block text-center"
-                        >
-                            <span class="mr-2">🔍</span>Search Cards
                         </a>
                     </div>
                 </div>
@@ -87,13 +68,13 @@
                 <p class="text-arena-text-dim">Experience smooth, responsive gameplay with instant card interactions and live opponent updates.</p>
             </div>
             
-            <!-- Deck Building -->
+            <!-- Deck Import -->
             <div class="text-center p-6">
                 <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mx-auto mb-4 shadow-arena">
-                    <span class="text-xl">🃏</span>
+                    <span class="text-xl">📋</span>
                 </div>
-                <h3 class="font-magic text-xl font-semibold text-arena-accent mb-2">Deck Mastery</h3>
-                <p class="text-arena-text-dim">Build and customize decks with an extensive card database spanning Magic's entire history.</p>
+                <h3 class="font-magic text-xl font-semibold text-arena-accent mb-2">Deck Import</h3>
+                <p class="text-arena-text-dim">Import your favorite decks from text lists and jump straight into battle with your custom strategies.</p>
             </div>
             
             <!-- Community -->
@@ -111,8 +92,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Simple page interactivity - no complex HTMX handling needed
-console.log('ManaForge homepage loaded');
-</script>
+<script src="{{ url_for('static', path='js/index.js') }}"></script>
 {% endblock %}

@@ -42,7 +42,7 @@ app = FastAPI(
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="/app/app/static"), name="static")
 
 # Include routers
 app.include_router(router)
@@ -113,13 +113,4 @@ async def game_lobby(request: Request):
     return templates.TemplateResponse(
         "game_lobby.html",
         {"request": request, "title": "Game Lobby"}
-    )
-
-
-@app.get("/cards")
-async def cards_page(request: Request):
-    """Cards search page."""
-    return templates.TemplateResponse(
-        "cards.html",
-        {"request": request, "title": "Card Search"}
     )
