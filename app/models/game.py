@@ -51,11 +51,17 @@ class Card(BaseModel):
     image_url: Optional[str] = Field(default=None, description="Card image URL")
 
 
+class DeckCard(BaseModel):
+    """A card in a deck with quantity."""
+    card: Card = Field(..., description="The card")
+    quantity: int = Field(..., description="Number of copies in the deck")
+
+
 class Deck(BaseModel):
     """A Magic deck."""
     id: Optional[str] = Field(default=None, description="Deck ID")
     name: str = Field(..., description="Deck name")
-    cards: List[Dict[str, Any]] = Field(default_factory=list, description="Cards with quantities")
+    cards: List[DeckCard] = Field(default_factory=list, description="List of cards in the deck with quantities")
     format: str = Field(default="standard", description="Deck format")
     
 
