@@ -14,23 +14,24 @@ from app.api.websocket import websocket_router
 from app.services.card_service import CardService
 
 
-@asynccontextmanager
+# @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    # Startup
-    await connect_to_mongo()
+    pass
+    # # Startup
+    # await connect_to_mongo()
     
-    # Initialize sample data
-    database = await get_database()
-    if database is None:
-        raise ValueError("Failed to connect to the database.")
-    card_service = CardService(database)
-    await card_service.initialize_sample_data()
+    # # Initialize sample data
+    # database = await get_database()
+    # if database is None:
+    #     raise ValueError("Failed to connect to the database.")
+    # card_service = CardService(database)
+    # await card_service.initialize_sample_data()
     
-    yield
+    # yield
     
-    # Shutdown
-    await close_mongo_connection()
+    # # Shutdown
+    # await close_mongo_connection()
 
 
 # Create FastAPI app
@@ -38,7 +39,7 @@ app = FastAPI(
     title=settings.app_name,
     description="Magic The Gathering Online Platform",
     version="0.1.0",
-    lifespan=lifespan
+    # lifespan=lifespan
 )
 
 # Mount static files

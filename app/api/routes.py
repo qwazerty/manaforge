@@ -4,9 +4,7 @@ API routes for the ManaForge application.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
-from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.database import get_database
 from app.models.game import Card, Deck, DeckCard, GameState, GameAction
 from app.services.card_service import CardService
 from app.services.game_engine import SimpleGameEngine
@@ -17,9 +15,9 @@ router = APIRouter(prefix="/api/v1")
 game_engine = SimpleGameEngine()
 
 
-async def get_card_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> CardService:
+async def get_card_service() -> CardService:
     """Get card service dependency."""
-    return CardService(db)
+    return CardService()
 
 
 # Helper function to broadcast game updates via WebSocket
@@ -86,53 +84,46 @@ async def create_game(
         # Create game with just player 1, waiting for player 2
         game_state = game_engine.create_game_player1(game_id, deck1)
     else:
-        # Create test decks with database cards (legacy support)
-        deck1_deck_cards = []
-        for card, quantity in [
-            (await card_service.get_card_by_id("lightning_bolt"), 4),
-            (await card_service.get_card_by_id("grizzly_bears"), 4),
-            (await card_service.get_card_by_id("mountain"), 12),
-            (await card_service.get_card_by_id("forest"), 12)
-        ]:
-            if card:
-                deck1_deck_cards.append(DeckCard(card=card, quantity=quantity))
-        
-        deck2_deck_cards = []
-        for card, quantity in [
-            (await card_service.get_card_by_id("arena_of_glory"), 1),
-            (await card_service.get_card_by_id("arid_mesa"), 4),
-            (await card_service.get_card_by_id("blood_crypt"), 1),
-            (await card_service.get_card_by_id("consign_to_memory"), 1),
-            (await card_service.get_card_by_id("flooded_strand"), 4),
-            (await card_service.get_card_by_id("leyline_binding"), 4),
-            (await card_service.get_card_by_id("leyline_of_the_guildpact"), 4),
-            (await card_service.get_card_by_id("lightning_bolt"), 4),
-            (await card_service.get_card_by_id("mountain"), 1),
-            (await card_service.get_card_by_id("phlage_titan_of_fires_fury"), 3),
-            (await card_service.get_card_by_id("plains"), 1),
-            (await card_service.get_card_by_id("psychic_frog"), 3),
-            (await card_service.get_card_by_id("ragavan_nimble_pilferer"), 3),
-            (await card_service.get_card_by_id("raucous_theater"), 1),
-            (await card_service.get_card_by_id("sacred_foundry"), 1),
-            (await card_service.get_card_by_id("scion_of_draco"), 4),
-            (await card_service.get_card_by_id("sparas_headquarters"), 1),
-            (await card_service.get_card_by_id("steam_vents"), 1),
-            (await card_service.get_card_by_id("stubborn_denial"), 3),
-            (await card_service.get_card_by_id("temple_garden"), 1),
-            (await card_service.get_card_by_id("territorial_kavu"), 4),
-            (await card_service.get_card_by_id("tribal_flames"), 3),
-            (await card_service.get_card_by_id("winternight_stories"), 2),
-            (await card_service.get_card_by_id("wooded_foothills"), 4),
-            (await card_service.get_card_by_id("xanders_lounge"), 1)
-        ]:
-            if card:
-                deck2_deck_cards.append(DeckCard(card=card, quantity=quantity))
-        
-        deck1 = Deck(name="Red-Green Deck", cards=deck1_deck_cards)
-        deck2 = Deck(name="Blue-White Deck", cards=deck2_deck_cards)
-        
-        # Create full game with both players (legacy mode)
-        game_state = game_engine.create_game(game_id, deck1, deck2)
+        # Create test decks with Scryfall API cards
+        try:
+            # Create deck 1 with basic cards
+            deck1_cards = []
+            for card_name, quantity in [
+                ("Lightning Bolt", 4),
+                ("Grizzly Bears", 4),
+                ("Mountain", 12),
+                ("Forest", 12)
+            ]:
+                card = await card_service.get_card_by_name(card_name)
+                if card:
+                    deck1_cards.append(DeckCard(card=card, quantity=quantity))
+            
+            # Create deck 2 with more complex cards
+            deck2_cards = []
+            for card_name, quantity in [
+                ("Lightning Bolt", 4),
+                ("Counterspell", 4),
+                ("Serra Angel", 3),
+                ("Island", 10),
+                ("Mountain", 10),
+                ("Plains", 9)
+            ]:
+                card = await card_service.get_card_by_name(card_name)
+                if card:
+                    deck2_cards.append(DeckCard(card=card, quantity=quantity))
+            
+            deck1 = Deck(name="Red-Green Deck", cards=deck1_cards)
+            deck2 = Deck(name="Blue-White-Red Deck", cards=deck2_cards)
+            
+            # Create full game with both players (legacy mode)
+            game_state = game_engine.create_game(game_id, deck1, deck2)
+            
+        except Exception as e:
+            print(f"Error creating sample decks: {e}")
+            # Fallback to minimal deck if Scryfall fails
+            deck1 = Deck(name="Basic Red Deck", cards=[])
+            deck2 = Deck(name="Basic Blue Deck", cards=[])
+            game_state = game_engine.create_game(game_id, deck1, deck2)
     
     return game_state
 
@@ -296,14 +287,10 @@ async def parse_decklist(
 
 @router.get("/decks/{deck_id}")
 async def get_deck(
-    deck_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    deck_id: str
 ) -> Deck:
-    """Get a deck by ID."""
-    deck_data = await db.decks.find_one({"id": deck_id})
-    if not deck_data:
-        raise HTTPException(status_code=404, detail="Deck not found")
-    return Deck(**deck_data)
+    """Get a deck by ID - Note: This endpoint is deprecated without database."""
+    raise HTTPException(status_code=501, detail="Deck storage not implemented without database")
 
 
 @router.post("/games/{game_id}/join")

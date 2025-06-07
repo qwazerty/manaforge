@@ -1,76 +1,66 @@
 """
-Card service for managing Magic cards database.
+Card service for managing Magic cards via Scryfall API.
 """
 
 import re
 import aiohttp
 from typing import List, Optional, Dict, Any
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
 
 
 class CardService:
-    """Service for managing Magic cards."""
+    """Service for managing Magic cards via Scryfall API."""
     
-    def __init__(self, database: AsyncIOMotorDatabase):
-        self.db = database
-        self.collection = database.cards
+    def __init__(self):
+        """Initialize the CardService without database dependency."""
+        pass
     
     async def get_card(self, card_id: str) -> Optional[Card]:
-        """Get a card by ID."""
-        card_data = await self.collection.find_one({"id": card_id})
-        if card_data:
-            return Card(**card_data)
-        return None
+        """Get a card by ID using Scryfall API."""
+        # Convert card_id back to card name (reverse the transformation)
+        card_name = card_id.replace("_", " ").title()
+        return await self.get_card_by_name(card_name)
     
     async def get_card_by_id(self, card_id: str) -> Optional[Card]:
         """Get a card by ID (alias for get_card)."""
         return await self.get_card(card_id)
     
+    async def get_card_by_name(self, card_name: str) -> Optional[Card]:
+        """Get a card by exact name using Scryfall API."""
+        card_data = await self.get_card_data_from_scryfall(card_name)
+        if card_data:
+            return Card(**card_data)
+        return None
+    
     async def search_cards(self, query: str, limit: int = 20) -> List[Card]:
-        """Search cards by name."""
-        cursor = self.collection.find(
-            {"name": {"$regex": query, "$options": "i"}},
-            limit=limit
-        )
-        cards = []
-        async for card_data in cursor:
-            cards.append(Card(**card_data))
-        return cards
-    
-    async def get_cards_by_type(self, card_type: CardType) -> List[Card]:
-        """Get cards by type."""
-        cursor = self.collection.find({"card_type": card_type})
-        cards = []
-        async for card_data in cursor:
-            cards.append(Card(**card_data))
-        return cards
-    
-    async def get_card_image_url(self, card_name: str) -> Optional[str]:
-        """Get Scryfall image URL for a card."""
-        # Format the card name for Scryfall API
-        formatted_name = card_name.lower().replace(" ", "+").replace("'", "").replace(",", "")
-        
-        # Scryfall API endpoint for card images
-        scryfall_url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
+        """Search cards by name using Scryfall API."""
+        if not query.strip():
+            return []
         
         try:
-            import aiohttp
+            # Format query for Scryfall search API
+            formatted_query = query.replace(" ", "+")
+            scryfall_url = f"https://api.scryfall.com/cards/search?q={formatted_query}&unique=cards&order=name"
+            
             async with aiohttp.ClientSession() as session:
                 async with session.get(scryfall_url) as response:
                     if response.status == 200:
                         data = await response.json()
-                        # Return the normal resolution image URL
-                        if "image_uris" in data and "normal" in data["image_uris"]:
-                            return data["image_uris"]["normal"]
-                        elif "card_faces" in data and len(data["card_faces"]) > 0:
-                            # Handle double-faced cards
-                            return data["card_faces"][0].get("image_uris", {}).get("normal")
+                        cards = []
+                        
+                        # Process search results
+                        card_data_list = data.get("data", [])[:limit]
+                        for scryfall_card in card_data_list:
+                            card_data = self._parse_scryfall_card(scryfall_card)
+                            if card_data:
+                                cards.append(Card(**card_data))
+                        
+                        return cards
         except Exception as e:
-            print(f"Error fetching image for {card_name}: {e}")
+            print(f"Error searching cards: {e}")
         
-        return None
-
+        return []
+    
     async def get_card_data_from_scryfall(self, card_name: str) -> Optional[Dict[str, Any]]:
         """Get complete card data from Scryfall API."""
         # Format the card name for Scryfall API
@@ -80,7 +70,6 @@ class CardService:
         scryfall_url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
         
         try:
-            import aiohttp
             async with aiohttp.ClientSession() as session:
                 async with session.get(scryfall_url) as response:
                     if response.status == 200:
@@ -90,7 +79,7 @@ class CardService:
             print(f"Error fetching card data for {card_name}: {e}")
         
         return None
-
+    
     def _parse_scryfall_card(self, scryfall_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse Scryfall card data into our Card model format."""
         # Map Scryfall type line to our CardType enum
@@ -111,7 +100,7 @@ class CardService:
             card_type = CardType.LAND
         elif "creature" in type_line:
             card_type = CardType.CREATURE
-
+        
         # Extract subtype (everything after the dash)
         subtype = ""
         if "—" in scryfall_data.get("type_line", ""):
@@ -133,7 +122,7 @@ class CardService:
                 colors.append(Color.RED)
             elif color == "G":
                 colors.append(Color.GREEN)
-
+        
         # Map rarity
         rarity = Rarity.COMMON
         scryfall_rarity = scryfall_data.get("rarity", "common")
@@ -169,68 +158,6 @@ class CardService:
             "rarity": rarity,
             "image_url": image_url
         }
-    
-    async def initialize_sample_data(self) -> None:
-        """Initialize database with sample cards fetched from Scryfall API."""
-        
-        print("🔄 Initializing sample card data from Scryfall API...")
-        
-        # List of card names to fetch from Scryfall
-        sample_card_names = [
-            "Lightning Bolt",
-            "Grizzly Bears",
-            "Counterspell",
-            "Serra Angel",
-            "Dark Ritual",
-            "Mountain",
-            "Forest",
-            "Island",
-            "Plains",
-            "Swamp",
-            "Arena of Glory",
-            "Arid Mesa",
-            "Blood Crypt",
-            "Consign to Memory",
-            "Flooded Strand",
-            "Leyline Binding",
-            "Leyline of the Guildpact",
-            "Phlage, Titan of Fire's Fury",
-            "Psychic Frog",
-            "Ragavan, Nimble Pilferer",
-            "Raucous Theater",
-            "Sacred Foundry",
-            "Scion of Draco",
-            "Spara's Headquarters",
-            "Steam Vents",
-            "Stubborn Denial",
-            "Temple Garden",
-            "Territorial Kavu",
-            "Tribal Flames",
-            "Winternight Stories",
-            "Wooded Foothills",
-            "Xander's Lounge"
-        ]
-        
-        # Fetch card data from Scryfall
-        sample_cards = []
-        for card_name in sample_card_names:
-            print(f"📡 Fetching {card_name}...")
-            card_data = await self.get_card_data_from_scryfall(card_name)
-            if card_data:
-                sample_cards.append(card_data)
-                print(f"✅ {card_name}: Success")
-            else:
-                print(f"❌ {card_name}: Failed to fetch")
-        
-        # Use upsert to update existing cards or insert new ones
-        for card in sample_cards:
-            await self.collection.replace_one(
-                {"id": card["id"]}, 
-                card, 
-                upsert=True
-            )
-        
-        print(f"✅ Successfully upserted {len(sample_cards)} cards from Scryfall API")
     
     async def parse_decklist(self, decklist_text: str) -> Deck:
         """Parse a decklist in text format and create a Deck object."""
@@ -270,8 +197,5 @@ class CardService:
         # Create and return the Deck object
         deck_id = deck_name.lower().replace(" ", "_").replace("'", "").replace(",", "").replace("-", "_")
         deck = Deck(id=deck_id, name=deck_name, cards=deck_cards)
-        
-        # Upsert the deck into the database
-        await self.db.decks.replace_one({"id": deck_id}, deck.dict(), upsert=True)
         
         return deck
