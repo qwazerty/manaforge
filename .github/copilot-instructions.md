@@ -50,14 +50,8 @@ Architecture modulaire pour ajouter de futurs modes (Modern, Draft, Sealed).
 
 ## Moteur de règles
 
-XMage, exécuté comme micro-service indépendant, couplé à un backend Python via une API REST/gRPC.
-
-Justifications
-
-* Complétude : XMage est sans équivalent open source en termes de couverture des règles MTG (y compris dernières extensions, nouvelles mécaniques).
-* Maturité et communauté : des correctifs et des mises à jour régulières, un code éprouvé sur des milliers de parties en ligne.
-* Architecture micro-service : en faisant tourner XMage dans un conteneur Java séparé, on isole la partie moteur et on contourne la contrainte GPL – l'application finale peut rester sous licence MIT/Apache, à condition que le service XMage soit distinct et qu'on ne redistribue pas directement son code ; en déréférençant strictement le binaire XMage comme dépendance externe, on évite de lier notre code à la GPL.
-* Performances : Java offre de bonnes performances pour le calcul des règles, et exposer via gRPC permet de rester rapide (RPC internes en cluster).
+Pas de moteur de règles.
+Permettre uniquement les interactions de base (jouer une carte, lancer un sort, attaquer, bloquer, etc.) sans gestion des règles complexes.
 
 ## Bases de données de cartes open source
 
