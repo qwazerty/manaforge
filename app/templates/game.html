@@ -101,8 +101,14 @@
     </div>
 </div>
 
-<!-- External JavaScript for game logic -->
-<script src="{{ url_for('static', path='js/game.js') }}"></script>
+<!-- External JavaScript modules for game logic -->
+<script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-ui.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-socket.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-actions.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-core.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-main.js') }}"></script>
 
 <!-- Initialize game with server data -->
 <script>
@@ -112,7 +118,6 @@ window.gameData = {
     gameId: '{{ game.id }}'
 };
 
-// The game will be initialized automatically by game.js
-// No need for an extra initialization here
+// The game will be initialized automatically by game-main.js
 </script>
 {% endblock %}
