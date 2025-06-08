@@ -332,3 +332,75 @@ async def join_game(
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error joining game: {str(e)}")
+
+
+@router.post("/games/{game_id}/resolve-stack")
+async def resolve_stack(game_id: str, request: Optional[dict] = None) -> dict:
+    """Resolve the top spell on the stack."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if request and "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the priority_player from GameState
+        player_id = f"player{current_state.priority_player}"
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="resolve_stack"
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "resolve_stack",
+            "player": player_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/games/{game_id}/pass-priority")
+async def pass_priority(game_id: str, request: Optional[dict] = None) -> dict:
+    """Pass priority to the other player."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if request and "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the priority_player from GameState
+        player_id = f"player{current_state.priority_player}"
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="pass_priority"
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "pass_priority",
+            "player": player_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}

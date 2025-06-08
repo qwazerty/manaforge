@@ -29,6 +29,7 @@ function initializeGame() {
     updateRoleDisplay();
     
     // Generate dynamic content
+    generateStackArea();
     generateGameBoard();
     generateActionPanel();
     
@@ -193,6 +194,7 @@ function handleWebSocketMessage(message) {
             const newGameState = message.game_state;
             if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
                 gameState = newGameState;
+                generateStackArea();
                 generateGameBoard();
                 generateActionPanel();
                 
@@ -280,6 +282,7 @@ async function refreshGameData() {
             
             if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
                 gameState = newGameState;
+                generateStackArea();
                 generateGameBoard();
                 generateActionPanel();
                 showAutoRefreshIndicator('🔄 HTTP Update');
@@ -333,6 +336,105 @@ function updateRoleDisplay() {
     roleDisplay.className = `px-4 py-3 rounded-lg border-2 mb-3 ${role.class}`;
     roleDisplay.textContent = role.title;
     roleDescription.textContent = role.description;
+}
+
+function generateStackArea() {
+    const stackContainer = document.getElementById('stack-area');
+    if (!stackContainer || !gameState) {
+        console.warn('Stack area container or game state not found');
+        return;
+    }
+
+    try {
+        const stack = gameState.stack || [];
+        
+        stackContainer.innerHTML = `
+            <div class="stack-container">
+                <div class="stack-header">
+                    📜 The Stack (${stack.length})
+                </div>
+                <div class="stack-content">
+                    ${stack.length > 0 ? 
+                        stack.map((spell, index) => {
+                            const spellType = spell.card_type || spell.type || 'ability';
+                            const spellClass = spellType.includes('instant') ? 'stack-spell-instant' : 
+                                             spellType.includes('sorcery') ? 'stack-spell-sorcery' : 
+                                             'stack-spell-ability';
+                            
+                            // Use image URL if available and valid, otherwise show text-based fallback
+                            const imageUrl = getSafeImageUrl(spell);
+                            const cardName = spell.name || spell.card_name || 'Unknown Spell';
+                            const playerNumber = (spell.player_id || '1').replace('player', '');
+                            
+                            // Escape card name for safe injection in JavaScript
+                            const escapedCardName = escapeJavaScript(cardName);
+                            const escapedImageUrl = escapeJavaScript(imageUrl || '');
+                            
+                            // Debug logging for stack cards
+                            debugCardImage(cardName, imageUrl, 'stack');
+                            
+                            return `
+                                <div class="stack-spell ${spellClass}" data-stack-index="${index}" title="${cardName} - Cast by Player ${playerNumber}">
+                                    <div class="stack-card-container">
+                                        ${imageUrl ? `
+                                            <div class="relative">
+                                                <img src="${imageUrl}" 
+                                                     alt="${cardName}"
+                                                     class="stack-card-image"
+                                                     loading="lazy"
+                                                     style="opacity: 0; transition: opacity 0.3s ease;"
+                                                     onload="console.log('✅ Stack image loaded:', '${escapedCardName}'); this.style.opacity='1'; this.nextElementSibling.style.display='none';"
+                                                     onerror="console.log('❌ Stack image failed:', '${escapedCardName}', '${escapedImageUrl}'); this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                                />
+                                                <!-- Fallback content if image fails to load -->
+                                                <div class="stack-card-fallback" style="display: flex;">
+                                                    <div class="stack-spell-name">${cardName}</div>
+                                                    ${spell.mana_cost ? `<div class="stack-spell-mana">${spell.mana_cost}</div>` : ''}
+                                                </div>
+                                            </div>
+                                        ` : `
+                                            <!-- Text-based fallback when no image URL is available -->
+                                            <div class="stack-card-fallback">
+                                                <div class="stack-spell-name">${cardName}</div>
+                                                ${spell.mana_cost ? `<div class="stack-spell-mana">${spell.mana_cost}</div>` : ''}
+                                            </div>
+                                        `}
+                                        <!-- Player indicator overlay -->
+                                        <div class="stack-player-indicator">
+                                            P${playerNumber}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).reverse().join('') // Reverse to show most recent spells on top
+                        : 
+                        `<div class="stack-empty">
+                            <div style="font-size: 24px; margin-bottom: 8px;">📚</div>
+                            <div>The stack is empty</div>
+                            <div style="font-size: 10px; margin-top: 4px; color: rgba(201, 170, 113, 0.4);">
+                                Spells and abilities will appear here
+                            </div>
+                        </div>`
+                    }
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error generating stack area:', error);
+        stackContainer.innerHTML = `
+            <div class="stack-container">
+                <div class="stack-header">
+                    📜 The Stack
+                </div>
+                <div class="stack-content">
+                    <div class="stack-empty" style="color: #ef4444;">
+                        ⚠️ Error loading stack
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function generateGameBoard() {
@@ -430,19 +532,6 @@ function generateGameBoard() {
             <div class="arena-card rounded-xl p-6 mb-6">
                 <div class="text-center">
                     <h3 class="font-magic text-xl font-bold text-arena-accent mb-4">🏟️ The Battlefield</h3>
-                    <!-- Stack -->
-                    ${gameState.stack && gameState.stack.length > 0 ? `
-                        <div class="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-4">
-                            <h4 class="text-yellow-300 font-semibold mb-2">📜 The Stack</h4>
-                            <div class="space-y-2">
-                                ${gameState.stack.map(spell => `
-                                    <div class="bg-arena-surface rounded p-2 text-sm">
-                                        ${spell.name || 'Unknown Spell'}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
                     <!-- Game Info -->
                     <div class="grid grid-cols-3 gap-4 text-center">
                         <div class="bg-yellow-500/20 rounded-lg p-3">
@@ -514,7 +603,8 @@ function generateGameBoard() {
                     <div class="flex flex-wrap gap-2 justify-center">
                         ${(players[controlledIdx]?.hand || []).map((card, index) => {
                             const cardHtml = renderCardWithLoadingState(card, 'card-mini', false);
-                            return `<div onclick="playCardFromHand('${card.id || card.name}', ${index})">${cardHtml}</div>`;
+                            const escapedCardId = escapeJavaScript(card.id || card.name);
+                            return `<div onclick="playCardFromHand('${escapedCardId}', ${index})">${cardHtml}</div>`;
                         }).join('') || '<div class="text-arena-text-dim text-center py-4">No cards in hand</div>'}
                     </div>
                 </div>
@@ -660,16 +750,50 @@ function playCardFromHand(cardId, handIndex) {
     });
 }
 
+function showCardPreview(cardId, cardName, imageUrl) {
+    // For now, just log the card details
+    console.log(`📋 Card Preview: ${cardName} (ID: ${cardId})`);
+    if (imageUrl) {
+        console.log(`🖼️ Image: ${imageUrl}`);
+    }
+    // TODO: Implement actual card preview modal or tooltip
+}
+
+// ===== UTILITY FUNCTIONS =====
+function escapeJavaScript(str) {
+    if (!str) return '';
+    return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
+function getSafeImageUrl(card) {
+    if (!card || !card.image_url) return null;
+    // Avoid problematic URLs like card backs
+    if (card.image_url.includes("/back/")) return null;
+    return card.image_url;
+}
+
+function debugCardImage(cardName, imageUrl, context) {
+    console.log(`🃏 [${context}] Card: ${cardName}`);
+    console.log(`Image URL: ${imageUrl || 'none'}`);
+    console.log(`Valid: ${!!imageUrl}`);
+}
+
 // ===== CARD RENDERING FUNCTIONS =====
 function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip = true) {
     const cardId = card.id || card.name;
     const cardName = card.name || 'Unknown';
-    const imageUrl = card.image_url;
+    // Validate image URL - avoid problematic URLs
+    const imageUrl = getSafeImageUrl(card);
+    
+    // Escape values for safe JavaScript injection
+    const escapedCardId = escapeJavaScript(cardId);
+    const escapedCardName = escapeJavaScript(cardName);
+    const escapedImageUrl = escapeJavaScript(imageUrl || '');
     
     return `
         <div class="${cardClass}" 
              data-card-id="${cardId}"
-             ${showTooltip ? `onclick="showCardPreview('${cardId}', '${cardName}', '${imageUrl || ''}')"` : ''}>
+             ${showTooltip ? `onclick="showCardPreview('${escapedCardId}', '${escapedCardName}', '${escapedImageUrl}')"` : ''}>
             ${imageUrl ? `
                 <div class="relative">
                     <img src="${imageUrl}" 
@@ -706,6 +830,9 @@ function showCardPreview(cardId, cardName, imageUrl) {
         existingPreview.remove();
     }
     
+    // Validate image URL - avoid problematic URLs
+    const validImageUrl = imageUrl && !imageUrl.includes("/back/") ? imageUrl : null;
+    
     // Create preview modal
     const preview = document.createElement('div');
     preview.id = 'card-preview-modal';
@@ -718,8 +845,8 @@ function showCardPreview(cardId, cardName, imageUrl) {
     
     preview.innerHTML = `
         <div class="text-center">
-            ${imageUrl ? `
-                <img src="${imageUrl}" 
+            ${validImageUrl ? `
+                <img src="${validImageUrl}" 
                      alt="${cardName}" 
                      class="card-preview-image"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">

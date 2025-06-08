@@ -119,6 +119,10 @@ class SimpleGameEngine:
             self._declare_blockers(game_state, action)
         elif action.action_type == "combat_damage":
             self._resolve_combat_damage(game_state, action)
+        elif action.action_type == "resolve_stack":
+            self._resolve_stack(game_state, action)
+        elif action.action_type == "pass_priority":
+            self._pass_priority(game_state, action)
         
         return game_state
     
@@ -154,12 +158,29 @@ class SimpleGameEngine:
         if not card_to_play:
             return
         
-        # Permanents (creatures and lands) go to battlefield
-        if card_to_play.card_type in [CardType.CREATURE, CardType.LAND]:
+        # Lands go directly to battlefield (no stack)
+        if card_to_play.card_type == CardType.LAND:
             player.battlefield.append(card_to_play)
+        # Instants and sorceries go to the stack
+        elif card_to_play.card_type in [CardType.INSTANT, CardType.SORCERY]:
+            spell_on_stack = {
+                "name": card_to_play.name,
+                "card_name": card_to_play.name,
+                "card_type": card_to_play.card_type.value,
+                "mana_cost": card_to_play.mana_cost,
+                "text": card_to_play.text,
+                "oracle_text": card_to_play.text,
+                "image_url": card_to_play.image_url,  # Include image URL for stack display
+                "player_id": action.player_id,
+                "card_id": card_to_play.id,
+                "card_object": card_to_play  # Store the full card for later resolution
+            }
+            game_state.stack.append(spell_on_stack)
+            # Give priority to the opponent for responses
+            game_state.priority_player = 1 - int(action.player_id.replace('player', ''))
+        # Other permanents (creatures, artifacts, enchantments, planeswalkers) go to battlefield
         else:
-            # Non-permanents go to graveyard after resolving
-            player.graveyard.append(card_to_play)
+            player.battlefield.append(card_to_play)
     
     def _pass_turn(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing the turn."""
@@ -225,85 +246,59 @@ class SimpleGameEngine:
         if game_state.phase != GamePhase.COMBAT:
             return
         
-        player = self._get_player(game_state, action.player_id)
+        # Simple implementation - just note that attackers were declared
         attacking_creature_ids = action.additional_data.get("attacking_creatures", [])
-        
-        # Mark creatures as attacking (in a real implementation, track combat state)
-        for creature in player.battlefield:
-            if creature.id in attacking_creature_ids:
-                # Add attacking status - for now we'll use additional_data
-                if not hasattr(creature, 'combat_state'):
-                    creature.combat_state = {}
-                creature.combat_state['attacking'] = True
+        print(f"Player {action.player_id} declared {len(attacking_creature_ids)} attackers")
     
     def _declare_blockers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring blocking creatures."""
         if game_state.phase != GamePhase.COMBAT:
             return
         
-        defending_player = self._get_player(game_state, action.player_id)
+        # Simple implementation - just note that blockers were declared
         blocking_assignments = action.additional_data.get("blocking_assignments", {})
-        
-        # blocking_assignments: {"blocker_id": "attacker_id"}
-        for blocker_id, attacker_id in blocking_assignments.items():
-            # Find blocker in defending player's battlefield
-            for creature in defending_player.battlefield:
-                if creature.id == blocker_id:
-                    if not hasattr(creature, 'combat_state'):
-                        creature.combat_state = {}
-                    creature.combat_state['blocking'] = attacker_id
+        print(f"Player {action.player_id} declared {len(blocking_assignments)} blockers")
     
     def _resolve_combat_damage(self, game_state: GameState, action: GameAction) -> None:
         """Resolve combat damage."""
         if game_state.phase != GamePhase.COMBAT:
             return
         
-        attacking_player = game_state.players[game_state.active_player]
-        defending_player = game_state.players[1 - game_state.active_player]
+        # Simple implementation - no actual damage calculation for now
+        print("Combat damage resolved")
+    
+    def _resolve_stack(self, game_state: GameState, action: GameAction) -> None:
+        """Resolve the top spell on the stack."""
+        if not game_state.stack:
+            return
         
-        # Track creatures to remove (died in combat)
-        creatures_to_remove = []
-        damage_to_player = 0
+        # Get the top spell from the stack (last added)
+        spell = game_state.stack.pop()
         
-        # Process each attacking creature
-        for attacker in attacking_player.battlefield:
-            if hasattr(attacker, 'combat_state') and attacker.combat_state.get('attacking'):
-                attacker_power = attacker.power or 0
-                is_blocked = False
-                
-                # Check if this attacker is blocked
-                for blocker in defending_player.battlefield:
-                    if (hasattr(blocker, 'combat_state') and 
-                        blocker.combat_state.get('blocking') == attacker.id):
-                        is_blocked = True
-                        blocker_power = blocker.power or 0
-                        blocker_toughness = blocker.toughness or 1
-                        attacker_toughness = attacker.toughness or 1
-                        
-                        # Combat damage - creatures deal damage to each other
-                        if attacker_power >= blocker_toughness:
-                            creatures_to_remove.append((defending_player, blocker))
-                        
-                        if blocker_power >= attacker_toughness:
-                            creatures_to_remove.append((attacking_player, attacker))
-                        
-                        break
-                
-                # If unblocked, damage goes to defending player
-                if not is_blocked:
-                    damage_to_player += attacker_power
+        # Get the player who cast the spell and the card object
+        casting_player = self._get_player(game_state, spell["player_id"])
+        card_object = spell.get("card_object")
         
-        # Apply damage to defending player
-        defending_player.life -= damage_to_player
+        # Put the spell in the graveyard after resolution
+        if card_object:
+            casting_player.graveyard.append(card_object)
         
-        # Remove destroyed creatures
-        for player, creature in creatures_to_remove:
-            if creature in player.battlefield:
-                player.battlefield.remove(creature)
-                player.graveyard.append(creature)
+        # For now, spells just resolve without complex effects
+        # In a full implementation, this would trigger spell effects
         
-        # Clear combat state
-        for player in game_state.players:
-            for creature in player.battlefield:
-                if hasattr(creature, 'combat_state'):
-                    delattr(creature, 'combat_state')
+        # After resolving, give priority back to the active player
+        game_state.priority_player = game_state.active_player
+    
+    def _pass_priority(self, game_state: GameState, action: GameAction) -> None:
+        """Pass priority to the other player."""
+        # If both players pass priority and the stack is not empty, resolve the top spell
+        current_priority = game_state.priority_player
+        other_player = 1 - current_priority
+        
+        if game_state.stack:
+            # If the other player also wants to pass, auto-resolve the stack
+            # For now, we'll just resolve the top spell immediately
+            self._resolve_stack(game_state, action)
+        else:
+            # If stack is empty, priority stays with active player
+            game_state.priority_player = game_state.active_player

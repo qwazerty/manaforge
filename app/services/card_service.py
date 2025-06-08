@@ -133,13 +133,22 @@ class CardService:
         elif scryfall_rarity == "mythic":
             rarity = Rarity.MYTHIC
 
-        # Get image URL
+        # Get image URL with improved validation
         image_url = None
         if "image_uris" in scryfall_data and "normal" in scryfall_data["image_uris"]:
-            image_url = scryfall_data["image_uris"]["normal"]
+            potential_url = scryfall_data["image_uris"]["normal"]
+            # Validate the URL doesn't contain problematic paths
+            if potential_url and "/back/" not in potential_url:
+                image_url = potential_url
         elif "card_faces" in scryfall_data and len(scryfall_data["card_faces"]) > 0:
-            # Handle double-faced cards
-            image_url = scryfall_data["card_faces"][0].get("image_uris", {}).get("normal")
+            # Handle double-faced cards - prefer the front face
+            for face in scryfall_data["card_faces"]:
+                if "image_uris" in face and "normal" in face["image_uris"]:
+                    potential_url = face["image_uris"]["normal"]
+                    # Validate the URL doesn't contain problematic paths
+                    if potential_url and "/back/" not in potential_url:
+                        image_url = potential_url
+                        break
 
         # Create unique ID from name
         card_id = scryfall_data["name"].lower().replace(" ", "_").replace("'", "").replace(",", "").replace("-", "_")
