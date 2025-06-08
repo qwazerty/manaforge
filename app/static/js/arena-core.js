@@ -80,26 +80,14 @@ function sendGameAction(action, cardId = null, extraData = {}) {
     }
 }
 
+// Function removed - now using UINotifications module for consistent notification system
 function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-20 right-4 px-6 py-3 rounded-lg shadow-arena z-50 animate-slide-up`;
-    
-    const colors = {
-        'success': 'bg-arena-surface border border-green-500 text-green-400',
-        'error': 'bg-arena-surface border border-red-500 text-red-400',
-        'warning': 'bg-arena-surface border border-yellow-500 text-yellow-400',
-        'info': 'bg-arena-surface border border-arena-accent text-arena-accent'
-    };
-    
-    notification.className += ` ${colors[type] || colors.info}`;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    // Fallback to UINotifications if available, otherwise console log
+    if (typeof UINotifications !== 'undefined') {
+        UINotifications.showNotification(message, type);
+    } else {
+        console.log(`[${type}] ${message}`);
+    }
 }
 
 function showGameAction(player, action, card = null) {

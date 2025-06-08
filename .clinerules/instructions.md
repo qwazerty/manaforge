@@ -169,10 +169,23 @@ Mise à jour de la base de cartes (cron quotidien ou hebdomadaire) :
 
 ### Tests
 
-Pour valider le fonctionnement, tu n'as pas besoin de relancer l'applications. Quand tu test du HTML, JS ou CSS tu peux utiliser des appels curl directement.
+Pour valider le fonctionnement, tu n'as PAS besoin de relancer l'applications. Quand tu test du HTML, JS ou CSS tu peux utiliser des appels curl directement.
 Tu peux également utiliser le MCP Browser Extension.
 Tu as un script à la racine `./test_game_creation.sh` qui test la principale boucle de jeu. Inspire toi de ça pour les analyses si besoin.
 Si tu as une erreur 5XX, tu peux consulter les logs avec `docker compose logs`.
+
+### Restrictions sur les actions automatiques
+
+**INTERDICTIONS STRICTES :**
+* **NE PAS créer automatiquement** de fichiers de tests (.py dans tests/) sans demande explicite
+* **NE PAS créer automatiquement** de fichiers de documentation (.md) sans demande explicite
+* **NE PAS relancer automatiquement** l'application avec `docker compose up/down/restart` sans demande explicite
+
+**Comportement attendu :**
+* Modifier uniquement les fichiers existants demandés
+* Utiliser les outils de test existants (`./test_game_creation.sh`, `curl`) uniquement si demandé
+* Demander la permission avant toute création de fichier ou action de déploiement
+* Se concentrer sur les modifications de code spécifiques demandées
 
 ### Modularité & évolutivité
 
