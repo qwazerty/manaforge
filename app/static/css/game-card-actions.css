@@ -81,8 +81,8 @@
     letter-spacing: 1px;
 }
 
-/* Deck cards show DRAW action */
-.deck-cards-stack:hover::after {
+/* Deck cards show DRAW action - only for player deck */
+.deck-cards-stack:not(.opponent-deck):hover::after {
     content: "DRAW";
     position: absolute;
     top: 50%;

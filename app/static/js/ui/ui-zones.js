@@ -35,7 +35,7 @@ class UIZones {
             return UIUtils.generateCardLayer(null, index, transforms);
         }).join('');
 
-        // For opponent, don't show clickable overlay since they can't draw from opponent's deck
+        // For opponent, don't show clickable overlay or click handler since they can't draw from opponent's deck  
         const clickHandler = isOpponent ? '' : 'onclick="GameActions.drawCard()"';
         const clickOverlay = isOpponent ? '' : `
             <div class="deck-click-overlay">
