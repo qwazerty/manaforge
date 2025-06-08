@@ -133,16 +133,8 @@ class UITemplates {
                         <div class="text-2xl font-bold">${currentTurn}</div>
                     </div>
                 </div>
-                
-                <div class="flex items-center mb-3">
-                    <button onclick="GameActions.performGameAction('pass_phase')" 
-                            class="flex-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200">
-                        ⏭️ Pass Phase
-                    </button>
-                </div>
-                
                 <!-- Game Phases Indicator -->
-                <div class="mt-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-4">
+                <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-4">
                     <h5 class="text-arena-accent font-semibold mb-2 text-sm">Game Phases</h5>
                     <div class="grid grid-cols-3 gap-2">
                         ${gamePhases.map(phase => `
@@ -152,6 +144,13 @@ class UITemplates {
                             </div>
                         `).join('')}
                     </div>
+                </div>
+                
+                <div class="flex items-center mb-3">
+                    <button onclick="GameActions.performGameAction('pass_phase')" 
+                            class="flex-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200">
+                        ⏭️ Pass Phase
+                    </button>
                 </div>
             </div>
             <div class="border-t border-arena-accent/30 pt-4">

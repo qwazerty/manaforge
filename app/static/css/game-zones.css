@@ -221,3 +221,102 @@
 .zone-card-preview:hover img {
     filter: brightness(1.1);
 }
+
+/* ===== MINIATURIZED ZONE STYLES FOR COMPACT LAYOUT ===== */
+/* Optimized for 1080px height display */
+
+/* Mini zone preview containers */
+.zone-preview-container-mini {
+    position: relative;
+    width: 90px;
+    height: 130px;
+    perspective: 300px;
+}
+
+.zone-card-preview-mini {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.zone-card-preview-mini:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6), 0 0 8px rgba(201, 170, 113, 0.5);
+    z-index: 50;
+}
+
+/* Mini deck zone styles */
+.deck-preview.zone-card-preview-mini {
+    position: relative;
+    overflow: hidden;
+}
+
+.deck-stack-mini {
+    position: relative;
+    width: 90px;
+    height: 130px;
+}
+
+.deck-card-layer-mini {
+    position: absolute;
+    width: 90px;
+    height: 130px;
+    background: #1a1f2e;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.deck-top-card-mini {
+    position: absolute;
+    width: 90px;
+    height: 130px;
+    z-index: 5;
+}
+
+.card-back-mini-small {
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/images/card-back.jpg');
+    background-size: cover;
+    background-position: center;
+    border-radius: 3px;
+}
+
+/* Mini draw hint */
+.deck-click-overlay-mini {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+}
+
+.deck-click-overlay-mini .draw-hint-mini {
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+}
+
+.zone-preview-container-mini:hover .deck-click-overlay-mini {
+    opacity: 1;
+}
+
+/* ===== ORIGINAL STYLES ===== */
