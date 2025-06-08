@@ -17,15 +17,9 @@ class UIZones {
             `, 'deck');
         }
 
-        const topCard = deckArray[deckArray.length - 1];
         const stackLayers = Math.min(5, deckArray.length);
         
-        const faceUpNotice = topCard && !topCard.facedown ? 
-            '<div class="text-xs text-arena-accent mt-2 mb-1">Top card visible (Debug mode)</div>' : '';
-        
         const stackCards = Array(stackLayers).fill().map((_, index) => {
-            const isTopCard = index === stackLayers - 1;
-            const showCardFront = isTopCard && topCard && !topCard.facedown;
             const transforms = {
                 x: index * 1,
                 y: index * 1.5,
@@ -33,11 +27,10 @@ class UIZones {
                 zIndex: index + 1
             };
             
-            return UIUtils.generateCardLayer(showCardFront ? topCard : null, index, transforms);
+            return UIUtils.generateCardLayer(null, index, transforms);
         }).join('');
 
         return UIUtils.generateZoneWrapper(`
-            ${faceUpNotice}
             <div class="relative flex justify-center py-4">
                 <div class="deck-cards-stack" onclick="GameActions.drawCard()">
                     ${stackCards}

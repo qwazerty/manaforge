@@ -46,12 +46,16 @@ class UITemplates {
      */
     static generateZoneTemplates(playerData, config, isOpponent) {
         const { prefix, titlePrefix, zoneIds, playerId } = config;
-        const { deck = [], graveyard = [], exile = [], life = 20 } = playerData;
+        // Fix: Backend uses 'library' but frontend expects 'deck'
+        const { library = [], deck = [], graveyard = [], exile = [], life = 20 } = playerData;
+        
+        // Use library data if available, fallback to deck
+        const deckData = library.length > 0 ? library : deck;
 
         // Generate individual zone templates using basic zones
         const zoneTemplates = {
             life: this.generateLifeZone(life, playerId, titlePrefix),
-            deck: this.generateDeckZone(deck),
+            deck: this.generateDeckZone(deckData),
             graveyard: this.generateGraveyardZone(graveyard),
             exile: this.generateExileZone(exile)
         };

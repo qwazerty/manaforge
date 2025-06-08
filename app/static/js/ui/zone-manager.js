@@ -76,8 +76,11 @@ class ZoneManager {
         const playerData = gameState[currentPlayer];
         if (!playerData) return;
 
+        // Handle library/deck mapping
+        const deckData = playerData.library || playerData.deck || [];
+
         const zoneCounts = {
-            'deck': playerData.deck?.length || 0,
+            'deck': deckData.length || 0,
             'exile': playerData.exile?.length || 0,
             'graveyard': playerData.graveyard?.length || 0
         };
@@ -95,7 +98,6 @@ class ZoneManager {
      * Show card details
      */
     static showCardDetails(cardId, zoneName) {
-        console.log(`Showing details for card ${cardId} from ${zoneName}`);
         UINotifications.showNotification(`Card details: ${cardId}`, 'info');
     }
 
@@ -110,8 +112,11 @@ class ZoneManager {
         const playerData = gameState[currentPlayer];
         if (!playerData) return;
         
+        // Handle library/deck mapping
+        const deckData = playerData.library || playerData.deck || [];
+        
         // Update deck preview
-        this.updateDeckPreview(playerData.deck || []);
+        this.updateDeckPreview(deckData);
         
         // Update graveyard preview
         this.updateGraveyardPreview(playerData.graveyard || []);
@@ -175,27 +180,29 @@ class ZoneManager {
      */
     static showOpponentZoneModal(zoneName) {
         const gameState = GameCore.getGameState();
-        if (!gameState) {
-            console.warn('No game state available for opponent zone modal');
-            return;
-        }
+        if (!gameState) return;
 
         const { opponentIdx, players } = this.getPlayerIndices(gameState);
         const opponent = players[opponentIdx];
         
-        if (!opponent) {
-            console.warn('No opponent data available for zone modal');
-            return;
-        }
+        if (!opponent) return;
 
         // Convert opponent zone name to pure zone name
         const pureZoneName = zoneName.replace('opponent_', '');
+        
+        // Handle library/deck mapping
+        let zone = [];
+        if (pureZoneName === 'deck') {
+            zone = opponent.library || opponent.deck || [];
+        } else {
+            zone = opponent[pureZoneName] || [];
+        }
         
         // Remove existing modal if any
         this.closeZoneModal(`opponent_${pureZoneName}`);
         
         // Create and show new modal
-        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`);
+        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`, zone);
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
         // Animate modal appearance
