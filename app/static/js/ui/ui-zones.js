@@ -7,17 +7,20 @@ class UIZones {
     /**
      * Generate deck zone with clickable cards for drawing
      */
-    static generateDeckZone(deck = []) {
+    static generateDeckZone(deck = [], isOpponent = false) {
         // Ensure deck is always an array
         const deckArray = Array.isArray(deck) ? deck : [];
         
-        if (deckArray.length === 0) {
+        // For opponent, always show a deck stack (they always have a deck even if we don't know the cards)
+        // For player, show empty only if truly empty
+        if (deckArray.length === 0 && !isOpponent) {
             return UIUtils.generateZoneWrapper(`
                 ${UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
             `, 'deck');
         }
 
-        const stackLayers = Math.min(5, deckArray.length);
+        // For opponent deck, show a standard number of layers even if we don't know exact count
+        const stackLayers = isOpponent ? 5 : Math.min(5, Math.max(1, deckArray.length));
         
         const stackCards = Array(stackLayers).fill().map((_, index) => {
             const transforms = {
@@ -30,13 +33,19 @@ class UIZones {
             return UIUtils.generateCardLayer(null, index, transforms);
         }).join('');
 
+        // For opponent, don't show clickable overlay since they can't draw from opponent's deck
+        const clickHandler = isOpponent ? '' : 'onclick="GameActions.drawCard()"';
+        const clickOverlay = isOpponent ? '' : `
+            <div class="deck-click-overlay">
+                <span class="draw-hint">Draw</span>
+            </div>
+        `;
+
         return UIUtils.generateZoneWrapper(`
             <div class="relative flex justify-center py-4">
-                <div class="deck-cards-stack" onclick="GameActions.drawCard()">
+                <div class="deck-cards-stack" ${clickHandler}>
                     ${stackCards}
-                    <div class="deck-click-overlay">
-                        <span class="draw-hint">Draw</span>
-                    </div>
+                    ${clickOverlay}
                 </div>
             </div>
         `, 'deck');

@@ -78,6 +78,7 @@ async function refreshGameData() {
             
             if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
                 gameState = newGameState;
+                console.log('Game state updated:', gameState);
                 GameUI.generateLeftArea();
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
