@@ -37,6 +37,13 @@
     height: 200px;
 }
 
+.deck-cards-stack {
+    position: relative;
+    width: 140px;
+    height: 200px;
+    cursor: pointer;
+}
+
 .deck-card-layer {
     position: absolute;
     width: 140px;
@@ -77,9 +84,18 @@
     z-index: 10;
 }
 
+.draw-hint {
+    color: #c9aa71;
+    font-weight: bold;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 /* Removed draw hint text */
 
-.zone-preview-container:hover .deck-click-overlay {
+.zone-preview-container:hover .deck-click-overlay,
+.deck-cards-stack:hover .deck-click-overlay {
     opacity: 1;
 }
 

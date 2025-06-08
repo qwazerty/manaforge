@@ -114,6 +114,17 @@ window.gameData = {
     gameId: '{{ game.id }}'
 };
 
+// Alpine.js gameInterface function
+function gameInterface() {
+    return {
+        // Alpine.js reactive data can be added here if needed
+        init() {
+            // This runs when Alpine.js initializes the component
+            console.log('Game interface Alpine.js component initialized');
+        }
+    };
+}
+
 // The game will be initialized automatically by game-main.js
 </script>
 {% endblock %}
