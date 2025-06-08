@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Deck Image</title>
+    <style>
+        .card-back-mini {
+            width: 140px;
+            height: 200px;
+            background-image: url('/static/images/card-back.jpg');
+            background-size: cover;
+            background-position: center;
+            border: 2px solid red; /* For debugging visibility */
+        }
+        
+        .debug-test {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-test">
+        <h1>Test Deck Image Display</h1>
+        
+        <h2>1. Direct URL test:</h2>
+        <img src="/static/images/card-back.jpg" alt="Card Back" style="width: 140px; height: 200px; border: 2px solid blue;">
+        
+        <h2>2. CSS Background test:</h2>
+        <div class="card-back-mini"></div>
+        
+        <h2>3. Full path test:</h2>
+        <img src="http://localhost:8000/static/images/card-back.jpg" alt="Card Back Full" style="width: 140px; height: 200px; border: 2px solid green;">
+    </div>
+</body>
+</html>
