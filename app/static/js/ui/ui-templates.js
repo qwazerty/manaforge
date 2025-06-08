@@ -81,6 +81,9 @@ class UITemplates {
         const currentPhase = gameState.phase || 'untap';
         const priorityPlayer = (gameState.priority_player || 0) + 1;
 
+        // Format phase display
+        let phaseDisplay = currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1);
+
         return `
             <div class="grid grid-cols-3 gap-4 text-center">
                 <div class="bg-yellow-500/20 rounded-lg p-3">
@@ -89,7 +92,7 @@ class UITemplates {
                 </div>
                 <div class="bg-blue-500/20 rounded-lg p-3">
                     <div class="text-blue-300 font-semibold">Phase</div>
-                    <div class="text-lg font-bold capitalize">${currentPhase}</div>
+                    <div class="text-lg font-bold">${phaseDisplay}</div>
                 </div>
                 <div class="bg-purple-500/20 rounded-lg p-3">
                     <div class="text-purple-300 font-semibold">Priority</div>
@@ -103,40 +106,46 @@ class UITemplates {
      * Generate action buttons for active player
      */
     static generateActionButtons() {
-        // Define all the game phases
+        // Define simplified game phases like Magic Arena
         const gamePhases = [
             { id: 'untap', name: 'Untap', icon: '🔄' },
-            { id: 'upkeep', name: 'Upkeep', icon: '⚙️' },
-            { id: 'draw', name: 'Draw', icon: '🃏' },
+            { id: 'upkeep', name: 'Upkeep + Draw', icon: '⚙️' },
             { id: 'main1', name: 'Main 1', icon: '🎯' },
-            { id: 'combat_begin', name: 'Combat Begin', icon: '⚔️' },
-            { id: 'combat_attackers', name: 'Declare Attackers', icon: '⚡' },
-            { id: 'combat_blockers', name: 'Declare Blockers', icon: '🛡️' },
-            { id: 'combat_damage', name: 'Combat Damage', icon: '💥' },
-            { id: 'combat_end', name: 'Combat End', icon: '🔚' },
+            { id: 'combat', name: 'Combat', icon: '⚔️' },
             { id: 'main2', name: 'Main 2', icon: '✨' },
-            { id: 'end', name: 'End', icon: '🏁' },
-            { id: 'cleanup', name: 'Cleanup', icon: '🧹' }
+            { id: 'end', name: 'End', icon: '🏁' }
         ];
         
         // Get current phase from game state
         const gameState = GameCore.getGameState();
         const currentPhase = gameState?.phase || 'untap';
         const currentTurn = gameState?.turn || 1;
+        const activePlayer = gameState?.active_player || 0;
+        const activePlayerName = activePlayer === 0 ? 'Player 1' : 'Player 2';
         
         return `
             <div class="mb-6">
-                <!-- Current Turn Display -->
-                <div class="text-center mb-4">
-                    <div class="bg-yellow-500/20 rounded-lg p-3 inline-block px-8">
-                        <div class="text-yellow-300 font-semibold">Turn</div>
-                        <div class="text-2xl font-bold">${currentTurn}</div>
+                <!-- Game Info Section -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <!-- Turn Block -->
+                    <div class="text-center">
+                        <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
+                            <div class="text-blue-300 font-semibold text-sm">Turn</div>
+                            <div class="text-lg font-bold text-arena-accent">${currentTurn}</div>
+                        </div>
+                    </div>
+                    <!-- Active Player Block -->
+                    <div class="text-center">
+                        <div class="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
+                            <div class="text-yellow-300 font-semibold text-sm">Active</div>
+                            <div class="text-lg font-bold text-arena-accent">${activePlayerName}</div>
+                        </div>
                     </div>
                 </div>
                 <!-- Game Phases Indicator -->
                 <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-4">
                     <h5 class="text-arena-accent font-semibold mb-2 text-sm">Game Phases</h5>
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-4 gap-2 mb-3">
                         ${gamePhases.map(phase => `
                             <div class="text-center p-1 rounded ${currentPhase === phase.id ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' : 'text-arena-text-dim'}" title="${phase.name} Phase">
                                 <div class="text-lg">${phase.icon}</div>
@@ -155,16 +164,21 @@ class UITemplates {
             </div>
             <div class="border-t border-arena-accent/30 pt-4">
                 <h5 class="text-arena-accent font-semibold mb-3">Quick Actions</h5>
-                <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                     <button onclick="GameActions.performGameAction('untap_all')" 
                             class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
                         🔄 Untap All
                     </button>
-                    <button onclick="GameActions.performGameAction('end_turn')" 
+                    <button onclick="GameActions.drawCard()" 
                             class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
-                        ⏸️ End Turn
+                        🃏 Draw Card
                     </button>
                 </div>
+                <!-- Pass Turn button (more prominent) -->
+                <button onclick="GameActions.performGameAction('pass_turn')" 
+                        class="w-full bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 hover:border-purple-500 text-purple-300 hover:text-purple-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200">
+                    ⏸️ Pass Turn
+                </button>
             </div>
         `;
     }
@@ -407,7 +421,7 @@ class UITemplates {
                 </div>
                 
                 <!-- Graveyard Zone -->
-                <div class="zone-display graveyard-zone mt-6">
+                <div class="zone-display graveyard-zone">
                     <h5 class="zone-title">⚰️ ${titlePrefix}Graveyard (${graveyard.length})</h5>
                     <div class="flex justify-center">
                         <div class="zone-preview-container" id="${graveyardId}">
@@ -438,7 +452,7 @@ class UITemplates {
                 </div>
                 
                 <!-- Exile Zone -->
-                <div class="zone-display exile-zone mt-6">
+                <div class="zone-display exile-zone">
                     <h5 class="zone-title">🌌 ${titlePrefix}Exile (${exile.length})</h5>
                     <div class="flex justify-center">
                         <div class="zone-preview-container" id="${exileId}">
