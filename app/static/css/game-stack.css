@@ -29,7 +29,7 @@
 }
 
 .stack-spell {
-    background: rgba(251, 191, 36, 0.15);
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 12px;
     padding: 12px;
     transition: all 0.2s ease;
@@ -44,14 +44,13 @@
 }
 
 .stack-spell:hover {
-    background: rgba(251, 191, 36, 0.25);
+    background: rgba(0, 0, 0, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Visual feedback for context menu availability */
 .stack-spell::after {
-    content: "⚙️";
     position: absolute;
     top: 4px;
     right: 4px;

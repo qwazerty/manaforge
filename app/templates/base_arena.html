@@ -1,29 +1,31 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+    {% block head %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ManaForge - The Gathering{% endblock %}</title>
+    <title>{% block title %}ManaForge{% endblock %}</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    
-    <!-- Alpine.js for minimal JavaScript -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.1/dist/cdn.min.js"></script>
-    
-    <!-- Google Fonts - Magic Arena inspired -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- External CSS Files -->
-    <link rel="stylesheet" href="{{ url_for('static', path='css/arena.css') }}">
-    
-    <!-- External Tailwind Configuration -->
     <script src="{{ url_for('static', path='js/tailwind-config.js') }}"></script>
     
+    <!-- Game CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/arena.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-battlefield.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-cards.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-stack.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-zones.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-players.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-modals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/game-animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/opponent-zones.css') }}">
+    
+    <!-- Alpine JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     {% block extra_css %}{% endblock %}
+    {% endblock %}
 </head>
 <body class="bg-arena-bg text-arena-text font-ui min-h-screen overflow-x-hidden">
     <!-- Particle Background Effect -->
