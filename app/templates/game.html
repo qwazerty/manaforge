@@ -6,12 +6,18 @@
 <!-- External CSS for game-specific styles -->
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-card-actions.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/game-notifications.css') }}">
 {% endblock %}
 
 {% block content %}
 <div x-data="gameInterface()" class="min-h-screen bg-arena-gradient relative game-container-1080">
     <!-- Notification area -->
-    <div id="notification-area" class="fixed top-4 right-4 z-50"></div>
+    <div id="notifications-area" class="fixed top-4 right-4 z-50"></div>
+    
+    <!-- Auto refresh indicator -->
+    <div id="auto-refresh-indicator" class="auto-refresh-indicator auto-refresh-info" style="display: none;">
+        System ready
+    </div>
     
     <!-- Game Header -->
     <div class="bg-gradient-to-r from-arena-primary/20 to-arena-secondary/20 border-b border-arena-accent/30 p-4">

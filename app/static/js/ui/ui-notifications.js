@@ -38,12 +38,18 @@ class UINotifications {
         
         indicator.textContent = message;
         indicator.className = `auto-refresh-indicator auto-refresh-${type}`;
+        indicator.style.display = 'block';
         
         // Add flash animation
         indicator.classList.add('auto-refresh-flash');
         setTimeout(() => {
             indicator.classList.remove('auto-refresh-flash');
         }, 1000);
+        
+        // Auto hide after 2 seconds
+        setTimeout(() => {
+            indicator.style.display = 'none';
+        }, 2000);
     }
 
     /**
@@ -149,8 +155,16 @@ class UINotifications {
     static createNotificationsArea() {
         const notificationsArea = document.createElement('div');
         notificationsArea.id = 'notifications-area';
-        notificationsArea.className = 'notifications-area';
-        document.body.appendChild(notificationsArea);
+        notificationsArea.className = 'notifications-area fixed top-4 right-4 z-50';
+        
+        // Try to append to body, fallback to document.documentElement
+        try {
+            document.body.appendChild(notificationsArea);
+        } catch (error) {
+            console.warn('Could not append to body, trying documentElement');
+            document.documentElement.appendChild(notificationsArea);
+        }
+        
         return notificationsArea;
     }
 
