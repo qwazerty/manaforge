@@ -170,6 +170,8 @@ Mise à jour de la base de cartes (cron quotidien ou hebdomadaire) :
 ### Tests
 
 Pour valider le fonctionnement, tu n'as pas besoin de relancer l'applications. Quand tu test du HTML, JS ou CSS tu peux utiliser des appels curl directement.
+Tu peux également utiliser le MCP Browser Extension.
+Tu as un script à la racine `./test_game_creation.sh` qui test la principale boucle de jeu. Inspire toi de ça pour les analyses si besoin.
 Si tu as une erreur 5XX, tu peux consulter les logs avec `docker compose logs`.
 
 ### Modularité & évolutivité
