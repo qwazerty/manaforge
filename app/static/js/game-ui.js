@@ -298,7 +298,22 @@ window.GameUI = {
     // Legacy compatibility
     getZoneInfo,
     generateZoneCardsGrid,
-    getCardTypeIcon
+    getCardTypeIcon,
+
+    toggleFullscreen: function() {
+        const container = document.querySelector('.game-container-1080');
+        container.classList.toggle('fullscreen-mode');
+    },
+
+    gameInterface: function() {
+        return {
+            // Alpine.js reactive data can be added here if needed
+            init() {
+                // This runs when Alpine.js initializes the component
+                console.log('Game interface Alpine.js component initialized');
+            }
+        };
+    }
 };
 
 // Initialize UI when this module loads
@@ -306,3 +321,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initializeUI();
 });
 
+// Handle ESC key to exit fullscreen
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        const container = document.querySelector('.game-container-1080');
+        if (container.classList.contains('fullscreen-mode')) {
+            // Exit our custom fullscreen mode
+            GameUI.toggleFullscreen();
+        }
+    }
+});

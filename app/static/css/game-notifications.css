@@ -7,7 +7,7 @@
 .notifications-area {
     position: fixed;
     top: 1rem;
-    right: 1rem;
+    left: 1rem;
     z-index: 1000;
     max-width: 400px;
     pointer-events: none;
@@ -23,7 +23,7 @@
     backdrop-filter: blur(10px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     pointer-events: auto;
-    transform: translateX(100%);
+    transform: translateX(-100%);
     opacity: 0;
     animation: notification-slide-in 0.3s ease-out forwards;
     transition: all 0.3s ease;
@@ -76,7 +76,7 @@
 /* Animations */
 @keyframes notification-slide-in {
     from {
-        transform: translateX(100%);
+        transform: translateX(-100%);
         opacity: 0;
     }
     to {
@@ -91,7 +91,7 @@
         opacity: 1;
     }
     to {
-        transform: translateX(100%);
+        transform: translateX(-100%);
         opacity: 0;
     }
 }
@@ -199,7 +199,7 @@
 @media (max-width: 768px) {
     .notifications-area {
         max-width: 90vw;
-        right: 5vw;
+        left: 5vw;
     }
     
     .notification {
