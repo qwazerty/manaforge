@@ -24,9 +24,10 @@ function updateRoleDisplay() {
     }
 }
 
-function generateStackArea() {
+function generateLeftArea() {
     if (typeof UIRenderers !== 'undefined') {
-        UIRenderers.renderStackArea();
+        // Render the left sidebar (which contains stack and card zones)
+        UIRenderers.renderLeftArea();
     } else {
         console.warn('UIRenderers module not loaded yet');
     }
@@ -187,7 +188,7 @@ async function initializeGameUI() {
         
         // Now safely initialize UI components
         updateRoleDisplay();
-        generateStackArea();
+        generateLeftArea();
         generateGameBoard();
         generateActionPanel();
         updateZoneCounts();
@@ -242,7 +243,7 @@ async function initializeUI() {
 function refreshAllUI() {
     try {
         updateRoleDisplay();
-        generateStackArea();
+        generateLeftArea();
         generateGameBoard();
         generateActionPanel();
         updateZoneCounts();
@@ -258,22 +259,6 @@ function refreshAllUI() {
     }
 }
 
-/**
- * Show loading state for UI components
- */
-function showLoadingState() {
-    const containers = [
-        'stack-area',
-        'game-board', 
-        'action-panel'
-    ];
-    
-    containers.forEach(containerId => {
-        if (typeof UINotifications !== 'undefined') {
-            UINotifications.showLoadingIndicator(containerId, 'Loading game state...');
-        }
-    });
-}
 
 /**
  * Handle UI errors gracefully
@@ -289,7 +274,7 @@ function handleUIError(error, context = 'UI') {
 window.GameUI = {
     // Core rendering functions
     updateRoleDisplay,
-    generateStackArea,
+    generateLeftArea,
     generateGameBoard,
     generateActionPanel,
     
@@ -308,7 +293,6 @@ window.GameUI = {
     initializeUI,
     initializeGameUI,
     refreshAllUI,
-    showLoadingState,
     handleUIError,
     
     // Legacy compatibility
