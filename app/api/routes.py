@@ -3,7 +3,7 @@ API routes for the ManaForge application.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional
+from typing import List, Dict, Optional, Any
 
 from app.models.game import Card, Deck, DeckCard, GameState, GameAction
 from app.services.card_service import CardService
@@ -127,13 +127,22 @@ async def create_game(
     
     return game_state
 
-
-@router.get("/games/{game_id}")
-async def get_game(game_id: str) -> GameState:
-    """Get current game state."""
-    if game_id not in game_engine.games:
-        raise HTTPException(status_code=404, detail="Game not found")
-    return game_engine.games[game_id]
+@router.get("/games/list")
+async def list_games() -> List[Dict[str, Any]]:
+    """List all ongoing and waiting games."""
+    print("Fetching games from game engine...")
+    games_list = []
+    for game_id, game_state in game_engine.games.items():
+        print(f"Processing game {game_id} with state: {game_state}")
+        players = game_state.players
+        status = "waiting for players" if len(players) < 2 else "ongoing"
+        games_list.append({
+            "game_id": game_id,
+            "status": status,
+            "players": [player.id for player in players]
+        })
+    print(f"Returning games list: {games_list}")
+    return games_list
 
 
 @router.get("/games/{game_id}/state")

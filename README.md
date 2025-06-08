@@ -74,7 +74,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `GET /api/v1/cards/search?q={query}&limit={n}` - Search cards with filtering
 - `GET /api/v1/cards/{card_id}` - Get detailed card information
 - `POST /api/v1/games?game_id={id}` - Create new game with pre-built decks
-- `GET /api/v1/games/{game_id}` - Get current game state
+- `GET /api/v1/games/{game_id}/state` - Get current game state
 - `POST /api/v1/games/{game_id}/actions` - Perform game actions
 
 ### WebSocket
