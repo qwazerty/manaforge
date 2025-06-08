@@ -178,7 +178,7 @@ class UIGameInterface {
         return `
             <div class="battlefield-zone ${zoneName}-zone">
                 <h5>${icon} ${title}</h5>
-                <div class="zone-content">
+                <div class="flex justify-center zone-content">
                     ${cardsHtml}
                 </div>
             </div>
