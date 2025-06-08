@@ -9,21 +9,12 @@ Nom du projet : ManaForge
 ## Scope du projet
 
 * Un prototype d'interface front-end montrant l'écran de jeu (biblio de cartes, zone de jeu, chronologie, actions).
-* Intégration un moteur open source capable d'interpréter et d'appliquer les règles MTG (gestion de phases, résolution de sorts, état du jeu).
 * Un backend pour gérer les connexions, la synchronisation des états de partie, l'authentification et la persistance (historique des parties, profils de joueurs, collection de cartes).
-* Une interface de construction de deck.
-* L'intégration d'une base de données de cartes (images + métadonnées) sous licence libre (MTGJson, Scryfall, etc.).
+* L'intégration d'une API pour récupérer les cartes et leurs images (MTGJson + Scryfall).
 * Des tests automatisés (unitaires et d'intégration) pour valider le bon fonctionnement du moteur de règles et de la communication en temps réel.
 * Une documentation de déploiement (Docker, CI/CD, hébergement suggéré).
-* Un plan de maintenance et d'évolution (ajout des nouvelles extensions, des formats, du game balancing).
 
 # Périmètre fonctionnel attendu
-
-## Formats de jeu
-
-Standard pour commencer
-Parties amicales avec Deck préconstruit (importé depuis une liste)
-Parties en temps réel
 
 ## Modes de jeu
 
@@ -40,11 +31,6 @@ Pas de gestion de collection pour l'instant
 
 Pas d'inscription pour l'instant
 Uniquement du mode anonyme
-
-## Évolutivité et maintenance
-
-Mise à jour automatique de la base de données des cartes (ajout des nouvelles extensions).
-Architecture modulaire pour ajouter de futurs modes (Modern, Draft, Sealed).
 
 # Contraintes techniques et ressources open source à exploiter
 
@@ -97,14 +83,6 @@ Justifications
 * gRPC avec Python : La bibliothèque grpcio permet d'interfacer facilement avec XMage, avec génération automatique des stubs Python depuis les fichiers .proto.
 * Pydantic : Validation et sérialisation automatique des données, avec génération de schémas JSON Schema pour l'API. Les modèles Pydantic se mappent naturellement aux documents MongoDB.
 
-XMage exposé en gRPC :
-
-On construit un adaptateur minimal qui :
-* Lance XMage en mode headless (sans interface graphique) dans un conteneur Java.
-* Expose, via un serveur gRPC (ou HTTP REST minimal), des méthodes telles que InitGame, PlayCard, ResolveStack, GetGameState.
-* Le backend FastAPI appelle ces méthodes pour chaque action envoyée par le client, puis diffuse la réponse (état mis à jour) aux deux joueurs via WebSockets.
-* Cette solution garantit la meilleure couverture des règles (XMage) sans lier le code Python à la GPL, puisque XMage reste un composant externe.
-
 ## Exemple d'architecture globale
 
                                       ┌─────────────┐
@@ -121,19 +99,11 @@ On construit un adaptateur minimal qui :
                    │   - Auth (JWT/OAuth)                               │
                    │   - API REST (profiles, collection, decks)         │
                    │   - WebSocket (matchmaking, synchronisation jeu)   │
-                   │   - Adaptateur gRPC vers XMage (moteur de règles)  │
                    └───────────┬───────────────┬──────────┬─────────────┘
                                │               │          │
                        REST  API routes        │          │
                        (cartes, users, ...)    │          │
                                                │          │
-                                         gRPC calls       │
-                                        vers XMage        │
-                                                          │
-                                                ┌─────────▼──────────┐
-                                                │    XMage Headless  │
-                                                │(Java micro-service)│
-                                                └─────────┬──────────┘
                                                           │
                                         Expose gRPC / REST
                                         (InitGame, PlayCard, …)
@@ -149,8 +119,7 @@ On construit un adaptateur minimal qui :
 Flux principal pour une partie :
 
 * Le joueur A clique « Jouer carte » → l'action est envoyée en JSON au backend via WebSocket/HTMX.
-* Le backend FastAPI appelle, en gRPC, la méthode PlayCard du service XMage (avec l'ID de partie et détails de la carte).
-* XMage calcule l'effet, met à jour son état interne (pile, zones de jeu, blessures, etc.) et renvoie, via gRPC, l'état de jeu actualisé.
+* Le backend FastAPI appelle, en gRPC, la méthode PlayCard (avec l'ID de partie et détails de la carte).
 * Le backend diffuse l'état mis à jour aux deux joueurs A et B (via WebSockets), qui rafraîchissent leur interface en conséquence grâce à HTMX.
 
 Mise à jour de la base de cartes (cron quotidien ou hebdomadaire) :
@@ -227,6 +196,7 @@ Qualité du code & bonnes pratiques
 * Écrire des tests automatisés avant d'ajouter de nouvelles fonctionnalités critiques (TDD partiel).
 * Effectuer régulièrement des revues de code (code review) pour garantir la maintenabilité.
 * Utiliser type hints Python pour améliorer la lisibilité et détecter les erreurs.
+* Chaque fichier ne doit pas dépasser 300 lignes de code pour éviter la complexité excessive.
 
 Expérience utilisateur
 
