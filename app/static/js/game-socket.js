@@ -99,6 +99,10 @@ function handleWebSocketMessage(message) {
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
                 
+                // Update zone counts and previews
+                ZoneManager.updateZoneCounts();
+                ZoneManager.updateZonePreviews();
+                
                 if (message.action_result) {
                     const result = message.action_result;
                     GameUI.showNotification(`${result.player} performed: ${result.action}`, 'success');

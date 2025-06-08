@@ -4,7 +4,7 @@
 
 {% block extra_css %}
 <!-- External CSS for game-specific styles -->
-<link rel="stylesheet" href="{{ url_for('static', path='css/game.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/game-main.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -50,6 +50,89 @@
                         </div>
                 </div>
             </div>
+
+                <!-- Deck, Exile & Graveyard Zone -->
+                <div class="arena-card rounded-xl p-6">
+                    <h4 class="font-magic font-semibold mb-6 text-arena-accent flex items-center">
+                        <span class="mr-2">📚</span>Card Zones
+                    </h4>
+                    <div class="space-y-8">
+                        <!-- Deck -->
+                        <div class="p-3 rounded-lg bg-arena-surface/50 border border-arena-accent/20 hover:border-arena-accent/40 transition-colors" 
+                             onclick="showZoneModal('deck')">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-semibold text-arena-text text-lg">Deck</div>
+                                <div id="deck-count" class="bg-arena-primary text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                    60
+                                </div>
+                            </div>
+                            <div class="flex justify-center">
+                                <div class="zone-preview-container" id="deck-preview-container">
+                                    <div id="deck-top-card" class="zone-card-preview deck-preview" onclick="GameActions.drawCard(); event.stopPropagation();" title="Click to draw a card">
+                                        <div class="deck-stack">
+                                            <div class="deck-card-layer" style="transform: translateY(4px) translateX(2px)">
+                                                <div class="card-back-mini"></div>
+                                            </div>
+                                            <div class="deck-card-layer" style="transform: translateY(8px) translateX(4px)">
+                                                <div class="card-back-mini"></div>
+                                            </div>
+                                            <div class="deck-top-card">
+                                                <div class="card-back-mini"></div>
+                                            </div>
+                                        </div>
+                                        <div class="deck-click-overlay">
+                                            <span class="draw-hint">🎴 Draw</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Exile -->
+                        <div class="p-3 rounded-lg bg-arena-surface/50 border border-arena-accent/20 hover:border-arena-accent/40 transition-colors" 
+                             onclick="showZoneModal('exile')">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-semibold text-arena-text text-lg">Exile</div>
+                                <div id="exile-count" class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                    0
+                                </div>
+                            </div>
+                            <div class="flex justify-center">
+                                <div class="zone-preview-container" id="exile-preview-container">
+                                    <div id="exile-top-card" class="zone-card-preview exile-preview">
+                                        <!-- Sera mis à jour par le JavaScript avec la première carte exilée -->
+                                        <div class="card-fallback text-xs">
+                                            <span class="text-2xl mb-2">🌌</span>
+                                            <div>Empty</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graveyard -->
+                        <div class="p-3 rounded-lg bg-arena-surface/50 border border-arena-accent/20 hover:border-arena-accent/40 transition-colors" 
+                             onclick="showZoneModal('graveyard')">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-semibold text-arena-text text-lg">Graveyard</div>
+                                <div id="graveyard-count" class="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                    0
+                                </div>
+                            </div>
+                            <div class="flex justify-center">
+                                <div class="zone-preview-container" id="graveyard-preview-container">
+                                    <div id="graveyard-top-card" class="zone-card-preview graveyard-preview">
+                                        <!-- Sera mis à jour par le JavaScript avec la dernière carte du cimetière -->
+                                        <div class="card-fallback text-xs">
+                                            <span class="text-2xl mb-2">⚰️</span>
+                                            <div>Empty</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Action Panel -->
                 <div id="action-panel" class="arena-card rounded-xl p-6">
@@ -104,7 +187,16 @@
 <!-- External JavaScript modules for game logic -->
 <script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
+
+<!-- UI Module Dependencies (load before main game-ui.js) -->
+<script src="{{ url_for('static', path='js/ui/ui-templates.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-notifications.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/zone-manager.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-renderers.js') }}"></script>
+
+<!-- Main UI orchestrator (depends on above modules) -->
 <script src="{{ url_for('static', path='js/game-ui.js') }}"></script>
+
 <script src="{{ url_for('static', path='js/game-socket.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-actions.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-core.js') }}"></script>
