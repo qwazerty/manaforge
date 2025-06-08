@@ -1,0 +1,25 @@
+/* ===== GRAVEYARD AND EXILE ZONE STYLES ===== */
+/* Styles for graveyard and exile zones with card spreads */
+
+/* Graveyard zone styles */
+.graveyard-preview img,
+.exile-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.graveyard-cards-spread,
+.exile-cards-spread {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.graveyard-card-position,
+.exile-card-position {
+    position: absolute;
+    width: 140px;
+    height: 200px;
+}
