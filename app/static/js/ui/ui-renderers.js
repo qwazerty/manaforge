@@ -26,31 +26,22 @@ class UIRenderers {
     }
 
     /**
-     * Render stack area
+     * Render left sidebar
      */
-    static renderStackArea() {
+    static renderLeftArea() {
         const gameState = GameCore.getGameState();
         const stackContainer = document.getElementById('stack-area');
         
-        if (!this.validateContainer(stackContainer, 'Stack area container')) return;
+        if (!this.validateContainer(stackContainer, 'Left sidebar container')) return;
         if (!this.validateGameState(gameState)) return;
 
         try {
-            const stack = gameState.stack || [];
             const { controlledIdx, opponentIdx, players } = this.getPlayerIndices(gameState);
             const opponent = players[opponentIdx] || {};
             const player = players[controlledIdx] || {};
             
-            // Render both player and opponent card zones + stack area in the left sidebar
+            // Render both player and opponent card zones + stack in the left sidebar
             stackContainer.innerHTML = `
-                <!-- Player's Card Zones -->
-                <div class="arena-card rounded-lg p-3 mb-3">
-                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>Your Card Zones
-                    </h4>
-                    ${UITemplates.generateCardZones(player, false, controlledIdx)}
-                </div>
-                
                 <!-- Opponent Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
@@ -58,9 +49,14 @@ class UIRenderers {
                     </h4>
                     ${UITemplates.generateCardZones(opponent, true, opponentIdx)}
                 </div>
-                
-                <!-- The Stack -->
-                ${this.generateStackContent(stack)}
+
+                <!-- Player's Card Zones -->
+                <div class="arena-card rounded-lg p-3 mb-3">
+                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
+                        <span class="mr-1">📚</span>Your Card Zones
+                    </h4>
+                    ${UITemplates.generateCardZones(player, false, controlledIdx)}
+                </div>
             `;
         } catch (error) {
             this.renderError(stackContainer, 'Error loading stack', error.message);
@@ -105,12 +101,16 @@ class UIRenderers {
         try {
             const currentSelectedPlayer = GameCore.getSelectedPlayer();
             const isActivePlayer = currentSelectedPlayer !== 'spectator';
+            const stack = gameState.stack || [];
             
             actionPanelContainer.innerHTML = `
                 <h4 class="font-magic font-semibold mb-2 text-arena-accent flex items-center">
                     <span class="mr-2">⚡</span>Game Actions
                 </h4>
                 ${isActivePlayer ? UITemplates.generateActionButtons() : UITemplates.generateSpectatorView()}
+                
+                <!-- The Stack -->
+                ${this.generateStackContent(stack)}
             `;
         } catch (error) {
             this.renderError(actionPanelContainer, 'Error', error.message);

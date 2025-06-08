@@ -1,498 +1,91 @@
 /**
  * ManaForge UI Templates Module
- * Contains HTML template generation functions
+ * Main orchestrator class that combines all UI modules
  */
 
 class UITemplates {
-    /**
-     * Generate opponent's hidden hand
-     */
-    static generateOpponentHand(handSize = 7) {
-        return Array(handSize).fill().map((_, index) => `
-            <div class="card-back" 
-                 data-card-id="opponent-card-${index}" 
-                 style="width: 60px; height: 84px; transform: ${index % 2 === 0 ? 'rotate(-2deg)' : 'rotate(2deg)'}">
-            </div>
-        `).join('');
-    }
+    // Delegate methods to appropriate modules
+    
+    // Configuration access
+    static get GAME_PHASES() { return UIConfig.GAME_PHASES; }
+    static get ZONE_CONFIG() { return UIConfig.ZONE_CONFIG; }
+    static get LIFE_CONTROLS() { return UIConfig.LIFE_CONTROLS; }
+    static get CSS_CLASSES() { return UIConfig.CSS_CLASSES; }
+
+    // Utility methods
+    static createTransform(x, y, rotation) { return UIUtils.createTransform(x, y, rotation); }
+    static createZIndex(index) { return UIUtils.createZIndex(index); }
+    static generateButton(onclick, classes, title, content) { return UIUtils.generateButton(onclick, classes, title, content); }
+    static generateZoneWrapper(content, zoneType) { return UIUtils.generateZoneWrapper(content, zoneType); }
+    static generateEmptyZoneContent(icon, message) { return UIUtils.generateEmptyZoneContent(icon, message); }
+    static generateZoneHeader(icon, title, count) { return UIUtils.generateZoneHeader(icon, title, count); }
+    static generateCardLayer(card, index, transforms) { return UIUtils.generateCardLayer(card, index, transforms); }
+    static generateEmptyZone(icon, name) { return UIUtils.generateEmptyZone(icon, name); }
+    static generateZoneClickHandler(isOpponent, prefix, zoneType, title) { return UIUtils.generateZoneClickHandler(isOpponent, prefix, zoneType, title); }
+    static filterCardsByType(cards, zoneName) { return UIUtils.filterCardsByType(cards, zoneName); }
+    static getZoneConfiguration(isOpponent, playerIndex) { return UIUtils.getZoneConfiguration(isOpponent, playerIndex); }
+
+    // Zone generation
+    static generateDeckZone(deck) { return UIZones.generateDeckZone(deck); }
+    static generateGraveyardZone(graveyard) { return UIZones.generateGraveyardZone(graveyard); }
+    static generateExileZone(exile) { return UIZones.generateExileZone(exile); }
+    static generateLifeZone(life, playerId, titlePrefix) { return UIZones.generateLifeZone(life, playerId, titlePrefix); }
+    static generateZonePreviewBase(zoneConfig, content, clickHandler) { return UIZones.generateZonePreviewBase(zoneConfig, content, clickHandler); }
+    static generateDeckZonePreview(deck, deckId, prefix, titlePrefix, isOpponent) { return UIZones.generateDeckZonePreview(deck, deckId, prefix, titlePrefix, isOpponent); }
+    static generateGraveyardZonePreview(graveyard, graveyardId, prefix, titlePrefix, isOpponent) { return UIZones.generateGraveyardZonePreview(graveyard, graveyardId, prefix, titlePrefix, isOpponent); }
+    static generateExileZonePreview(exile, exileId, prefix, titlePrefix, isOpponent) { return UIZones.generateExileZonePreview(exile, exileId, prefix, titlePrefix, isOpponent); }
+
+    // Game interface
+    static generateGameInfo(gameState) { return UIGameInterface.generateGameInfo(gameState); }
+    static generateGamePhases(currentPhase) { return UIGameInterface.generateGamePhases(currentPhase); }
+    static generateGameInfoSection(currentTurn, activePlayer) { return UIGameInterface.generateGameInfoSection(currentTurn, activePlayer); }
+    static generateActionButtonsSection() { return UIGameInterface.generateActionButtonsSection(); }
+    static generateActionButtons() { return UIGameInterface.generateActionButtons(); }
+    static generateSpectatorView() { return UIGameInterface.generateSpectatorView(); }
+    static generateErrorTemplate(title, message) { return UIGameInterface.generateErrorTemplate(title, message); }
+    static generateBattlefieldZone(cards, zoneName, title, icon) { return UIGameInterface.generateBattlefieldZone(cards, zoneName, title, icon); }
+    static generatePlayerHand(hand) { return UIGameInterface.generatePlayerHand(hand); }
+    static generateOpponentHand(handSize) { return UIGameInterface.generateOpponentHand(handSize); }
 
     /**
-     * Generate battlefield zone
+     * Generate zone templates in the correct order
      */
-    static generateBattlefieldZone(cards, zoneName, title, icon) {
-        const filteredCards = this.filterCardsByType(cards, zoneName);
-        const cardsHtml = filteredCards.length > 0 
-            ? filteredCards.map(card => GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName)).join('')
-            : `<div class="zone-empty">No ${title.toLowerCase()}</div>`;
+    static generateZoneTemplates(playerData, config, isOpponent) {
+        const { prefix, titlePrefix, zoneIds, playerId } = config;
+        const { deck = [], graveyard = [], exile = [], life = 20 } = playerData;
 
-        return `
-            <div class="battlefield-zone ${zoneName}-zone">
-                <h5>${icon} ${title}</h5>
-                <div class="zone-content">
-                    ${cardsHtml}
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate player's hand
-     */
-    static generatePlayerHand(hand = []) {
-        if (hand.length === 0) {
-            return '<div class="text-arena-text-dim text-center py-4">No cards in hand</div>';
-        }
-
-        return hand.map((card, index) => {
-            return GameCards.renderCardWithLoadingState(card, 'card-mini', false, 'hand');
-        }).join('');
-    }
-
-    /**
-     * Generate game info panel
-     */
-    static generateGameInfo(gameState) {
-        const currentTurn = gameState.turn || 1;
-        const currentPhase = gameState.phase || 'begin';
-        const priorityPlayer = (gameState.priority_player || 0) + 1;
-
-        // Map phase IDs to display names consistent with the simplified phases
-        const phaseDisplayMap = {
-            'begin': 'Begin',
-            'main1': 'Main 1',
-            'combat': 'Combat',
-            'main2': 'Main 2',
-            'end': 'End'
+        // Generate individual zone templates
+        const zoneTemplates = {
+            life: this.generateLifeZone(life, playerId, titlePrefix),
+            deck: this.generateDeckZonePreview(deck, zoneIds.deck, prefix, titlePrefix, isOpponent),
+            graveyard: this.generateGraveyardZonePreview(graveyard, zoneIds.graveyard, prefix, titlePrefix, isOpponent),
+            exile: this.generateExileZonePreview(exile, zoneIds.exile, prefix, titlePrefix, isOpponent)
         };
 
-        // Format phase display using the mapping or fallback to capitalized phase
-        let phaseDisplay = phaseDisplayMap[currentPhase] || 
-                          currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1);
-
-        return `
-            <div class="grid grid-cols-3 gap-4 text-center">
-                <div class="bg-yellow-500/20 rounded-lg p-3">
-                    <div class="text-yellow-300 font-semibold">Turn</div>
-                    <div class="text-2xl font-bold">${currentTurn}</div>
-                </div>
-                <div class="bg-blue-500/20 rounded-lg p-3">
-                    <div class="text-blue-300 font-semibold">Phase</div>
-                    <div class="text-lg font-bold">${phaseDisplay}</div>
-                </div>
-                <div class="bg-purple-500/20 rounded-lg p-3">
-                    <div class="text-purple-300 font-semibold">Priority</div>
-                    <div class="text-lg font-bold">Player ${priorityPlayer}</div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate action buttons for active player
-     */
-    static generateActionButtons() {
-        // Define simplified game phases like Magic Arena
-        const gamePhases = [
-            { id: 'begin', name: 'Begin', icon: '🔄' },
-            { id: 'main1', name: 'Main 1', icon: '🎯' },
-            { id: 'combat', name: 'Combat', icon: '⚔️' },
-            { id: 'main2', name: 'Main 2', icon: '✨' },
-            { id: 'end', name: 'End', icon: '🏁' }
-        ];
-        
-        // Get current phase from game state
-        const gameState = GameCore.getGameState();
-        const currentPhase = gameState?.phase || 'begin';
-        const currentTurn = gameState?.turn || 1;
-        const activePlayer = gameState?.active_player || 0;
-        const activePlayerName = activePlayer === 0 ? 'Player 1' : 'Player 2';
-        
-        // Backend phase names now match our simplified phase display
-        const displayPhase = currentPhase;
-        
-        return `
-            <div>
-                <!-- Game Info Section -->
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    <!-- Turn Block -->
-                    <div class="text-center">
-                        <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
-                            <div class="text-blue-300 font-semibold text-sm">Turn</div>
-                            <div class="text-lg font-bold text-arena-accent">${currentTurn}</div>
-                        </div>
-                    </div>
-                    <!-- Active Player Block -->
-                    <div class="text-center">
-                        <div class="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
-                            <div class="text-yellow-300 font-semibold text-sm">Active</div>
-                            <div class="text-lg font-bold text-arena-accent">${activePlayerName}</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Game Phases Indicator -->
-                <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
-                    <h5 class="text-arena-accent font-semibold mb-3 text-sm text-center">Game Phases</h5>
-                    <div class="grid grid-cols-5 gap-1">
-                        ${gamePhases.map(phase => `
-                            <div class="text-center py-2 px-1 rounded transition-all duration-200 ${displayPhase === phase.id ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' : 'text-arena-text-dim hover:text-arena-text'}" title="${phase.name} Phase">
-                                <div class="text-lg mb-1 leading-none">${phase.icon}</div>
-                                <div class="text-xs font-medium leading-tight">${phase.name}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <div class="flex items-center mb-3">
-                    <button onclick="GameActions.performGameAction('pass_phase')" 
-                            class="flex-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200">
-                        ⏭️ Pass Phase
-                    </button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-                    <button onclick="GameActions.performGameAction('untap_all')" 
-                            class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
-                        🔄 Untap all
-                    </button>
-                    <button onclick="GameActions.performGameAction('pass_turn')" 
-                            class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
-                        ⏸️ Pass Turn
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate spectator view
-     */
-    static generateSpectatorView() {
-        return `
-            <div class="text-center py-8">
-                <div class="text-4xl mb-4">👁️</div>
-                <h5 class="text-arena-accent font-semibold mb-2">Spectator Mode</h5>
-                <p class="text-arena-text-dim text-sm">You are watching the battle unfold</p>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate error template
-     */
-    static generateErrorTemplate(title, message) {
-        return `
-            <div class="arena-card rounded-xl p-6 text-center">
-                <h3 class="text-red-400 font-bold mb-2">⚠️ ${title}</h3>
-                <p class="text-arena-text-dim">${message}</p>
-            </div>
-        `;
-    }
-
-    /**
-     * Filter cards by type for battlefield zones
-     */
-    static filterCardsByType(cards, zoneName) {
-        if (!cards || !Array.isArray(cards)) return [];
-        
-        if (zoneName === 'lands') {
-            return cards.filter(card => 
-                card.card_type === 'land' || card.card_type === 'LAND'
-            );
-        } else if (zoneName === 'permanents') {
-            return cards.filter(card => 
-                card.card_type !== 'land' && card.card_type !== 'LAND'
-            );
-        }
-        return cards;
-    }
-
-    /**
-     * Generate deck zone with clickable cards for drawing
-     */
-    static generateDeckZone(deck = []) {
-        if (deck.length === 0) {
-            return `
-                <div class="zone-display deck-zone">
-                    <h5 class="zone-title">📖 Deck (0)</h5>
-                    <div class="zone-empty">
-                        <div class="text-arena-text-dim text-center py-4">Deck is empty</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // For the deck zone, we'll show a stack of cards with the top card visible if available
-        const topCard = deck.length > 0 ? deck[deck.length - 1] : null;
-        const stackLayers = Math.min(5, deck.length); // Show up to 5 layers for stack effect
-        
-        // Show a notice if any of the cards are face up (for debugging)
-        const faceUpNotice = topCard && !topCard.facedown ? 
-            `<div class="text-xs text-arena-accent mt-2 mb-1">Top card visible (Debug mode)</div>` : '';
-        
-        return `
-            <div class="zone-display deck-zone">
-                <h5 class="zone-title">📖 Deck (${deck.length})</h5>
-                ${faceUpNotice}
-                <div class="relative flex justify-center py-4">
-                    <div class="deck-cards-stack" onclick="GameActions.drawCard()" title="Click to draw a card">
-                        ${Array(stackLayers).fill().map((_, index) => {
-                            // For all cards except maybe the top one, show card backs
-                            const isTopCard = index === stackLayers - 1;
-                            const showCardFront = isTopCard && topCard && !topCard.facedown;
-                            const zIndex = index + 1;
-                            const translateY = index * 1.5;
-                            const translateX = index * 1;
-                            const rotationDeg = (index % 2 === 0) ? -1 : 1; // Slight alternating rotation
-                            
-                            if (showCardFront) {
-                                return `
-                                    <div class="deck-card-layer absolute" 
-                                        style="z-index: ${zIndex}; transform: translateY(${translateY}px) translateX(${translateX}px) rotate(${rotationDeg}deg)">
-                                        ${GameCards.renderCardWithLoadingState(topCard, 'card-mini', true, 'deck')}
-                                    </div>
-                                `;
-                            } else {
-                                return `
-                                    <div class="deck-card-layer absolute" 
-                                        style="z-index: ${zIndex}; transform: translateY(${translateY}px) translateX(${translateX}px) rotate(${rotationDeg}deg)">
-                                        <div class="card-back-mini"></div>
-                                    </div>
-                                `;
-                            }
-                        }).join('')}
-                        <div class="deck-click-overlay">
-                            <span class="draw-hint">Draw</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate graveyard zone with visible cards
-     */
-    static generateGraveyardZone(graveyard = []) {
-        if (graveyard.length === 0) {
-            return `
-                <div class="zone-display graveyard-zone">
-                    <h5 class="zone-title">⚰️ Graveyard (0)</h5>
-                    <div class="zone-empty">
-                        <div class="text-arena-text-dim text-center py-4">No cards in graveyard</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Show the top cards in a spread pattern (up to 5 most recent cards)
-        const visibleCards = Math.min(5, graveyard.length);
-        const cardsToShow = graveyard.slice(-visibleCards).reverse(); // Most recent cards first
-        
-        return `
-            <div class="zone-display graveyard-zone">
-                <h5 class="zone-title">⚰️ Graveyard (${graveyard.length})</h5>
-                <div class="relative h-72 mt-2 mb-4">
-                    <div class="graveyard-cards-spread" onclick="ZoneManager.showZoneModal('graveyard')" title="Click to view all cards">
-                        ${cardsToShow.map((card, index) => {
-                            const zIndex = visibleCards - index;
-                            const xOffset = index * 30;
-                            const yOffset = index * 10;
-                            const rotation = (index - visibleCards / 2) * 5;
-                            
-                            return `
-                                <div class="graveyard-card-position absolute" 
-                                     style="z-index: ${zIndex}; transform: translateX(${xOffset}px) translateY(${yOffset}px) rotate(${rotation}deg)">
-                                    ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, 'graveyard')}
-                                </div>
-                            `;
-                        }).join('')}
-                        ${graveyard.length > visibleCards ? `
-                            <div class="graveyard-more-indicator">+${graveyard.length - visibleCards} more</div>
-                        ` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate exile zone with visible cards
-     */
-    static generateExileZone(exile = []) {
-        if (exile.length === 0) {
-            return `
-                <div class="zone-display exile-zone">
-                    <h5 class="zone-title">🌌 Exile (0)</h5>
-                    <div class="zone-empty">
-                        <div class="text-arena-text-dim text-center py-4">No cards in exile</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Show multiple cards spread out in exile - grid pattern
-        const visibleCards = Math.min(6, exile.length); // Show up to 6 most recent cards
-        const cardsToShow = exile.slice(-visibleCards); // Show the most recent cards
-        
-        return `
-            <div class="zone-display exile-zone">
-                <h5 class="zone-title">🌌 Exile (${exile.length})</h5>
-                <div class="mt-2 mb-4">
-                    <div class="grid grid-cols-3 gap-2" onclick="ZoneManager.showZoneModal('exile')" title="Click to view all exiled cards">
-                        ${cardsToShow.map((card, index) => {
-                            // Apply a subtle random rotation to each card for a more natural look
-                            const randomRotation = (Math.random() * 6) - 3; // Between -3 and +3 degrees
-                            
-                            return `
-                                <div class="relative" style="transform: rotate(${randomRotation}deg)">
-                                    ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, 'exile')}
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                    ${exile.length > visibleCards ? `
-                        <div class="text-center text-arena-accent mt-2">+${exile.length - visibleCards} more cards</div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
+        return zoneTemplates;
     }
 
     /**
      * Generate combined card zones display
      */
     static generateCardZones(playerData, isOpponent = false, playerIndex = null) {
-        const deck = playerData?.deck || [];
-        const graveyard = playerData?.graveyard || [];
-        const exile = playerData?.exile || [];
-        const life = playerData?.life || 20;
+        // Get configuration for this player type
+        const config = this.getZoneConfiguration(isOpponent, playerIndex);
         
-        // Prefix for zone IDs and click handlers when showing opponent zones
-        const prefix = isOpponent ? 'opponent_' : '';
-        const titlePrefix = isOpponent ? "Opponent's " : '';
-        
-        // Generate a unique ID for the opponent's zone elements
-        const deckId = isOpponent ? 'opponent-deck-preview' : 'deck-preview-container';
-        const graveyardId = isOpponent ? 'opponent-graveyard-preview' : 'graveyard-preview';
-        const exileId = isOpponent ? 'opponent-exile-preview' : 'exile-preview';
-        
-        // Determine the correct player ID
-        let playerId;
-        if (playerIndex !== null) {
-            playerId = `player${playerIndex + 1}`;
-        } else {
-            // Fallback logic
-            playerId = isOpponent ? 'player2' : 'player1';
-        }
+        // Generate zone templates
+        const zoneTemplates = this.generateZoneTemplates(playerData, config, isOpponent);
+
+        // For opponent, display zones in reverse order: Exile, Graveyard, Deck, Life
+        // For player, display zones in normal order: Life, Deck, Graveyard, Exile
+        const zoneOrder = isOpponent 
+            ? ['exile', 'graveyard', 'deck', 'life']
+            : ['life', 'deck', 'graveyard', 'exile'];
+
+        const orderedZones = zoneOrder.map(zoneName => zoneTemplates[zoneName]);
 
         return `
             <div class="card-zones-container">
-                <!-- Life Total Zone -->
-                <div class="zone-display life-zone mb-3">
-                    <h5 class="zone-title">❤️ ${titlePrefix}Life Total</h5>
-                    <div class="bg-arena-surface/50 rounded-lg p-3 border border-arena-accent/20">
-                        <div class="text-center mb-2">
-                            <div class="text-2xl font-bold text-red-400">${life}</div>
-                        </div>
-                        <div class="grid grid-cols-4 gap-1">
-                            <button onclick="GameActions.modifyLife('${playerId}', -5)" 
-                                    class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
-                                    title="Remove 5 life">
-                                -5
-                            </button>
-                            <button onclick="GameActions.modifyLife('${playerId}', -1)" 
-                                    class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
-                                    title="Remove 1 life">
-                                -1
-                            </button>
-                            <button onclick="GameActions.modifyLife('${playerId}', 1)" 
-                                    class="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-500 text-green-300 hover:text-green-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
-                                    title="Add 1 life">
-                                +1
-                            </button>
-                            <button onclick="GameActions.modifyLife('${playerId}', 5)" 
-                                    class="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-500 text-green-300 hover:text-green-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
-                                    title="Add 5 life">
-                                +5
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Deck Zone -->
-                <div class="zone-display deck-zone">
-                    <h5 class="zone-title">📖 ${titlePrefix}Deck (${deck.length})</h5>
-                    <div class="flex justify-center">
-                        <div class="zone-preview-container" id="${deckId}">
-                            <div class="zone-card-preview deck-preview" onclick="ZoneManager.show${isOpponent ? 'Opponent' : ''}ZoneModal('${prefix}deck')" title="Click to view ${isOpponent ? 'opponent\'s' : 'your'} deck">
-                                <div class="deck-stack">
-                                    ${Array(Math.min(3, deck.length > 0 ? 3 : 0)).fill().map((_, index) => {
-                                        const translateY = index * 4;
-                                        const translateX = index * 2;
-                                        
-                                        return `
-                                            <div class="deck-card-layer" style="transform: translateY(${translateY}px) translateX(${translateX}px)">
-                                                <div class="card-back-mini"></div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Graveyard Zone -->
-                <div class="zone-display graveyard-zone">
-                    <h5 class="zone-title">⚰️ ${titlePrefix}Graveyard (${graveyard.length})</h5>
-                    <div class="flex justify-center">
-                        <div class="zone-preview-container" id="${graveyardId}">
-                            <div class="zone-card-preview" onclick="ZoneManager.show${isOpponent ? 'Opponent' : ''}ZoneModal('${prefix}graveyard')" title="Click to view ${isOpponent ? 'opponent\'s' : 'your'} graveyard">
-                                ${graveyard.length > 0 ? 
-                                    graveyard.slice(-Math.min(3, graveyard.length)).reverse().map((card, index) => {
-                                        const zIndex = 3 - index;
-                                        const xOffset = index * 20;
-                                        const yOffset = index * 5;
-                                        const rotation = (index - 1) * 5;
-                                        
-                                        return `
-                                            <div class="graveyard-card-position absolute" 
-                                                style="z-index: ${zIndex}; transform: translateX(${xOffset}px) translateY(${yOffset}px) rotate(${rotation}deg)">
-                                                ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, `${prefix}graveyard`)}
-                                            </div>
-                                        `;
-                                    }).join('') 
-                                    : 
-                                    `<div class="card-fallback text-xs">
-                                        <span class="text-2xl mb-2">⚰️</span>
-                                        <div>Empty</div>
-                                    </div>`
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Exile Zone -->
-                <div class="zone-display exile-zone">
-                    <h5 class="zone-title">🌌 ${titlePrefix}Exile (${exile.length})</h5>
-                    <div class="flex justify-center">
-                        <div class="zone-preview-container" id="${exileId}">
-                            <div class="zone-card-preview" onclick="ZoneManager.show${isOpponent ? 'Opponent' : ''}ZoneModal('${prefix}exile')" title="Click to view ${isOpponent ? 'opponent\'s' : 'your'} exile zone">
-                                ${exile.length > 0 ? 
-                                    `<div class="relative">
-                                        ${GameCards.renderCardWithLoadingState(exile[exile.length - 1], 'card-mini', true, `${prefix}exile`)}
-                                        ${exile.length > 1 ? `<div class="absolute top-1 right-1 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-semibold">+${exile.length - 1}</div>` : ''}
-                                    </div>`
-                                    : 
-                                    `<div class="card-fallback text-xs">
-                                        <span class="text-2xl mb-2">🌌</span>
-                                        <div>Empty</div>
-                                    </div>`
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                ${orderedZones.join('')}
             </div>
         `;
     }

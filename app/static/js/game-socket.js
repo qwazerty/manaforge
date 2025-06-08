@@ -95,7 +95,7 @@ function handleWebSocketMessage(message) {
             
             if (JSON.stringify(newGameState) !== JSON.stringify(currentGameState)) {
                 GameCore.setGameState(newGameState);
-                GameUI.generateStackArea();
+                GameUI.generateLeftArea();
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
                 

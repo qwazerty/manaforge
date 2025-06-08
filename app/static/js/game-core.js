@@ -78,7 +78,7 @@ async function refreshGameData() {
             
             if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
                 gameState = newGameState;
-                GameUI.generateStackArea();
+                GameUI.generateLeftArea();
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
                 GameUI.showAutoRefreshIndicator('🔄 HTTP Update');
