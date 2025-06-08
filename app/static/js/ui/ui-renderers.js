@@ -45,7 +45,7 @@ class UIRenderers {
                 <!-- Opponent Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>Opponent's Zones
+                        <span class="mr-1">📚</span>Opponent
                     </h4>
                     ${UITemplates.generateCardZones(opponent, true, opponentIdx)}
                 </div>
@@ -53,7 +53,7 @@ class UIRenderers {
                 <!-- Player's Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>Your Card Zones
+                        <span class="mr-1">📚</span>Player
                     </h4>
                     ${UITemplates.generateCardZones(player, false, controlledIdx)}
                 </div>
@@ -243,7 +243,7 @@ class UIRenderers {
      */
     static renderOpponentArea(opponent, opponentIdx, activePlayer) {
         return `
-            <div class="arena-card rounded-lg p-3">
+            <div class="arena-card rounded-lg mb-3 p-3">
                 <div class="flex justify-center space-x-1 overflow-x-auto py-1">
                     ${UITemplates.generateOpponentHand(opponent?.hand?.length || 7)}
                 </div>

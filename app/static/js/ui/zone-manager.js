@@ -4,39 +4,6 @@
  */
 
 class ZoneManager {
-    static ZONE_INFO = {
-        'deck': {
-            title: 'Deck (Library)',
-            icon: '📖',
-            description: 'Cards remaining in your library'
-        },
-        'exile': {
-            title: 'Exile Zone',
-            icon: '🌌',
-            description: 'Cards removed from the game'
-        },
-        'graveyard': {
-            title: 'Graveyard',
-            icon: '⚰️',
-            description: 'Cards in your discard pile'
-        },
-        'opponent_deck': {
-            title: "Opponent's Deck",
-            icon: '📖',
-            description: "Cards remaining in opponent's library"
-        },
-        'opponent_exile': {
-            title: "Opponent's Exile Zone",
-            icon: '🌌',
-            description: "Cards removed from the game by your opponent"
-        },
-        'opponent_graveyard': {
-            title: "Opponent's Graveyard",
-            icon: '⚰️',
-            description: "Cards in opponent's discard pile"
-        }
-    };
-
     static CARD_TYPE_ICONS = {
         'creature': '🦎',
         'instant': '⚡',
@@ -223,14 +190,12 @@ class ZoneManager {
 
         // Convert opponent zone name to pure zone name
         const pureZoneName = zoneName.replace('opponent_', '');
-        const zone = opponent[pureZoneName] || [];
-        const zoneInfo = this.ZONE_INFO[`opponent_${pureZoneName}`] || this.ZONE_INFO[pureZoneName];
         
         // Remove existing modal if any
         this.closeZoneModal(`opponent_${pureZoneName}`);
         
         // Create and show new modal
-        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`, zone, zoneInfo);
+        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`);
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
         // Animate modal appearance
@@ -275,15 +240,11 @@ class ZoneManager {
     /**
      * Generate zone modal HTML
      */
-    static generateZoneModalHTML(zoneName, zone, zoneInfo) {
+    static generateZoneModalHTML(zoneName, zone) {
         return `
             <div class="zone-modal" id="zone-modal-${zoneName}">
                 <div class="zone-modal-content">
                     <div class="zone-modal-header">
-                        <h3 class="zone-modal-title">
-                            <span>${zoneInfo.icon}</span>
-                            ${zoneInfo.title} (${zone.length} cards)
-                        </h3>
                         <button class="zone-modal-close" onclick="ZoneManager.closeZoneModal('${zoneName}')">
                             ✕
                         </button>

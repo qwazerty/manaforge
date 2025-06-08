@@ -4,19 +4,32 @@
 
 Le système CSS de ManaForge a été refactorisé pour améliorer la maintenabilité et la lisibilité. Voici l'organisation des fichiers :
 
-### Fichiers principaux
+### Fichier principal
 
-- **`game-main.css`** - Fichier principal qui importe tous les autres et contient les styles globaux
-- **`game.css`** - Ancien fichier monolithique (à supprimer après migration)
+- **`game-main.css`** - Fichier principal qui importe tous les autres modules
 
-### Fichiers modulaires
+### Modules de base
 
-- **`animations.css`** - Toutes les animations et keyframes
-- **`cards.css`** - Styles pour les cartes (mini, battlefield, tapped, back, etc.)  
-- **`players.css`** - Styles pour les joueurs et sélecteurs
-- **`battlefield.css`** - Styles pour les zones de jeu et battlefield
-- **`stack.css`** - Styles pour la pile (stack) et sorts
-- **`modals.css`** - Styles pour les modals et menus contextuels
+- **`game-layout.css`** - Styles globaux et layout principal du jeu
+- **`game-animations.css`** - Toutes les animations et keyframes
+- **`game-cards.css`** - Styles pour les cartes (mini, battlefield, tapped, back, etc.)  
+- **`game-players.css`** - Styles pour les joueurs et sélecteurs
+- **`game-battlefield.css`** - Styles pour les zones de jeu et battlefield
+- **`game-stack.css`** - Styles pour la pile (stack) et sorts
+- **`game-modals.css`** - Styles pour les modals et menus contextuels
+- **`game-zones.css`** - Styles généraux pour les zones
+
+### Modules spécialisés
+
+- **`game-zones-compact.css`** - Styles pour les zones de cartes en mode compact (deck, graveyard, exile)
+- **`game-zone-modals.css`** - Styles pour les modales d'affichage des zones et grilles de cartes
+- **`game-responsive.css`** - Optimisations responsive et pour écrans 1080p
+
+### Fichiers spécifiques
+
+- **`arena.css`** - Styles pour l'interface d'arène
+- **`opponent-zones.css`** - Styles pour les zones de l'adversaire
+- **`game-card-actions.css`** - Styles pour les actions sur les cartes
 
 ## Utilisation
 

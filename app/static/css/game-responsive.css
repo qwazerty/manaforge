@@ -1,0 +1,95 @@
+/* ===== RESPONSIVE & 1080px HEIGHT OPTIMIZATION ===== */
+/* Global styles for compact vertical layout and responsive design */
+
+@media screen and (max-height: 1200px) {
+    /* Apply compact layout for screens 1200px height and below */
+    .game-container-1080 {
+        height: 100vh;
+        overflow-y: auto;
+    }
+    
+    /* Reduce all padding and margins */
+    .game-container-1080 .arena-card {
+        padding: 8px 12px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .game-container-1080 .space-y-6 > * + * {
+        margin-top: 8px !important;
+    }
+    
+    .game-container-1080 .space-y-4 > * + * {
+        margin-top: 6px !important;
+    }
+    
+    .game-container-1080 .space-y-3 > * + * {
+        margin-top: 4px !important;
+    }
+    
+    /* Compact header */
+    .game-container-1080 .bg-gradient-to-r {
+        padding: 8px !important;
+    }
+    
+    .game-container-1080 h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    /* Reduce container padding */
+    .game-container-1080 .max-w-\[1600px\] {
+        padding: 8px 16px !important;
+    }
+    
+    /* Compact grid gaps */
+    .game-container-1080 .gap-8 {
+        gap: 12px !important;
+    }
+    
+    .game-container-1080 .gap-4 {
+        gap: 8px !important;
+    }
+    
+    /* Force smaller cards in compact mode */
+    .game-container-1080 .card-mini {
+        width: 110px !important;
+        height: 160px !important;
+    }
+    
+    .game-container-1080 .card-battlefield {
+        width: 110px !important;
+        height: 160px !important;
+    }
+    
+    /* Compact stack */
+    .game-container-1080 .stack-container {
+        min-height: 180px !important;
+        padding: 8px !important;
+    }
+    
+    .game-container-1080 .stack-card-container {
+        width: 100px !important;
+        height: 140px !important;
+    }
+    
+    /* Compact zone previews */
+    .game-container-1080 .zone-preview-container {
+        width: 90px !important;
+        height: 130px !important;
+    }
+    
+    /* Reduce font sizes */
+    .game-container-1080 h4 {
+        font-size: 0.875rem !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .game-container-1080 h3 {
+        font-size: 1rem !important;
+    }
+    
+    /* Chat position optimization */
+    .game-container-1080 .fixed.bottom-0.right-0 {
+        height: 280px !important;
+        width: 260px !important;
+    }
+}

@@ -12,16 +12,9 @@ class UIConfig {
         { id: 'end', name: 'End', icon: '🏁' }
     ];
 
-    static ZONE_CONFIG = {
-        deck: { icon: '📖', name: 'Deck', stackLayers: 5 },
-        graveyard: { icon: '⚰️', name: 'Graveyard', maxVisible: 5 },
-        exile: { icon: '🌌', name: 'Exile', maxVisible: 6 },
-        life: { icon: '❤️', name: 'Life Total' }
-    };
-
     static LIFE_CONTROLS = [
-        { value: -5, class: 'red', label: '-5' },
         { value: -1, class: 'red', label: '-1' },
+        { value: -5, class: 'red', label: '-5' },
         { value: 1, class: 'green', label: '+1' },
         { value: 5, class: 'green', label: '+5' }
     ];
@@ -36,9 +29,8 @@ class UIConfig {
             }
         },
         zone: {
-            container: 'zone-display',
+            container: 'zone-item',
             empty: 'zone-empty',
-            title: 'zone-title'
         },
         card: {
             position: 'absolute',

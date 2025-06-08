@@ -48,16 +48,9 @@ class UIUtils {
     static generateEmptyZoneContent(icon, message) {
         return `
             <div class="${UIConfig.CSS_CLASSES.zone.empty}">
-                <div class="text-arena-text-dim text-center py-4">${message}</div>
+                <div class="text-arena-text-dim text-center py-4">${icon} ${message}</div>
             </div>
         `;
-    }
-
-    /**
-     * Generate zone header
-     */
-    static generateZoneHeader(icon, title, count) {
-        return `<h5 class="${UIConfig.CSS_CLASSES.zone.title}">${icon} ${title} (${count})</h5>`;
     }
 
     /**

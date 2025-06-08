@@ -8,7 +8,6 @@ class UITemplates {
     
     // Configuration access
     static get GAME_PHASES() { return UIConfig.GAME_PHASES; }
-    static get ZONE_CONFIG() { return UIConfig.ZONE_CONFIG; }
     static get LIFE_CONTROLS() { return UIConfig.LIFE_CONTROLS; }
     static get CSS_CLASSES() { return UIConfig.CSS_CLASSES; }
 
@@ -18,7 +17,6 @@ class UITemplates {
     static generateButton(onclick, classes, title, content) { return UIUtils.generateButton(onclick, classes, title, content); }
     static generateZoneWrapper(content, zoneType) { return UIUtils.generateZoneWrapper(content, zoneType); }
     static generateEmptyZoneContent(icon, message) { return UIUtils.generateEmptyZoneContent(icon, message); }
-    static generateZoneHeader(icon, title, count) { return UIUtils.generateZoneHeader(icon, title, count); }
     static generateCardLayer(card, index, transforms) { return UIUtils.generateCardLayer(card, index, transforms); }
     static generateEmptyZone(icon, name) { return UIUtils.generateEmptyZone(icon, name); }
     static generateZoneClickHandler(isOpponent, prefix, zoneType, title) { return UIUtils.generateZoneClickHandler(isOpponent, prefix, zoneType, title); }
@@ -30,10 +28,6 @@ class UITemplates {
     static generateGraveyardZone(graveyard) { return UIZones.generateGraveyardZone(graveyard); }
     static generateExileZone(exile) { return UIZones.generateExileZone(exile); }
     static generateLifeZone(life, playerId, titlePrefix) { return UIZones.generateLifeZone(life, playerId, titlePrefix); }
-    static generateZonePreviewBase(zoneConfig, content, clickHandler) { return UIZones.generateZonePreviewBase(zoneConfig, content, clickHandler); }
-    static generateDeckZonePreview(deck, deckId, prefix, titlePrefix, isOpponent) { return UIZones.generateDeckZonePreview(deck, deckId, prefix, titlePrefix, isOpponent); }
-    static generateGraveyardZonePreview(graveyard, graveyardId, prefix, titlePrefix, isOpponent) { return UIZones.generateGraveyardZonePreview(graveyard, graveyardId, prefix, titlePrefix, isOpponent); }
-    static generateExileZonePreview(exile, exileId, prefix, titlePrefix, isOpponent) { return UIZones.generateExileZonePreview(exile, exileId, prefix, titlePrefix, isOpponent); }
 
     // Game interface
     static generateGameInfo(gameState) { return UIGameInterface.generateGameInfo(gameState); }
@@ -54,12 +48,12 @@ class UITemplates {
         const { prefix, titlePrefix, zoneIds, playerId } = config;
         const { deck = [], graveyard = [], exile = [], life = 20 } = playerData;
 
-        // Generate individual zone templates
+        // Generate individual zone templates using basic zones
         const zoneTemplates = {
             life: this.generateLifeZone(life, playerId, titlePrefix),
-            deck: this.generateDeckZonePreview(deck, zoneIds.deck, prefix, titlePrefix, isOpponent),
-            graveyard: this.generateGraveyardZonePreview(graveyard, zoneIds.graveyard, prefix, titlePrefix, isOpponent),
-            exile: this.generateExileZonePreview(exile, zoneIds.exile, prefix, titlePrefix, isOpponent)
+            deck: this.generateDeckZone(deck),
+            graveyard: this.generateGraveyardZone(graveyard),
+            exile: this.generateExileZone(exile)
         };
 
         return zoneTemplates;
@@ -78,8 +72,8 @@ class UITemplates {
         // For opponent, display zones in reverse order: Exile, Graveyard, Deck, Life
         // For player, display zones in normal order: Life, Deck, Graveyard, Exile
         const zoneOrder = isOpponent 
-            ? ['exile', 'graveyard', 'deck', 'life']
-            : ['life', 'deck', 'graveyard', 'exile'];
+            ? ['exile', 'graveyard', 'life', 'deck']
+            : ['life', 'deck', 'exile', 'graveyard'];
 
         const orderedZones = zoneOrder.map(zoneName => zoneTemplates[zoneName]);
 

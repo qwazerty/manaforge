@@ -12,7 +12,6 @@
 .zone-card-preview {
     width: 100%;
     height: 100%;
-    border-radius: 3px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -30,23 +29,7 @@
     overflow: hidden;
 }
 
-.deck-preview:hover::after {
-    content: "DRAW CARD";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(201, 170, 113, 0.8);
-    color: #1a1f2e;
-    font-size: 16px;
-    font-weight: 600;
-    text-align: center;
-    padding: 5px 0;
-    transform: translateY(0);
-    transition: transform 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+/* Removed DRAW CARD text overlay */
 
 .deck-stack {
     position: relative;
@@ -59,7 +42,6 @@
     width: 140px;
     height: 200px;
     background: #1a1f2e;
-    border-radius: 3px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease;
 }
@@ -77,7 +59,6 @@
     background-image: url('/static/images/card-back.jpg');
     background-size: cover;
     background-position: center;
-    border-radius: 3px;
 }
 
 /* Draw hint */
@@ -91,21 +72,12 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.6);
-    border-radius: 3px;
     opacity: 0;
     transition: opacity 0.2s ease;
     z-index: 10;
 }
 
-.deck-click-overlay .draw-hint {
-    color: white;
-    font-size: 20px;
-    font-weight: 600;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 8px;
-}
+/* Removed draw hint text */
 
 .zone-preview-container:hover .deck-click-overlay {
     opacity: 1;
@@ -134,27 +106,12 @@
     height: 200px;
 }
 
-/* Card count indicators */
-.graveyard-more-indicator,
-.exile-more-indicator {
-    position: absolute;
-    bottom: -10px;
-    right: -5px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    font-size: 14px;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-weight: 600;
-    z-index: 20;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-}
+/* Removed card count indicators */
 
 /* Card mini for zones */
 .card-mini-zone {
     width: 100%;
     height: 100%;
-    border-radius: 3px;
     overflow: hidden;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
     display: block;
@@ -236,7 +193,6 @@
 .zone-card-preview-mini {
     width: 100%;
     height: 100%;
-    border-radius: 3px;
     overflow: hidden;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -265,7 +221,6 @@
     width: 90px;
     height: 130px;
     background: #1a1f2e;
-    border-radius: 3px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease;
 }
@@ -283,7 +238,6 @@
     background-image: url('/static/images/card-back.jpg');
     background-size: cover;
     background-position: center;
-    border-radius: 3px;
 }
 
 /* Mini draw hint */
@@ -297,26 +251,167 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.6);
-    border-radius: 3px;
     opacity: 0;
     transition: opacity 0.2s ease;
     z-index: 10;
 }
 
-.deck-click-overlay-mini .draw-hint-mini {
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-    padding: 5px;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 4px;
-}
+/* Removed mini draw hint text */
 
 .zone-preview-container-mini:hover .deck-click-overlay-mini {
     opacity: 1;
+}
+
+/* ===== COMPACT ZONE STYLES ===== */
+/* Compact versions for smaller displays */
+
+.zone-preview-container-compact {
+    position: relative;
+    width: 60px;
+    height: 85px;
+    perspective: 300px;
+}
+
+.zone-card-preview-compact {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.zone-card-preview-compact:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6), 0 0 8px rgba(201, 170, 113, 0.5);
+    z-index: 50;
+}
+
+/* Compact deck styles */
+.deck-stack-compact {
+    position: relative;
+    width: 60px;
+    height: 85px;
+}
+
+.deck-card-layer-compact {
+    position: absolute;
+    width: 60px;
+    height: 85px;
+    background: #1a1f2e;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.deck-top-card-compact {
+    position: absolute;
+    width: 60px;
+    height: 85px;
+    z-index: 5;
+}
+
+.card-back-compact {
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/images/card-back.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+/* Compact zone layout */
+.zone-content-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.zone-info-compact {
+    flex: 1;
+    min-width: 0;
+}
+
+.zone-header-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.zone-count-compact {
+    background: rgba(201, 170, 113, 0.2);
+    color: #c9aa71;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.75rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    min-width: 1.2rem;
+    text-align: center;
+}
+
+/* Life zone compact styles */
+.life-zone-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.life-total-compact {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ef4444;
+    margin-bottom: 0.25rem;
+}
+
+.life-controls-compact {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.2rem;
+    width: 100%;
+}
+
+.life-control-compact {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.625rem;
+    border-radius: 0.25rem;
+    border: 1px solid;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.life-control-compact.red {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+}
+
+.life-control-compact.green {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #86efac;
+}
+
+.life-control-compact:hover {
+    transform: scale(1.05);
+    opacity: 0.8;
+}
+
+/* Empty zone compact */
+.zone-empty-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(156, 163, 175, 0.6);
+    font-size: 0.625rem;
+    text-align: center;
+    height: 60px;
+}
+
+.zone-empty-compact .icon {
+    font-size: 1.2rem;
+    margin-bottom: 0.2rem;
+    opacity: 0.5;
 }
 
 /* ===== ORIGINAL STYLES ===== */
