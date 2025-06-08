@@ -77,8 +77,7 @@ class GameZone(str, Enum):
 
 class GamePhase(str, Enum):
     """Simplified game phases like Magic Arena."""
-    UNTAP = "untap"
-    UPKEEP = "upkeep"  # Includes draw step
+    BEGIN = "begin"
     MAIN1 = "main1"
     COMBAT = "combat"
     MAIN2 = "main2"
@@ -102,7 +101,7 @@ class GameState(BaseModel):
     id: str = Field(..., description="Game ID")
     players: List[Player] = Field(..., description="Players in the game")
     active_player: int = Field(default=0, description="Index of active player")
-    phase: GamePhase = Field(default=GamePhase.UNTAP, description="Current phase")
+    phase: GamePhase = Field(default=GamePhase.BEGIN, description="Current phase")
     turn: int = Field(default=1, description="Turn number (increments when both players have played)")
     round: int = Field(default=1, description="Round number (each player plays once per round)")
     players_played_this_round: List[bool] = Field(default_factory=lambda: [False, False], description="Track which players have played this round")

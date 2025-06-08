@@ -41,7 +41,7 @@ class SimpleGameEngine:
             id=game_id,
             players=[player1, player2],
             active_player=0,
-            phase=GamePhase.UNTAP,
+            phase=GamePhase.BEGIN,
             round=1,
             players_played_this_round=[False, False]
         )
@@ -67,7 +67,7 @@ class SimpleGameEngine:
             id=game_id,
             players=[player1],
             active_player=0,
-            phase=GamePhase.UNTAP
+            phase=GamePhase.BEGIN
         )
         
         self.games[game_id] = game_state
@@ -125,6 +125,8 @@ class SimpleGameEngine:
             self._resolve_stack(game_state, action)
         elif action.action_type == "pass_priority":
             self._pass_priority(game_state, action)
+        elif action.action_type == "modify_life":
+            self._modify_life(game_state, action)
         
         return game_state
     
@@ -208,7 +210,7 @@ class SimpleGameEngine:
         
         # Switch to next player
         game_state.active_player = 1 - game_state.active_player
-        game_state.phase = GamePhase.UNTAP
+        game_state.phase = GamePhase.BEGIN
         
         # Draw card for new turn
         active_player = game_state.players[game_state.active_player]
@@ -225,8 +227,8 @@ class SimpleGameEngine:
             next_phase = phases[current_index + 1]
             game_state.phase = next_phase
             
-            # Auto-draw when entering upkeep phase (merged upkeep+draw)
-            if next_phase == GamePhase.UPKEEP:
+            # Auto-draw when entering begin phase (unified begin+draw)
+            if next_phase == GamePhase.BEGIN:
                 active_player = game_state.players[game_state.active_player]
                 self._draw_cards(active_player, 1)
         else:
@@ -245,7 +247,7 @@ class SimpleGameEngine:
             
             # Switch to next player
             game_state.active_player = 1 - game_state.active_player
-            game_state.phase = GamePhase.UNTAP
+            game_state.phase = GamePhase.BEGIN
     
     def _draw_card_action(self, game_state: GameState, action: GameAction) -> None:
         """Handle drawing a card."""
@@ -320,3 +322,29 @@ class SimpleGameEngine:
         else:
             # If stack is empty, priority stays with active player
             game_state.priority_player = game_state.active_player
+    
+    def _modify_life(self, game_state: GameState, action: GameAction) -> None:
+        """Modify a player's life total."""
+        target_player_id = action.additional_data.get("target_player")
+        amount = action.additional_data.get("amount")
+        
+        if not target_player_id:
+            raise ValueError("target_player is required for modify_life action")
+        if amount is None:
+            raise ValueError("amount is required for modify_life action")
+        
+        # Find the target player
+        target_player = None
+        for player in game_state.players:
+            if player.id == target_player_id:
+                target_player = player
+                break
+        
+        if not target_player:
+            raise ValueError(f"Player {target_player_id} not found")
+        
+        # Modify the life total
+        old_life = target_player.life
+        target_player.life = max(0, target_player.life + amount)  # Life can't go below 0
+        
+        print(f"Player {target_player_id} life changed from {old_life} to {target_player.life} (amount: {amount})")
