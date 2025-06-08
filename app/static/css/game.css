@@ -284,6 +284,193 @@
     font-style: italic;
 }
 
+/* ===== STACK AREA STYLES ===== */
+.stack-container {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 170, 113, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 300px;
+    position: sticky;
+    top: 20px;
+}
+
+.stack-header {
+    color: #fbbf24;
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    justify-content: center;
+}
+
+.stack-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stack-spell {
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 8px;
+    padding: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.stack-spell:hover {
+    background: rgba(251, 191, 36, 0.25);
+    border-color: rgba(251, 191, 36, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+}
+
+/* New styles for card images in stack */
+.stack-card-container {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #1e293b; /* Fallback background */
+}
+
+.stack-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+    transition: transform 0.2s ease, opacity 0.3s ease;
+    display: block;
+}
+
+.stack-spell:hover .stack-card-image {
+    transform: scale(1.05);
+}
+
+.stack-card-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+    border: 2px solid #c9aa71;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 8px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.stack-spell-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: #f1f5f9;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.stack-spell-mana {
+    font-size: 10px;
+    color: #c9aa71;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #c9aa71;
+    margin-top: 4px;
+}
+
+.stack-player-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fbbf24;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(251, 191, 36, 0.6);
+}
+
+.stack-spell-name {
+    color: #fbbf24;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    line-height: 1.2;
+}
+
+.stack-spell-mana {
+    color: #94a3b8;
+    font-size: 12px;
+    font-family: monospace;
+    margin-bottom: 6px;
+    background: rgba(148, 163, 184, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.stack-spell-text {
+    color: #cbd5e1;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.stack-spell-player {
+    color: #64748b;
+    font-size: 10px;
+    margin-top: 6px;
+    font-style: italic;
+}
+
+.stack-empty {
+    color: rgba(201, 170, 113, 0.6);
+    text-align: center;
+    padding: 20px 12px;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.stack-spell-instant {
+    border-left: 4px solid #3b82f6;
+}
+
+.stack-spell-instant .stack-player-indicator {
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+
+.stack-spell-sorcery {
+    border-left: 4px solid #dc2626;
+}
+
+.stack-spell-sorcery .stack-player-indicator {
+    border-color: #dc2626;
+    color: #fca5a5;
+}
+
+.stack-spell-ability {
+    border-left: 4px solid #7c3aed;
+}
+
+.stack-spell-ability .stack-player-indicator {
+    border-color: #7c3aed;
+    color: #c4b5fd;
+}
+
 /* ===== EXISTING CARD STYLES ===== */
 
 
