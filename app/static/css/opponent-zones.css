@@ -1,0 +1,73 @@
+/* ===== OPPONENT CARD ZONES STYLES ===== */
+/* Styles for opponent's deck, graveyard, and exile zones */
+
+.card-zones-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.zone-display {
+    background-color: rgba(20, 24, 33, 0.6);
+    border: 1px solid rgba(201, 170, 113, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.zone-display:hover {
+    border-color: rgba(201, 170, 113, 0.4);
+    transform: translateY(-2px);
+}
+
+.zone-title {
+    color: rgba(201, 170, 113, 0.8);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+/* Deck zone styling */
+.deck-cards-stack {
+    position: relative;
+    width: 100px;
+    height: 140px;
+    cursor: pointer;
+}
+
+/* Graveyard styling */
+.graveyard-cards-spread {
+    position: relative;
+    width: 100px;
+    height: 140px;
+    cursor: pointer;
+}
+
+.graveyard-card-position {
+    position: absolute;
+    width: 100px;
+    height: 140px;
+}
+
+/* Exile zone styling */
+.exile-cards-grid {
+    position: relative;
+    width: 100px;
+    height: 140px;
+    cursor: pointer;
+}
+
+/* Empty zone styling */
+.card-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.2);
+    color: rgba(201, 170, 113, 0.6);
+}

@@ -19,6 +19,21 @@ class ZoneManager {
             title: 'Graveyard',
             icon: '⚰️',
             description: 'Cards in your discard pile'
+        },
+        'opponent_deck': {
+            title: "Opponent's Deck",
+            icon: '📖',
+            description: "Cards remaining in opponent's library"
+        },
+        'opponent_exile': {
+            title: "Opponent's Exile Zone",
+            icon: '🌌',
+            description: "Cards removed from the game by your opponent"
+        },
+        'opponent_graveyard': {
+            title: "Opponent's Graveyard",
+            icon: '⚰️',
+            description: "Cards in opponent's discard pile"
         }
     };
 
@@ -186,6 +201,62 @@ class ZoneManager {
                 </div>
             `;
         }
+    }
+
+    /**
+     * Show opponent zone modal
+     */
+    static showOpponentZoneModal(zoneName) {
+        const gameState = GameCore.getGameState();
+        if (!gameState) {
+            console.warn('No game state available for opponent zone modal');
+            return;
+        }
+
+        const { opponentIdx, players } = this.getPlayerIndices(gameState);
+        const opponent = players[opponentIdx];
+        
+        if (!opponent) {
+            console.warn('No opponent data available for zone modal');
+            return;
+        }
+
+        // Convert opponent zone name to pure zone name
+        const pureZoneName = zoneName.replace('opponent_', '');
+        const zone = opponent[pureZoneName] || [];
+        const zoneInfo = this.ZONE_INFO[`opponent_${pureZoneName}`] || this.ZONE_INFO[pureZoneName];
+        
+        // Remove existing modal if any
+        this.closeZoneModal(`opponent_${pureZoneName}`);
+        
+        // Create and show new modal
+        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`, zone, zoneInfo);
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Animate modal appearance
+        setTimeout(() => {
+            const modal = document.getElementById(`zone-modal-opponent_${pureZoneName}`);
+            if (modal) {
+                modal.classList.add('active');
+                this.attachModalEventListeners(modal, `opponent_${pureZoneName}`);
+            }
+        }, 10);
+    }
+
+    /**
+     * Get player indices for controlled and opponent players
+     */
+    static getPlayerIndices(gameState) {
+        const currentSelectedPlayer = GameCore.getSelectedPlayer();
+        const players = gameState.players || [];
+        
+        let controlledIdx = 0;
+        if (currentSelectedPlayer === 'player2') controlledIdx = 1;
+        else if (currentSelectedPlayer === 'player1') controlledIdx = 0;
+        
+        const opponentIdx = controlledIdx === 0 ? 1 : 0;
+        
+        return { controlledIdx, opponentIdx, players };
     }
 
     // ===== PRIVATE HELPER METHODS =====

@@ -44,6 +44,17 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
     const escapedCardName = GameUtils.escapeJavaScript(cardName);
     const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
     
+    // Define click action based on zone
+    let onClickAction = '';
+    if (zone === 'battlefield' || zone === 'permanents' || zone === 'lands') {
+        onClickAction = `onclick="GameActions.tapCard('${escapedCardId}'); event.stopPropagation();"`;
+    } else if (zone === 'hand') {
+        onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}'); event.stopPropagation();"`;
+    } else {
+        // Other zones - no special action
+        onClickAction = '';
+    }
+    
     return `
         <div class="${cardClass}${tappedClass}" 
              data-card-id="${cardId}"
@@ -52,7 +63,7 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
              data-card-zone="${zone}"
              data-card-tapped="${isTapped}"
              data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
-             ${showTooltip ? `onclick="GameCards.showCardPreview('${escapedCardId}', '${escapedCardName}', '${escapedImageUrl}', event)"` : ''}
+             ${onClickAction}
              oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
             ${imageUrl ? `
                 <div class="relative">
@@ -216,7 +227,7 @@ function showCardContextMenu(event, cardElement) {
         </div>`;
     }
     
-    if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'land') {
+    if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
         const tapAction = isTapped ? 'Untap' : 'Tap';
         const tapIcon = isTapped ? '⤴️' : '🔄';
         menuHTML += `

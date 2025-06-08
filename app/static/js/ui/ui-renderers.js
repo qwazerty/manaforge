@@ -37,7 +37,22 @@ class UIRenderers {
 
         try {
             const stack = gameState.stack || [];
-            stackContainer.innerHTML = this.generateStackContent(stack);
+            const { opponentIdx, players } = this.getPlayerIndices(gameState);
+            const opponent = players[opponentIdx] || {};
+            
+            // Render opponent card zones and stack area together in the left sidebar
+            stackContainer.innerHTML = `
+                <!-- Opponent Card Zones -->
+                <div class="arena-card rounded-xl p-6 mb-6">
+                    <h4 class="font-magic font-semibold mb-4 text-arena-accent flex items-center">
+                        <span class="mr-2">📚</span>Opponent's Zones
+                    </h4>
+                    ${UITemplates.generateCardZones(opponent, true)}
+                </div>
+                
+                <!-- The Stack -->
+                ${this.generateStackContent(stack)}
+            `;
         } catch (error) {
             this.renderError(stackContainer, 'Error loading stack', error.message);
         }
@@ -61,7 +76,6 @@ class UIRenderers {
             
             gameBoardContainer.innerHTML = `
                 ${this.renderOpponentArea(players[opponentIdx], opponentIdx, activePlayer)}
-                ${this.renderBattlefieldCenter(gameState)}
                 ${this.renderPlayerArea(players[controlledIdx], controlledIdx, activePlayer)}
             `;
         } catch (error) {
@@ -159,7 +173,7 @@ class UIRenderers {
                  data-card-zone="stack"
                  data-stack-index="${index}"
                  oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="GameCards.showCardPreview('${escapedCardId}', '${escapedCardName}', '${escapedImageUrl}', event)">
+                 onclick="GameActions.resolveStackSpell('${escapedCardId}', '${index}'); event.stopPropagation();">
                 
                 <!-- Card Image Taking Full Size -->
                 <div class="stack-card-container">

@@ -69,9 +69,7 @@ class UITemplates {
         }
 
         return hand.map((card, index) => {
-            const cardHtml = GameCards.renderCardWithLoadingState(card, 'card-mini', false, 'hand');
-            const escapedCardId = GameUtils.escapeJavaScript(card.id || card.name);
-            return `<div onclick="GameActions.playCardFromHand('${escapedCardId}', ${index})">${cardHtml}</div>`;
+            return GameCards.renderCardWithLoadingState(card, 'card-mini', false, 'hand');
         }).join('');
     }
 
@@ -105,16 +103,56 @@ class UITemplates {
      * Generate action buttons for active player
      */
     static generateActionButtons() {
+        // Define all the game phases
+        const gamePhases = [
+            { id: 'untap', name: 'Untap', icon: '🔄' },
+            { id: 'upkeep', name: 'Upkeep', icon: '⚙️' },
+            { id: 'draw', name: 'Draw', icon: '🃏' },
+            { id: 'main1', name: 'Main 1', icon: '🎯' },
+            { id: 'combat_begin', name: 'Combat Begin', icon: '⚔️' },
+            { id: 'combat_attackers', name: 'Declare Attackers', icon: '⚡' },
+            { id: 'combat_blockers', name: 'Declare Blockers', icon: '🛡️' },
+            { id: 'combat_damage', name: 'Combat Damage', icon: '💥' },
+            { id: 'combat_end', name: 'Combat End', icon: '🔚' },
+            { id: 'main2', name: 'Main 2', icon: '✨' },
+            { id: 'end', name: 'End', icon: '🏁' },
+            { id: 'cleanup', name: 'Cleanup', icon: '🧹' }
+        ];
+        
+        // Get current phase from game state
+        const gameState = GameCore.getGameState();
+        const currentPhase = gameState?.phase || 'untap';
+        const currentTurn = gameState?.turn || 1;
+        
         return `
-            <div class="space-y-3 mb-6">
-                <button onclick="GameActions.performGameAction('pass_phase')" 
-                        class="w-full bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 rounded-lg font-semibold transition-all duration-200">
-                    ⏭️ Pass Phase
-                </button>
-                <button onclick="GameActions.performGameAction('draw_card')" 
-                        class="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-500 text-green-300 hover:text-green-200 py-3 rounded-lg font-semibold transition-all duration-200">
-                    🃏 Draw Card
-                </button>
+            <div class="mb-6">
+                <!-- Current Turn Display -->
+                <div class="text-center mb-4">
+                    <div class="bg-yellow-500/20 rounded-lg p-3 inline-block px-8">
+                        <div class="text-yellow-300 font-semibold">Turn</div>
+                        <div class="text-2xl font-bold">${currentTurn}</div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center mb-3">
+                    <button onclick="GameActions.performGameAction('pass_phase')" 
+                            class="flex-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200">
+                        ⏭️ Pass Phase
+                    </button>
+                </div>
+                
+                <!-- Game Phases Indicator -->
+                <div class="mt-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-4">
+                    <h5 class="text-arena-accent font-semibold mb-2 text-sm">Game Phases</h5>
+                    <div class="grid grid-cols-3 gap-2">
+                        ${gamePhases.map(phase => `
+                            <div class="text-center p-1 rounded ${currentPhase === phase.id ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' : 'text-arena-text-dim'}" title="${phase.name} Phase">
+                                <div class="text-lg">${phase.icon}</div>
+                                <div class="text-xs truncate">${phase.name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
             <div class="border-t border-arena-accent/30 pt-4">
                 <h5 class="text-arena-accent font-semibold mb-3">Quick Actions</h5>
@@ -163,7 +201,7 @@ class UITemplates {
     static filterCardsByType(cards, zoneName) {
         if (!cards || !Array.isArray(cards)) return [];
         
-        if (zoneName === 'lands' || zoneName === 'land') {
+        if (zoneName === 'lands') {
             return cards.filter(card => 
                 card.card_type === 'land' || card.card_type === 'LAND'
             );
@@ -230,7 +268,7 @@ class UITemplates {
                             }
                         }).join('')}
                         <div class="deck-click-overlay">
-                            <span class="draw-hint">🎴 Draw</span>
+                            <span class="draw-hint">Draw</span>
                         </div>
                     </div>
                 </div>
@@ -330,16 +368,97 @@ class UITemplates {
     /**
      * Generate combined card zones display
      */
-    static generateCardZones(playerData) {
+    static generateCardZones(playerData, isOpponent = false) {
         const deck = playerData?.deck || [];
         const graveyard = playerData?.graveyard || [];
         const exile = playerData?.exile || [];
+        
+        // Prefix for zone IDs and click handlers when showing opponent zones
+        const prefix = isOpponent ? 'opponent_' : '';
+        const titlePrefix = isOpponent ? "Opponent's " : '';
+        
+        // Generate a unique ID for the opponent's zone elements
+        const deckId = isOpponent ? 'opponent-deck-preview' : 'deck-preview-container';
+        const graveyardId = isOpponent ? 'opponent-graveyard-preview' : 'graveyard-preview';
+        const exileId = isOpponent ? 'opponent-exile-preview' : 'exile-preview';
 
         return `
             <div class="card-zones-container">
-                ${this.generateDeckZone(deck)}
-                ${this.generateGraveyardZone(graveyard)}
-                ${this.generateExileZone(exile)}
+                <!-- Deck Zone -->
+                <div class="zone-display deck-zone">
+                    <h5 class="zone-title">📖 ${titlePrefix}Deck (${deck.length})</h5>
+                    <div class="flex justify-center">
+                        <div class="zone-preview-container" id="${deckId}">
+                            <div class="zone-card-preview deck-preview" onclick="ZoneManager.show${isOpponent ? 'Opponent' : ''}ZoneModal('${prefix}deck')" title="Click to view ${isOpponent ? 'opponent\'s' : 'your'} deck">
+                                <div class="deck-stack">
+                                    ${Array(Math.min(3, deck.length > 0 ? 3 : 0)).fill().map((_, index) => {
+                                        const translateY = index * 4;
+                                        const translateX = index * 2;
+                                        
+                                        return `
+                                            <div class="deck-card-layer" style="transform: translateY(${translateY}px) translateX(${translateX}px)">
+                                                <div class="card-back-mini"></div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Graveyard Zone -->
+                <div class="zone-display graveyard-zone mt-6">
+                    <h5 class="zone-title">⚰️ ${titlePrefix}Graveyard (${graveyard.length})</h5>
+                    <div class="flex justify-center">
+                        <div class="zone-preview-container" id="${graveyardId}">
+                            <div class="zone-card-preview" onclick="ZoneManager.show${isOpponent ? 'Opponent' : ''}ZoneModal('${prefix}graveyard')" title="Click to view ${isOpponent ? 'opponent\'s' : 'your'} graveyard">
+                                ${graveyard.length > 0 ? 
+                                    graveyard.slice(-Math.min(3, graveyard.length)).reverse().map((card, index) => {
+                                        const zIndex = 3 - index;
+                                        const xOffset = index * 20;
+                                        const yOffset = index * 5;
+                                        const rotation = (index - 1) * 5;
+                                        
+                                        return `
+                                            <div class="graveyard-card-position absolute" 
+                                                style="z-index: ${zIndex}; transform: translateX(${xOffset}px) translateY(${yOffset}px) rotate(${rotation}deg)">
+                                                ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, `${prefix}graveyard`)}
+                                            </div>
+                                        `;
+                                    }).join('') 
+                                    : 
+                                    `<div class="card-fallback text-xs">
+                                        <span class="text-2xl mb-2">⚰️</span>
+                                        <div>Empty</div>
+                                    </div>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Exile Zone -->
+                <div class="zone-display exile-zone mt-6">
+                    <h5 class="zone-title">🌌 ${titlePrefix}Exile (${exile.length})</h5>
+                    <div class="flex justify-center">
+                        <div class="zone-preview-container" id="${exileId}">
+                            <div class="zone-card-preview" onclick="ZoneManager.show${isOpponent ? 'Opponent' : ''}ZoneModal('${prefix}exile')" title="Click to view ${isOpponent ? 'opponent\'s' : 'your'} exile zone">
+                                ${exile.length > 0 ? 
+                                    `<div class="relative">
+                                        ${GameCards.renderCardWithLoadingState(exile[exile.length - 1], 'card-mini', true, `${prefix}exile`)}
+                                        ${exile.length > 1 ? `<div class="absolute top-1 right-1 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-semibold">+${exile.length - 1}</div>` : ''}
+                                    </div>`
+                                    : 
+                                    `<div class="card-fallback text-xs">
+                                        <span class="text-2xl mb-2">🌌</span>
+                                        <div>Empty</div>
+                                    </div>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
     }
