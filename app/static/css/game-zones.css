@@ -2,10 +2,10 @@
 /* Main import file for all zone-related styles */
 
 /* Import all zone style modules */
-@import 'zones/zones-base.css';
-@import 'zones/zones-deck.css';
-@import 'zones/zones-graveyard-exile.css';
-@import 'zones/zones-animations.css';
-@import 'zones/zones-mini.css';
-@import 'zones/zones-compact.css';
-@import 'zones/zones-life.css';
+@import '/static/css/zones/zones-base.css';
+@import '/static/css/zones/zones-deck.css';
+@import '/static/css/zones/zones-graveyard-exile.css';
+@import '/static/css/zones/zones-animations.css';
+@import '/static/css/zones/zones-mini.css';
+@import '/static/css/zones/zones-compact.css';
+@import '/static/css/zones/zones-life.css';
