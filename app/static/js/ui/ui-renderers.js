@@ -37,17 +37,26 @@ class UIRenderers {
 
         try {
             const stack = gameState.stack || [];
-            const { opponentIdx, players } = this.getPlayerIndices(gameState);
+            const { controlledIdx, opponentIdx, players } = this.getPlayerIndices(gameState);
             const opponent = players[opponentIdx] || {};
+            const player = players[controlledIdx] || {};
             
-            // Render opponent card zones and stack area together in the left sidebar
+            // Render both player and opponent card zones + stack area in the left sidebar
             stackContainer.innerHTML = `
+                <!-- Player's Card Zones -->
+                <div class="arena-card rounded-lg p-3 mb-3">
+                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
+                        <span class="mr-1">📚</span>Your Card Zones
+                    </h4>
+                    ${UITemplates.generateCardZones(player, false, controlledIdx)}
+                </div>
+                
                 <!-- Opponent Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
                         <span class="mr-1">📚</span>Opponent's Zones
                     </h4>
-                    ${UITemplates.generateCardZones(opponent, true)}
+                    ${UITemplates.generateCardZones(opponent, true, opponentIdx)}
                 </div>
                 
                 <!-- The Stack -->
@@ -234,14 +243,12 @@ class UIRenderers {
      */
     static renderOpponentArea(opponent, opponentIdx, activePlayer) {
         return `
-            <div class="arena-card rounded-lg p-3 mb-3">
-                ${UITemplates.generatePlayerInfo(opponent, opponentIdx, activePlayer === opponentIdx, true)}
-                
-                <div class="flex justify-center space-x-1 mb-2 overflow-x-auto py-1">
+            <div class="arena-card rounded-lg p-3">
+                <div class="flex justify-center space-x-1 overflow-x-auto py-1">
                     ${UITemplates.generateOpponentHand(opponent?.hand?.length || 7)}
                 </div>
                 
-                <div class="bg-arena-surface/50 rounded-lg p-2 mb-2">
+                <div class="bg-arena-surface/50 rounded-lg p-2">
                     ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'lands', 'Lands', '🌍')}
                     ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'permanents', 'Permanents', '⚔️')}
                 </div>
@@ -269,9 +276,7 @@ class UIRenderers {
     static renderPlayerArea(player, controlledIdx, activePlayer) {
         return `
             <div class="arena-card rounded-lg p-3">
-                ${UITemplates.generatePlayerInfo(player, controlledIdx, activePlayer === controlledIdx, false)}
-                
-                <div class="bg-arena-surface/50 rounded-lg p-2 mb-2">
+                <div class="bg-arena-surface/50 rounded-lg p-2">
                     ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️')}
                     ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍')}
                 </div>

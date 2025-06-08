@@ -40,6 +40,9 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'play_card':
                 endpoint = `/api/v1/games/${gameId}/play-card`;
                 break;
+            case 'modify_life':
+                endpoint = `/api/v1/games/${gameId}/modify-life`;
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }
@@ -225,6 +228,16 @@ function drawCard() {
     GameUI.showNotification(`Card drawn`, 'info');
 }
 
+function modifyLife(playerId, amount) {
+    performGameAction('modify_life', { 
+        target_player: playerId,
+        amount: amount
+    });
+    
+    const actionText = amount > 0 ? `+${amount} life` : `${amount} life`;
+    GameUI.showNotification(`${playerId}: ${actionText}`, amount > 0 ? 'success' : 'warning');
+}
+
 // Export actions module functionality
 window.GameActions = {
     performGameAction,
@@ -239,5 +252,6 @@ window.GameActions = {
     resolveStackSpell,
     counterStackSpell,
     copyStackSpell,
-    drawCard
+    drawCard,
+    modifyLife
 };

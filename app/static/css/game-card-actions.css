@@ -34,12 +34,12 @@
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Tapped cards show UNTAP instead */
+/* Tapped cards show TAP AGAIN instead */
 .card-mini.tapped[data-card-zone="land"]:hover::after,
 .card-battlefield.tapped[data-card-zone="land"]:hover::after,
 .card-mini.tapped[data-card-zone="permanents"]:hover::after,
 .card-battlefield.tapped[data-card-zone="permanents"]:hover::after {
-    content: "UNTAP";
+    content: "TAP AGAIN";
     background: rgba(0, 128, 0, 0.7);
 }
 

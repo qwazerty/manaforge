@@ -44,7 +44,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - **Complete Game Interface**: Full-featured game board with player areas, battlefields, and hands
 - **Real-time Multiplayer**: WebSocket-based live game updates and player communication
 - **Combat System**: Full combat mechanics with attacking, blocking, and damage resolution
-- **Phase Management**: Complete MTG turn structure (Untap, Upkeep, Draw, Main, Combat, End phases)
+- **Phase Management**: Complete MTG turn structure (Begin, Main 1, Combat, Main 2, End phases)
 - **Card Playing**: Interactive card casting with visual feedback and animations
 - **Advanced Card Search**: Comprehensive search with filtering by type, rarity, color, and mana cost
 - **Game Creation**: Quick game setup with pre-constructed decks
@@ -132,7 +132,7 @@ Fully implemented game actions:
 - **Life Tracking**: Real-time life point updates from combat and spell effects
 
 ### Game Engine Capabilities
-- **Complete Phase System**: Untap, Upkeep, Draw, Main1, Combat, Main2, End, Cleanup phases
+- **Complete Phase System**: Begin, Main1, Combat, Main2, End phases
 - **Priority Management**: Proper priority passing between players according to MTG rules
 - **Card Zones**: Full zone management (Hand, Battlefield, Library, Graveyard, Exile)
 - **Spell Resolution**: Stack-based spell and ability resolution

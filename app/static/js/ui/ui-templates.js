@@ -5,31 +5,6 @@
 
 class UITemplates {
     /**
-     * Generate player info section
-     */
-    static generatePlayerInfo(player, playerIndex, isActive = false, isOpponent = false) {
-        const playerName = player?.name || (isOpponent ? 'Opponent' : 'You');
-        const life = player?.life || 20;
-        const handSize = player?.hand?.length || 7;
-        const librarySize = player?.library?.length || 53;
-        const colorClass = playerIndex === 0 ? 'text-green-400' : 'text-red-400';
-        
-        return `
-            <div class="text-center mb-4">
-                <h3 class="font-magic text-xl font-bold ${colorClass}">
-                    ${playerName}
-                    ${isActive ? '⭐ (Active)' : ''}
-                </h3>
-                <div class="flex justify-center space-x-4 text-sm">
-                    <span class="text-red-400">❤️ ${life} Life</span>
-                    <span class="text-blue-400">🃏 ${handSize} Cards</span>
-                    <span class="text-gray-400">📚 ${librarySize} Library</span>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
      * Generate opponent's hidden hand
      */
     static generateOpponentHand(handSize = 7) {
@@ -78,11 +53,21 @@ class UITemplates {
      */
     static generateGameInfo(gameState) {
         const currentTurn = gameState.turn || 1;
-        const currentPhase = gameState.phase || 'untap';
+        const currentPhase = gameState.phase || 'begin';
         const priorityPlayer = (gameState.priority_player || 0) + 1;
 
-        // Format phase display
-        let phaseDisplay = currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1);
+        // Map phase IDs to display names consistent with the simplified phases
+        const phaseDisplayMap = {
+            'begin': 'Begin',
+            'main1': 'Main 1',
+            'combat': 'Combat',
+            'main2': 'Main 2',
+            'end': 'End'
+        };
+
+        // Format phase display using the mapping or fallback to capitalized phase
+        let phaseDisplay = phaseDisplayMap[currentPhase] || 
+                          currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1);
 
         return `
             <div class="grid grid-cols-3 gap-4 text-center">
@@ -108,8 +93,7 @@ class UITemplates {
     static generateActionButtons() {
         // Define simplified game phases like Magic Arena
         const gamePhases = [
-            { id: 'untap', name: 'Untap', icon: '🔄' },
-            { id: 'upkeep', name: 'Upkeep + Draw', icon: '⚙️' },
+            { id: 'begin', name: 'Begin', icon: '🔄' },
             { id: 'main1', name: 'Main 1', icon: '🎯' },
             { id: 'combat', name: 'Combat', icon: '⚔️' },
             { id: 'main2', name: 'Main 2', icon: '✨' },
@@ -118,13 +102,16 @@ class UITemplates {
         
         // Get current phase from game state
         const gameState = GameCore.getGameState();
-        const currentPhase = gameState?.phase || 'untap';
+        const currentPhase = gameState?.phase || 'begin';
         const currentTurn = gameState?.turn || 1;
         const activePlayer = gameState?.active_player || 0;
         const activePlayerName = activePlayer === 0 ? 'Player 1' : 'Player 2';
         
+        // Backend phase names now match our simplified phase display
+        const displayPhase = currentPhase;
+        
         return `
-            <div class="mb-6">
+            <div>
                 <!-- Game Info Section -->
                 <div class="grid grid-cols-2 gap-2 mb-4">
                     <!-- Turn Block -->
@@ -143,13 +130,13 @@ class UITemplates {
                     </div>
                 </div>
                 <!-- Game Phases Indicator -->
-                <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-4">
-                    <h5 class="text-arena-accent font-semibold mb-2 text-sm">Game Phases</h5>
-                    <div class="grid grid-cols-4 gap-2 mb-3">
+                <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
+                    <h5 class="text-arena-accent font-semibold mb-3 text-sm text-center">Game Phases</h5>
+                    <div class="grid grid-cols-5 gap-1">
                         ${gamePhases.map(phase => `
-                            <div class="text-center p-1 rounded ${currentPhase === phase.id ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' : 'text-arena-text-dim'}" title="${phase.name} Phase">
-                                <div class="text-lg">${phase.icon}</div>
-                                <div class="text-xs truncate">${phase.name}</div>
+                            <div class="text-center py-2 px-1 rounded transition-all duration-200 ${displayPhase === phase.id ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' : 'text-arena-text-dim hover:text-arena-text'}" title="${phase.name} Phase">
+                                <div class="text-lg mb-1 leading-none">${phase.icon}</div>
+                                <div class="text-xs font-medium leading-tight">${phase.name}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -161,24 +148,16 @@ class UITemplates {
                         ⏭️ Pass Phase
                     </button>
                 </div>
-            </div>
-            <div class="border-t border-arena-accent/30 pt-4">
-                <h5 class="text-arena-accent font-semibold mb-3">Quick Actions</h5>
                 <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                     <button onclick="GameActions.performGameAction('untap_all')" 
                             class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
-                        🔄 Untap All
+                        🔄 Untap all
                     </button>
-                    <button onclick="GameActions.drawCard()" 
+                    <button onclick="GameActions.performGameAction('pass_turn')" 
                             class="bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded">
-                        🃏 Draw Card
+                        ⏸️ Pass Turn
                     </button>
                 </div>
-                <!-- Pass Turn button (more prominent) -->
-                <button onclick="GameActions.performGameAction('pass_turn')" 
-                        class="w-full bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 hover:border-purple-500 text-purple-300 hover:text-purple-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200">
-                    ⏸️ Pass Turn
-                </button>
             </div>
         `;
     }
@@ -381,10 +360,11 @@ class UITemplates {
     /**
      * Generate combined card zones display
      */
-    static generateCardZones(playerData, isOpponent = false) {
+    static generateCardZones(playerData, isOpponent = false, playerIndex = null) {
         const deck = playerData?.deck || [];
         const graveyard = playerData?.graveyard || [];
         const exile = playerData?.exile || [];
+        const life = playerData?.life || 20;
         
         // Prefix for zone IDs and click handlers when showing opponent zones
         const prefix = isOpponent ? 'opponent_' : '';
@@ -394,9 +374,50 @@ class UITemplates {
         const deckId = isOpponent ? 'opponent-deck-preview' : 'deck-preview-container';
         const graveyardId = isOpponent ? 'opponent-graveyard-preview' : 'graveyard-preview';
         const exileId = isOpponent ? 'opponent-exile-preview' : 'exile-preview';
+        
+        // Determine the correct player ID
+        let playerId;
+        if (playerIndex !== null) {
+            playerId = `player${playerIndex + 1}`;
+        } else {
+            // Fallback logic
+            playerId = isOpponent ? 'player2' : 'player1';
+        }
 
         return `
             <div class="card-zones-container">
+                <!-- Life Total Zone -->
+                <div class="zone-display life-zone mb-3">
+                    <h5 class="zone-title">❤️ ${titlePrefix}Life Total</h5>
+                    <div class="bg-arena-surface/50 rounded-lg p-3 border border-arena-accent/20">
+                        <div class="text-center mb-2">
+                            <div class="text-2xl font-bold text-red-400">${life}</div>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1">
+                            <button onclick="GameActions.modifyLife('${playerId}', -5)" 
+                                    class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
+                                    title="Remove 5 life">
+                                -5
+                            </button>
+                            <button onclick="GameActions.modifyLife('${playerId}', -1)" 
+                                    class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
+                                    title="Remove 1 life">
+                                -1
+                            </button>
+                            <button onclick="GameActions.modifyLife('${playerId}', 1)" 
+                                    class="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-500 text-green-300 hover:text-green-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
+                                    title="Add 1 life">
+                                +1
+                            </button>
+                            <button onclick="GameActions.modifyLife('${playerId}', 5)" 
+                                    class="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-500 text-green-300 hover:text-green-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200"
+                                    title="Add 5 life">
+                                +5
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Deck Zone -->
                 <div class="zone-display deck-zone">
                     <h5 class="zone-title">📖 ${titlePrefix}Deck (${deck.length})</h5>
