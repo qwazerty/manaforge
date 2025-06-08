@@ -9,21 +9,21 @@
 
 .deck-stack {
     position: relative;
-    width: 140px;
-    height: 200px;
+    width: 90px;
+    height: 130px;
 }
 
 .deck-cards-stack {
     position: relative;
-    width: 140px;
-    height: 200px;
+    width: 90px;
+    height: 130px;
     cursor: pointer;
 }
 
 .deck-card-layer {
     position: absolute;
-    width: 140px;
-    height: 200px;
+    width: 90px;
+    height: 130px;
     background: #1a1f2e;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease;
@@ -70,7 +70,9 @@
     letter-spacing: 1px;
 }
 
-.zone-preview-container:hover .deck-click-overlay,
-.deck-cards-stack:hover .deck-click-overlay {
-    opacity: 1;
+.zone-preview-container:hover,
+.deck-cards-stack:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
+    z-index: 10;
 }

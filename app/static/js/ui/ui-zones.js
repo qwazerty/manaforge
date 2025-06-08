@@ -140,7 +140,7 @@ class UIZones {
             </div>
             
             <!-- Life Control Buttons -->
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-2 text-center">
                     <!-- Negative buttons (left side) -->
                     <div class="space-y-1">
                         ${UIConfig.LIFE_CONTROLS.filter(c => c.value < 0).map(control => 
