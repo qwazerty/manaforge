@@ -100,7 +100,7 @@ DECK2_TEXT="4 Counterspell\\n4 Serra Angel\\n4 Lightning Bolt\\n4 Wrath of God\\
 curl_test "Joueur 2 rejoint la partie" "POST" "$API_BASE/games/$GAME_ID/join" "{\"decklist_text\": \"$DECK2_TEXT\"}" "id"
 
 echo "🔍 Test 4: Vérification de l'état de la partie"
-curl_test "État de la partie" "GET" "$API_BASE/games/$GAME_ID" "" "id"
+curl_test "État de la partie" "GET" "$API_BASE/games/$GAME_ID/state" "" "id"
 
 echo "🎮 Test 5: Actions de jeu de base"
 

@@ -14,7 +14,7 @@
                 Forge new battles or join existing conflicts across the multiverse
             </p>
         </div>
-        
+
         <!-- Main Arena Card -->
         <div class="arena-card rounded-xl mb-8 animate-slide-up">
             <!-- Play Content -->
@@ -26,21 +26,21 @@
                     <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2">Enter Battle Arena</h2>
                     <p class="text-arena-text-dim">Join or create a battlefield automatically. Import your deck and challenge other planeswalkers!</p>
                 </div>
-                
+
                 <div class="max-w-2xl mx-auto space-y-6">
                     <!-- Game ID Input -->
                     <div class="relative">
-                        <input 
-                            type="text" 
-                            id="gameId" 
-                            placeholder="Enter Battlefield Name..." 
+                        <input
+                            type="text"
+                            id="gameId"
+                            placeholder="Enter Battlefield Name..."
                             value=""
                             class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
                         >
                         <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
                             🎯
                         </div>
-                        <button 
+                        <button
                             onclick="generateRandomGameName()"
                             class="absolute left-4 top-1/2 transform -translate-y-1/2 text-arena-accent hover:text-arena-accent-bright transition-colors"
                             title="Generate random name"
@@ -48,26 +48,26 @@
                             🎲
                         </button>
                     </div>
-                    
+
                     <!-- Deck Import -->
                     <div class="space-y-4">
                         <div class="text-center">
                             <h3 class="font-magic text-xl font-bold text-arena-accent mb-2">📚 Import Your Deck</h3>
                             <p class="text-arena-text-dim text-sm">Paste your decklist to battle with your custom arsenal</p>
                         </div>
-                        
+
                         <div class="relative">
-                            <textarea 
-                                id="decklistText" 
+                            <textarea
+                                id="decklistText"
                                 placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
                                 rows="6"
                                 class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 font-mono text-sm"
                             ></textarea>
                         </div>
                     </div>
-                    
+
                     <!-- Main Action Button -->
-                    <button 
+                    <button
                         onclick="joinOrCreateBattle()"
                         class="arena-button w-full py-6 px-8 rounded-lg font-semibold text-xl transition-all duration-300 group"
                     >
@@ -75,14 +75,31 @@
                         Enter Battlefield
                         <span class="ml-3 group-hover:animate-pulse">⚔️</span>
                     </button>
-                    
+
                     <div id="battle-status" class="text-center"></div>
-                    
+
                     <!-- Deck Preview -->
                     <div id="deck-preview" class="hidden mt-6 p-4 bg-arena-surface/50 rounded-lg border border-arena-accent/20">
                         <h3 class="font-semibold text-arena-accent mb-2">Deck Preview:</h3>
                         <div id="deck-cards" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-40 overflow-y-auto"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game List Section -->
+        <div class="arena-card rounded-xl mb-8 animate-slide-up">
+            <div class="p-8">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-4 shadow-arena">
+                        <span class="text-4xl">🎮</span>
+                    </div>
+                    <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2">🌐 Join Ongoing Games</h2>
+                    <p class="text-arena-text-dim">Spectate or join games in progress or waiting for players</p>
+                </div>
+
+                <div id="game-list" class="space-y-4 max-h-96 overflow-y-auto">
+                    <!-- Games will be loaded here by JavaScript -->
                 </div>
             </div>
         </div>
