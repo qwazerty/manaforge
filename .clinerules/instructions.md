@@ -160,35 +160,30 @@ Mise à jour de la base de cartes (cron quotidien ou hebdomadaire) :
 
 ## Instructions
 
-Quand tu veux consulter les logs ou l'état de l'application, utilise les commandes suivantes :
-```bash
-# Pour consulter les logs du backend web
-docker compose logs web
-
-# Pour démarrer l'application en mode développement. Pas nécessaire de redémarrer le conteneur à chaque modification de code.
-docker compose up --build -d
-
-# Pour exécuter les tests unitaires
-pytest
-```
+### Introduction
 
 * Poser des questions de clarification chaque fois qu'un point n'est pas assez précis (ne jamais faire d'hypothèses risquées).
 * Documenter toute décision technique (pourquoi tel moteur, pourquoi telle librairie).
 * Privilégier les solutions open source éprouvées
 * Toujours vérifier la licence (éviter la contamination GPLv3 si le projet final doit être sous licence MIT).
 
-Modularité & évolutivité
+### Tests
+
+Pour valider le fonctionnement, tu n'as pas besoin de relancer l'applications. Quand tu test du HTML, JS ou CSS tu peux utiliser des appels curl directement.
+Si tu as une erreur 5XX, tu peux consulter les logs avec `docker compose logs`.
+
+### Modularité & évolutivité
 
 * Chaque composant (front, back, rules engine, database) doit être découplé pour évoluer indépendamment.
 * Prévoir des interfaces/niveaux d'abstraction clairs (ex. adapter différent moteur de règles via une classe abstraite).
 
-Sécurité & confidentialité
+### Sécurité & confidentialité
 
 * Toutes les communications utilisateur doivent passer en HTTPS/TLS.
 * Les mots de passe doivent être stockés avec un algorithme de hachage sécurisé (bcrypt/argon2).
 * Les tokens JWT doivent être rafraîchis périodiquement.
 
-Qualité du code & bonnes pratiques
+### Qualité du code & bonnes pratiques
 
 * Utiliser des versions le plus up to date des bibliothèques pour bénéficier des dernières fonctionnalités et correctifs de sécurité.
 * Respecter les conventions de style Python (PEP 8) avec black et flake8.
@@ -198,7 +193,7 @@ Qualité du code & bonnes pratiques
 * Utiliser type hints Python pour améliorer la lisibilité et détecter les erreurs.
 * Chaque fichier ne doit pas dépasser 300 lignes de code pour éviter la complexité excessive.
 
-Expérience utilisateur
+### Expérience utilisateur
 
 * Les temps de chargement doivent être optimisés (lazy loading des images, compression).
 * Lorsqu'une action prend plus de 300 ms, afficher des feedbacks visuels (spinner, barre de progression) via HTMX.

@@ -11,16 +11,18 @@ class UIZones {
         // Ensure deck is always an array
         const deckArray = Array.isArray(deck) ? deck : [];
         
-        // For opponent, always show a deck stack (they always have a deck even if we don't know the cards)
-        // For player, show empty only if truly empty
-        if (deckArray.length === 0 && !isOpponent) {
+        // Show empty deck for both player and opponent when deck is truly empty
+        if (deckArray.length === 0) {
             return UIUtils.generateZoneWrapper(`
                 ${UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
             `, 'deck');
         }
 
-        // For opponent deck, show a standard number of layers even if we don't know exact count
-        const stackLayers = isOpponent ? 5 : Math.min(5, Math.max(1, deckArray.length));
+        // Calculate cards remaining - both player and opponent should show actual count
+        const cardsRemaining = deckArray.length;
+
+        // Show stack layers based on actual card count for both player and opponent
+        const stackLayers = Math.min(5, Math.max(1, deckArray.length));
         
         const stackCards = Array(stackLayers).fill().map((_, index) => {
             const transforms = {
@@ -40,12 +42,18 @@ class UIZones {
                 <span class="draw-hint">Draw</span>
             </div>
         `;
+        
+        // Add opponent-specific CSS class to disable interactions
+        const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
 
         return UIUtils.generateZoneWrapper(`
-            <div class="relative flex justify-center py-4">
-                <div class="deck-cards-stack" ${clickHandler}>
+            <div class="relative flex flex-col items-center py-4">
+                <div class="${deckClass}" ${clickHandler}>
                     ${stackCards}
                     ${clickOverlay}
+                </div>
+                <div class="deck-cards-count mt-2">
+                    <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
                 </div>
             </div>
         `, 'deck');
