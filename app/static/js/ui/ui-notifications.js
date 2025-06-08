@@ -155,7 +155,7 @@ class UINotifications {
     static createNotificationsArea() {
         const notificationsArea = document.createElement('div');
         notificationsArea.id = 'notifications-area';
-        notificationsArea.className = 'notifications-area fixed top-4 right-4 z-50';
+        notificationsArea.className = 'notifications-area fixed top-4 left-4 z-50';
         
         // Try to append to body, fallback to document.documentElement
         try {

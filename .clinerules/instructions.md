@@ -180,6 +180,7 @@ Si tu as une erreur 5XX, tu peux consulter les logs avec `docker compose logs`.
 * **NE PAS créer automatiquement** de fichiers de tests (.py dans tests/) sans demande explicite
 * **NE PAS créer automatiquement** de fichiers de documentation (.md) sans demande explicite
 * **NE PAS relancer automatiquement** l'application avec `docker compose up/down/restart` sans demande explicite
+* **NE PAS lancer de test** sauf demande explicite
 
 **Comportement attendu :**
 * Modifier uniquement les fichiers existants demandés

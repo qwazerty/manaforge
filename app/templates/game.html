@@ -10,23 +10,21 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="gameInterface()" class="min-h-screen bg-arena-gradient relative game-container-1080">
-    <!-- Notification area -->
-    <div id="notifications-area" class="fixed top-4 right-4 z-50"></div>
-    
-    <!-- Auto refresh indicator -->
-    <div id="auto-refresh-indicator" class="auto-refresh-indicator auto-refresh-info" style="display: none;">
-        System ready
-    </div>
-    
-    <!-- Game Header -->
-    <div class="bg-gradient-to-r from-arena-primary/20 to-arena-secondary/20 border-b border-arena-accent/30 p-4">
-        <div class="max-w-[1600px] mx-auto flex items-center justify-center">
-            <h1 class="font-magic text-3xl font-bold text-arena-accent">⚔️ ManaForge Arena</h1>
-        </div>
-    </div>
+<div x-data="GameUI.gameInterface()" class="min-h-screen bg-arena-gradient relative game-container-1080">
 
-    <div class="max-w-[1600px] mx-auto px-4 py-3">
+    <div class="max-w-[1600px] mx-auto px-4 py-3 flex">
+        <!-- Fullscreen Button -->
+        <button id="fullscreen-btn"
+            title="Plein écran"
+            class="absolute right-4 top-22 bg-arena-primary hover:bg-arena-secondary text-white px-3 py-2 rounded-lg shadow transition-colors focus:outline-none"
+            onclick="GameUI.toggleFullscreen()">
+            ⛶
+        </button>
+        <!-- Notifications Area -->
+        <div id="notifications-container" class="notifications-container">
+            <!-- Notifications will be added here -->
+        </div>
+        
         <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
             <!-- Left Sidebar -->
             <div class="xl:col-span-1" id="stack-area">
