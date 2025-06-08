@@ -41,7 +41,9 @@ class SimpleGameEngine:
             id=game_id,
             players=[player1, player2],
             active_player=0,
-            phase=GamePhase.UNTAP
+            phase=GamePhase.UNTAP,
+            round=1,
+            players_played_this_round=[False, False]
         )
         
         self.games[game_id] = game_state
@@ -183,51 +185,67 @@ class SimpleGameEngine:
             player.battlefield.append(card_to_play)
     
     def _pass_turn(self, game_state: GameState, action: GameAction) -> None:
-        """Handle passing the turn."""
-        # Special handling for combat phase
+        """Handle passing the turn (skips to end of turn)."""
+        # Special handling for combat phase - auto-resolve combat
         if game_state.phase == GamePhase.COMBAT:
-            # Auto-resolve combat damage if in combat phase
             combat_action = GameAction(
                 player_id=action.player_id,
                 action_type="combat_damage"
             )
             self._resolve_combat_damage(game_state, combat_action)
         
-        # Move to next phase or next player
-        if game_state.phase == GamePhase.CLEANUP:
-            # Next player's turn
-            game_state.active_player = 1 - game_state.active_player
-            game_state.phase = GamePhase.UNTAP
+        # Mark current player as having played this round
+        current_player_index = int(action.player_id.replace('player', '')) - 1
+        game_state.players_played_this_round[current_player_index] = True
+        
+        # Check if both players have played this round
+        if all(game_state.players_played_this_round):
+            # Both players have played, advance to next turn
             game_state.turn += 1
-            
-            # Draw card for new turn
-            active_player = game_state.players[game_state.active_player]
-            self._draw_cards(active_player, 1)
-        else:
-            # Next phase
-            phases = list(GamePhase)
-            current_index = phases.index(game_state.phase)
-            if current_index < len(phases) - 1:
-                game_state.phase = phases[current_index + 1]
+            # Reset players played tracker
+            game_state.players_played_this_round = [False, False]
+            game_state.round += 1
+        
+        # Switch to next player
+        game_state.active_player = 1 - game_state.active_player
+        game_state.phase = GamePhase.UNTAP
+        
+        # Draw card for new turn
+        active_player = game_state.players[game_state.active_player]
+        self._draw_cards(active_player, 1)
     
     def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing to the next phase (without ending turn)."""
-        # Move to next phase
+        # Move to next main phase
         phases = list(GamePhase)
         current_index = phases.index(game_state.phase)
         
         if current_index < len(phases) - 1:
             # Go to next phase
-            game_state.phase = phases[current_index + 1]
+            next_phase = phases[current_index + 1]
+            game_state.phase = next_phase
+            
+            # Auto-draw when entering upkeep phase (merged upkeep+draw)
+            if next_phase == GamePhase.UPKEEP:
+                active_player = game_state.players[game_state.active_player]
+                self._draw_cards(active_player, 1)
         else:
-            # At cleanup phase, go to next player's turn
+            # At end phase, go to next player's turn
+            # Mark current player as having played this round (for _pass_phase)
+            current_player_index = game_state.active_player
+            game_state.players_played_this_round[current_player_index] = True
+            
+            # Check if both players have played this round
+            if all(game_state.players_played_this_round):
+                # Both players have played, advance to next turn
+                game_state.turn += 1
+                # Reset players played tracker
+                game_state.players_played_this_round = [False, False]
+                game_state.round += 1
+            
+            # Switch to next player
             game_state.active_player = 1 - game_state.active_player
             game_state.phase = GamePhase.UNTAP
-            game_state.turn += 1
-            
-            # Draw card for new turn
-            active_player = game_state.players[game_state.active_player]
-            self._draw_cards(active_player, 1)
     
     def _draw_card_action(self, game_state: GameState, action: GameAction) -> None:
         """Handle drawing a card."""
