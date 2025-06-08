@@ -35,21 +35,25 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
     // Validate image URL - avoid problematic URLs
     const imageUrl = getSafeImageUrl(card);
     
+    // Check if card is tapped
+    const isTapped = card.tapped || false;
+    const tappedClass = isTapped ? ' tapped' : '';
+    
     // Escape values for safe JavaScript injection
     const escapedCardId = GameUtils.escapeJavaScript(cardId);
     const escapedCardName = GameUtils.escapeJavaScript(cardName);
     const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
     
     return `
-        <div class="${cardClass}" 
+        <div class="${cardClass}${tappedClass}" 
              data-card-id="${cardId}"
              data-card-name="${escapedCardName}"
              data-card-image="${escapedImageUrl}"
              data-card-zone="${zone}"
+             data-card-tapped="${isTapped}"
              data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
              ${showTooltip ? `onclick="GameCards.showCardPreview('${escapedCardId}', '${escapedCardName}', '${escapedImageUrl}', event)"` : ''}
-             oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-             title="${cardName}">
+             oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
             ${imageUrl ? `
                 <div class="relative">
                     <img src="${imageUrl}" 
@@ -59,22 +63,14 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
                         <span style="font-size: 14px;">🃏</span>
-                        <span style="font-size: 8px; text-align: center;">${cardName}</span>
                     </div>
                 </div>
             ` : `
                 <div class="card-fallback">
                     <span style="font-size: 14px;">🃏</span>
-                    <span style="font-size: 8px; text-align: center;">${cardName}</span>
                 </div>
             `}
-            <div class="card-text-overlay">
-                <div class="card-name">${cardName}</div>
-                ${card.mana_cost ? `<div class="card-stats">💎 ${card.mana_cost}</div>` : ''}
-                ${card.power !== undefined && card.toughness !== undefined ? 
-                    `<div class="card-stats">${card.power}/${card.toughness}</div>` : 
-                    ''}
-            </div>
+            ${isTapped ? '<div class="card-tapped-indicator">T</div>' : ''}
         </div>
     `;
 }
@@ -157,6 +153,10 @@ function showCardContextMenu(event, cardElement) {
     const cardName = cardElement.getAttribute('data-card-name');
     const cardImage = cardElement.getAttribute('data-card-image');
     const cardZone = cardElement.getAttribute('data-card-zone') || 'unknown';
+    const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
+    
+    // Debug logging to help troubleshoot zone issues
+    console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped})`);
     
     // Get card data from the data attribute if available
     let cardData;
@@ -217,27 +217,47 @@ function showCardContextMenu(event, cardElement) {
     }
     
     if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'land') {
+        const tapAction = isTapped ? 'Untap' : 'Tap';
+        const tapIcon = isTapped ? '⤴️' : '🔄';
         menuHTML += `
             <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}')">
-                <span class="icon">🔄</span> Tap/Untap
+                <span class="icon">${tapIcon}</span> ${tapAction}
             </div>`;
     }
     
-    // Common actions for all zones
-    menuHTML += `
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}')">
-            <span class="icon">⚰️</span> Send to Graveyard
-        </div>
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}')">
-            <span class="icon">✨</span> Exile
-        </div>`;
-    
-    // Return to hand (only if not already in hand)
-    if (cardZone !== 'hand') {
+    if (cardZone === 'stack') {
+        // Get stack index for stack-specific actions
+        const stackIndex = cardElement.getAttribute('data-stack-index');
+        
         menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}')">
-                <span class="icon">👋</span> Return to Hand
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.resolveStackSpell('${cardId}', '${stackIndex}')">
+                <span class="icon">✅</span> Resolve
+            </div>
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.counterStackSpell('${cardId}', '${stackIndex}')">
+                <span class="icon">❌</span> Counter
+            </div>
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.copyStackSpell('${cardId}', '${stackIndex}')">
+                <span class="icon">📄</span> Copy
             </div>`;
+    }
+    
+    // Common actions for all zones (except stack)
+    if (cardZone !== 'stack') {
+        menuHTML += `
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}')">
+                <span class="icon">⚰️</span> Send to Graveyard
+            </div>
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}')">
+                <span class="icon">✨</span> Send to Exile
+            </div>`;
+        
+        // Return to hand (only if not already in hand)
+        if (cardZone !== 'hand') {
+            menuHTML += `
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}')">
+                    <span class="icon">👋</span> Return to Hand
+                </div>`;
+        }
     }
     
     // Close the actions container

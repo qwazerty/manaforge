@@ -94,10 +94,48 @@ function changePlayer(playerType) {
 }
 
 function tapCard(cardId) {
-    performGameAction('tap_card', { 
-        card_id: cardId
-    });
-    GameUI.showNotification(`Card ${cardId} tapped/untapped`, 'info');
+    // Find the card element
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+    
+    if (cardElement) {
+        // Toggle tapped state
+        const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
+        const newTappedState = !isTapped;
+        
+        // Update visual state immediately for better UX
+        cardElement.setAttribute('data-card-tapped', newTappedState.toString());
+        cardElement.classList.toggle('tapped', newTappedState);
+        
+        // Update title
+        const cardName = cardElement.getAttribute('data-card-name');
+        cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
+        
+        // Add or remove tapped indicator
+        let tappedIndicator = cardElement.querySelector('.card-tapped-indicator');
+        if (newTappedState && !tappedIndicator) {
+            tappedIndicator = document.createElement('div');
+            tappedIndicator.className = 'card-tapped-indicator';
+            tappedIndicator.textContent = 'T';
+            cardElement.appendChild(tappedIndicator);
+        } else if (!newTappedState && tappedIndicator) {
+            tappedIndicator.remove();
+        }
+        
+        // Send action to server
+        performGameAction('tap_card', { 
+            card_id: cardId,
+            tapped: newTappedState
+        });
+        
+        const actionText = newTappedState ? 'tapped' : 'untapped';
+        GameUI.showNotification(`Card ${actionText}`, 'info');
+    } else {
+        // Fallback if element not found
+        performGameAction('tap_card', { 
+            card_id: cardId
+        });
+        GameUI.showNotification(`Card tapped/untapped`, 'info');
+    }
 }
 
 function sendToGraveyard(cardId, sourceZone) {
@@ -124,6 +162,69 @@ function sendToHand(cardId, sourceZone) {
     GameUI.showNotification(`Card returned to hand`, 'info');
 }
 
+function updateCardTappedState(cardId, tapped) {
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+    
+    if (cardElement) {
+        cardElement.setAttribute('data-card-tapped', tapped.toString());
+        cardElement.classList.toggle('tapped', tapped);
+        
+        // Update title
+        const cardName = cardElement.getAttribute('data-card-name');
+        cardElement.title = `${cardName}${tapped ? ' (Tapped)' : ''}`;
+        
+        // Add or remove tapped indicator
+        let tappedIndicator = cardElement.querySelector('.card-tapped-indicator');
+        if (tapped && !tappedIndicator) {
+            tappedIndicator = document.createElement('div');
+            tappedIndicator.className = 'card-tapped-indicator';
+            tappedIndicator.textContent = 'T';
+            cardElement.appendChild(tappedIndicator);
+        } else if (!tapped && tappedIndicator) {
+            tappedIndicator.remove();
+        }
+    }
+}
+
+function resolveStackSpell(cardId, stackIndex) {
+    performGameAction('resolve_stack_spell', { 
+        card_id: cardId,
+        stack_index: parseInt(stackIndex) || 0
+    });
+    GameUI.showNotification(`Resolving spell`, 'info');
+}
+
+function counterStackSpell(cardId, stackIndex) {
+    performGameAction('counter_stack_spell', { 
+        card_id: cardId,
+        stack_index: parseInt(stackIndex) || 0
+    });
+    GameUI.showNotification(`Spell countered`, 'info');
+}
+
+function copyStackSpell(cardId, stackIndex) {
+    performGameAction('copy_stack_spell', { 
+        card_id: cardId,
+        stack_index: parseInt(stackIndex) || 0
+    });
+    GameUI.showNotification(`Spell copied`, 'info');
+}
+
+function drawCard() {
+    performGameAction('draw_card');
+    
+    // Visual feedback
+    const deckPreview = document.getElementById('deck-top-card');
+    if (deckPreview) {
+        deckPreview.classList.add('animate-card-draw');
+        setTimeout(() => {
+            deckPreview.classList.remove('animate-card-draw');
+        }, 1000);
+    }
+    
+    GameUI.showNotification(`Card drawn`, 'info');
+}
+
 // Export actions module functionality
 window.GameActions = {
     performGameAction,
@@ -133,5 +234,10 @@ window.GameActions = {
     tapCard,
     sendToGraveyard,
     sendToExile,
-    sendToHand
+    sendToHand,
+    updateCardTappedState,
+    resolveStackSpell,
+    counterStackSpell,
+    copyStackSpell,
+    drawCard
 };

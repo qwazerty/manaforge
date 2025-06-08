@@ -12,7 +12,7 @@ let websocket = null;
 let gameId = null; // Will be initialized from template
 
 // ===== INITIALIZATION FUNCTION =====
-function initializeGame() {
+async function initializeGame() {
     console.log('ManaForge Game Interface initializing...');
     
     // Initialize from template data
@@ -25,13 +25,12 @@ function initializeGame() {
     const playerFromUrl = GameUtils.getPlayerFromUrl();
     currentSelectedPlayer = playerFromUrl;
     
-    // Update role display
-    GameUI.updateRoleDisplay();
+    // Initialize UI components safely
+    await GameUI.initializeGameUI();
     
-    // Generate dynamic content
-    GameUI.generateStackArea();
-    GameUI.generateGameBoard();
-    GameUI.generateActionPanel();
+    // Initialize zone previews
+    ZoneManager.updateZoneCounts();
+    ZoneManager.updateZonePreviews();
     
     // Initialize WebSocket connection
     GameSocket.initWebSocket();

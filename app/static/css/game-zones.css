@@ -1,0 +1,223 @@
+/* ===== MANAFORGE GAME ZONES STYLES ===== */
+/* Styles for deck, graveyard, and exile zones with card previews */
+
+/* Zone preview containers */
+.zone-preview-container {
+    position: relative;
+    width: 140px;
+    height: 200px;
+    perspective: 500px;
+}
+
+.zone-card-preview {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.zone-card-preview:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(201, 170, 113, 0.5);
+    z-index: 50;
+}
+
+/* Deck zone styles */
+.deck-preview {
+    position: relative;
+    overflow: hidden;
+}
+
+.deck-preview:hover::after {
+    content: "DRAW CARD";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(201, 170, 113, 0.8);
+    color: #1a1f2e;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    padding: 5px 0;
+    transform: translateY(0);
+    transition: transform 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.deck-stack {
+    position: relative;
+    width: 140px;
+    height: 200px;
+}
+
+.deck-card-layer {
+    position: absolute;
+    width: 140px;
+    height: 200px;
+    background: #1a1f2e;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.deck-top-card {
+    position: absolute;
+    width: 140px;
+    height: 200px;
+    z-index: 5;
+}
+
+.card-back-mini {
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/images/card-back.jpg');
+    background-size: cover;
+    background-position: center;
+    border-radius: 3px;
+}
+
+/* Draw hint */
+.deck-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+}
+
+.deck-click-overlay .draw-hint {
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+}
+
+.zone-preview-container:hover .deck-click-overlay {
+    opacity: 1;
+}
+
+/* Graveyard zone styles */
+.graveyard-preview img,
+.exile-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.graveyard-cards-spread,
+.exile-cards-spread {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.graveyard-card-position,
+.exile-card-position {
+    position: absolute;
+    width: 140px;
+    height: 200px;
+}
+
+/* Card count indicators */
+.graveyard-more-indicator,
+.exile-more-indicator {
+    position: absolute;
+    bottom: -10px;
+    right: -5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 14px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: 600;
+    z-index: 20;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Card mini for zones */
+.card-mini-zone {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    display: block;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+/* Empty state styles */
+.zone-empty .card-fallback,
+.card-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    font-size: 16px;
+    opacity: 0.7;
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+}
+
+.card-fallback span {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Animation pour la pioche de carte */
+@keyframes cardDraw {
+    0% { 
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: translateY(-40px) scale(1.2); 
+        opacity: 0.8;
+        box-shadow: 0 0 25px rgba(201, 170, 113, 0.8);
+    }
+    100% { 
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-card-draw {
+    animation: cardDraw 0.8s ease-out;
+    z-index: 100;
+}
+
+/* Improved hover effects */
+.zone-card-preview:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(201, 170, 113, 0.5);
+    z-index: 50;
+}
+
+/* Better transitions */
+.zone-card-preview {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Card glow effects */
+.deck-preview:hover .card-back-mini,
+.zone-card-preview:hover img {
+    filter: brightness(1.1);
+}
