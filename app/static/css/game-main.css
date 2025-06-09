@@ -16,7 +16,6 @@
 @import url('./game-notifications.css');
 
 /* Import zone-specific stylesheets */
-@import url('./game-zones-compact.css');
 @import url('./game-zone-modals.css');
 @import url('./zones/zones-deck.css');
 @import url('./zones/zones-graveyard-exile.css');
