@@ -29,7 +29,7 @@ function preloadCardImages(cards) {
     });
 }
 
-function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown') {
+function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', index = 0, playerId = null) {
     const cardId = card.id || card.name;
     const cardName = card.name || 'Unknown';
     // Validate image URL - avoid problematic URLs
@@ -39,17 +39,22 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
     const isTapped = card.tapped || false;
     const tappedClass = isTapped ? ' tapped' : '';
     
+    // Create unique identifier using player, zone and index
+    const playerPrefix = playerId !== null ? `p${playerId}` : 'unknown';
+    const uniqueCardId = `${playerPrefix}-${zone}-${index}`;
+    
     // Escape values for safe JavaScript injection
     const escapedCardId = GameUtils.escapeJavaScript(cardId);
     const escapedCardName = GameUtils.escapeJavaScript(cardName);
     const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
+    const escapedUniqueId = GameUtils.escapeJavaScript(uniqueCardId);
     
     // Define click action based on zone
     let onClickAction = '';
     if (zone === 'battlefield' || zone === 'permanents' || zone === 'lands') {
-        onClickAction = `onclick="GameActions.tapCard('${escapedCardId}'); event.stopPropagation();"`;
+        onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
     } else if (zone === 'hand') {
-        onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}'); event.stopPropagation();"`;
+        onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', ${index}); event.stopPropagation();"`;
     } else {
         // Other zones - no special action
         onClickAction = '';
@@ -58,6 +63,7 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
     return `
         <div class="${cardClass}${tappedClass}" 
              data-card-id="${cardId}"
+             data-card-unique-id="${uniqueCardId}"
              data-card-name="${escapedCardName}"
              data-card-image="${escapedImageUrl}"
              data-card-zone="${zone}"
@@ -230,8 +236,9 @@ function showCardContextMenu(event, cardElement) {
     if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
         const tapAction = isTapped ? 'Untap' : 'Tap';
         const tapIcon = isTapped ? '⤴️' : '🔄';
+        const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
         menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}')">
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')">
                 <span class="icon">${tapIcon}</span> ${tapAction}
             </div>`;
     }

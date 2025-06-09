@@ -37,8 +37,8 @@ class UITemplates {
     static generateActionButtons() { return UIGameInterface.generateActionButtons(); }
     static generateSpectatorView() { return UIGameInterface.generateSpectatorView(); }
     static generateErrorTemplate(title, message) { return UIGameInterface.generateErrorTemplate(title, message); }
-    static generateBattlefieldZone(cards, zoneName, title, icon) { return UIGameInterface.generateBattlefieldZone(cards, zoneName, title, icon); }
-    static generatePlayerHand(hand) { return UIGameInterface.generatePlayerHand(hand); }
+    static generateBattlefieldZone(cards, zoneName, title, icon, playerId = null) { return UIGameInterface.generateBattlefieldZone(cards, zoneName, title, icon, playerId); }
+    static generatePlayerHand(hand, playerId = null) { return UIGameInterface.generatePlayerHand(hand, playerId); }
     static generateOpponentHand(handSize) { return UIGameInterface.generateOpponentHand(handSize); }
 
     /**

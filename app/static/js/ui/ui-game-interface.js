@@ -169,10 +169,10 @@ class UIGameInterface {
     /**
      * Generate battlefield zone
      */
-    static generateBattlefieldZone(cards, zoneName, title, icon) {
+    static generateBattlefieldZone(cards, zoneName, title, icon, playerId = null) {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
         const cardsHtml = filteredCards.length > 0 
-            ? filteredCards.map(card => GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName)).join('')
+            ? filteredCards.map((card, index) => GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, index, playerId)).join('')
             : `<div class="zone-empty">No ${title.toLowerCase()}</div>`;
 
         return `
@@ -188,13 +188,13 @@ class UIGameInterface {
     /**
      * Generate player's hand
      */
-    static generatePlayerHand(hand = []) {
+    static generatePlayerHand(hand = [], playerId = null) {
         if (hand.length === 0) {
             return '<div class="text-arena-text-dim text-center py-4">No cards in hand</div>';
         }
 
-        return hand.map(card => 
-            GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, false, 'hand')
+        return hand.map((card, index) => 
+            GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, false, 'hand', index, playerId)
         ).join('');
     }
 
