@@ -40,20 +40,12 @@ class UIConfig {
         }
     };
 
-    static PHASE_DISPLAY_MAP = {
-        'begin': 'Begin',
-        'main1': 'Main 1',
-        'combat': 'Combat',
-        'main2': 'Main 2',
-        'end': 'End'
-    };
-
     /**
      * Get phase display name from ID
      */
     static getPhaseDisplayName(phaseId) {
-        return this.PHASE_DISPLAY_MAP[phaseId] || 
-               phaseId.charAt(0).toUpperCase() + phaseId.slice(1);
+        const phase = this.GAME_PHASES.find(p => p.id === phaseId);
+        return phase ? phase.name : 'Unknown Phase';
     }
 }
 
