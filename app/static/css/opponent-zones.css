@@ -1,6 +1,25 @@
 /* ===== OPPONENT CARD ZONES STYLES ===== */
 /* Styles for opponent's deck, graveyard, and exile zones */
 
+/* Opponent hand zone - always centered */
+.opponent-hand-zone {
+    display: flex;
+    justify-content: center !important;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    text-align: center;
+}
+
+/* Ensure opponent hand cards maintain their properties when centered */
+.opponent-hand-zone .card-back,
+.opponent-hand-zone .card-mini,
+.opponent-hand-zone .card-mini-compact,
+.opponent-hand-zone .card-mini-1080 {
+    flex-shrink: 0;
+}
+
 .card-zones-container {
     display: flex;
     flex-direction: column;

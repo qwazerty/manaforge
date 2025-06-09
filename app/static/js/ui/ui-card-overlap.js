@@ -92,8 +92,7 @@ class UICardOverlap {
             '.permanents-zone-content',
             '.lands-zone-content', 
             '.hand-zone-content',
-            '.flex.flex-wrap.gap-1.justify-center',
-            '.flex.justify-center.space-x-1.overflow-x-auto.py-1'
+            '.opponent-hand-zone',
         ];
 
         selectors.forEach(selector => {

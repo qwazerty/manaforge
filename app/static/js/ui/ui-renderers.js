@@ -252,7 +252,7 @@ class UIRenderers {
         const handSize = opponent?.hand?.length || 7;
         return `
             <div class="arena-card rounded-lg mb-3 p-3 compact-zones">
-                <div class="flex justify-center space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
+                <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
                     ${UITemplates.generateOpponentHand(handSize)}
                 </div>
                 
