@@ -253,8 +253,11 @@ class UIRenderers {
      */
     static renderOpponentArea(opponent, opponentIdx, activePlayer) {
         const handSize = opponent?.hand?.length || 7;
+        const isOpponentActiveTurn = activePlayer === opponentIdx;
+        const activeTurnClass = isOpponentActiveTurn ? 'opponent-zone-active-turn' : '';
+        
         return `
-            <div class="arena-card rounded-lg mb-3 p-3 compact-zones">
+            <div class="arena-card rounded-lg mb-3 p-3 compact-zones ${activeTurnClass}">
                 <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
                     ${UITemplates.generateOpponentHand(handSize)}
                 </div>
@@ -284,8 +287,11 @@ class UIRenderers {
      */
     static renderPlayerArea(player, controlledIdx, activePlayer) {
         const handSize = player?.hand?.length || 0;
+        const isPlayerActiveTurn = activePlayer === controlledIdx;
+        const activeTurnClass = isPlayerActiveTurn ? 'player-zone-active-turn' : '';
+        
         return `
-            <div class="arena-card rounded-lg p-3 hand-zone">
+            <div class="arena-card rounded-lg p-3 hand-zone ${activeTurnClass}">
                 ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️', controlledIdx)}
                 ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍', controlledIdx)}
                 

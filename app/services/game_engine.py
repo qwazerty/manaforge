@@ -211,10 +211,6 @@ class SimpleGameEngine:
         # Switch to next player
         game_state.active_player = 1 - game_state.active_player
         game_state.phase = GamePhase.BEGIN
-        
-        # Draw card for new turn
-        active_player = game_state.players[game_state.active_player]
-        self._draw_cards(active_player, 1)
     
     def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing to the next phase (without ending turn)."""
