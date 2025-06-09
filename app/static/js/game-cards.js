@@ -102,17 +102,13 @@ function showCardPreview(cardId, cardName, imageUrl, event = null) {
     const existingPreview = document.getElementById('card-preview-modal');
     if (existingPreview) {
         existingPreview.remove();
+        removeCardPreviewListeners();
     }
     
     // Create preview modal
     const preview = document.createElement('div');
     preview.id = 'card-preview-modal';
     preview.className = 'card-preview-modal show';
-    preview.onclick = (e) => {
-        if (e.target === preview) {
-            preview.remove();
-        }
-    };
 
     // Add card image and details
     preview.innerHTML = `
@@ -131,6 +127,9 @@ function showCardPreview(cardId, cardName, imageUrl, event = null) {
     `;
 
     document.body.appendChild(preview);
+    
+    // Add global event listeners to close popup
+    addCardPreviewListeners();
     
     // If we have event coordinates, position near mouse, otherwise center
     if (event && event.clientX && event.clientY) {
@@ -323,6 +322,38 @@ function closeContextMenu() {
     document.removeEventListener('click', GameCards.closeContextMenu);
 }
 
+// Global event handlers for card preview
+function handleCardPreviewClick(event) {
+    const preview = document.getElementById('card-preview-modal');
+    if (preview) {
+        preview.remove();
+        removeCardPreviewListeners();
+    }
+}
+
+function handleCardPreviewKeydown(event) {
+    if (event.key === 'Escape') {
+        const preview = document.getElementById('card-preview-modal');
+        if (preview) {
+            preview.remove();
+            removeCardPreviewListeners();
+        }
+    }
+}
+
+function addCardPreviewListeners() {
+    // Add a small delay to avoid the opening click from immediately closing the popup
+    setTimeout(() => {
+        document.addEventListener('click', handleCardPreviewClick);
+        document.addEventListener('keydown', handleCardPreviewKeydown);
+    }, 100);
+}
+
+function removeCardPreviewListeners() {
+    document.removeEventListener('click', handleCardPreviewClick);
+    document.removeEventListener('keydown', handleCardPreviewKeydown);
+}
+
 // Export cards module functionality
 window.GameCards = {
     getSafeImageUrl,
@@ -331,5 +362,7 @@ window.GameCards = {
     renderCardWithLoadingState,
     showCardPreview,
     showCardContextMenu,
-    closeContextMenu
+    closeContextMenu,
+    addCardPreviewListeners,
+    removeCardPreviewListeners
 };
