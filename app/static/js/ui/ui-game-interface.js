@@ -171,14 +171,15 @@ class UIGameInterface {
      */
     static generateBattlefieldZone(cards, zoneName, title, icon, playerId = null) {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
-        const cardsHtml = filteredCards.length > 0 
+        const cardCount = filteredCards.length;
+        const cardsHtml = cardCount > 0 
             ? filteredCards.map((card, index) => GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, index, playerId)).join('')
             : `<div class="zone-empty">No ${title.toLowerCase()}</div>`;
 
         return `
             <div class="battlefield-zone ${zoneName}-zone">
                 <h5>${icon} ${title}</h5>
-                <div class="flex justify-center zone-content">
+                <div class="${zoneName}-zone-content zone-content" data-card-count="${cardCount}">
                     ${cardsHtml}
                 </div>
             </div>

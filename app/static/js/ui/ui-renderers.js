@@ -83,6 +83,13 @@ class UIRenderers {
                 ${this.renderOpponentArea(players[opponentIdx], opponentIdx, activePlayer)}
                 ${this.renderPlayerArea(players[controlledIdx], controlledIdx, activePlayer)}
             `;
+
+            // Apply card overlap after rendering
+            if (window.UICardOverlap) {
+                setTimeout(() => {
+                    window.UICardOverlap.refresh();
+                }, 50);
+            }
         } catch (error) {
             this.renderError(gameBoardContainer, 'Error Loading Game Board', error.message);
         }
@@ -242,10 +249,11 @@ class UIRenderers {
      * Render opponent area
      */
     static renderOpponentArea(opponent, opponentIdx, activePlayer) {
+        const handSize = opponent?.hand?.length || 7;
         return `
             <div class="arena-card rounded-lg mb-3 p-3">
-                <div class="flex justify-center space-x-1 overflow-x-auto py-1">
-                    ${UITemplates.generateOpponentHand(opponent?.hand?.length || 7)}
+                <div class="flex justify-center space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
+                    ${UITemplates.generateOpponentHand(handSize)}
                 </div>
                 
                 <div class="bg-arena-surface/50 rounded-lg p-2">
@@ -274,8 +282,9 @@ class UIRenderers {
      * Render player area
      */
     static renderPlayerArea(player, controlledIdx, activePlayer) {
+        const handSize = player?.hand?.length || 0;
         return `
-            <div class="arena-card rounded-lg p-3">
+            <div class="arena-card rounded-lg p-3 hand-zone">
                 <div class="bg-arena-surface/50 rounded-lg p-2">
                     ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️', controlledIdx)}
                     ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍', controlledIdx)}
@@ -283,7 +292,7 @@ class UIRenderers {
                 
                 <div class="bg-arena-surface/50 rounded-lg p-2">
                     <h4 class="text-arena-accent font-semibold mb-1 text-sm">✋ Your Hand</h4>
-                    <div class="flex flex-wrap gap-1 justify-center">
+                    <div class="hand-zone-content zone-content" data-card-count="${handSize}">
                         ${UITemplates.generatePlayerHand(player?.hand || [], controlledIdx)}
                     </div>
                 </div>
