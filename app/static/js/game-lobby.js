@@ -305,7 +305,7 @@ async function waitForOpponent(gameId, playerRole) {
         attempts++;
 
         try {
-            const response = await fetch(`/api/v1/games/${gameId}`);
+            const response = await fetch(`/api/v1/games/${gameId}/state`);
             if (response.ok) {
                 const gameData = await response.json();
 
