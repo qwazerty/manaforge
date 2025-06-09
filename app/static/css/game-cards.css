@@ -68,23 +68,6 @@
     opacity: 0.85;
 }
 
-/* Tapped state indicator */
-.card-tapped-indicator {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    background: rgba(255, 0, 0, 0.8);
-    color: white;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: bold;
-    z-index: 5;
-}
 
 /* Card back styles */
 .card-back {

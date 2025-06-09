@@ -142,16 +142,6 @@ function tapCard(cardId, uniqueCardId) {
         const cardName = cardElement.getAttribute('data-card-name');
         cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
         
-        // Add or remove tapped indicator
-        let tappedIndicator = cardElement.querySelector('.card-tapped-indicator');
-        if (newTappedState && !tappedIndicator) {
-            tappedIndicator = document.createElement('div');
-            tappedIndicator.className = 'card-tapped-indicator';
-            tappedIndicator.textContent = 'T';
-            cardElement.appendChild(tappedIndicator);
-        } else if (!newTappedState && tappedIndicator) {
-            tappedIndicator.remove();
-        }
         
         // Send action to server with more specific information
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
@@ -243,16 +233,6 @@ function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
         const cardName = cardElement.getAttribute('data-card-name');
         cardElement.title = `${cardName}${tapped ? ' (Tapped)' : ''}`;
         
-        // Add or remove tapped indicator
-        let tappedIndicator = cardElement.querySelector('.card-tapped-indicator');
-        if (tapped && !tappedIndicator) {
-            tappedIndicator = document.createElement('div');
-            tappedIndicator.className = 'card-tapped-indicator';
-            tappedIndicator.textContent = 'T';
-            cardElement.appendChild(tappedIndicator);
-        } else if (!tapped && tappedIndicator) {
-            tappedIndicator.remove();
-        }
     }
 }
 

@@ -89,6 +89,11 @@ class UICardOverlap {
         // Target all zone containers that might have cards
         const selectors = [
             '.zone-content',
+            '.permanents-zone-content',
+            '.lands-zone-content', 
+            '.hand-zone-content',
+            '.flex.flex-wrap.gap-1.justify-center',
+            '.flex.justify-center.space-x-1.overflow-x-auto.py-1'
         ];
 
         selectors.forEach(selector => {
