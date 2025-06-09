@@ -105,15 +105,11 @@ function handleWebSocketMessage(message) {
                 
                 if (message.action_result) {
                     const result = message.action_result;
-                    GameUI.showNotification(`${result.player} performed: ${result.action}`, 'success');
                 }
-                
-                GameUI.showAutoRefreshIndicator('⚡ Real-time Update', 'success');
             }
             break;
             
         case 'game_action_start':
-            GameUI.showNotification(`${message.player} is performing: ${message.action}...`, 'success');
             break;
             
         case 'game_action_failed':
