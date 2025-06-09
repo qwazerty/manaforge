@@ -45,3 +45,30 @@ body {
     flex: 1;
     height: 100%;
 }
+
+/* Fullscreen Styles */
+.game-container-1080.fullscreen-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    background-color: black; /* Optional: Set a background color for fullscreen */
+    overflow: hidden;
+}
+
+/* Adjust the main game content container in fullscreen */
+.game-container-1080.fullscreen-mode .max-w-\[1600px\] {
+    max-width: none;
+    width: 100%;
+    height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Expand game grid to full height in fullscreen */
+.game-container-1080.fullscreen-mode .grid {
+    flex: 1;
+    height: 100%;
+}
