@@ -105,6 +105,9 @@ function stopAutoRefresh() {
 }
 
 // ===== INITIALIZATION (Dom Ready) =====
+// NOTE: Initialization is handled by game-main.js to avoid double loading
+// This legacy initialization is kept for reference but disabled
+/*
 document.addEventListener('DOMContentLoaded', function() {
     // Legacy initialization for inline templates
     if (!window.gameData) {
@@ -113,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     initializeGame();
 });
+*/
 
 // Export core module functionality to global scope
 window.GameCore = {
