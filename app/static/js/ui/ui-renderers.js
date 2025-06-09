@@ -84,11 +84,16 @@ class UIRenderers {
                 ${this.renderPlayerArea(players[controlledIdx], controlledIdx, activePlayer)}
             `;
 
-            // Apply card overlap after rendering
+            // Apply card overlap after DOM is fully updated
+            // Use requestAnimationFrame to ensure DOM is rendered before applying overlap
             if (window.UICardOverlap) {
-                setTimeout(() => {
-                    window.UICardOverlap.refresh();
-                }, 50);
+                const renderTime = new Date().toISOString();
+                console.log(`🎨 [${renderTime}] UIRenderers.renderGameBoard() calling UICardOverlap via requestAnimationFrame`);
+                requestAnimationFrame(() => {
+                    const frameTime = new Date().toISOString();
+                    console.log(`🖼️ [${frameTime}] requestAnimationFrame executing - calling UICardOverlap.applyOverlapToAllZones()`);
+                    window.UICardOverlap.applyOverlapToAllZones();
+                });
             }
         } catch (error) {
             this.renderError(gameBoardContainer, 'Error Loading Game Board', error.message);
