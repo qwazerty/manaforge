@@ -64,10 +64,7 @@ class UICardOverlap {
             card.style.marginLeft = `${overlap}px`;
         }
 
-        // Ensure first card has no negative margin
-        if (cards.length > 0) {
-            cards[0].style.marginLeft = '0';
-        }
+        // Note: First card margin is now handled by CSS :first-child selector
 
         // Update data attribute for CSS reference
         container.setAttribute('data-dynamic-overlap', overlap);

@@ -5,6 +5,10 @@
     margin-left: -20px;
 }
 
+.opponent-hand-card:first-child {
+    margin-left: 0;
+}
+
 .card-mini {
     width: 130px;
     height: 182px;
@@ -18,6 +22,10 @@
     display: block;
     flex-shrink: 0;
     box-sizing: border-box;
+}
+
+.card-mini:first-child {
+    margin-left: 0;
 }
 
 .card-mini:hover {
@@ -45,6 +53,10 @@
     display: block;
     flex-shrink: 0;
     box-sizing: border-box;
+}
+
+.card-battlefield:first-child {
+    margin-left: 0;
 }
 
 .card-battlefield:hover {
@@ -89,6 +101,10 @@
     flex-shrink: 0;
     box-sizing: border-box;
     overflow: hidden;
+}
+
+.card-back:first-child {
+    margin-left: 0;
 }
 
 .card-back:hover {
@@ -142,6 +158,10 @@
     box-sizing: border-box;
 }
 
+.card-mini-compact:first-child {
+    margin-left: 0;
+}
+
 .card-mini-compact:hover {
     transform: scale(1.05);
     box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
@@ -167,6 +187,10 @@
     display: block;
     flex-shrink: 0;
     box-sizing: border-box;
+}
+
+.card-battlefield-compact:first-child {
+    margin-left: 0;
 }
 
 .card-battlefield-compact:hover {
@@ -259,6 +283,10 @@
     box-sizing: border-box;
 }
 
+.card-mini-1080:first-child {
+    margin-left: 0;
+}
+
 .card-mini-1080:hover {
     transform: scale(1.08);
     box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
@@ -284,6 +312,10 @@
     display: block;
     flex-shrink: 0;
     box-sizing: border-box;
+}
+
+.card-battlefield-1080:first-child {
+    margin-left: 0;
 }
 
 .card-battlefield-1080:hover {
@@ -325,6 +357,10 @@
     background-repeat: no-repeat;
     transition: transform 0.2s ease;
     flex-shrink: 0;
+}
+
+.card-back-1080:first-child {
+    margin-left: 0;
 }
 
 .card-back-1080:hover {
