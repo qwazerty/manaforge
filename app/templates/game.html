@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="GameUI.gameInterface()" class="min-h-screen bg-arena-gradient relative game-container-1080">
+<div x-data="GameUI.gameInterface()" class="min-h-screen bg-arena-gradient relative game-container-1080 compact-zones">
 
     <div class="max-w-[1600px] mx-auto px-4 py-3 flex">
         <!-- Fullscreen Button -->
@@ -113,7 +113,7 @@
 <script>
 // Pass server data to our external JavaScript
 window.gameData = {
-    game: {{ game|tojson }},
+    game: {{ game|tojson|safe }},
     gameId: '{{ game.id }}'
 };
 

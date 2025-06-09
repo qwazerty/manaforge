@@ -4,7 +4,7 @@
 .card-mini {
     width: 140px;
     height: 200px;
-    border-radius: 3px;
+    border-radius: 5%;
     background: #1a1f2e;
     overflow: hidden;
     position: relative;
@@ -17,7 +17,6 @@
 
 .card-mini:hover {
     transform: scale(1.1);
-    box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
     z-index: 10;
 }
 
@@ -31,7 +30,7 @@
 .card-battlefield {
     width: 140px;
     height: 200px;
-    border-radius: 3px;
+    border-radius: 6%;
     background: #1a1f2e;
     overflow: hidden;
     position: relative;
@@ -44,7 +43,6 @@
 
 .card-battlefield:hover {
     transform: scale(1.1);
-    box-shadow: 0 3px 12px rgba(201, 170, 113, 0.5);
     z-index: 10;
 }
 

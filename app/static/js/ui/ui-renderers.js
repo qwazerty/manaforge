@@ -251,15 +251,13 @@ class UIRenderers {
     static renderOpponentArea(opponent, opponentIdx, activePlayer) {
         const handSize = opponent?.hand?.length || 7;
         return `
-            <div class="arena-card rounded-lg mb-3 p-3">
+            <div class="arena-card rounded-lg mb-3 p-3 compact-zones">
                 <div class="flex justify-center space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
                     ${UITemplates.generateOpponentHand(handSize)}
                 </div>
                 
-                <div class="bg-arena-surface/50 rounded-lg p-2">
-                    ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'lands', 'Lands', '🌍', opponentIdx)}
-                    ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'permanents', 'Permanents', '⚔️', opponentIdx)}
-                </div>
+                ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'lands', 'Lands', '🌍', opponentIdx)}
+                ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'permanents', 'Permanents', '⚔️', opponentIdx)}
             </div>
         `;
     }
@@ -285,16 +283,11 @@ class UIRenderers {
         const handSize = player?.hand?.length || 0;
         return `
             <div class="arena-card rounded-lg p-3 hand-zone">
-                <div class="bg-arena-surface/50 rounded-lg p-2">
-                    ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️', controlledIdx)}
-                    ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍', controlledIdx)}
-                </div>
+                ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️', controlledIdx)}
+                ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍', controlledIdx)}
                 
-                <div class="bg-arena-surface/50 rounded-lg p-2">
-                    <h4 class="text-arena-accent font-semibold mb-1 text-sm">✋ Your Hand</h4>
-                    <div class="hand-zone-content zone-content" data-card-count="${handSize}">
-                        ${UITemplates.generatePlayerHand(player?.hand || [], controlledIdx)}
-                    </div>
+                <div class="hand-zone-content zone-content" data-card-count="${handSize}">
+                    ${UITemplates.generatePlayerHand(player?.hand || [], controlledIdx)}
                 </div>
             </div>
         `;

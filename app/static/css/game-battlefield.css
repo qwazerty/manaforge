@@ -5,18 +5,8 @@
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(201, 170, 113, 0.3);
     border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-}
-
-.battlefield-zone h5 {
-    color: #c9aa71;
-    font-weight: 600;
-    margin-bottom: 8px;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    padding: 4px;
+    margin: 4px;
 }
 
 .lands-zone {
@@ -41,13 +31,4 @@
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
-    min-height: 40px;
-}
-
-.zone-empty {
-    color: rgba(201, 170, 113, 0.6);
-    text-align: center;
-    padding: 20px 12px;
-    font-size: 13px;
-    font-style: italic;
 }

@@ -52,12 +52,12 @@
     /* Force smaller cards in compact mode */
     .game-container-1080 .card-mini {
         width: 110px !important;
-        height: 160px !important;
+        height: 153px !important;
     }
     
     .game-container-1080 .card-battlefield {
         width: 110px !important;
-        height: 160px !important;
+        height: 153px !important;
     }
     
     /* Compact stack */
