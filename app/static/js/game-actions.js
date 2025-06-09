@@ -5,9 +5,7 @@
 
 // ===== GAME ACTION FUNCTIONS =====
 function performGameAction(actionType, actionData = {}) {
-    console.log(`Performing action: ${actionType}`, actionData);
-    
-    const currentSelectedPlayer = GameCore.getSelectedPlayer();
+   const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
         GameUI.showNotification('Spectators cannot perform actions', 'error');
         return;
@@ -77,6 +75,8 @@ function playCardFromHand(cardId, handIndex) {
         card_id: cardId,
         hand_index: handIndex 
     });
+
+    GameUI.showNotification(`Card played: ${cardName}`, 'info');
 }
 
 function changePlayer(playerType) {
@@ -131,7 +131,7 @@ function tapCard(cardId) {
         });
         
         const actionText = newTappedState ? 'tapped' : 'untapped';
-        GameUI.showNotification(`Card ${actionText}`, 'info');
+        GameUI.showNotification(`Card ${cardName} ${actionText}`, 'info');
     } else {
         // Fallback if element not found
         performGameAction('tap_card', { 
