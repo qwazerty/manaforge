@@ -12,7 +12,6 @@
     justify-content: center;
     gap: 2px;
     padding: 4px;
-    min-height: 180px;
     scrollbar-width: thin;
     scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
 }
@@ -27,7 +26,6 @@
     justify-content: flex-start;
     gap: 2px;
     padding: 4px;
-    min-height: 180px;
     scrollbar-width: thin;
     scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
 }
@@ -42,7 +40,6 @@
     justify-content: center;
     gap: 2px;
     padding: 4px;
-    min-height: 180px;
     scrollbar-width: thin;
     scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
 }
@@ -65,6 +62,42 @@
 .lands-zone-content::-webkit-scrollbar-thumb:hover,
 .hand-zone-content::-webkit-scrollbar-thumb:hover {
     background: rgba(201, 170, 113, 0.5);
+}
+
+
+.battlefield-zone,
+.hand-zone {
+    position: relative;
+    min-height: 172px; 
+    overflow: visible;
+}
+
+/* Titres en filigrane pour les zones */
+.battlefield-zone::before,
+.hand-zone::before {
+    content: attr(data-zone-title);
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%) translateY(50%) rotate(-15deg);
+    font-size: 3rem;
+    font-weight: 900;
+    color: rgba(201, 170, 113, 0.05);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    pointer-events: none;
+    z-index: 0;
+    white-space: nowrap;
+    font-family: 'Arial Black', sans-serif;
+}
+
+/* Titres spécifiques pour chaque zone */
+.lands-zone::before {
+    content: "LANDS";
+}
+
+.permanents-zone::before {
+    content: "PERMANENTS";
 }
 
 /* Opponent hand optimization */
