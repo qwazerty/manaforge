@@ -8,22 +8,17 @@ class UICardOverlap {
      * Calculate optimal overlap based on card count
      */
     static calculateOverlap(cardCount) {
-        if (cardCount <= 6) {
-            return -20; // Base overlap
-        } else if (cardCount <= 10) {
-            return -30; // Increased overlap
-        } else if (cardCount <= 15) {
-            return -40; // High overlap
-        } else {
-            return -50; // Maximum overlap
-        }
-    }
+        let baseOverlap = -20; // Default base overlap
 
-    /**
-     * Calculate overlap for mobile screens
-     */
-    static calculateMobileOverlap(cardCount) {
-        const baseOverlap = this.calculateOverlap(cardCount);
+        if (cardCount <= 6) {
+            baseOverlap = -20; // Base overlap
+        } else if (cardCount <= 10) {
+            baseOverlap = -30; // Increased overlap
+        } else if (cardCount <= 15) {
+            baseOverlap = -40; // High overlap
+        } else {
+            baseOverlap = -50; // Maximum overlap
+        }
         
         if (window.innerWidth <= 768) {
             return baseOverlap - 10; // More aggressive on mobile
@@ -45,17 +40,18 @@ class UICardOverlap {
         
         if (cardCount <= 1) return; // No overlap needed for single card
 
-        const overlap = this.calculateMobileOverlap(cardCount);
+        const overlap = this.calculateOverlap(cardCount);
 
         // Detect zone type to apply different rules
-        const isLandsZone = container.closest('.lands-zone') || 
-                           container.textContent.includes('Lands') ||
-                           container.previousElementSibling?.textContent?.includes('🌍');
-        
+        const isLandsZone = container.closest('.lands-zone');
+        const isOpponentZone = container.closest('.opponent-zone');
+
         // Lands zones: always flex-start
         // Other zones: center if ≤10 cards, flex-start if >10 cards
         if (isLandsZone) {
             container.style.justifyContent = 'flex-start';
+        } else if (isOpponentZone) {
+            container.style.justifyContent = 'center';
         } else if (cardCount >= 10) {
             container.style.justifyContent = 'flex-start';
         } else {
@@ -77,9 +73,6 @@ class UICardOverlap {
         container.setAttribute('data-dynamic-overlap', overlap);
         container.setAttribute('data-card-count', cardCount);
         container.setAttribute('data-zone-type', isLandsZone ? 'lands' : 'other');
-        
-        const justification = isLandsZone ? 'flex-start' : (cardCount >= 10 ? 'flex-start' : 'center');
-        console.log(`Applied ${overlap}px overlap to ${isLandsZone ? 'lands' : 'other'} zone with ${cardCount} cards, justify-content: ${justification}`);
     }
 
     /**
@@ -88,7 +81,6 @@ class UICardOverlap {
     static applyOverlapToAllZones() {
         // Target all zone containers that might have cards
         const selectors = [
-            '.zone-content',
             '.permanents-zone-content',
             '.lands-zone-content', 
             '.hand-zone-content',
