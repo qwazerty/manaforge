@@ -53,10 +53,23 @@ async function fetchGameList() {
 
             const joinButton = document.createElement('button');
             joinButton.className = 'arena-button mt-2 w-full py-2 px-4 rounded text-sm';
-            joinButton.innerHTML = 'Join Game';
-            joinButton.onclick = () => {
-                document.getElementById('gameId').value = game.game_id;
-            };
+            if (game.status === 'waiting for players') {
+                joinButton.innerHTML = 'Join Game';
+joinButton.onclick = () => {
+    const gameIdInput = document.getElementById('gameId');
+    gameIdInput.value = game.game_id;
+    gameIdInput.classList.add('animate-pulse-green');
+    setTimeout(() => {
+        gameIdInput.classList.remove('animate-pulse-green');
+    }, 1000);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+            } else {
+                joinButton.innerHTML = 'Spectate Game';
+                joinButton.onclick = () => {
+                    window.location.href = `/game-interface/${game.game_id}?spectator=true`;
+                };
+            }
 
             gameCard.appendChild(gameTitle);
             gameCard.appendChild(joinButton);
@@ -168,7 +181,7 @@ async function joinOrCreateBattle() {
             </div>
         `;
 
-        const gameCheckResponse = await fetch(`/api/v1/games/${gameId}`);
+        const gameCheckResponse = await fetch(`/api/v1/games/${gameId}/state`);
         let playerRole = 'player1';
         let actionText = 'Creating battlefield';
 
