@@ -9,7 +9,6 @@
 @import url('./game-battlefield.css');
 @import url('./game-stack.css');
 @import url('./game-modals.css');
-@import url('./game-zones.css');
 
 /* Import responsive optimizations */
 @import url('./game-responsive.css');
@@ -25,3 +24,4 @@
 @import url('./zones/zones-mini.css');
 @import url('./zones/zones-compact.css');
 @import url('./zones/zones-life.css');
+@import url('./zones-single-line.css');

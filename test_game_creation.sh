@@ -89,7 +89,7 @@ echo ""
 echo "🛠️  Test 3: Création d'une partie avec decks personnalisés"
 echo "Étape 3.1: Création de la partie avec le deck du joueur 1"
 
-DECK1_TEXT="4 Lightning Bolt\\n4 Grizzly Bears\\n4 Giant Growth\\n4 Shock\\n20 Mountain\\n20 Forest\\n4 Llanowar Elves"
+DECK1_TEXT="4 Lightning Bolt\\n4 Grizzly Bears\\n4 Giant Growth\\n4 Shock\\n20 Mountain\\n20 Forest\\n20 Llanowar Elves"
 
 curl_test "Création partie avec deck joueur 1" "POST" "$API_BASE/games?game_id=$GAME_ID" "{\"decklist_text\": \"$DECK1_TEXT\"}" "id"
 

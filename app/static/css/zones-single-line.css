@@ -1,0 +1,96 @@
+/* ===== SINGLE LINE ZONES OPTIMIZATION ===== */
+/* Ensures Permanents, Lands, and Hands zones always fit on a single line */
+
+/* Base styles for single-line zones */
+.permanents-zone-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px;
+    min-height: 180px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
+}
+
+.lands-zone-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 4px;
+    min-height: 180px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
+}
+
+.hand-zone-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px;
+    min-height: 180px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
+}
+
+.zone-content::-webkit-scrollbar {
+    height: 6px;
+}
+
+.zone-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.zone-content::-webkit-scrollbar-thumb {
+    background: rgba(201, 170, 113, 0.3);
+    border-radius: 3px;
+}
+
+.permanents-zone-content::-webkit-scrollbar-thumb:hover,
+.lands-zone-content::-webkit-scrollbar-thumb:hover,
+.hand-zone-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 170, 113, 0.5);
+}
+
+/* Opponent hand optimization */
+.flex.justify-center.space-x-1.overflow-x-auto.py-1 {
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+    justify-content: center !important;
+    padding: 4px;
+    min-height: 100px;
+}
+
+/* Dynamic overlap will be handled by JavaScript */
+
+/* Hover effects to reveal overlapped cards */
+.zone-content > *:hover {
+    z-index: 100 !important;
+    transform: scale(1.1) translateY(-5px) !important;
+    margin-left: 0 !important;
+    margin-right: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(201, 170, 113, 0.6) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Ensure cards maintain proper stacking order */
+.zone-content > * {
+    position: relative;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}

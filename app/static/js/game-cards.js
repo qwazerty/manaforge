@@ -51,7 +51,7 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
     
     // Define click action based on zone
     let onClickAction = '';
-    if (zone === 'battlefield' || zone === 'permanents' || zone === 'lands') {
+    if (zone === 'permanents' || zone === 'lands') {
         onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
     } else if (zone === 'hand') {
         onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', ${index}); event.stopPropagation();"`;
@@ -87,7 +87,6 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
                     <span style="font-size: 14px;">🃏</span>
                 </div>
             `}
-            ${isTapped ? '<div class="card-tapped-indicator">T</div>' : ''}
         </div>
     `;
 }
