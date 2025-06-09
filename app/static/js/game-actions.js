@@ -38,6 +38,9 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'play_card':
                 endpoint = `/api/v1/games/${gameId}/play-card`;
                 break;
+            case 'tap_card':
+                endpoint = `/api/v1/games/${gameId}/tap-card`;
+                break;
             case 'modify_life':
                 endpoint = `/api/v1/games/${gameId}/modify-life`;
                 break;
@@ -96,9 +99,35 @@ function changePlayer(playerType) {
     GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
-function tapCard(cardId) {
-    // Find the card element
-    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+function tapCard(cardId, uniqueCardId) {
+    // Find the card element using unique ID if provided, otherwise fallback to cardId
+    let cardElement;
+    if (uniqueCardId) {
+        cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+    }
+    
+    // Fallback logic: try to find the correct card for the current player
+    if (!cardElement) {
+        const currentSelectedPlayer = GameCore.getSelectedPlayer();
+        let playerPrefix = 'unknown';
+        if (currentSelectedPlayer === 'player1') playerPrefix = 'p0';
+        else if (currentSelectedPlayer === 'player2') playerPrefix = 'p1';
+        
+        // Try to find cards that belong to the current player
+        const candidateElements = document.querySelectorAll(`[data-card-id="${cardId}"]`);
+        for (const element of candidateElements) {
+            const elementUniqueId = element.getAttribute('data-card-unique-id');
+            if (elementUniqueId && elementUniqueId.startsWith(playerPrefix)) {
+                cardElement = element;
+                break;
+            }
+        }
+        
+        // If still not found, use the first match (original fallback)
+        if (!cardElement && candidateElements.length > 0) {
+            cardElement = candidateElements[0];
+        }
+    }
     
     if (cardElement) {
         // Toggle tapped state
@@ -124,11 +153,22 @@ function tapCard(cardId) {
             tappedIndicator.remove();
         }
         
-        // Send action to server
-        performGameAction('tap_card', { 
+        // Send action to server with more specific information
+        const currentSelectedPlayer = GameCore.getSelectedPlayer();
+        let playerIndex = 0;
+        if (currentSelectedPlayer === 'player2') playerIndex = 1;
+        
+        const tapData = { 
             card_id: cardId,
-            tapped: newTappedState
-        });
+            tapped: newTappedState,
+            player_index: playerIndex,
+            unique_id: uniqueCardId || `${currentSelectedPlayer}-${cardId}`
+        };
+        
+        // Debug logging
+        console.log(`🃏 Tapping card for ${currentSelectedPlayer}:`, tapData);
+        
+        performGameAction('tap_card', tapData);
         
         const actionText = newTappedState ? 'tapped' : 'untapped';
         GameUI.showNotification(`Card ${cardName} ${actionText}`, 'info');
@@ -165,8 +205,35 @@ function sendToHand(cardId, sourceZone) {
     GameUI.showNotification(`Card returned to hand`, 'info');
 }
 
-function updateCardTappedState(cardId, tapped) {
-    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
+    // Try to find by unique ID first, then fallback to card ID
+    let cardElement;
+    if (uniqueCardId) {
+        cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+    }
+    
+    if (!cardElement) {
+        // If no unique ID or not found, try to find by card ID but only for the current player's cards
+        const currentSelectedPlayer = GameCore.getSelectedPlayer();
+        let playerPrefix = 'unknown';
+        if (currentSelectedPlayer === 'player1') playerPrefix = 'p0';
+        else if (currentSelectedPlayer === 'player2') playerPrefix = 'p1';
+        
+        // Try to find cards that belong to the current player
+        const candidateElements = document.querySelectorAll(`[data-card-id="${cardId}"]`);
+        for (const element of candidateElements) {
+            const elementUniqueId = element.getAttribute('data-card-unique-id');
+            if (elementUniqueId && elementUniqueId.startsWith(playerPrefix)) {
+                cardElement = element;
+                break;
+            }
+        }
+        
+        // If still not found, use the first match (fallback)
+        if (!cardElement && candidateElements.length > 0) {
+            cardElement = candidateElements[0];
+        }
+    }
     
     if (cardElement) {
         cardElement.setAttribute('data-card-tapped', tapped.toString());

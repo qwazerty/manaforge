@@ -42,15 +42,15 @@ curl_test() {
     local url="$3"
     local data="$4"
     local expected_field="$5"
-    
+
     log_info "$description"
-    
+
     if [ "$method" = "GET" ]; then
         response=$(curl -s -X GET "$url" -H "Content-Type: application/json")
     else
         response=$(curl -s -X "$method" "$url" -H "Content-Type: application/json" -d "$data")
     fi
-    
+
     if [ $? -eq 0 ]; then
         if [ -n "$expected_field" ]; then
             result=$(echo "$response" | jq -r ".$expected_field // empty")
@@ -67,7 +67,7 @@ curl_test() {
         log_error "Échec de la requête"
         return 1
     fi
-    
+
     echo ""
 }
 

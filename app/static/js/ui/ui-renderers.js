@@ -249,8 +249,8 @@ class UIRenderers {
                 </div>
                 
                 <div class="bg-arena-surface/50 rounded-lg p-2">
-                    ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'lands', 'Lands', '🌍')}
-                    ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'permanents', 'Permanents', '⚔️')}
+                    ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'lands', 'Lands', '🌍', opponentIdx)}
+                    ${UITemplates.generateBattlefieldZone(opponent?.battlefield, 'permanents', 'Permanents', '⚔️', opponentIdx)}
                 </div>
             </div>
         `;
@@ -277,14 +277,14 @@ class UIRenderers {
         return `
             <div class="arena-card rounded-lg p-3">
                 <div class="bg-arena-surface/50 rounded-lg p-2">
-                    ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️')}
-                    ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍')}
+                    ${UITemplates.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️', controlledIdx)}
+                    ${UITemplates.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍', controlledIdx)}
                 </div>
                 
                 <div class="bg-arena-surface/50 rounded-lg p-2">
                     <h4 class="text-arena-accent font-semibold mb-1 text-sm">✋ Your Hand</h4>
                     <div class="flex flex-wrap gap-1 justify-center">
-                        ${UITemplates.generatePlayerHand(player?.hand || [])}
+                        ${UITemplates.generatePlayerHand(player?.hand || [], controlledIdx)}
                     </div>
                 </div>
             </div>
