@@ -2,9 +2,9 @@
 
 /* Compact card sizes for optimal game interface */
 .card-mini {
-    width: 140px;
-    height: 200px;
-    border-radius: 5%;
+    width: 130px;
+    height: 182px;
+    border-radius: 0.5em;
     background: #1a1f2e;
     overflow: hidden;
     position: relative;
@@ -28,9 +28,9 @@
 }
 
 .card-battlefield {
-    width: 140px;
-    height: 200px;
-    border-radius: 6%;
+    width: 130px;
+    height: 182px;
+    border-radius: 0.5em;
     background: #1a1f2e;
     overflow: hidden;
     position: relative;
