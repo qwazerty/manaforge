@@ -77,14 +77,12 @@ function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip =
                          alt="${cardName}" 
                          style="opacity: 0; transition: opacity 0.3s ease;"
                          onload="this.style.opacity=1; this.nextElementSibling.style.display='none';"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-                        <span style="font-size: 14px;">🃏</span>
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;">
                     </div>
                 </div>
             ` : `
                 <div class="card-fallback">
-                    <span style="font-size: 14px;">🃏</span>
                 </div>
             `}
         </div>
