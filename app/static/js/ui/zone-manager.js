@@ -12,7 +12,7 @@ class ZoneManager {
         'artifact': '⚙️',
         'planeswalker': '👑',
         'land': '🏔️',
-        'default': '🃏'
+        'default': ''
     };
 
     /**

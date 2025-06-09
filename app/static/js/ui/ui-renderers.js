@@ -204,13 +204,11 @@ class UIRenderers {
                              class="stack-card-image"
                              style="opacity: 0; transition: opacity 0.3s ease;"
                              onload="this.style.opacity=1; this.nextElementSibling.style.display='none';"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div class="stack-card-fallback" style="display: flex;">
-                            <span style="font-size: 36px;">🃏</span>
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div class="stack-card-fallback" style="display: none;">
                         </div>
                     ` : `
                         <div class="stack-card-fallback">
-                            <span style="font-size: 36px;">🃏</span>
                         </div>
                     `}
                 </div>

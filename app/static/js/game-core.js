@@ -26,7 +26,7 @@ async function initializeGame() {
     currentSelectedPlayer = playerFromUrl;
     
     // Initialize UI components safely
-    await GameUI.initializeGameUI();
+    // await GameUI.initializeGameUI();
     
     // Initialize zone previews
     ZoneManager.updateZoneCounts();
@@ -103,20 +103,6 @@ function stopAutoRefresh() {
         autoRefreshInterval = null;
     }
 }
-
-// ===== INITIALIZATION (Dom Ready) =====
-// NOTE: Initialization is handled by game-main.js to avoid double loading
-// This legacy initialization is kept for reference but disabled
-/*
-document.addEventListener('DOMContentLoaded', function() {
-    // Legacy initialization for inline templates
-    if (!window.gameData) {
-        console.log('Legacy mode: game data not found in window.gameData');
-        return;
-    }
-    initializeGame();
-});
-*/
 
 // Export core module functionality to global scope
 window.GameCore = {
