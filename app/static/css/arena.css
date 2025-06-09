@@ -25,9 +25,21 @@
     to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes pulseArena {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 0.8; }
+.animate-pulse-green {
+    animation: pulse-green 5s;
+}
+
+/* Custom animation for green pulse */
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 255, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 0, 0);
+    }
 }
 
 /* Custom Arena Styles */
