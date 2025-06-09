@@ -1,13 +1,13 @@
 /* ===== OPPONENT CARD ZONES STYLES ===== */
 /* Styles for opponent's deck, graveyard, and exile zones */
 
-/* Opponent hand zone - always centered */
+/* Opponent hand zone - always centered with overlap */
 .opponent-hand-zone {
     display: flex;
     justify-content: center !important;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.25rem;
+    flex-wrap: nowrap;
+    gap: 0;
     padding: 0.5rem;
     text-align: center;
 }

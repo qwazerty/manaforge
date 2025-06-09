@@ -201,7 +201,7 @@ class UIGameInterface {
      */
     static generateOpponentHand(handSize = 7) {
         return Array(handSize).fill().map((_, index) => `
-            <div class="${UIConfig.CSS_CLASSES.card.back}" 
+            <div class="card-back opponent-hand-card" 
                  data-card-id="opponent-card-${index}" 
                  style="width: 60px; height: 84px; ${UIUtils.createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
             </div>
