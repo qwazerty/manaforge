@@ -93,6 +93,7 @@ class Player(BaseModel):
     hand: List[Card] = Field(default_factory=list, description="Cards in hand")
     battlefield: List[Card] = Field(default_factory=list, description="Cards on battlefield")
     graveyard: List[Card] = Field(default_factory=list, description="Cards in graveyard")
+    exile: List[Card] = Field(default_factory=list, description="Cards in exile")
     library: List[Card] = Field(default_factory=list, description="Cards in library")
     mana_pool: Dict[str, int] = Field(default_factory=dict, description="Available mana")
 

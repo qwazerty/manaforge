@@ -44,6 +44,15 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'modify_life':
                 endpoint = `/api/v1/games/${gameId}/modify-life`;
                 break;
+            case 'send_to_graveyard':
+                endpoint = `/api/v1/games/${gameId}/send-to-graveyard`;
+                break;
+            case 'send_to_exile':
+                endpoint = `/api/v1/games/${gameId}/send-to-exile`;
+                break;
+            case 'send_to_hand':
+                endpoint = `/api/v1/games/${gameId}/send-to-hand`;
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }

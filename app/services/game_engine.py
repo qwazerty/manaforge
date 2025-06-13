@@ -129,6 +129,12 @@ class SimpleGameEngine:
             self._modify_life(game_state, action)
         elif action.action_type == "tap_card":
             self._tap_card(game_state, action)
+        elif action.action_type == "send_to_graveyard":
+            self._send_to_graveyard(game_state, action)
+        elif action.action_type == "send_to_exile":
+            self._send_to_exile(game_state, action)
+        elif action.action_type == "send_to_hand":
+            self._send_to_hand(game_state, action)
         
         return game_state
     
@@ -382,3 +388,165 @@ class SimpleGameEngine:
         
         action_text = "tapped" if card_found.tapped else "untapped"
         print(f"Player {action.player_id} {action_text} {card_found.name}")
+    
+    def _send_to_graveyard(self, game_state: GameState, action: GameAction) -> None:
+        """Move a card from any zone to graveyard."""
+        player = self._get_player(game_state, action.player_id)
+        card_id = action.card_id
+        source_zone = action.additional_data.get("source_zone", "unknown")
+        
+        if not card_id:
+            raise ValueError("card_id is required for send_to_graveyard action")
+        
+        card_found = None
+        
+        # Search in different zones based on source_zone
+        if source_zone == "hand":
+            for i, card in enumerate(player.hand):
+                if card.id == card_id:
+                    card_found = player.hand.pop(i)
+                    break
+        elif source_zone in ["battlefield", "permanents", "lands"]:
+            for i, card in enumerate(player.battlefield):
+                if card.id == card_id:
+                    card_found = player.battlefield.pop(i)
+                    break
+        elif source_zone == "exile":
+            for i, card in enumerate(player.exile):
+                if card.id == card_id:
+                    card_found = player.exile.pop(i)
+                    break
+        elif source_zone == "library" or source_zone == "deck":
+            for i, card in enumerate(player.library):
+                if card.id == card_id:
+                    card_found = player.library.pop(i)
+                    break
+        else:
+            # Search all zones if source unknown
+            for zone_name, zone_list in [
+                ("hand", player.hand),
+                ("battlefield", player.battlefield),
+                ("exile", player.exile),
+                ("library", player.library)
+            ]:
+                for i, card in enumerate(zone_list):
+                    if card.id == card_id:
+                        card_found = zone_list.pop(i)
+                        break
+                if card_found:
+                    break
+        
+        if not card_found:
+            raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
+        
+        # Add to graveyard
+        player.graveyard.append(card_found)
+        print(f"Player {action.player_id} sent {card_found.name} to graveyard from {source_zone}")
+    
+    def _send_to_exile(self, game_state: GameState, action: GameAction) -> None:
+        """Move a card from any zone to exile."""
+        player = self._get_player(game_state, action.player_id)
+        card_id = action.card_id
+        source_zone = action.additional_data.get("source_zone", "unknown")
+        
+        if not card_id:
+            raise ValueError("card_id is required for send_to_exile action")
+        
+        card_found = None
+        
+        # Search in different zones based on source_zone
+        if source_zone == "hand":
+            for i, card in enumerate(player.hand):
+                if card.id == card_id:
+                    card_found = player.hand.pop(i)
+                    break
+        elif source_zone in ["battlefield", "permanents", "lands"]:
+            for i, card in enumerate(player.battlefield):
+                if card.id == card_id:
+                    card_found = player.battlefield.pop(i)
+                    break
+        elif source_zone == "graveyard":
+            for i, card in enumerate(player.graveyard):
+                if card.id == card_id:
+                    card_found = player.graveyard.pop(i)
+                    break
+        elif source_zone == "library" or source_zone == "deck":
+            for i, card in enumerate(player.library):
+                if card.id == card_id:
+                    card_found = player.library.pop(i)
+                    break
+        else:
+            # Search all zones if source unknown
+            for zone_name, zone_list in [
+                ("hand", player.hand),
+                ("battlefield", player.battlefield),
+                ("graveyard", player.graveyard),
+                ("library", player.library)
+            ]:
+                for i, card in enumerate(zone_list):
+                    if card.id == card_id:
+                        card_found = zone_list.pop(i)
+                        break
+                if card_found:
+                    break
+        
+        if not card_found:
+            raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
+        
+        # Add to exile
+        player.exile.append(card_found)
+        print(f"Player {action.player_id} exiled {card_found.name} from {source_zone}")
+    
+    def _send_to_hand(self, game_state: GameState, action: GameAction) -> None:
+        """Move a card from any zone to hand."""
+        player = self._get_player(game_state, action.player_id)
+        card_id = action.card_id
+        source_zone = action.additional_data.get("source_zone", "unknown")
+        
+        if not card_id:
+            raise ValueError("card_id is required for send_to_hand action")
+        
+        card_found = None
+        
+        # Search in different zones based on source_zone
+        if source_zone in ["battlefield", "permanents", "lands"]:
+            for i, card in enumerate(player.battlefield):
+                if card.id == card_id:
+                    card_found = player.battlefield.pop(i)
+                    break
+        elif source_zone == "graveyard":
+            for i, card in enumerate(player.graveyard):
+                if card.id == card_id:
+                    card_found = player.graveyard.pop(i)
+                    break
+        elif source_zone == "exile":
+            for i, card in enumerate(player.exile):
+                if card.id == card_id:
+                    card_found = player.exile.pop(i)
+                    break
+        elif source_zone == "library" or source_zone == "deck":
+            for i, card in enumerate(player.library):
+                if card.id == card_id:
+                    card_found = player.library.pop(i)
+                    break
+        else:
+            # Search all zones if source unknown (excluding hand since card is already there)
+            for zone_name, zone_list in [
+                ("battlefield", player.battlefield),
+                ("graveyard", player.graveyard),
+                ("exile", player.exile),
+                ("library", player.library)
+            ]:
+                for i, card in enumerate(zone_list):
+                    if card.id == card_id:
+                        card_found = zone_list.pop(i)
+                        break
+                if card_found:
+                    break
+        
+        if not card_found:
+            raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
+        
+        # Add to hand
+        player.hand.append(card_found)
+        print(f"Player {action.player_id} returned {card_found.name} to hand from {source_zone}")
