@@ -63,7 +63,7 @@
 
 /* Stack card specific styles */
 .stack-spell:hover::before {
-    content: "RESOLVE";
+    content: "GRAVEYARD";
     position: absolute;
     top: 45%;
     left: 50%;

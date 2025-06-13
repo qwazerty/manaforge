@@ -248,7 +248,7 @@ function resolveStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.showNotification(`Resolving spell`, 'info');
+    GameUI.showNotification(`Resolving spell ${cardId}`, 'info');
 }
 
 function counterStackSpell(cardId, stackIndex) {

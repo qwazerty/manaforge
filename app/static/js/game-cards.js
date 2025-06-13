@@ -239,39 +239,21 @@ function showCardContextMenu(event, cardElement) {
             </div>`;
     }
     
-    if (cardZone === 'stack') {
-        // Get stack index for stack-specific actions
-        const stackIndex = cardElement.getAttribute('data-stack-index');
-        
-        menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.resolveStackSpell('${cardId}', '${stackIndex}')">
-                <span class="icon">✅</span> Resolve
-            </div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.counterStackSpell('${cardId}', '${stackIndex}')">
-                <span class="icon">❌</span> Counter
-            </div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.copyStackSpell('${cardId}', '${stackIndex}')">
-                <span class="icon">📄</span> Copy
-            </div>`;
-    }
+
+    menuHTML += `
+        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}')">
+            <span class="icon">⚰️</span> Send to Graveyard
+        </div>
+        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}')">
+            <span class="icon">✨</span> Send to Exile
+        </div>`;
     
-    // Common actions for all zones (except stack)
-    if (cardZone !== 'stack') {
+    // Return to hand (only if not already in hand)
+    if (cardZone !== 'hand') {
         menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}')">
-                <span class="icon">⚰️</span> Send to Graveyard
-            </div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}')">
-                <span class="icon">✨</span> Send to Exile
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}')">
+                <span class="icon">👋</span> Return to Hand
             </div>`;
-        
-        // Return to hand (only if not already in hand)
-        if (cardZone !== 'hand') {
-            menuHTML += `
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}')">
-                    <span class="icon">👋</span> Return to Hand
-                </div>`;
-        }
     }
     
     // Close the actions container
