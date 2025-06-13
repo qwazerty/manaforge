@@ -127,16 +127,22 @@ class SimpleGameEngine:
             self._pass_priority(game_state, action)
         elif action.action_type == "modify_life":
             self._modify_life(game_state, action)
+        elif action.action_type == "tap_card":
+            self._tap_card(game_state, action)
         
         return game_state
     
     def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
         """Convert deck list to shuffled list of Card objects."""
+        import uuid
         cards = []
         for deck_card in deck_cards:
-            # Add quantity copies of each card
-            for _ in range(deck_card.quantity):
-                cards.append(deck_card.card)
+            # Add quantity copies of each card with unique IDs
+            for copy_index in range(deck_card.quantity):
+                # Create a unique copy of the card with a unique ID
+                card_copy = deck_card.card.model_copy()
+                card_copy.id = f"{deck_card.card.id}_{uuid.uuid4().hex[:8]}"
+                cards.append(card_copy)
         
         random.shuffle(cards)
         return cards
@@ -344,3 +350,35 @@ class SimpleGameEngine:
         target_player.life = max(0, target_player.life + amount)  # Life can't go below 0
         
         print(f"Player {target_player_id} life changed from {old_life} to {target_player.life} (amount: {amount})")
+    
+    def _tap_card(self, game_state: GameState, action: GameAction) -> None:
+        """Handle tapping or untapping a card."""
+        player = self._get_player(game_state, action.player_id)
+        card_id = action.card_id
+        
+        if not card_id:
+            raise ValueError("card_id is required for tap_card action")
+        
+        # Get the desired tapped state from additional_data, default to toggle
+        desired_tapped_state = action.additional_data.get("tapped")
+        
+        # Find the card on the battlefield by ID only
+        card_found = None
+        for card in player.battlefield:
+            if card.id == card_id:
+                card_found = card
+                break
+        
+        if not card_found:
+            raise ValueError(f"Card {card_id} not found on battlefield for player {action.player_id}")
+        
+        # Set the tapped state
+        if desired_tapped_state is not None:
+            # Explicit state provided
+            card_found.tapped = desired_tapped_state
+        else:
+            # Toggle the current state
+            card_found.tapped = not card_found.tapped
+        
+        action_text = "tapped" if card_found.tapped else "untapped"
+        print(f"Player {action.player_id} {action_text} {card_found.name}")

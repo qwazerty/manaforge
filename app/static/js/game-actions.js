@@ -130,43 +130,41 @@ function tapCard(cardId, uniqueCardId) {
     }
     
     if (cardElement) {
-        // Toggle tapped state
+        // Get current state
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const newTappedState = !isTapped;
+        const cardName = cardElement.getAttribute('data-card-name') || cardId;
         
-        // Update visual state immediately for better UX
+        console.log(`🃏 Card ${cardName}: ${isTapped ? 'tapped' : 'untapped'} -> ${newTappedState ? 'tapped' : 'untapped'}`);
+        
+        // Update visual state immediately for better UX (optimistic update)
         cardElement.setAttribute('data-card-tapped', newTappedState.toString());
         cardElement.classList.toggle('tapped', newTappedState);
-        
-        // Update title
-        const cardName = cardElement.getAttribute('data-card-name');
         cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
         
-        
-        // Send action to server with more specific information
+        // Send action to server via WebSocket with explicit tapped state
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
-        let playerIndex = 0;
-        if (currentSelectedPlayer === 'player2') playerIndex = 1;
-        
         const tapData = { 
             card_id: cardId,
             tapped: newTappedState,
-            player_index: playerIndex,
             unique_id: uniqueCardId || `${currentSelectedPlayer}-${cardId}`
         };
         
-        // Debug logging
-        console.log(`🃏 Tapping card for ${currentSelectedPlayer}:`, tapData);
-        
+        console.log(`🃏 Sending tap_card action via WebSocket:`, tapData);
         performGameAction('tap_card', tapData);
         
         const actionText = newTappedState ? 'tapped' : 'untapped';
-        GameUI.showNotification(`Card ${cardName} ${actionText}`, 'info');
+        GameUI.showNotification(`${cardName} ${actionText}`, 'info');
     } else {
-        // Fallback if element not found
-        performGameAction('tap_card', { 
-            card_id: cardId
-        });
+        console.warn(`🃏 Card element not found for cardId: ${cardId}, uniqueCardId: ${uniqueCardId}`);
+        
+        // Fallback if element not found - still send action to server
+        const tapData = { 
+            card_id: cardId,
+            unique_id: uniqueCardId
+        };
+        
+        performGameAction('tap_card', tapData);
         GameUI.showNotification(`Card tapped/untapped`, 'info');
     }
 }

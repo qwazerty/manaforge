@@ -103,8 +103,10 @@ function handleWebSocketMessage(message) {
                 ZoneManager.updateZoneCounts();
                 ZoneManager.updateZonePreviews();
                 
-                if (message.action_result) {
+                // If this was a tap/untap action, show feedback
+                if (message.action_result && message.action_result.action === 'tap_card') {
                     const result = message.action_result;
+                    console.log(`🃏 WebSocket: Tap action completed for ${result.player}`);
                 }
             }
             break;
