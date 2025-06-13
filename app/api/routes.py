@@ -14,11 +14,9 @@ router = APIRouter(prefix="/api/v1")
 # Global game engine instance (in production, use proper dependency injection)
 game_engine = SimpleGameEngine()
 
-
 async def get_card_service() -> CardService:
     """Get card service dependency."""
     return CardService()
-
 
 # Helper function to broadcast game updates via WebSocket
 async def broadcast_game_update(game_id: str, game_state: GameState, action_info: Optional[dict] = None):
@@ -42,7 +40,6 @@ async def broadcast_game_update(game_id: str, game_state: GameState, action_info
     except Exception as e:
         print(f"Error broadcasting game update: {e}")
 
-
 @router.get("/cards/search")
 async def search_cards(
     q: str, 
@@ -51,7 +48,6 @@ async def search_cards(
 ) -> List[Card]:
     """Search for cards by name."""
     return await card_service.search_cards(q, limit)
-
 
 @router.get("/cards/{card_id}")
 async def get_card(
@@ -63,7 +59,6 @@ async def get_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     return card
-
 
 @router.post("/games")
 async def create_game(
@@ -144,14 +139,12 @@ async def list_games() -> List[Dict[str, Any]]:
     print(f"Returning games list: {games_list}")
     return games_list
 
-
 @router.get("/games/{game_id}/state")
 async def get_game_state(game_id: str) -> GameState:
     """Get current game state (alias for auto-refresh)."""
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
     return game_engine.games[game_id]
-
 
 @router.post("/games/{game_id}/actions")
 async def perform_action(game_id: str, action: GameAction) -> GameState:
@@ -161,7 +154,6 @@ async def perform_action(game_id: str, action: GameAction) -> GameState:
         return game_state
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 @router.post("/games/{game_id}/pass-phase")
 async def pass_phase(game_id: str, request: Optional[dict] = None) -> dict:
@@ -198,7 +190,6 @@ async def pass_phase(game_id: str, request: Optional[dict] = None) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-
 @router.post("/games/{game_id}/draw-card")
 async def draw_card(game_id: str, request: Optional[dict] = None) -> dict:
     """Draw a card for the current player."""
@@ -233,7 +224,6 @@ async def draw_card(game_id: str, request: Optional[dict] = None) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         return {"success": False, "error": str(e)}
-
 
 @router.post("/games/{game_id}/play-card")
 async def play_card(game_id: str, request: dict) -> dict:
@@ -276,6 +266,50 @@ async def play_card(game_id: str, request: dict) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.post("/games/{game_id}/tap-card")
+async def tap_card(game_id: str, request: dict) -> dict:
+    """Tap or untap a card for the current player."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the active_player index from GameState
+        player_id = str(current_state.active_player)
+    
+    card_id = request.get("card_id")
+    tapped = request.get("tapped")  # Optional: explicit tap state
+    
+    if not card_id:
+        raise HTTPException(status_code=400, detail="card_id is required")
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="tap_card",
+        card_id=card_id,
+        additional_data={"tapped": tapped} if tapped is not None else {}
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "tap_card",
+            "player": player_id,
+            "card": card_id,
+            "tapped": tapped,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @router.post("/games/{game_id}/modify-life")
 async def modify_life(game_id: str, request: dict) -> dict:
@@ -326,7 +360,6 @@ async def modify_life(game_id: str, request: dict) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-
 @router.post("/decks/parse")
 async def parse_decklist(
     request: dict,
@@ -343,14 +376,12 @@ async def parse_decklist(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error parsing decklist: {str(e)}")
 
-
 @router.get("/decks/{deck_id}")
 async def get_deck(
     deck_id: str
 ) -> Deck:
     """Get a deck by ID - Note: This endpoint is deprecated without database."""
     raise HTTPException(status_code=501, detail="Deck storage not implemented without database")
-
 
 @router.post("/games/{game_id}/join")
 async def join_game(
@@ -392,7 +423,6 @@ async def join_game(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error joining game: {str(e)}")
 
-
 @router.post("/games/{game_id}/resolve-stack")
 async def resolve_stack(game_id: str, request: Optional[dict] = None) -> dict:
     """Resolve the top spell on the stack."""
@@ -427,7 +457,6 @@ async def resolve_stack(game_id: str, request: Optional[dict] = None) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         return {"success": False, "error": str(e)}
-
 
 @router.post("/games/{game_id}/pass-priority")
 async def pass_priority(game_id: str, request: Optional[dict] = None) -> dict:

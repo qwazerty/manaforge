@@ -49,6 +49,7 @@ class Card(BaseModel):
     colors: List[Color] = Field(default_factory=list, description="Card colors")
     rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
     image_url: Optional[str] = Field(default=None, description="Card image URL")
+    tapped: bool = Field(default=False, description="Whether the card is tapped")
 
 
 class DeckCard(BaseModel):
