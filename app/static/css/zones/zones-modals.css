@@ -95,7 +95,7 @@
     overflow-x: auto;
     overflow-y: hidden;
     padding: 1rem;
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
 }
 
 .zone-cards-slider::-webkit-scrollbar {
