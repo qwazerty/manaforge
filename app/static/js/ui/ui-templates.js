@@ -25,8 +25,8 @@ class UITemplates {
 
     // Zone generation
     static generateDeckZone(deck, isOpponent) { return UIZones.generateDeckZone(deck, isOpponent); }
-    static generateGraveyardZone(graveyard) { return UIZones.generateGraveyardZone(graveyard); }
-    static generateExileZone(exile) { return UIZones.generateExileZone(exile); }
+    static generateGraveyardZone(graveyard, isOpponent) { return UIZones.generateGraveyardZone(graveyard, isOpponent); }
+    static generateExileZone(exile, isOpponent) { return UIZones.generateExileZone(exile, isOpponent); }
     static generateLifeZone(life, playerId, titlePrefix) { return UIZones.generateLifeZone(life, playerId, titlePrefix); }
 
     // Game interface
@@ -56,8 +56,8 @@ class UITemplates {
         const zoneTemplates = {
             life: this.generateLifeZone(life, playerId, titlePrefix),
             deck: this.generateDeckZone(deckData, isOpponent),
-            graveyard: this.generateGraveyardZone(graveyard),
-            exile: this.generateExileZone(exile)
+            graveyard: this.generateGraveyardZone(graveyard, isOpponent),
+            exile: this.generateExileZone(exile, isOpponent)
         };
 
         return zoneTemplates;
