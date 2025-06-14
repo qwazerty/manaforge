@@ -35,11 +35,14 @@ class UIZones {
             return UIUtils.generateCardLayer(null, index, transforms);
         }).join('');
 
-        // For opponent, don't show clickable overlay or click handler since they can't draw from opponent's deck  
-        const clickHandler = isOpponent ? '' : 'onclick="GameActions.drawCard()"';
-        const clickOverlay = isOpponent ? '' : `
+        // Different overlay text and click handlers for player vs opponent
+        const clickHandler = isOpponent ? 
+            'onclick="ZoneManager.showOpponentZoneModal(\'deck\')"' : 
+            'onclick="GameActions.drawCard()"';
+        const overlayText = isOpponent ? 'View<br>All' : 'Draw';
+        const clickOverlay = `
             <div class="deck-click-overlay">
-                <span class="draw-hint">Draw</span>
+                <span class="draw-hint">${overlayText}</span>
             </div>
         `;
         

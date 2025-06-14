@@ -110,6 +110,8 @@ app/
 - Privilégier l'async/await partout
 - WebSockets pour les updates temps réel
 - Templates Jinja2 pour le rendu côté serveur
+- Séparer le code HTML dans du .html, JS dans du .js et css dans du .css
+- NE PAS DUPLIQUER DE CODE. Essayer au maximum de réutiliser du code/style déjà existant
 
 **Performance :**
 - HTMX pour les interactions dynamiques sans JS lourd
