@@ -265,15 +265,24 @@ class ZoneManager {
     }
 
     /**
-     * Generate zone cards grid
+     * Generate zone cards grid or slider based on zone type
      */
     static generateZoneCardsGrid(cards, zoneName) {
         if (!cards || cards.length === 0) {
             return this.generateEmptyZoneMessage(zoneName);
         }
 
-        const cardsHTML = cards.map((card, index) => this.generateZoneCardItem(card, index, zoneName)).join('');
-        return `<div class="zone-cards-grid">${cardsHTML}</div>`;
+        // Use horizontal slider for graveyard and exile
+        const pureZoneName = zoneName.replace('opponent_', '');
+        const useSlider = (pureZoneName === 'graveyard' || pureZoneName === 'exile');
+        
+        if (useSlider) {
+            const cardsHTML = cards.map((card, index) => this.generateZoneCardSliderItem(card, index, zoneName)).join('');
+            return `<div class="zone-cards-slider">${cardsHTML}</div>`;
+        } else {
+            const cardsHTML = cards.map((card, index) => this.generateZoneCardItem(card, index, zoneName)).join('');
+            return `<div class="zone-cards-grid">${cardsHTML}</div>`;
+        }
     }
 
     /**
@@ -303,6 +312,23 @@ class ZoneManager {
             <div class="zone-card-item" onclick="ZoneManager.showCardDetails('${card.id || index}', '${zoneName}')">
                 ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, zoneName)}
                 <div class="zone-card-name mt-2">${cardName}</div>
+                <div class="zone-card-cost">${cardCost}</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Generate zone card slider item for horizontal display
+     */
+    static generateZoneCardSliderItem(card, index, zoneName) {
+        const cardName = card.name || `Unknown Card ${index + 1}`;
+        const cardCost = card.mana_cost || card.cost || '';
+        const cardType = card.type_line || card.type || 'Unknown Type';
+        
+        return `
+            <div class="zone-card-slider-item" onclick="ZoneManager.showCardDetails('${card.id || index}', '${zoneName}')">
+                ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, zoneName)}
+                <div class="zone-card-name">${cardName}</div>
                 <div class="zone-card-cost">${cardCost}</div>
             </div>
         `;
