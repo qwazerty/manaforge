@@ -46,7 +46,7 @@ class UIZones {
         // Add opponent-specific CSS class to disable interactions
         const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
 
-        return UIUtils.generateZoneWrapper(`
+        const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
                 <div class="${deckClass}" ${clickHandler}>
                     ${stackCards}
@@ -57,6 +57,19 @@ class UIZones {
                 </div>
             </div>
         `, 'deck');
+
+        // Add context menu to deck zone (for player only, not opponent)
+        if (!isOpponent) {
+            setTimeout(() => {
+                const deckElement = document.querySelector('.deck-cards-stack:not(.opponent-deck)');
+                if (deckElement && window.ZoneContextMenu) {
+                    window.ZoneContextMenu.attachToZone(deckElement, 'deck');
+                    deckElement.classList.add('zone-context-menu-enabled');
+                }
+            }, 100);
+        }
+
+        return zoneContent;
     }
 
     /**
@@ -98,7 +111,7 @@ class UIZones {
             return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
         }).join('');
 
-        return UIUtils.generateZoneWrapper(`
+        const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
                 <div class="graveyard-cards-stack" onclick="ZoneManager.showZoneModal('graveyard')">
                     ${stackCards}
@@ -111,6 +124,17 @@ class UIZones {
                 </div>
             </div>
         `, 'graveyard');
+
+        // Add context menu to graveyard zone
+        setTimeout(() => {
+            const graveyardElement = document.querySelector('.graveyard-cards-stack');
+            if (graveyardElement && window.ZoneContextMenu) {
+                window.ZoneContextMenu.attachToZone(graveyardElement, 'graveyard');
+                graveyardElement.classList.add('zone-context-menu-enabled');
+            }
+        }, 100);
+
+        return zoneContent;
     }
 
     /**
@@ -151,7 +175,7 @@ class UIZones {
         // Get top card for display (most recent exiled card)
         const topCard = exileArray[exileArray.length - 1];
 
-        return UIUtils.generateZoneWrapper(`
+        const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
                 <div class="exile-stack" onclick="ZoneManager.showZoneModal('exile')">
                     ${stackCards}
@@ -167,6 +191,17 @@ class UIZones {
                 </div>
             </div>
         `, 'exile');
+
+        // Add context menu to exile zone
+        setTimeout(() => {
+            const exileElement = document.querySelector('.exile-stack');
+            if (exileElement && window.ZoneContextMenu) {
+                window.ZoneContextMenu.attachToZone(exileElement, 'exile');
+                exileElement.classList.add('zone-context-menu-enabled');
+            }
+        }, 100);
+
+        return zoneContent;
     }
 
     /**

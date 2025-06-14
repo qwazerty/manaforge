@@ -190,6 +190,41 @@ async def pass_phase(game_id: str, request: Optional[dict] = None) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.post("/games/{game_id}/shuffle-library")
+async def shuffle_library(game_id: str, request: Optional[dict] = None) -> dict:
+    """Shuffle a player's library."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if request and "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        player_id = str(current_state.active_player)
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="shuffle_library"
+    )
+    
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "shuffle_library",
+            "player": player_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @router.post("/games/{game_id}/draw-card")
 async def draw_card(game_id: str, request: Optional[dict] = None) -> dict:
     """Draw a card for the current player."""

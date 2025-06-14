@@ -5,6 +5,7 @@
 {% block extra_css %}
 <!-- External CSS for game-specific styles -->
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/zone-context-menu.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -98,6 +99,7 @@
 <script src="{{ url_for('static', path='js/ui/ui-templates.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-notifications.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/zone-manager.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/zone-context-menu.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-card-overlap.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-renderers.js') }}"></script>
 

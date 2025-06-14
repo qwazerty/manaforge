@@ -135,6 +135,8 @@ class SimpleGameEngine:
             self._send_to_exile(game_state, action)
         elif action.action_type == "send_to_hand":
             self._send_to_hand(game_state, action)
+        elif action.action_type == "shuffle_library":
+            self._shuffle_library(game_state, action)
         
         return game_state
     
@@ -550,3 +552,12 @@ class SimpleGameEngine:
         # Add to hand
         player.hand.append(card_found)
         print(f"Player {action.player_id} returned {card_found.name} to hand from {source_zone}")
+    
+    def _shuffle_library(self, game_state: GameState, action: GameAction) -> None:
+        """Shuffle a player's library."""
+        player = self._get_player(game_state, action.player_id)
+        
+        # Shuffle the player's library
+        random.shuffle(player.library)
+        
+        print(f"Player {action.player_id} shuffled their library ({len(player.library)} cards)")
