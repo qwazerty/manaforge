@@ -111,10 +111,10 @@
 
 <!-- Initialize game with server data -->
 <script>
-// Pass server data to our external JavaScript
+// Pass game ID to JavaScript, fetch data via API
 window.gameData = {
-    game: {{ game|tojson|safe }},
-    gameId: "{{ game.id }}"
+    gameId: "{{ game.id }}",
+    apiBaseUrl: "/api/v1"
 };
 
 // The game will be initialized automatically by game-main.js

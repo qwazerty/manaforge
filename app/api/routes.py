@@ -135,6 +135,45 @@ async def get_game_state(game_id: str) -> GameState:
         raise HTTPException(status_code=404, detail="Game not found")
     return game_engine.games[game_id]
 
+@router.get("/games/{game_id}/ui-data")
+async def get_game_ui_data(game_id: str) -> dict:
+    """Get game data optimized for UI rendering."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    game_state = game_engine.games[game_id]
+    
+    def safe_model_dump(obj):
+        """Safely convert object to dict, handling both Pydantic models and dicts."""
+        if hasattr(obj, 'model_dump'):
+            return obj.model_dump()
+        elif isinstance(obj, dict):
+            return obj
+        else:
+            return str(obj)
+    
+    # Convert to UI-friendly format
+    return {
+        'id': game_state.id,
+        'turn': game_state.turn,
+        'phase': game_state.phase.value if hasattr(game_state.phase, 'value') else str(game_state.phase),
+        'active_player': game_state.active_player,
+        'priority_player': game_state.priority_player,
+        'players': [
+            {
+                'name': player.name,
+                'life': player.life,
+                'hand': [safe_model_dump(card) for card in player.hand],
+                'battlefield': [safe_model_dump(card) for card in player.battlefield],
+                'library': len(player.library),
+                'graveyard': [safe_model_dump(card) for card in player.graveyard],
+                'exile': [safe_model_dump(card) for card in player.exile]
+            }
+            for player in game_state.players
+        ],
+        'stack': [safe_model_dump(spell) for spell in game_state.stack]
+    }
+
 @router.post("/games/{game_id}/join")
 async def join_game(
     game_id: str, 

@@ -14,10 +14,22 @@ let gameId = null; // Will be initialized from template
 async function initializeGame() {
     console.log('ManaForge Game Interface initializing...');
     
-    // Initialize from template data
+    // Initialize game ID from template data
     if (window.gameData) {
-        gameState = window.gameData.game;
         gameId = window.gameData.gameId;
+    }
+    
+    if (!gameId) {
+        console.error('Game ID not found in template data');
+        return;
+    }
+    
+    // Load initial game state from API
+    try {
+        await loadGameState();
+    } catch (error) {
+        console.error('Failed to load initial game state:', error);
+        return;
     }
     
     // Get player from URL or default to player1
@@ -62,6 +74,30 @@ async function initializeGame() {
     });
 }
 
+// ===== GAME STATE LOADING =====
+async function loadGameState() {
+    try {
+        const response = await fetch(`/api/v1/games/${gameId}/ui-data`);
+        if (!response.ok) {
+            throw new Error(`Failed to load game state: ${response.status}`);
+        }
+        
+        gameState = await response.json();
+        console.log('Initial game state loaded:', gameState);
+        
+        // Initialize UI with loaded state
+        if (window.GameUI) {
+            GameUI.generateLeftArea();
+            GameUI.generateGameBoard();
+            GameUI.generateActionPanel();
+        }
+        
+    } catch (error) {
+        console.error('Error loading game state:', error);
+        throw error;
+    }
+}
+
 // ===== AUTO-REFRESH FUNCTIONALITY =====
 async function refreshGameData() {
     if (window.websocket && window.websocket.readyState === WebSocket.OPEN) {
@@ -70,7 +106,7 @@ async function refreshGameData() {
     }
     
     try {
-        const response = await fetch(`/api/v1/games/${gameId}/state`);
+        const response = await fetch(`/api/v1/games/${gameId}/ui-data`);
         if (response.ok) {
             const newGameState = await response.json();
             

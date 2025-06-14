@@ -94,6 +94,13 @@ function playCardFromHand(cardId, handIndex) {
         hand_index: handIndex 
     });
 
+    // Find card name for better user feedback
+    let cardName = cardId; // fallback to cardId if name not found
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (cardElement) {
+        cardName = cardElement.getAttribute('data-card-name') || cardId;
+    }
+
     GameUI.showNotification(`Card played: ${cardName}`, 'info');
 }
 
