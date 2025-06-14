@@ -87,6 +87,70 @@
     padding: 1rem;
 }
 
+/* Horizontal slider for graveyard and exile */
+.zone-cards-slider {
+    display: flex;
+    gap: 1rem;
+    max-height: 70vh;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 1rem;
+    scroll-behavior: smooth;
+}
+
+.zone-cards-slider::-webkit-scrollbar {
+    height: 8px;
+}
+
+.zone-cards-slider::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: 4px;
+}
+
+.zone-cards-slider::-webkit-scrollbar-thumb {
+    background: rgba(201, 170, 113, 0.6);
+    border-radius: 4px;
+}
+
+.zone-cards-slider::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 170, 113, 0.8);
+}
+
+.zone-card-slider-item {
+    flex: 0 0 200px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+    min-height: 320px;
+}
+
+.zone-card-slider-item:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(201, 170, 113, 0.5);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 10px rgba(201, 170, 113, 0.3);
+}
+
+.zone-card-slider-item .zone-card-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-top: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zone-card-slider-item .zone-card-cost {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+}
+
 .zone-card-item {
     background: rgba(30, 41, 59, 0.6);
     border: 1px solid #374151;

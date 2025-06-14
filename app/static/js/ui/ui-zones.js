@@ -60,7 +60,7 @@ class UIZones {
     }
 
     /**
-     * Generate graveyard zone with visible cards
+     * Generate graveyard zone with single card preview and stack effect
      */
     static generateGraveyardZone(graveyard = []) {
         // Ensure graveyard is always an array
@@ -68,44 +68,55 @@ class UIZones {
         
         if (graveyardArray.length === 0) {
             return UIUtils.generateZoneWrapper(`
-                ${UIUtils.generateEmptyZoneContent('⚰️', 'No cards in graveyard')}
+                <div class="relative flex flex-col items-center py-4">
+                    <div class="graveyard-empty">
+                        <span>⚰️</span>
+                        <div class="zone-empty-text">Empty</div>
+                    </div>
+                </div>
             `, 'graveyard');
         }
 
-        const visibleCards = Math.min(5, graveyardArray.length);
-        const cardsToShow = graveyardArray.slice(-visibleCards).reverse();
+        // Calculate cards remaining
+        const cardsRemaining = graveyardArray.length;
+
+        // Show stack layers based on card count (max 5 layers for visual effect)
+        const stackLayers = Math.min(5, Math.max(1, graveyardArray.length));
         
-        const spreadCards = cardsToShow.map((card, index) => {
+        const stackCards = Array(stackLayers).fill().map((_, index) => {
             const transforms = {
-                x: index * 5,
-                y: -index * 20,
-                rotation: 0,
-                zIndex: visibleCards - index
+                x: index * 1,
+                y: index * 1.5,
+                rotation: (index % 2 === 0) ? -1 : 1,
+                zIndex: index + 1
             };
             
-            return `
-                <div class="graveyard-card-position ${UIConfig.CSS_CLASSES.card.position}" 
-                     style="${UIUtils.createTransform(transforms.x, transforms.y, transforms.rotation)}; ${UIUtils.createZIndex(transforms.zIndex)}">
-                    ${GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, true, 'graveyard')}
-                </div>
-            `;
+            return UIUtils.generateCardLayer(null, index, transforms, 'graveyard-card-layer');
         }).join('');
 
-        const moreIndicator = graveyardArray.length > visibleCards ? 
-            `<div class="graveyard-more-indicator">+${graveyardArray.length - visibleCards} more</div>` : '';
+        // Get top card for display
+        const topCard = graveyardArray[graveyardArray.length - 1];
 
         return UIUtils.generateZoneWrapper(`
-            <div class="relative h-72 mt-2 mb-4">
-                <div class="graveyard-cards-spread" onclick="ZoneManager.showZoneModal('graveyard')">
-                    ${spreadCards}
-                    ${moreIndicator}
+            <div class="relative flex flex-col items-center py-4">
+                <div class="graveyard-stack" onclick="ZoneManager.showZoneModal('graveyard')">
+                    ${stackCards}
+                    <div class="graveyard-top-card">
+                        ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'graveyard')}
+                    </div>
+                    <div class="graveyard-click-overlay">
+                        <span class="zone-view-hint">View<br>All</span>
+                    </div>
+                </div>
+                <div class="graveyard-cards-count mt-2">
+                    <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
                 </div>
             </div>
         `, 'graveyard');
     }
 
     /**
-     * Generate exile zone with visible cards
+     * Generate exile zone with single card preview and stack effect
      */
     static generateExileZone(exile = []) {
         // Ensure exile is always an array
@@ -113,32 +124,49 @@ class UIZones {
         
         if (exileArray.length === 0) {
             return UIUtils.generateZoneWrapper(`
-                ${UIUtils.generateEmptyZoneContent('🌌', 'No cards in exile')}
+                <div class="relative flex flex-col items-center py-4">
+                    <div class="exile-empty">
+                        <span>🌌</span>
+                        <div class="zone-empty-text">Empty</div>
+                    </div>
+                </div>
             `, 'exile');
         }
 
-        const visibleCards = Math.min(6, exileArray.length);
-        const cardsToShow = exileArray.slice(-visibleCards);
+        // Calculate cards remaining
+        const cardsRemaining = exileArray.length;
+
+        // Show stack layers based on card count (max 5 layers for visual effect)
+        const stackLayers = Math.min(5, Math.max(1, exileArray.length));
         
-        const gridCards = cardsToShow.map((card, index) => {
-            const randomRotation = (Math.random() * 6) - 3; // Between -3 and +3 degrees
+        const stackCards = Array(stackLayers).fill().map((_, index) => {
+            const transforms = {
+                x: index * 1,
+                y: index * 1.5,
+                rotation: (index % 2 === 0) ? -1 : 1,
+                zIndex: index + 1
+            };
             
-            return `
-                <div class="relative" style="${UIUtils.createTransform(0, 0, randomRotation)}">
-                    ${GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, true, 'exile')}
-                </div>
-            `;
+            return UIUtils.generateCardLayer(null, index, transforms, 'exile-card-layer');
         }).join('');
 
-        const moreIndicator = exileArray.length > visibleCards ? 
-            `<div class="text-center text-arena-accent mt-2">+${exileArray.length - visibleCards} more cards</div>` : '';
+        // Get top card for display (most recent exiled card)
+        const topCard = exileArray[exileArray.length - 1];
 
         return UIUtils.generateZoneWrapper(`
-            <div class="mt-2 mb-4">
-                <div class="grid grid-cols-3 gap-2" onclick="ZoneManager.showZoneModal('exile')">
-                    ${gridCards}
+            <div class="relative flex flex-col items-center py-4">
+                <div class="exile-stack" onclick="ZoneManager.showZoneModal('exile')">
+                    ${stackCards}
+                    <div class="exile-top-card">
+                        ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
+                    </div>
+                    <div class="exile-click-overlay">
+                        <span class="zone-view-hint">View<br>All</span>
+                    </div>
                 </div>
-                ${moreIndicator}
+                <div class="exile-cards-count mt-2">
+                    <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
+                </div>
             </div>
         `, 'exile');
     }

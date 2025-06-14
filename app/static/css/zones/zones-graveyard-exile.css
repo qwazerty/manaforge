@@ -1,25 +1,135 @@
 /* ===== GRAVEYARD AND EXILE ZONE STYLES ===== */
-/* Styles for graveyard and exile zones with card spreads */
+/* Styles for graveyard and exile zones with single card preview and stack effect */
 
-/* Graveyard zone styles */
-.graveyard-preview img,
-.exile-preview img {
+/* Base stack styles for graveyard and exile */
+.graveyard-stack,
+.exile-stack {
+    position: relative;
+    width: 90px;
+    height: 130px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.graveyard-stack:hover,
+.exile-stack:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
+    z-index: 10;
+}
+
+/* Stack layer effects (similar to deck) */
+.graveyard-card-layer,
+.exile-card-layer {
+    position: absolute;
+    width: 90px;
+    height: 130px;
+    background: #1a1f2e;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease;
+    border-radius: 8px;
+}
+
+/* Top card display */
+.graveyard-top-card,
+.exile-top-card {
+    position: absolute;
+    width: 90px;
+    height: 130px;
+    z-index: 5;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.graveyard-top-card img,
+.exile-top-card img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: center;
+    border-radius: 8px;
 }
 
-.graveyard-cards-spread,
-.exile-cards-spread {
-    position: relative;
+/* Zone click overlay */
+.graveyard-click-overlay,
+.exile-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+    border-radius: 8px;
 }
 
-.graveyard-card-position,
-.exile-card-position {
-    position: absolute;
-    width: 140px;
-    height: 200px;
+.graveyard-stack:hover .graveyard-click-overlay,
+.exile-stack:hover .exile-click-overlay {
+    opacity: 1;
+}
+
+.zone-view-hint {
+    color: #c9aa71;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+/* Cards count display */
+.graveyard-cards-count,
+.exile-cards-count {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.graveyard-cards-count .cards-remaining,
+.exile-cards-count .cards-remaining {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #c9aa71;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(26, 31, 46, 0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(201, 170, 113, 0.3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.graveyard-stack:hover + .graveyard-cards-count .cards-remaining,
+.exile-stack:hover + .exile-cards-count .cards-remaining {
+    background: rgba(201, 170, 113, 0.2);
+    border-color: rgba(201, 170, 113, 0.5);
+    color: #ffffff;
+}
+
+/* Empty zone fallback */
+.graveyard-empty,
+.exile-empty {
+    width: 90px;
+    height: 130px;
+    background: rgba(26, 31, 46, 0.6);
+    border: 2px dashed #6b7280;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #6b7280;
+}
+
+.graveyard-empty .zone-empty-text,
+.exile-empty .zone-empty-text {
+    font-size: 0.625rem;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }

@@ -56,12 +56,15 @@ class UIUtils {
     /**
      * Generate card layer with transforms
      */
-    static generateCardLayer(card, index, transforms) {
+    static generateCardLayer(card, index, transforms, customClass = null) {
         const { x = 0, y = 0, rotation = 0, zIndex = 1 } = transforms;
         const style = `${this.createTransform(x, y, rotation)}; ${this.createZIndex(zIndex)}`;
         
+        // Use custom class if provided, otherwise use default
+        const layerClass = customClass || UIConfig.CSS_CLASSES.card.position;
+        
         return `
-            <div class="${UIConfig.CSS_CLASSES.card.position}" style="${style}">
+            <div class="${layerClass}" style="${style}">
                 ${card ? GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, true, 'zone') : 
                          `<div class="${UIConfig.CSS_CLASSES.card.backMini}"></div>`}
             </div>
