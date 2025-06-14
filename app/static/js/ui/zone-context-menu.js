@@ -1,13 +1,14 @@
 /**
  * ManaForge Zone Context Menu Module
  * Handles right-click context menus for game zones (deck, graveyard, exile)
+ * Unified menu system for both player and opponent zones
  */
 
 class ZoneContextMenu {
     static activeMenu = null;
 
     /**
-     * Zone menu configurations
+     * Zone menu configurations - unified for both players
      */
     static ZONE_MENUS = {
         deck: {
@@ -15,7 +16,7 @@ class ZoneContextMenu {
             icon: '📚',
             actions: [
                 { id: 'draw', label: 'Draw Card', icon: '🃏', action: 'drawCard' },
-                { id: 'search', label: 'Search Library', icon: '🔍', action: 'searchLibrary' },
+                { id: 'search', label: 'Search Library', icon: '🔍', action: 'searchZone' },
                 { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' }
             ]
         },
@@ -23,14 +24,14 @@ class ZoneContextMenu {
             title: 'Graveyard Actions',
             icon: '⚰️',
             actions: [
-                { id: 'search', label: 'Search Graveyard', icon: '🔍', action: 'searchGraveyard' }
+                { id: 'search', label: 'Search Graveyard', icon: '🔍', action: 'searchZone' }
             ]
         },
         exile: {
             title: 'Exile Actions',
             icon: '🌌',
             actions: [
-                { id: 'search', label: 'Search Exile', icon: '🔍', action: 'searchExile' }
+                { id: 'search', label: 'Search Exile', icon: '🔍', action: 'searchZone' }
             ]
         }
     };
@@ -59,21 +60,32 @@ class ZoneContextMenu {
     /**
      * Show context menu for a zone
      */
-    static showMenu(zoneName, event) {
+    static showMenu(zoneName, event, isOpponent = false) {
         event.preventDefault();
         event.stopPropagation();
 
         // Close any existing menu
         this.closeMenu();
 
-        const menuConfig = this.ZONE_MENUS[zoneName];
+        // Extract base zone name (remove opponent_ prefix if present)
+        const baseZoneName = zoneName.replace('opponent_', '');
+        const menuConfig = this.ZONE_MENUS[baseZoneName];
+        
         if (!menuConfig) {
-            console.warn(`No context menu configuration for zone: ${zoneName}`);
+            console.warn(`No context menu configuration for zone: ${baseZoneName}`);
             return;
         }
 
+        // Create enhanced menu config with context
+        const enhancedConfig = {
+            ...menuConfig,
+            title: isOpponent ? `Opponent's ${menuConfig.title}` : menuConfig.title,
+            isOpponent: isOpponent,
+            baseZoneName: baseZoneName
+        };
+
         // Create menu element
-        const menu = this.createMenuElement(zoneName, menuConfig);
+        const menu = this.createMenuElement(zoneName, enhancedConfig);
         document.body.appendChild(menu);
 
         // Position menu near cursor
@@ -118,8 +130,10 @@ class ZoneContextMenu {
                 ${menuConfig.actions.map(action => `
                     <button class="zone-context-menu-action" 
                             data-zone="${zoneName}" 
+                            data-base-zone="${menuConfig.baseZoneName}"
+                            data-is-opponent="${menuConfig.isOpponent || false}"
                             data-action="${action.action}"
-                            onclick="ZoneContextMenu.executeAction('${zoneName}', '${action.action}')">
+                            onclick="ZoneContextMenu.executeAction('${zoneName}', '${action.action}', ${menuConfig.isOpponent || false})">
                         <span class="action-icon">${action.icon}</span>
                         <span class="action-label">${action.label}</span>
                     </button>
@@ -155,26 +169,23 @@ class ZoneContextMenu {
     /**
      * Execute context menu action
      */
-    static executeAction(zoneName, actionType) {
-        console.log(`Executing ${actionType} on ${zoneName}`);
+    static executeAction(zoneName, actionType, isOpponent = false) {
+        console.log(`Executing ${actionType} on ${zoneName} (opponent: ${isOpponent})`);
         
         this.closeMenu();
 
+        // Extract base zone name
+        const baseZoneName = zoneName.replace('opponent_', '');
+
         switch (actionType) {
             case 'drawCard':
-                this.drawCard();
+                this.drawCard(isOpponent);
                 break;
-            case 'searchLibrary':
-                this.searchZone('library');
+            case 'searchZone':
+                this.searchZone(baseZoneName, isOpponent);
                 break;
             case 'shuffleLibrary':
-                this.shuffleLibrary();
-                break;
-            case 'searchGraveyard':
-                this.searchZone('graveyard');
-                break;
-            case 'searchExile':
-                this.searchZone('exile');
+                this.shuffleLibrary(isOpponent);
                 break;
             default:
                 console.warn(`Unknown action: ${actionType}`);
@@ -184,9 +195,12 @@ class ZoneContextMenu {
     /**
      * Draw a card from library
      */
-    static drawCard() {
+    static drawCard(isOpponent = false) {
         if (window.GameActions && window.GameActions.drawCard) {
+            // TODO: Add support for opponent draw card when needed
             window.GameActions.drawCard();
+            const playerType = isOpponent ? "opponent's" : "your";
+            UINotifications.showNotification(`Drawing card from ${playerType} library`, 'info');
         } else {
             console.warn('GameActions.drawCard not available');
             UINotifications.showNotification('Draw card action not available', 'error');
@@ -196,11 +210,13 @@ class ZoneContextMenu {
     /**
      * Shuffle library
      */
-    static shuffleLibrary() {
+    static shuffleLibrary(isOpponent = false) {
         // Send shuffle action to server
         if (window.GameActions && window.GameActions.performGameAction) {
+            // TODO: Add support for opponent shuffle when needed
             window.GameActions.performGameAction('shuffle_library');
-            UINotifications.showNotification('Library shuffled', 'info');
+            const playerType = isOpponent ? "Opponent's" : "Your";
+            UINotifications.showNotification(`${playerType} library shuffled`, 'info');
         } else {
             console.warn('GameActions not available for shuffle');
             UINotifications.showNotification('Shuffle action not available', 'error');
@@ -210,14 +226,21 @@ class ZoneContextMenu {
     /**
      * Search a zone (library, graveyard, exile)
      */
-    static searchZone(zoneName) {
-        // Show search modal for the zone
-        if (window.ZoneManager && window.ZoneManager.showSearchModal) {
-            window.ZoneManager.showSearchModal(zoneName);
+    static searchZone(zoneName, isOpponent = false) {
+        if (isOpponent) {
+            // Show opponent zone modal
+            if (window.ZoneManager && window.ZoneManager.showOpponentZoneModal) {
+                const modalZoneName = zoneName === 'deck' ? 'deck' : zoneName;
+                window.ZoneManager.showOpponentZoneModal(modalZoneName);
+                UINotifications.showNotification(`Viewing opponent's ${zoneName}...`, 'info');
+            } else {
+                console.warn('ZoneManager.showOpponentZoneModal not available');
+                UINotifications.showNotification(`View opponent's ${zoneName} not available`, 'error');
+            }
         } else {
-            // Fallback: show regular zone modal with search capabilities
-            const modalZoneName = zoneName === 'library' ? 'deck' : zoneName;
+            // Show player zone modal
             if (window.ZoneManager && window.ZoneManager.showZoneModal) {
+                const modalZoneName = zoneName === 'deck' ? 'deck' : zoneName;
                 window.ZoneManager.showZoneModal(modalZoneName);
                 UINotifications.showNotification(`Searching ${zoneName}...`, 'info');
             } else {
@@ -233,18 +256,22 @@ class ZoneContextMenu {
     static attachToZone(zoneElement, zoneName) {
         if (!zoneElement) return;
 
+        // Determine if this is an opponent zone
+        const isOpponent = zoneName.startsWith('opponent_');
+
         zoneElement.addEventListener('contextmenu', (e) => {
-            // Only show context menu for player's own zones (not opponent zones)
             const currentPlayer = GameCore.getSelectedPlayer();
             if (currentPlayer === 'spectator') {
                 return; // No context menu for spectators
             }
 
-            this.showMenu(zoneName, e);
+            this.showMenu(zoneName, e, isOpponent);
         });
 
         // Add visual indicator for right-click availability
-        zoneElement.title = `Right-click for ${zoneName} actions`;
+        const actionType = isOpponent ? 'interact with opponent' : 'interact with';
+        const cleanZoneName = zoneName.replace('opponent_', '');
+        zoneElement.title = `Right-click to ${actionType} ${cleanZoneName}`;
     }
 }
 

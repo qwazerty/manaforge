@@ -58,16 +58,17 @@ class UIZones {
             </div>
         `, 'deck');
 
-        // Add context menu to deck zone (for player only, not opponent)
-        if (!isOpponent) {
-            setTimeout(() => {
-                const deckElement = document.querySelector('.deck-cards-stack:not(.opponent-deck)');
-                if (deckElement && window.ZoneContextMenu) {
-                    window.ZoneContextMenu.attachToZone(deckElement, 'deck');
-                    deckElement.classList.add('zone-context-menu-enabled');
-                }
-            }, 100);
-        }
+        // Add context menu to deck zone
+        setTimeout(() => {
+            const deckElement = isOpponent ? 
+                document.querySelector('.deck-cards-stack.opponent-deck') :
+                document.querySelector('.deck-cards-stack:not(.opponent-deck)');
+            if (deckElement && window.ZoneContextMenu) {
+                const zoneName = isOpponent ? 'opponent_deck' : 'deck';
+                window.ZoneContextMenu.attachToZone(deckElement, zoneName);
+                deckElement.classList.add('zone-context-menu-enabled');
+            }
+        }, 100);
 
         return zoneContent;
     }
@@ -75,7 +76,7 @@ class UIZones {
     /**
      * Generate graveyard zone with stack effect showing actual card images
      */
-    static generateGraveyardZone(graveyard = []) {
+    static generateGraveyardZone(graveyard = [], isOpponent = false) {
         // Ensure graveyard is always an array
         const graveyardArray = Array.isArray(graveyard) ? graveyard : [];
         
@@ -111,9 +112,14 @@ class UIZones {
             return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
         }).join('');
 
+        // Generate click handler based on whether it's opponent zone or not
+        const clickHandler = isOpponent ? 
+            "ZoneManager.showOpponentZoneModal('graveyard')" : 
+            "ZoneManager.showZoneModal('graveyard')";
+
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
-                <div class="graveyard-cards-stack" onclick="ZoneManager.showZoneModal('graveyard')">
+                <div class="graveyard-cards-stack" onclick="${clickHandler}">
                     ${stackCards}
                     <div class="graveyard-click-overlay">
                         <span class="zone-view-hint">View<br>All</span>
@@ -129,7 +135,8 @@ class UIZones {
         setTimeout(() => {
             const graveyardElement = document.querySelector('.graveyard-cards-stack');
             if (graveyardElement && window.ZoneContextMenu) {
-                window.ZoneContextMenu.attachToZone(graveyardElement, 'graveyard');
+                const zoneName = isOpponent ? 'opponent_graveyard' : 'graveyard';
+                window.ZoneContextMenu.attachToZone(graveyardElement, zoneName);
                 graveyardElement.classList.add('zone-context-menu-enabled');
             }
         }, 100);
@@ -140,7 +147,7 @@ class UIZones {
     /**
      * Generate exile zone with single card preview and stack effect
      */
-    static generateExileZone(exile = []) {
+    static generateExileZone(exile = [], isOpponent = false) {
         // Ensure exile is always an array
         const exileArray = Array.isArray(exile) ? exile : [];
         
@@ -175,9 +182,14 @@ class UIZones {
         // Get top card for display (most recent exiled card)
         const topCard = exileArray[exileArray.length - 1];
 
+        // Generate click handler based on whether it's opponent zone or not
+        const clickHandler = isOpponent ? 
+            "ZoneManager.showOpponentZoneModal('exile')" : 
+            "ZoneManager.showZoneModal('exile')";
+
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
-                <div class="exile-stack" onclick="ZoneManager.showZoneModal('exile')">
+                <div class="exile-stack" onclick="${clickHandler}">
                     ${stackCards}
                     <div class="exile-top-card">
                         ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
@@ -196,7 +208,8 @@ class UIZones {
         setTimeout(() => {
             const exileElement = document.querySelector('.exile-stack');
             if (exileElement && window.ZoneContextMenu) {
-                window.ZoneContextMenu.attachToZone(exileElement, 'exile');
+                const zoneName = isOpponent ? 'opponent_exile' : 'exile';
+                window.ZoneContextMenu.attachToZone(exileElement, zoneName);
                 exileElement.classList.add('zone-context-menu-enabled');
             }
         }, 100);
