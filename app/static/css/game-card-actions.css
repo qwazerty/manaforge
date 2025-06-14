@@ -81,23 +81,6 @@
     letter-spacing: 1px;
 }
 
-/* Deck cards show DRAW action - only for player deck */
-.deck-cards-stack:not(.opponent-deck):hover::after {
-    content: "DRAW";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(128, 0, 128, 0.7);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    z-index: 12;
-    pointer-events: none;
-    opacity: 0.9;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
 
 /* Context Menu Styles */
 .card-context-menu {
