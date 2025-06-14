@@ -72,6 +72,23 @@ class UIUtils {
     }
 
     /**
+     * Generate card layer with transforms and actual card image
+     */
+    static generateCardLayerWithImage(card, index, transforms, customClass = null) {
+        const { x = 0, y = 0, rotation = 0, zIndex = 1 } = transforms;
+        const style = `${this.createTransform(x, y, rotation)}; ${this.createZIndex(zIndex)}`;
+        
+        // Use custom class if provided, otherwise use default
+        const layerClass = customClass || UIConfig.CSS_CLASSES.card.position;
+        
+        return `
+            <div class="${layerClass}" style="${style}">
+                ${GameCards.renderCardWithLoadingState(card, 'card-front-mini', true, 'graveyard')}
+            </div>
+        `;
+    }
+
+    /**
      * Generate empty zone fallback
      */
     static generateEmptyZone(icon, name) {

@@ -60,7 +60,7 @@ class UIZones {
     }
 
     /**
-     * Generate graveyard zone with single card preview and stack effect
+     * Generate graveyard zone with stack effect showing actual card images
      */
     static generateGraveyardZone(graveyard = []) {
         // Ensure graveyard is always an array
@@ -80,7 +80,7 @@ class UIZones {
         // Calculate cards remaining
         const cardsRemaining = graveyardArray.length;
 
-        // Show stack layers based on card count (max 5 layers for visual effect)
+        // Show stack layers based on actual card count (like deck)
         const stackLayers = Math.min(5, Math.max(1, graveyardArray.length));
         
         const stackCards = Array(stackLayers).fill().map((_, index) => {
@@ -91,19 +91,17 @@ class UIZones {
                 zIndex: index + 1
             };
             
-            return UIUtils.generateCardLayer(null, index, transforms, 'graveyard-card-layer');
+            // Get the card for this layer (from bottom to top of graveyard)
+            const cardIndex = Math.max(0, graveyardArray.length - stackLayers + index);
+            const card = graveyardArray[cardIndex];
+            
+            return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
         }).join('');
-
-        // Get top card for display
-        const topCard = graveyardArray[graveyardArray.length - 1];
 
         return UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
-                <div class="graveyard-stack" onclick="ZoneManager.showZoneModal('graveyard')">
+                <div class="graveyard-cards-stack" onclick="ZoneManager.showZoneModal('graveyard')">
                     ${stackCards}
-                    <div class="graveyard-top-card">
-                        ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'graveyard')}
-                    </div>
                     <div class="graveyard-click-overlay">
                         <span class="zone-view-hint">View<br>All</span>
                     </div>
@@ -142,7 +140,7 @@ class UIZones {
         const stackCards = Array(stackLayers).fill().map((_, index) => {
             const transforms = {
                 x: index * 1,
-                y: index * 1.5,
+                y: index * 1,
                 rotation: (index % 2 === 0) ? -1 : 1,
                 zIndex: index + 1
             };

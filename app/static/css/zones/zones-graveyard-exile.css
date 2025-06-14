@@ -3,6 +3,7 @@
 
 /* Base stack styles for graveyard and exile */
 .graveyard-stack,
+.graveyard-cards-stack,
 .exile-stack {
     position: relative;
     width: 90px;
@@ -12,6 +13,7 @@
 }
 
 .graveyard-stack:hover,
+.graveyard-cards-stack:hover,
 .exile-stack:hover {
     transform: scale(1.1);
     box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
@@ -69,6 +71,7 @@
 }
 
 .graveyard-stack:hover .graveyard-click-overlay,
+.graveyard-cards-stack:hover .graveyard-click-overlay,
 .exile-stack:hover .exile-click-overlay {
     opacity: 1;
 }
@@ -104,6 +107,7 @@
 }
 
 .graveyard-stack:hover + .graveyard-cards-count .cards-remaining,
+.graveyard-cards-stack:hover + .graveyard-cards-count .cards-remaining,
 .exile-stack:hover + .exile-cards-count .cards-remaining {
     background: rgba(201, 170, 113, 0.2);
     border-color: rgba(201, 170, 113, 0.5);
