@@ -166,12 +166,19 @@ class SimpleGameEngine:
         """Handle playing a card."""
         player = self._get_player(game_state, action.player_id)
         
-        # Find card in hand
+        # Find card in hand by ID first, then by name
         card_to_play = None
         for i, card in enumerate(player.hand):
             if card.id == action.card_id:
                 card_to_play = player.hand.pop(i)
                 break
+        
+        # If not found by ID, try by name
+        if not card_to_play:
+            for i, card in enumerate(player.hand):
+                if card.name == action.card_id:
+                    card_to_play = player.hand.pop(i)
+                    break
         
         if not card_to_play:
             return
@@ -423,8 +430,19 @@ class SimpleGameEngine:
                 if card.id == card_id:
                     card_found = player.library.pop(i)
                     break
+        elif source_zone == "stack":
+            # Search in the stack (global game zone)
+            for i, spell in enumerate(game_state.stack):
+                # Try matching by card_id first, then by card name
+                if ((spell.get("card_id") == card_id or spell.get("name") == card_id) 
+                    and spell.get("player_id") == action.player_id):
+                    spell_data = game_state.stack.pop(i)
+                    # Get the card object from the spell
+                    card_found = spell_data.get("card_object")
+                    break
         else:
             # Search all zones if source unknown
+            # First check player zones
             for zone_name, zone_list in [
                 ("hand", player.hand),
                 ("battlefield", player.battlefield),
@@ -437,6 +455,15 @@ class SimpleGameEngine:
                         break
                 if card_found:
                     break
+            
+            # If not found in player zones, check the stack
+            if not card_found:
+                for i, spell in enumerate(game_state.stack):
+                    if spell.get("card_id") == card_id and spell.get("player_id") == action.player_id:
+                        spell_data = game_state.stack.pop(i)
+                        # Get the card object from the spell
+                        card_found = spell_data.get("card_object")
+                        break
         
         if not card_found:
             raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
@@ -477,8 +504,19 @@ class SimpleGameEngine:
                 if card.id == card_id:
                     card_found = player.library.pop(i)
                     break
+        elif source_zone == "stack":
+            # Search in the stack (global game zone)
+            for i, spell in enumerate(game_state.stack):
+                # Try matching by card_id first, then by card name
+                if ((spell.get("card_id") == card_id or spell.get("name") == card_id) 
+                    and spell.get("player_id") == action.player_id):
+                    spell_data = game_state.stack.pop(i)
+                    # Get the card object from the spell
+                    card_found = spell_data.get("card_object")
+                    break
         else:
             # Search all zones if source unknown
+            # First check player zones
             for zone_name, zone_list in [
                 ("hand", player.hand),
                 ("battlefield", player.battlefield),
@@ -491,6 +529,15 @@ class SimpleGameEngine:
                         break
                 if card_found:
                     break
+            
+            # If not found in player zones, check the stack
+            if not card_found:
+                for i, spell in enumerate(game_state.stack):
+                    if spell.get("card_id") == card_id and spell.get("player_id") == action.player_id:
+                        spell_data = game_state.stack.pop(i)
+                        # Get the card object from the spell
+                        card_found = spell_data.get("card_object")
+                        break
         
         if not card_found:
             raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
@@ -531,8 +578,19 @@ class SimpleGameEngine:
                 if card.id == card_id:
                     card_found = player.library.pop(i)
                     break
+        elif source_zone == "stack":
+            # Search in the stack (global game zone)
+            for i, spell in enumerate(game_state.stack):
+                # Try matching by card_id first, then by card name
+                if ((spell.get("card_id") == card_id or spell.get("name") == card_id) 
+                    and spell.get("player_id") == action.player_id):
+                    spell_data = game_state.stack.pop(i)
+                    # Get the card object from the spell
+                    card_found = spell_data.get("card_object")
+                    break
         else:
             # Search all zones if source unknown (excluding hand since card is already there)
+            # First check player zones
             for zone_name, zone_list in [
                 ("battlefield", player.battlefield),
                 ("graveyard", player.graveyard),
@@ -545,6 +603,15 @@ class SimpleGameEngine:
                         break
                 if card_found:
                     break
+            
+            # If not found in player zones, check the stack
+            if not card_found:
+                for i, spell in enumerate(game_state.stack):
+                    if spell.get("card_id") == card_id and spell.get("player_id") == action.player_id:
+                        spell_data = game_state.stack.pop(i)
+                        # Get the card object from the spell
+                        card_found = spell_data.get("card_object")
+                        break
         
         if not card_found:
             raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")

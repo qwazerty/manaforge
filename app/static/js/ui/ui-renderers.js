@@ -180,15 +180,18 @@ class UIRenderers {
         const cardName = spell.name || 'Unknown Spell';
         const imageUrl = GameCards.getSafeImageUrl(spell);
         
+        // Use card_id from spell object, fallback to name if needed
+        const cardId = spell.card_id || spell.id || spell.name;
+        
         // Escape values for safe JavaScript injection
-        const escapedCardId = GameUtils.escapeJavaScript(spell.id || spell.name);
+        const escapedCardId = GameUtils.escapeJavaScript(cardId);
         const escapedCardName = GameUtils.escapeJavaScript(cardName);
         const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
         
         return `
             <div class="stack-spell" 
                  data-index="${index}"
-                 data-card-id="${spell.id || spell.name}"
+                 data-card-id="${cardId}"
                  data-card-name="${escapedCardName}"
                  data-card-image="${escapedImageUrl}"
                  data-card-zone="stack"
