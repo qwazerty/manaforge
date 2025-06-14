@@ -197,7 +197,7 @@ class UIRenderers {
                  data-card-zone="stack"
                  data-stack-index="${index}"
                  oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="GameActions.resolveStackSpell('${escapedCardId}', '${index}'); event.stopPropagation();">
+                 onclick="GameActions.sendToGraveyard('${escapedCardId}', 'stack', '${escapedCardId}-stack-${index}'); event.stopPropagation();">
                 
                 <!-- Card Image Taking Full Size -->
                 <div class="stack-card-container">
