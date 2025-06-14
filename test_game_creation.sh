@@ -171,4 +171,4 @@ echo "   - Passer phase: curl -X POST '$API_BASE/games/GAME_ID/pass-phase' -d '{
 echo "   - Modifier vie: curl -X POST '$API_BASE/games/GAME_ID/modify-life' -d '{\"player_id\": \"player1\", \"target_player\": \"player2\", \"amount\": -3}'"
 echo ""
 echo "🔗 Partie de test créée: $GAME_ID"
-echo "🌐 Interface web: http://localhost:8000/game/$GAME_ID"
+echo "🌐 Interface web: http://localhost:8000/game-interface/$GAME_ID"
