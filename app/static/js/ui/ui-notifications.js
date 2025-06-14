@@ -56,10 +56,11 @@ class UINotifications {
      * Add chat message
      */
     static addChatMessage(sender, message) {
-        const chatArea = document.getElementById('chat-area');
+        
+        const chatArea = document.getElementById('chat-messages');
         if (!chatArea) return;
         
-        const messageElement = this.createChatMessageElement(sender, message);
+        const messageElement = this.createChatMessageElement(sender, message);        
         chatArea.appendChild(messageElement);
         chatArea.scrollTop = chatArea.scrollHeight;
     }
