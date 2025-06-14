@@ -8,7 +8,6 @@ let currentSelectedPlayer = 'player1';
 let gameState = null; // Will be initialized from template
 let autoRefreshInterval = null;
 let isPageVisible = true;
-let websocket = null;
 let gameId = null; // Will be initialized from template
 
 // ===== INITIALIZATION FUNCTION =====
@@ -28,9 +27,8 @@ async function initializeGame() {
     // Initialize UI components safely
     // await GameUI.initializeGameUI();
     
-    // Initialize zone previews
+    // Initialize zone counts
     ZoneManager.updateZoneCounts();
-    ZoneManager.updateZonePreviews();
     
     // Initialize WebSocket connection
     GameSocket.initWebSocket();
@@ -45,7 +43,7 @@ async function initializeGame() {
             // Resume auto-refresh when page becomes visible
             startAutoRefresh();
             // Reconnect WebSocket if needed
-            if (!websocket || websocket.readyState === WebSocket.CLOSED) {
+            if (!window.websocket || window.websocket.readyState === WebSocket.CLOSED) {
                 GameSocket.initWebSocket();
             }
             // Immediate refresh when coming back
@@ -66,7 +64,7 @@ async function initializeGame() {
 
 // ===== AUTO-REFRESH FUNCTIONALITY =====
 async function refreshGameData() {
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
+    if (window.websocket && window.websocket.readyState === WebSocket.OPEN) {
         GameSocket.requestGameState();
         return;
     }
@@ -115,5 +113,7 @@ window.GameCore = {
     getGameId: () => gameId,
     getSelectedPlayer: () => currentSelectedPlayer,
     setGameState: (state) => { gameState = state; },
-    setSelectedPlayer: (player) => { currentSelectedPlayer = player; }
+    setGameId: (id) => { gameId = id; },
+    setSelectedPlayer: (player) => { currentSelectedPlayer = player; },
+    isPageVisible: () => isPageVisible
 };

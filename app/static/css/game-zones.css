@@ -1,0 +1,22 @@
+/**
+ * ManaForge Game Zones CSS
+ * Main import file for all zone-related styles
+ */
+
+/* Import existing zone styles */
+@import url('./game-zones-compact.css');
+@import url('./zone-context-menu.css');
+@import url('./zone-customizations.css');
+@import url('./zones-single-line.css');
+
+/* Import zone-specific styles from zones/ directory */
+@import url('./zones/zones-base.css');
+@import url('./zones/zones-animations.css');
+@import url('./zones/zones-compact.css');
+@import url('./zones/zones-deck.css');
+@import url('./zones/zones-graveyard-exile.css');
+@import url('./zones/zones-life.css');
+@import url('./zones/zones-mini.css');
+@import url('./zones/zones-modals.css');
+
+/* Additional zone styles can be added here as needed */
