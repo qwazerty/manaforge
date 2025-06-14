@@ -66,7 +66,14 @@ class ZoneManager {
             return;
         }
 
-        const zone = playerData[zoneName] || [];
+        // Handle library/deck mapping for player's own deck
+        let zone = [];
+        if (zoneName === 'deck') {
+            zone = playerData.library || playerData.deck || [];
+        } else {
+            zone = playerData[zoneName] || [];
+        }
+        
         const zoneInfo = this.getZoneInfo(zoneName);
         
         // Remove existing modal if any
