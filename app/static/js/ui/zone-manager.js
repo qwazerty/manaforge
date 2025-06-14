@@ -15,6 +15,34 @@ class ZoneManager {
         'default': ''
     };
 
+    static ZONE_INFO = {
+        'graveyard': {
+            title: 'Graveyard',
+            icon: '⚰️',
+            description: 'Cards that have been destroyed or discarded'
+        },
+        'exile': {
+            title: 'Exile',
+            icon: '🌌',
+            description: 'Cards that have been exiled from the game'
+        },
+        'deck': {
+            title: 'Library',
+            icon: '📚',
+            description: 'Cards remaining in your library'
+        },
+        'hand': {
+            title: 'Hand',
+            icon: '🃏',
+            description: 'Cards in your hand'
+        },
+        'battlefield': {
+            title: 'Battlefield',
+            icon: '⚔️',
+            description: 'Cards currently in play'
+        }
+    };
+
     /**
      * Show zone modal
      */
@@ -26,9 +54,15 @@ class ZoneManager {
         }
 
         const currentPlayer = GameCore.getSelectedPlayer();
-        const playerData = gameState[currentPlayer];
+        
+        // Convert player string to index (player1 -> 0, player2 -> 1)
+        let playerIndex = 0;
+        if (currentPlayer === 'player2') playerIndex = 1;
+        else if (currentPlayer === 'player1') playerIndex = 0;
+        
+        const playerData = gameState.players?.[playerIndex];
         if (!playerData) {
-            console.warn('No player data available for zone modal');
+            console.warn('No player data available for zone modal, playerIndex:', playerIndex, 'currentPlayer:', currentPlayer);
             return;
         }
 
@@ -73,7 +107,13 @@ class ZoneManager {
         if (!gameState) return;
 
         const currentPlayer = GameCore.getSelectedPlayer();
-        const playerData = gameState[currentPlayer];
+        
+        // Convert player string to index (player1 -> 0, player2 -> 1)
+        let playerIndex = 0;
+        if (currentPlayer === 'player2') playerIndex = 1;
+        else if (currentPlayer === 'player1') playerIndex = 0;
+        
+        const playerData = gameState.players?.[playerIndex];
         if (!playerData) return;
 
         // Handle library/deck mapping
@@ -109,7 +149,13 @@ class ZoneManager {
         if (!gameState) return;
 
         const currentPlayer = GameCore.getSelectedPlayer();
-        const playerData = gameState[currentPlayer];
+        
+        // Convert player string to index (player1 -> 0, player2 -> 1)
+        let playerIndex = 0;
+        if (currentPlayer === 'player2') playerIndex = 1;
+        else if (currentPlayer === 'player1') playerIndex = 0;
+        
+        const playerData = gameState.players?.[playerIndex];
         if (!playerData) return;
         
         // Handle library/deck mapping
@@ -201,8 +247,11 @@ class ZoneManager {
         // Remove existing modal if any
         this.closeZoneModal(`opponent_${pureZoneName}`);
         
+        // Get zone info for opponent zone
+        const zoneInfo = this.getZoneInfo(pureZoneName);
+        
         // Create and show new modal
-        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`, zone);
+        const modalHTML = this.generateZoneModalHTML(`opponent_${pureZoneName}`, zone, zoneInfo);
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
         // Animate modal appearance
@@ -247,11 +296,16 @@ class ZoneManager {
     /**
      * Generate zone modal HTML
      */
-    static generateZoneModalHTML(zoneName, zone) {
+    static generateZoneModalHTML(zoneName, zone, zoneInfo) {
+        const info = zoneInfo || this.getZoneInfo(zoneName);
         return `
             <div class="zone-modal" id="zone-modal-${zoneName}">
                 <div class="zone-modal-content">
                     <div class="zone-modal-header">
+                        <div class="zone-modal-title">
+                            <span>${info.icon}</span>
+                            ${info.title}
+                        </div>
                         <button class="zone-modal-close" onclick="ZoneManager.closeZoneModal('${zoneName}')">
                             ✕
                         </button>
@@ -328,8 +382,6 @@ class ZoneManager {
         return `
             <div class="zone-card-slider-item" onclick="ZoneManager.showCardDetails('${card.id || index}', '${zoneName}')">
                 ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, zoneName)}
-                <div class="zone-card-name">${cardName}</div>
-                <div class="zone-card-cost">${cardCost}</div>
             </div>
         `;
     }

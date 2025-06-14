@@ -116,8 +116,7 @@
     background: rgba(201, 170, 113, 0.8);
 }
 
-.zone-card-slider-item {
-    flex: 0 0 200px;
+/* .zone-card-slider-item {
     background: rgba(30, 41, 59, 0.6);
     border: 1px solid #374151;
     border-radius: 12px;
@@ -125,15 +124,14 @@
     text-align: center;
     transition: all 0.3s ease-in-out;
     cursor: pointer;
-    min-height: 320px;
-}
+} */
 
-.zone-card-slider-item:hover {
+/* .zone-card-slider-item:hover {
     background: rgba(30, 41, 59, 0.8);
     border-color: rgba(201, 170, 113, 0.5);
     transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 10px rgba(201, 170, 113, 0.3);
-}
+} */
 
 .zone-card-slider-item .zone-card-name {
     font-size: 0.875rem;
