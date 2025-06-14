@@ -96,19 +96,15 @@
 <script src="{{ url_for('static', path='js/ui/ui-config.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-horizontal-scroll.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-zones.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-game-interface.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-templates.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-notifications.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/zone-manager.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/zone-context-menu.js') }}"></script>
 <script src="{{ url_for('static', path='js/ui/ui-card-overlap.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-renderers.js') }}"></script>
 
-<!-- Main UI orchestrator (depends on above modules) -->
-<script src="{{ url_for('static', path='js/game-ui.js') }}"></script>
-
-<script src="{{ url_for('static', path='js/game-socket.js') }}"></script>
+<!-- Unified Modules (replaces multiple old modules) -->
+<script src="{{ url_for('static', path='js/ui/ui-zones-manager.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-renderers-templates.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/websocket-manager.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-global.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-actions.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-core.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-main.js') }}"></script>
@@ -118,19 +114,7 @@
 // Pass server data to our external JavaScript
 window.gameData = {
     game: {{ game|tojson|safe }},
-    gameId: '{{ game.id }}'
-};
-
-// Make Alpine.js gameInterface function available globally
-window.GameUI = window.GameUI || {};
-window.GameUI.gameInterface = function() {
-    return {
-        // Alpine.js reactive data can be added here if needed
-        init() {
-            // This runs when Alpine.js initializes the component
-            console.log('Game interface Alpine.js component initialized');
-        }
-    };
+    gameId: "{{ game.id }}"
 };
 
 // The game will be initialized automatically by game-main.js
