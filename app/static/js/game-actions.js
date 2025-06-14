@@ -53,6 +53,9 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'send_to_hand':
                 endpoint = `/api/v1/games/${gameId}/send-to-hand`;
                 break;
+            case 'shuffle_library':
+                endpoint = `/api/v1/games/${gameId}/shuffle-library`;
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }
