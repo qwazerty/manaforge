@@ -333,17 +333,9 @@ class ZoneManager {
             return this.generateEmptyZoneMessage(zoneName);
         }
 
-        // Use horizontal slider for graveyard and exile
-        const pureZoneName = zoneName.replace('opponent_', '');
-        const useSlider = (pureZoneName === 'graveyard' || pureZoneName === 'exile');
         
-        if (useSlider) {
-            const cardsHTML = cards.map((card, index) => this.generateZoneCardSliderItem(card, index, zoneName)).join('');
-            return `<div class="zone-cards-slider">${cardsHTML}</div>`;
-        } else {
-            const cardsHTML = cards.map((card, index) => this.generateZoneCardItem(card, index, zoneName)).join('');
-            return `<div class="zone-cards-grid">${cardsHTML}</div>`;
-        }
+        const cardsHTML = cards.map((card, index) => this.generateZoneCardSliderItem(card, index, zoneName)).join('');
+        return `<div class="zone-cards-slider">${cardsHTML}</div>`;
     }
 
     /**
