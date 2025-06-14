@@ -137,6 +137,8 @@ class SimpleGameEngine:
             self._send_to_hand(game_state, action)
         elif action.action_type == "shuffle_library":
             self._shuffle_library(game_state, action)
+        elif action.action_type == "untap_all":
+            self._untap_all(game_state, action)
         
         return game_state
     
@@ -628,3 +630,17 @@ class SimpleGameEngine:
         random.shuffle(player.library)
         
         print(f"Player {action.player_id} shuffled their library ({len(player.library)} cards)")
+    
+    def _untap_all(self, game_state: GameState, action: GameAction) -> None:
+        """Untap all permanents controlled by a player."""
+        player = self._get_player(game_state, action.player_id)
+        
+        # Count how many cards will be untapped
+        tapped_cards = [card for card in player.battlefield if card.tapped]
+        untapped_count = len(tapped_cards)
+        
+        # Untap all cards on the battlefield
+        for card in player.battlefield:
+            card.tapped = False
+        
+        print(f"Player {action.player_id} untapped all permanents ({untapped_count} cards untapped)")

@@ -56,6 +56,9 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'shuffle_library':
                 endpoint = `/api/v1/games/${gameId}/shuffle-library`;
                 break;
+            case 'untap_all':
+                endpoint = `/api/v1/games/${gameId}/untap-all`;
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }
@@ -324,6 +327,36 @@ function drawCard() {
     GameUI.showNotification(`Card drawn`, 'info');
 }
 
+function untapAll() {
+    performGameAction('untap_all');
+    
+    // Update visual state immediately for better UX (optimistic update)
+    const currentSelectedPlayer = GameCore.getSelectedPlayer();
+    let playerPrefix = 'unknown';
+    if (currentSelectedPlayer === 'player1') playerPrefix = 'p0';
+    else if (currentSelectedPlayer === 'player2') playerPrefix = 'p1';
+    
+    // Find all tapped cards belonging to the current player and untap them visually
+    const tappedCards = document.querySelectorAll('[data-card-tapped="true"]');
+    let untappedCount = 0;
+    
+    tappedCards.forEach(cardElement => {
+        const elementUniqueId = cardElement.getAttribute('data-card-unique-id');
+        if (elementUniqueId && elementUniqueId.startsWith(playerPrefix)) {
+            cardElement.setAttribute('data-card-tapped', 'false');
+            cardElement.classList.remove('tapped');
+            
+            // Update title
+            const cardName = cardElement.getAttribute('data-card-name');
+            cardElement.title = cardName || '';
+            
+            untappedCount++;
+        }
+    });
+    
+    GameUI.showNotification(`All permanents untapped (${untappedCount} cards)`, 'success');
+}
+
 function modifyLife(playerId, amount) {
     performGameAction('modify_life', { 
         target_player: playerId,
@@ -341,6 +374,7 @@ window.GameActions = {
     playCardFromHand,
     changePlayer,
     tapCard,
+    untapAll,
     sendToGraveyard,
     sendToExile,
     sendToHand,

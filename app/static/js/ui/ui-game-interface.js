@@ -93,10 +93,10 @@ class UIGameInterface {
         );
 
         const untapBtn = UIUtils.generateButton(
-            "GameActions.performGameAction('untap_all')",
+            "GameActions.untapAll()",
             UIConfig.CSS_CLASSES.button.secondary,
             "Untap all permanents",
-            "🔄 Untap all"
+            "🔄 Untap All"
         );
 
         const passTurnBtn = UIUtils.generateButton(
