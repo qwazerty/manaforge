@@ -77,9 +77,9 @@ class UIZones {
         
         const spreadCards = cardsToShow.map((card, index) => {
             const transforms = {
-                x: index * 30,
-                y: index * 10,
-                rotation: (index - visibleCards / 2) * 5,
+                x: index * 5,
+                y: -index * 20,
+                rotation: 0,
                 zIndex: visibleCards - index
             };
             
