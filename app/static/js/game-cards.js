@@ -166,10 +166,11 @@ function showCardContextMenu(event, cardElement) {
     const cardName = cardElement.getAttribute('data-card-name');
     const cardImage = cardElement.getAttribute('data-card-image');
     const cardZone = cardElement.getAttribute('data-card-zone') || 'unknown';
+    const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
     const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
     
     // Debug logging to help troubleshoot zone issues
-    console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped})`);
+    console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId})`);
     
     // Get card data from the data attribute if available
     let cardData;
@@ -241,17 +242,17 @@ function showCardContextMenu(event, cardElement) {
     
 
     menuHTML += `
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}')">
+        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}', '${uniqueCardId}')">
             <span class="icon">⚰️</span> Send to Graveyard
         </div>
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}')">
+        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}', '${uniqueCardId}')">
             <span class="icon">✨</span> Send to Exile
         </div>`;
     
     // Return to hand (only if not already in hand)
     if (cardZone !== 'hand') {
         menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}')">
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}', '${uniqueCardId}')">
                 <span class="icon">👋</span> Return to Hand
             </div>`;
     }

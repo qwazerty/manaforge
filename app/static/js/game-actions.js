@@ -178,27 +178,66 @@ function tapCard(cardId, uniqueCardId) {
     }
 }
 
-function sendToGraveyard(cardId, sourceZone) {
+function sendToGraveyard(cardId, sourceZone, uniqueCardId = null) {
+    console.log(`🃏 Sending to graveyard: ${cardId} from ${sourceZone} (uniqueId: ${uniqueCardId})`);
+    
     performGameAction('send_to_graveyard', { 
         card_id: cardId,
-        source_zone: sourceZone
+        source_zone: sourceZone,
+        unique_id: uniqueCardId
     });
+    
+    // Update UI immediately for better UX (optimistic update)
+    if (uniqueCardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (cardElement) {
+            cardElement.style.opacity = '0.5';
+            cardElement.style.pointerEvents = 'none';
+        }
+    }
+    
     GameUI.showNotification(`Card sent to graveyard`, 'info');
 }
 
-function sendToExile(cardId, sourceZone) {
+function sendToExile(cardId, sourceZone, uniqueCardId = null) {
+    console.log(`🃏 Exiling: ${cardId} from ${sourceZone} (uniqueId: ${uniqueCardId})`);
+    
     performGameAction('send_to_exile', { 
         card_id: cardId,
-        source_zone: sourceZone
+        source_zone: sourceZone,
+        unique_id: uniqueCardId
     });
+    
+    // Update UI immediately for better UX (optimistic update)
+    if (uniqueCardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (cardElement) {
+            cardElement.style.opacity = '0.5';
+            cardElement.style.pointerEvents = 'none';
+        }
+    }
+    
     GameUI.showNotification(`Card exiled`, 'info');
 }
 
-function sendToHand(cardId, sourceZone) {
+function sendToHand(cardId, sourceZone, uniqueCardId = null) {
+    console.log(`🃏 Returning to hand: ${cardId} from ${sourceZone} (uniqueId: ${uniqueCardId})`);
+    
     performGameAction('send_to_hand', { 
         card_id: cardId,
-        source_zone: sourceZone
+        source_zone: sourceZone,
+        unique_id: uniqueCardId
     });
+    
+    // Update UI immediately for better UX (optimistic update)
+    if (uniqueCardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (cardElement) {
+            cardElement.style.opacity = '0.5';
+            cardElement.style.pointerEvents = 'none';
+        }
+    }
+    
     GameUI.showNotification(`Card returned to hand`, 'info');
 }
 
