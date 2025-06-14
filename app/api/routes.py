@@ -346,6 +346,41 @@ async def tap_card(game_id: str, request: dict) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.post("/games/{game_id}/untap-all")
+async def untap_all(game_id: str, request: Optional[dict] = None) -> dict:
+    """Untap all permanents controlled by a player."""
+    if game_id not in game_engine.games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    current_state = game_engine.games[game_id]
+    
+    # Get player_id from request body if provided, otherwise use current player
+    if request and "player_id" in request:
+        player_id = request["player_id"]
+    else:
+        # Use the active_player index from GameState
+        player_id = str(current_state.active_player)
+    
+    action = GameAction(
+        player_id=player_id,
+        action_type="untap_all"
+    )
+    try:
+        game_state = game_engine.process_action(game_id, action)
+        
+        # Broadcast update via WebSocket with action info
+        await broadcast_game_update(game_id, game_state, {
+            "action": "untap_all",
+            "player": player_id,
+            "success": True
+        })
+        
+        return {"success": True, "game_state": game_state}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @router.post("/games/{game_id}/modify-life")
 async def modify_life(game_id: str, request: dict) -> dict:
     """Modify a player's life total."""
