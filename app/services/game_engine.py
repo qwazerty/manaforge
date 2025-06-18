@@ -400,227 +400,88 @@ class SimpleGameEngine:
         action_text = "tapped" if card_found.tapped else "untapped"
         print(f"Player {action.player_id} {action_text} {card_found.name}")
     
-    def _send_to_graveyard(self, game_state: GameState, action: GameAction) -> None:
-        """Move a card from any zone to graveyard."""
-        player = self._get_player(game_state, action.player_id)
-        card_id = action.card_id
-        source_zone = action.additional_data.get("source_zone", "unknown")
-        
-        if not card_id:
-            raise ValueError("card_id is required for send_to_graveyard action")
+    def _find_and_remove_card(self, player: Player, card_id: str, source_zone: str, game_state: GameState, destination_zone_name: Optional[str] = None) -> Optional[Card]:
+        """Finds a card by its ID in a specified zone (or all zones) and removes it."""
         
         card_found = None
         
-        # Search in different zones based on source_zone
-        if source_zone == "hand":
-            for i, card in enumerate(player.hand):
-                if card.id == card_id:
-                    card_found = player.hand.pop(i)
-                    break
-        elif source_zone in ["battlefield", "permanents", "lands"]:
-            for i, card in enumerate(player.battlefield):
-                if card.id == card_id:
-                    card_found = player.battlefield.pop(i)
-                    break
-        elif source_zone == "exile":
-            for i, card in enumerate(player.exile):
-                if card.id == card_id:
-                    card_found = player.exile.pop(i)
-                    break
-        elif source_zone == "library" or source_zone == "deck":
-            for i, card in enumerate(player.library):
-                if card.id == card_id:
-                    card_found = player.library.pop(i)
-                    break
+        player_zones = {
+            "hand": player.hand,
+            "battlefield": player.battlefield,
+            "graveyard": player.graveyard,
+            "exile": player.exile,
+            "library": player.library,
+        }
+        
+        # Normalize some zone names
+        if source_zone in ["permanents", "lands"]:
+            source_zone = "battlefield"
+        if source_zone == "deck":
+            source_zone = "library"
+
+        def find_and_remove_from_list(zone_list: List[Card], c_id: str) -> Optional[Card]:
+            for i, card in enumerate(zone_list):
+                if card.id == c_id:
+                    return zone_list.pop(i)
+            return None
+
+        if source_zone in player_zones:
+            card_found = find_and_remove_from_list(player_zones[source_zone], card_id)
         elif source_zone == "stack":
-            # Search in the stack (global game zone)
             for i, spell in enumerate(game_state.stack):
-                # Try matching by card_id first, then by card name
-                if ((spell.get("card_id") == card_id or spell.get("name") == card_id) 
-                    and spell.get("player_id") == action.player_id):
+                if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
                     spell_data = game_state.stack.pop(i)
-                    # Get the card object from the spell
                     card_found = spell_data.get("card_object")
                     break
-        else:
-            # Search all zones if source unknown
-            # First check player zones
-            for zone_name, zone_list in [
-                ("hand", player.hand),
-                ("battlefield", player.battlefield),
-                ("exile", player.exile),
-                ("library", player.library)
-            ]:
-                for i, card in enumerate(zone_list):
-                    if card.id == card_id:
-                        card_found = zone_list.pop(i)
-                        break
+        else: # source_zone is "unknown"
+            # Search all player zones, excluding the destination if provided
+            search_zones = {k: v for k, v in player_zones.items() if k != destination_zone_name}
+            for zone_list in search_zones.values():
+                card_found = find_and_remove_from_list(zone_list, card_id)
                 if card_found:
                     break
             
-            # If not found in player zones, check the stack
+            # If not found, check the stack
             if not card_found:
                 for i, spell in enumerate(game_state.stack):
-                    if spell.get("card_id") == card_id and spell.get("player_id") == action.player_id:
+                    if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
                         spell_data = game_state.stack.pop(i)
-                        # Get the card object from the spell
                         card_found = spell_data.get("card_object")
                         break
-        
+                        
+        return card_found
+
+    def _move_card(self, game_state: GameState, action: GameAction, destination_zone_name: str) -> None:
+        """Generic method to move a card from a source zone to a destination zone."""
+        player = self._get_player(game_state, action.player_id)
+        card_id = action.card_id
+        source_zone = action.additional_data.get("source_zone", "unknown")
+
+        if not card_id:
+            raise ValueError(f"card_id is required for moving a card to {destination_zone_name}")
+
+        card_found = self._find_and_remove_card(player, card_id, source_zone, game_state, destination_zone_name=destination_zone_name)
+
         if not card_found:
             raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
+
+        # Get destination zone list from player object and add the card
+        destination_zone_list = getattr(player, destination_zone_name)
+        destination_zone_list.append(card_found)
         
-        # Add to graveyard
-        player.graveyard.append(card_found)
-        print(f"Player {action.player_id} sent {card_found.name} to graveyard from {source_zone}")
+        print(f"Player {action.player_id} moved {card_found.name} to {destination_zone_name} from {source_zone}")
+
+    def _send_to_graveyard(self, game_state: GameState, action: GameAction) -> None:
+        """Move a card from any zone to graveyard."""
+        self._move_card(game_state, action, "graveyard")
     
     def _send_to_exile(self, game_state: GameState, action: GameAction) -> None:
         """Move a card from any zone to exile."""
-        player = self._get_player(game_state, action.player_id)
-        card_id = action.card_id
-        source_zone = action.additional_data.get("source_zone", "unknown")
-        
-        if not card_id:
-            raise ValueError("card_id is required for send_to_exile action")
-        
-        card_found = None
-        
-        # Search in different zones based on source_zone
-        if source_zone == "hand":
-            for i, card in enumerate(player.hand):
-                if card.id == card_id:
-                    card_found = player.hand.pop(i)
-                    break
-        elif source_zone in ["battlefield", "permanents", "lands"]:
-            for i, card in enumerate(player.battlefield):
-                if card.id == card_id:
-                    card_found = player.battlefield.pop(i)
-                    break
-        elif source_zone == "graveyard":
-            for i, card in enumerate(player.graveyard):
-                if card.id == card_id:
-                    card_found = player.graveyard.pop(i)
-                    break
-        elif source_zone == "library" or source_zone == "deck":
-            for i, card in enumerate(player.library):
-                if card.id == card_id:
-                    card_found = player.library.pop(i)
-                    break
-        elif source_zone == "stack":
-            # Search in the stack (global game zone)
-            for i, spell in enumerate(game_state.stack):
-                # Try matching by card_id first, then by card name
-                if ((spell.get("card_id") == card_id or spell.get("name") == card_id) 
-                    and spell.get("player_id") == action.player_id):
-                    spell_data = game_state.stack.pop(i)
-                    # Get the card object from the spell
-                    card_found = spell_data.get("card_object")
-                    break
-        else:
-            # Search all zones if source unknown
-            # First check player zones
-            for zone_name, zone_list in [
-                ("hand", player.hand),
-                ("battlefield", player.battlefield),
-                ("graveyard", player.graveyard),
-                ("library", player.library)
-            ]:
-                for i, card in enumerate(zone_list):
-                    if card.id == card_id:
-                        card_found = zone_list.pop(i)
-                        break
-                if card_found:
-                    break
-            
-            # If not found in player zones, check the stack
-            if not card_found:
-                for i, spell in enumerate(game_state.stack):
-                    if spell.get("card_id") == card_id and spell.get("player_id") == action.player_id:
-                        spell_data = game_state.stack.pop(i)
-                        # Get the card object from the spell
-                        card_found = spell_data.get("card_object")
-                        break
-        
-        if not card_found:
-            raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
-        
-        # Add to exile
-        player.exile.append(card_found)
-        print(f"Player {action.player_id} exiled {card_found.name} from {source_zone}")
+        self._move_card(game_state, action, "exile")
     
     def _send_to_hand(self, game_state: GameState, action: GameAction) -> None:
         """Move a card from any zone to hand."""
-        player = self._get_player(game_state, action.player_id)
-        card_id = action.card_id
-        source_zone = action.additional_data.get("source_zone", "unknown")
-        
-        if not card_id:
-            raise ValueError("card_id is required for send_to_hand action")
-        
-        card_found = None
-        
-        # Search in different zones based on source_zone
-        if source_zone in ["battlefield", "permanents", "lands"]:
-            for i, card in enumerate(player.battlefield):
-                if card.id == card_id:
-                    card_found = player.battlefield.pop(i)
-                    break
-        elif source_zone == "graveyard":
-            for i, card in enumerate(player.graveyard):
-                if card.id == card_id:
-                    card_found = player.graveyard.pop(i)
-                    break
-        elif source_zone == "exile":
-            for i, card in enumerate(player.exile):
-                if card.id == card_id:
-                    card_found = player.exile.pop(i)
-                    break
-        elif source_zone == "library" or source_zone == "deck":
-            for i, card in enumerate(player.library):
-                if card.id == card_id:
-                    card_found = player.library.pop(i)
-                    break
-        elif source_zone == "stack":
-            # Search in the stack (global game zone)
-            for i, spell in enumerate(game_state.stack):
-                # Try matching by card_id first, then by card name
-                if ((spell.get("card_id") == card_id or spell.get("name") == card_id) 
-                    and spell.get("player_id") == action.player_id):
-                    spell_data = game_state.stack.pop(i)
-                    # Get the card object from the spell
-                    card_found = spell_data.get("card_object")
-                    break
-        else:
-            # Search all zones if source unknown (excluding hand since card is already there)
-            # First check player zones
-            for zone_name, zone_list in [
-                ("battlefield", player.battlefield),
-                ("graveyard", player.graveyard),
-                ("exile", player.exile),
-                ("library", player.library)
-            ]:
-                for i, card in enumerate(zone_list):
-                    if card.id == card_id:
-                        card_found = zone_list.pop(i)
-                        break
-                if card_found:
-                    break
-            
-            # If not found in player zones, check the stack
-            if not card_found:
-                for i, spell in enumerate(game_state.stack):
-                    if spell.get("card_id") == card_id and spell.get("player_id") == action.player_id:
-                        spell_data = game_state.stack.pop(i)
-                        # Get the card object from the spell
-                        card_found = spell_data.get("card_object")
-                        break
-        
-        if not card_found:
-            raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
-        
-        # Add to hand
-        player.hand.append(card_found)
-        print(f"Player {action.player_id} returned {card_found.name} to hand from {source_zone}")
+        self._move_card(game_state, action, "hand")
     
     def _shuffle_library(self, game_state: GameState, action: GameAction) -> None:
         """Shuffle a player's library."""
