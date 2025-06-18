@@ -2,11 +2,6 @@
 
 {% block title %}ManaForge - Game Arena{% endblock %}
 
-{% block extra_css %}
-<!-- External CSS for game-specific styles -->
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-main.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/zone-context-menu.css') }}">
-{% endblock %}
 
 {% block content %}
 <div x-data="GameUI.gameInterface()" class="min-h-screen bg-arena-gradient relative game-container-1080 compact-zones">
