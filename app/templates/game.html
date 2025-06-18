@@ -41,77 +41,7 @@
     </div>
 </div>
 
-<!-- Chat Section -->
-<div class="fixed bottom-0 right-0 w-80 h-96 bg-arena-surface border-l border-t border-arena-accent/30 flex flex-col z-40" 
-     x-data="{ chatOpen: true }" 
-     :class="{ 'translate-x-full': !chatOpen }">
-    
-    <!-- Chat Toggle Button -->
-    <button @click="chatOpen = !chatOpen" 
-            class="absolute -left-12 top-4 bg-arena-primary hover:bg-arena-secondary text-white p-3 rounded-l-lg transition-colors">
-        <span x-text="chatOpen ? '✕' : '💬'"></span>
-    </button>
-    
-    <!-- Chat Header -->
-    <div class="bg-arena-primary/80 p-4 border-b border-arena-accent/30">
-        <h3 class="font-magic font-semibold text-arena-accent flex items-center">
-            <span class="mr-2">💬</span>Battle Chat
-        </h3>
-    </div>
-    
-    <!-- Chat Messages -->
-    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm">
-        <div class="text-arena-text-dim text-center py-4">
-            <span class="text-2xl block mb-2">⚔️</span>
-            <p>Battle chat ready</p>
-        </div>
-    </div>
-    
-    <!-- Chat Input -->
-    <div class="p-4 border-t border-arena-accent/30">
-        <form onsubmit="sendChatMessage(event)" class="flex gap-2">
-            <input type="text" 
-                   id="chat-input" 
-                   placeholder="Type your message..." 
-                   class="flex-1 bg-arena-surface border border-arena-accent/30 rounded px-3 py-2 text-arena-text focus:border-arena-accent focus:outline-none">
-            <button type="submit" 
-                    class="bg-arena-primary hover:bg-arena-secondary text-white px-4 py-2 rounded font-semibold transition-colors">
-                Send
-            </button>
-        </form>
-    </div>
-</div>
+{% include 'components/chat.html' %}
 
-<!-- External JavaScript modules for game logic -->
-<script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-chat.js') }}"></script>
-
-<!-- UI Module Dependencies (load in dependency order) -->
-<script src="{{ url_for('static', path='js/ui/ui-config.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-utils.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-horizontal-scroll.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-notifications.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/zone-context-menu.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-card-overlap.js') }}"></script>
-
-<!-- Unified Modules (replaces multiple old modules) -->
-<script src="{{ url_for('static', path='js/ui/ui-zones-manager.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-renderers-templates.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/websocket-manager.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-global.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-actions.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-core.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-main.js') }}"></script>
-
-<!-- Initialize game with server data -->
-<script>
-// Pass game ID to JavaScript, fetch data via API
-window.gameData = {
-    gameId: "{{ game.id }}",
-    apiBaseUrl: "/api/v1"
-};
-
-// The game will be initialized automatically by game-main.js
-</script>
+{% include 'components/scripts.html' %}
 {% endblock %}
