@@ -52,16 +52,6 @@
     grid-column: 3 / 4;
 }
 
-/* General card styles for reuse */
-.arena-card {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(201, 170, 113, 0.15);
-    border-radius: 8px;
-    padding: 1rem;
-    backdrop-filter: blur(5px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
 /* Headings and titles */
 h1, h2, h3, h4 {
     font-family: 'Trajan Pro', serif;
@@ -134,11 +124,6 @@ h4 {
     padding: 0;
 }
 
-/* General utility classes */
-.hidden {
-    display: none !important;
-}
-
 /* ===== GAME LAYOUT & GLOBAL STYLES ===== */
 /* Global layout and container styles for the game interface */
 
@@ -158,33 +143,6 @@ body {
     height: 100vh;
     overflow: hidden;
     position: relative;
-}
-
-/* Fullscreen Styles */
-.game-container-1080.fullscreen-mode {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1000;
-    background-color: black; /* Optional: Set a background color for fullscreen */
-    overflow: hidden;
-}
-
-/* Adjust the main game content container in fullscreen */
-.game-container-1080.fullscreen-mode .max-w-\[1600px\] {
-    max-width: none;
-    width: 100%;
-    height: calc(100vh - 2rem);
-    display: flex;
-    flex-direction: column;
-}
-
-/* Expand game grid to full height in fullscreen */
-.game-container-1080.fullscreen-mode .grid {
-    flex: 1;
-    height: 100%;
 }
 
 /* Fullscreen Styles */
