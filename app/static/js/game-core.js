@@ -153,3 +153,21 @@ window.GameCore = {
     setSelectedPlayer: (player) => { currentSelectedPlayer = player; },
     isPageVisible: () => isPageVisible
 };
+
+// ===== MAIN ENTRY POINT =====
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if all modules are loaded
+    if (window.GameCore && 
+        window.GameSocket && 
+        window.GameUI && 
+        window.GameActions && 
+        window.GameUtils && 
+        window.GameCards) {
+        
+        console.log('ManaForge game modules loaded successfully');
+        // Initialize the game asynchronously
+        window.GameCore.initializeGame();
+    } else {
+        console.error('Some ManaForge game modules failed to load');
+    }
+});
