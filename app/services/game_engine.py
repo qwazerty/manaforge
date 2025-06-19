@@ -139,6 +139,14 @@ class SimpleGameEngine:
             self._shuffle_library(game_state, action)
         elif action.action_type == "untap_all":
             self._untap_all(game_state, action)
+        elif action.action_type == "mulligan":
+            self._mulligan(game_state, action)
+        elif action.action_type == "scry":
+            self._scry(game_state, action)
+        elif action.action_type == "surveil":
+            self._surveil(game_state, action)
+        elif action.action_type == "resolve_temporary_zone":
+            self._resolve_temporary_zone(game_state, action)
         
         return game_state
     
@@ -505,3 +513,103 @@ class SimpleGameEngine:
             card.tapped = False
         
         print(f"Player {action.player_id} untapped all permanents ({untapped_count} cards untapped)")
+
+    def _mulligan(self, game_state: GameState, action: GameAction) -> None:
+        """Handle mulligan action."""
+        player = self._get_player(game_state, action.player_id)
+        
+        # Return hand to library
+        player.library.extend(player.hand)
+        player.hand = []
+        
+        # Shuffle library
+        random.shuffle(player.library)
+        
+        # Draw new hand of 7 cards
+        self._draw_cards(player, 7)
+        
+        print(f"Player {action.player_id} took a mulligan.")
+
+    def _scry(self, game_state: GameState, action: GameAction) -> None:
+        """Handle scry action by moving cards to the temporary zone for player decision."""
+        player = self._get_player(game_state, action.player_id)
+        amount = action.additional_data.get("amount", 1)
+
+        # Ensure the temporary zone is clear before starting a new scry
+        if player.temporary_zone:
+            print(f"Warning: Player {action.player_id} had cards in temporary_zone before scrying. Clearing it.")
+            player.library.extend(player.temporary_zone)
+            player.temporary_zone = []
+
+        scry_cards = player.library[:amount]
+        player.library = player.library[amount:]
+        player.temporary_zone.extend(scry_cards)
+
+        # Add a flag to the game state to indicate a scry action is pending resolution
+        game_state.pending_action = {
+            "player_id": player.id,
+            "type": "scry",
+            "count": len(scry_cards)
+        }
+        
+        print(f"Player {action.player_id} is scrying {len(scry_cards)} cards.")
+
+    def _surveil(self, game_state: GameState, action: GameAction) -> None:
+        """Handle surveil action by moving cards to the temporary zone for player decision."""
+        player = self._get_player(game_state, action.player_id)
+        amount = action.additional_data.get("amount", 1)
+
+        # Ensure the temporary zone is clear
+        if player.temporary_zone:
+            print(f"Warning: Player {action.player_id} had cards in temporary_zone before surveiling. Clearing it.")
+            player.library.extend(player.temporary_zone)
+            player.temporary_zone = []
+
+        surveil_cards = player.library[:amount]
+        player.library = player.library[amount:]
+        player.temporary_zone.extend(surveil_cards)
+
+        # Add a flag to the game state to indicate a surveil action is pending
+        game_state.pending_action = {
+            "player_id": player.id,
+            "type": "surveil",
+            "count": len(surveil_cards)
+        }
+
+        print(f"Player {action.player_id} is surveiling {len(surveil_cards)} cards.")
+
+    def _resolve_temporary_zone(self, game_state: GameState, action: GameAction) -> None:
+        """Resolve player decisions for cards in the temporary zone (from scry/surveil)."""
+        player = self._get_player(game_state, action.player_id)
+        decisions = action.additional_data.get("decisions", []) # e.g., [{"card_id": "xyz", "destination": "top"}]
+
+        for decision in decisions:
+            card_id = decision.get("card_id")
+            destination = decision.get("destination")
+
+            card_to_move = None
+            for i, card in enumerate(player.temporary_zone):
+                if card.id == card_id:
+                    card_to_move = player.temporary_zone.pop(i)
+                    break
+            
+            if not card_to_move:
+                print(f"Warning: Card {card_id} not found in temporary zone for resolution.")
+                continue
+
+            if destination == "top":
+                player.library.insert(0, card_to_move)
+            elif destination == "bottom":
+                player.library.append(card_to_move)
+            elif destination == "graveyard":
+                player.graveyard.append(card_to_move)
+            else:
+                # Default case or error: return to top of library
+                print(f"Warning: Unknown destination '{destination}'. Returning card to top of library.")
+                player.library.insert(0, card_to_move)
+        
+        # If temporary zone is empty, clear the pending action
+        if not player.temporary_zone:
+            game_state.pending_action = None
+        
+        print(f"Player {action.player_id} resolved temporary zone actions.")

@@ -17,7 +17,10 @@ class ZoneContextMenu {
             actions: [
                 { id: 'draw', label: 'Draw Card', icon: '🃏', action: 'drawCard' },
                 { id: 'search', label: 'Search Library', icon: '🔍', action: 'searchZone' },
-                { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' }
+                { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' },
+                { id: 'mulligan', label: 'Mulligan', icon: '🔄', action: 'mulligan' },
+                { id: 'scry', label: 'Scry', icon: '🔮', action: 'scry' },
+                { id: 'surveil', label: 'Surveil', icon: '👁️', action: 'surveil' }
             ]
         },
         graveyard: {
@@ -193,8 +196,61 @@ class ZoneContextMenu {
             case 'shuffleLibrary':
                 this.shuffleLibrary(isOpponent);
                 break;
+            case 'mulligan':
+                this.mulligan(isOpponent);
+                break;
+            case 'scry':
+                this.scry(isOpponent);
+                break;
+            case 'surveil':
+                this.surveil(isOpponent);
+                break;
             default:
                 console.warn(`Unknown action: ${actionType}`);
+        }
+    }
+
+    /**
+     * Mulligan
+     */
+    static mulligan(isOpponent = false) {
+        if (isOpponent) return; // Can't mulligan for opponent
+        if (window.GameActions && window.GameActions.performGameAction) {
+            window.GameActions.performGameAction('mulligan');
+            UINotifications.showNotification('Performing a mulligan...', 'info');
+        } else {
+            console.warn('GameActions not available for mulligan');
+            UINotifications.showNotification('Mulligan action not available', 'error');
+        }
+    }
+
+    /**
+     * Scry X
+     */
+    static scry(isOpponent = false) {
+        if (isOpponent) return;
+        const amount = 1;
+        if (window.GameActions && window.GameActions.performGameAction) {
+            window.GameActions.performGameAction('scry', { amount: amount });
+            UINotifications.showNotification(`Scrying ${amount}...`, 'info');
+        } else {
+            console.warn('GameActions not available for scry');
+            UINotifications.showNotification('Scry action not available', 'error');
+        }
+    }
+
+    /**
+     * Surveil X
+     */
+    static surveil(isOpponent = false) {
+        if (isOpponent) return;
+        const amount = 1;
+        if (window.GameActions && window.GameActions.performGameAction) {
+            window.GameActions.performGameAction('surveil', { amount: amount });
+            UINotifications.showNotification(`Surveiling ${amount}...`, 'info');
+        } else {
+            console.warn('GameActions not available for surveil');
+            UINotifications.showNotification('Surveil action not available', 'error');
         }
     }
 
