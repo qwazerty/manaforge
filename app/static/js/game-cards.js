@@ -2,348 +2,253 @@
  * ManaForge Game Cards Module
  * Functions for card rendering and management
  */
+const GameCards = {
+    getSafeImageUrl: function(card) {
+        if (!card || !card.image_url) return null;
+        if (card.image_url.includes("/back/")) return null;
+        return card.image_url;
+    },
 
-// ===== CARD RENDERING AND FUNCTIONALITY =====
-function getSafeImageUrl(card) {
-    if (!card || !card.image_url) return null;
-    // Avoid problematic URLs like card backs
-    if (card.image_url.includes("/back/")) return null;
-    return card.image_url;
-}
+    debugCardImage: function(cardName, imageUrl, context) {
+        console.log(`🃏 [${context}] Card: ${cardName}`);
+        console.log(`Image URL: ${imageUrl || 'none'}`);
+        console.log(`Valid: ${!!imageUrl}`);
+    },
 
-function debugCardImage(cardName, imageUrl, context) {
-    console.log(`🃏 [${context}] Card: ${cardName}`);
-    console.log(`Image URL: ${imageUrl || 'none'}`);
-    console.log(`Valid: ${!!imageUrl}`);
-}
+    preloadCardImages: function(cards) {
+        if (!cards || !Array.isArray(cards)) return;
+        cards.forEach(card => {
+            const imageUrl = this.getSafeImageUrl(card);
+            if (imageUrl) {
+                const img = new Image();
+                img.src = imageUrl;
+            }
+        });
+    },
 
-function preloadCardImages(cards) {
-    if (!cards || !Array.isArray(cards)) return;
-    
-    cards.forEach(card => {
-        const imageUrl = getSafeImageUrl(card);
-        if (imageUrl) {
-            const img = new Image();
-            img.src = imageUrl;
+    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', index = 0, playerId = null) {
+        const cardId = card.id || card.name;
+        const cardName = card.name || 'Unknown';
+        const imageUrl = this.getSafeImageUrl(card);
+        const isTapped = card.tapped || false;
+        const tappedClass = isTapped ? ' tapped' : '';
+        const playerPrefix = playerId !== null ? `p${playerId}` : 'unknown';
+        const uniqueCardId = `${playerPrefix}-${zone}-${index}`;
+        const escapedCardId = GameUtils.escapeJavaScript(cardId);
+        const escapedCardName = GameUtils.escapeJavaScript(cardName);
+        const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
+        const escapedUniqueId = GameUtils.escapeJavaScript(uniqueCardId);
+
+        let onClickAction = '';
+        if (zone === 'permanents' || zone === 'lands') {
+            onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
+        } else if (zone === 'hand') {
+            onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', ${index}); event.stopPropagation();"`;
         }
-    });
-}
 
-function renderCardWithLoadingState(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', index = 0, playerId = null) {
-    const cardId = card.id || card.name;
-    const cardName = card.name || 'Unknown';
-    // Validate image URL - avoid problematic URLs
-    const imageUrl = getSafeImageUrl(card);
-    
-    // Check if card is tapped
-    const isTapped = card.tapped || false;
-    const tappedClass = isTapped ? ' tapped' : '';
-    
-    // Create unique identifier using player, zone and index
-    const playerPrefix = playerId !== null ? `p${playerId}` : 'unknown';
-    const uniqueCardId = `${playerPrefix}-${zone}-${index}`;
-    
-    // Escape values for safe JavaScript injection
-    const escapedCardId = GameUtils.escapeJavaScript(cardId);
-    const escapedCardName = GameUtils.escapeJavaScript(cardName);
-    const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
-    const escapedUniqueId = GameUtils.escapeJavaScript(uniqueCardId);
-    
-    // Define click action based on zone
-    let onClickAction = '';
-    if (zone === 'permanents' || zone === 'lands') {
-        onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
-    } else if (zone === 'hand') {
-        onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', ${index}); event.stopPropagation();"`;
-    } else {
-        // Other zones - no special action
-        onClickAction = '';
-    }
-    
-    return `
-        <div class="${cardClass}${tappedClass}" 
-             data-card-id="${cardId}"
-             data-card-unique-id="${uniqueCardId}"
-             data-card-name="${escapedCardName}"
-             data-card-image="${escapedImageUrl}"
-             data-card-zone="${zone}"
-             data-card-tapped="${isTapped}"
-             data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
-             ${onClickAction}
-             oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
-            ${imageUrl ? `
-                <div class="relative">
-                    <img src="${imageUrl}" 
-                         alt="${cardName}" 
-                         style="opacity: 0; transition: opacity 0.3s ease;"
-                         onload="this.style.opacity=1; this.nextElementSibling.style.display='none';"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;">
+        return `
+            <div class="${cardClass}${tappedClass}" 
+                 data-card-id="${cardId}"
+                 data-card-unique-id="${uniqueCardId}"
+                 data-card-name="${escapedCardName}"
+                 data-card-image="${escapedImageUrl}"
+                 data-card-zone="${zone}"
+                 data-card-tapped="${isTapped}"
+                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
+                 ${onClickAction}
+                 oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
+                ${imageUrl ? `
+                    <div class="relative">
+                        <img src="${imageUrl}" 
+                             alt="${cardName}" 
+                             style="opacity: 0; transition: opacity 0.3s ease;"
+                             onload="this.style.opacity=1; this.nextElementSibling.style.display='none';"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;">
+                        </div>
                     </div>
-                </div>
-            ` : `
-                <div class="card-fallback">
-                </div>
-            `}
-        </div>
-    `;
-}
-
-function showCardPreview(cardId, cardName, imageUrl, event = null) {
-    // For now, just log the card details
-    console.log(`📋 Card Preview: ${cardName} (ID: ${cardId})`);
-    if (imageUrl) {
-        console.log(`🖼️ Image: ${imageUrl}`);
-    }
-    
-    // Remove any existing preview
-    const existingPreview = document.getElementById('card-preview-modal');
-    if (existingPreview) {
-        existingPreview.remove();
-        removeCardPreviewListeners();
-    }
-    
-    // Create preview modal
-    const preview = document.createElement('div');
-    preview.id = 'card-preview-modal';
-    preview.className = 'card-preview-modal show';
-
-    // Add card image and details
-    preview.innerHTML = `
-        <div class="card-preview-content">
-            ${imageUrl ? `
-                <img src="${imageUrl}" alt="${cardName}" class="card-preview-image" />
-            ` : `
-                <div class="card-preview-fallback">
-                    <div class="card-name">${cardName}</div>
-                </div>
-            `}
-            <div class="card-preview-details">
-                <h3>${cardName}</h3>
+                ` : `
+                    <div class="card-fallback">
+                    </div>
+                `}
             </div>
-        </div>
-    `;
+        `;
+    },
 
-    document.body.appendChild(preview);
-    
-    // Add global event listeners to close popup
-    addCardPreviewListeners();
-    
-    // If we have event coordinates, position near mouse, otherwise center
-    if (event && event.clientX && event.clientY) {
-        const previewRect = preview.getBoundingClientRect();
+    showCardPreview: function(cardId, cardName, imageUrl, event = null) {
+        console.log(`📋 Card Preview: ${cardName} (ID: ${cardId})`);
+        if (imageUrl) {
+            console.log(`🖼️ Image: ${imageUrl}`);
+        }
+
+        const existingPreview = document.getElementById('card-preview-modal');
+        if (existingPreview) {
+            existingPreview.remove();
+            this.removeCardPreviewListeners();
+        }
+
+        const preview = document.createElement('div');
+        preview.id = 'card-preview-modal';
+        preview.className = 'card-preview-modal show';
+
+        preview.innerHTML = `
+            <div class="card-preview-content">
+                ${imageUrl ? `
+                    <img src="${imageUrl}" alt="${cardName}" class="card-preview-image" />
+                ` : `
+                    <div class="card-preview-fallback">
+                        <div class="card-name">${cardName}</div>
+                    </div>
+                `}
+                <div class="card-preview-details">
+                    <h3>${cardName}</h3>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(preview);
+        this.addCardPreviewListeners();
+
+        if (event && event.clientX && event.clientY) {
+            const previewRect = preview.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            let x = event.clientX + 20;
+            let y = event.clientY + 20;
+
+            if (x + previewRect.width > viewportWidth) {
+                x = event.clientX - previewRect.width - 20;
+            }
+            if (y + previewRect.height > viewportHeight) {
+                y = event.clientY - previewRect.height - 20;
+            }
+
+            x = Math.max(10, Math.min(x, viewportWidth - previewRect.width - 10));
+            y = Math.max(10, Math.min(y, viewportHeight - previewRect.height - 10));
+
+            preview.style.position = 'fixed';
+            preview.style.left = `${x}px`;
+            preview.style.top = `${y}px`;
+            preview.style.transform = 'none';
+        }
+    },
+
+    showCardContextMenu: function(event, cardElement) {
+        event.preventDefault();
+
+        const cardId = cardElement.getAttribute('data-card-id');
+        const cardName = cardElement.getAttribute('data-card-name');
+        const cardImage = cardElement.getAttribute('data-card-image');
+        const cardZone = cardElement.getAttribute('data-card-zone') || 'unknown';
+        const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
+        const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
+
+        console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId})`);
+
+        const existingMenu = document.getElementById('card-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+
+        const menu = document.createElement('div');
+        menu.id = 'card-context-menu';
+        menu.className = 'card-context-menu';
+        menu.style.visibility = 'hidden';
+        menu.style.position = 'fixed';
+        document.body.appendChild(menu);
+
+        let menuHTML = '';
+        if (cardImage) {
+            menuHTML += `<div class="card-context-image"><img src="${cardImage}" alt="${cardName}" /></div>`;
+        }
+
+        menuHTML += `<div class="card-context-actions">
+            <div class="card-context-header"><h3>${cardName}</h3></div>
+            <div class="card-context-menu-divider"></div>
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${cardId}', '${cardName}', '${cardImage}')"><span class="icon">🔍</span> View Full Size</div>
+            <div class="card-context-menu-divider"></div>`;
+
+        if (cardZone === 'hand') {
+            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')"><span class="icon">▶️</span> Play Card</div>`;
+        }
+
+        if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
+            const tapAction = isTapped ? 'Untap' : 'Tap';
+            const tapIcon = isTapped ? '⤴️' : '🔄';
+            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
+        }
+
+        menuHTML += `
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
+
+        if (cardZone !== 'hand') {
+            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
+        }
+
+        menuHTML += `</div>`;
+        menu.innerHTML = menuHTML;
+
+        const menuRect = menu.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        
-        // Position to the right and slightly below mouse cursor
-        let x = event.clientX + 20;
-        let y = event.clientY + 20;
-        
-        // Adjust if would go off screen
-        if (x + previewRect.width > viewportWidth) {
-            x = event.clientX - previewRect.width - 20; // Show to the left instead
+        let x = event.clientX + 10;
+        let y = event.clientY;
+
+        if (x + menuRect.width > viewportWidth) {
+            x = event.clientX - menuRect.width - 10;
         }
-        if (y + previewRect.height > viewportHeight) {
-            y = event.clientY - previewRect.height - 20; // Show above instead
+        if (y + menuRect.height > viewportHeight) {
+            y = viewportHeight - menuRect.height - 10;
         }
-        
-        // Ensure it doesn't go off edges
-        x = Math.max(10, Math.min(x, viewportWidth - previewRect.width - 10));
-        y = Math.max(10, Math.min(y, viewportHeight - previewRect.height - 10));
-        
-        preview.style.position = 'fixed';
-        preview.style.left = `${x}px`;
-        preview.style.top = `${y}px`;
-        preview.style.transform = 'none'; // Override the centering transform
-    }
-}
 
-function showCardContextMenu(event, cardElement) {
-    event.preventDefault();
-    
-    // Get card data
-    const cardId = cardElement.getAttribute('data-card-id');
-    const cardName = cardElement.getAttribute('data-card-name');
-    const cardImage = cardElement.getAttribute('data-card-image');
-    const cardZone = cardElement.getAttribute('data-card-zone') || 'unknown';
-    const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
-    const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
-    
-    // Debug logging to help troubleshoot zone issues
-    console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId})`);
-    
-    // Get card data from the data attribute if available
-    let cardData;
-    try {
-        const cardDataAttr = cardElement.getAttribute('data-card-data');
-        if (cardDataAttr) {
-            cardData = JSON.parse(cardDataAttr);
+        x = Math.max(10, x);
+        y = Math.max(10, y);
+
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+        menu.style.visibility = 'visible';
+
+        document.addEventListener('click', this.closeContextMenu.bind(this));
+    },
+
+    closeContextMenu: function() {
+        const menu = document.getElementById('card-context-menu');
+        if (menu) {
+            menu.remove();
         }
-    } catch (error) {
-        console.error('Error parsing card data:', error);
-    }
-    
-    // Remove existing context menu
-    const existingMenu = document.getElementById('card-context-menu');
-    if (existingMenu) {
-        existingMenu.remove();
-    }
-    
-    // Create context menu
-    const menu = document.createElement('div');
-    menu.id = 'card-context-menu';
-    menu.className = 'card-context-menu';
-    
-    // Add content first to get accurate dimensions
-    menu.style.visibility = 'hidden';
-    menu.style.position = 'fixed';
-    document.body.appendChild(menu);
-    
-    // Prepare HTML for card image and actions
-    let menuHTML = '';
-    
-    // Add card image preview on the left
-    if (cardImage) {
-        menuHTML += `
-        <div class="card-context-image">
-            <img src="${cardImage}" alt="${cardName}" />
-        </div>`;
-    }
-    
-    // Add actions panel on the right
-    menuHTML += `
-        <div class="card-context-actions">
-            <div class="card-context-header">
-                <h3>${cardName}</h3>
-            </div>
-            <div class="card-context-menu-divider"></div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${cardId}', '${cardName}', '${cardImage}')">
-                <span class="icon">🔍</span> View Full Size
-            </div>
-            <div class="card-context-menu-divider"></div>`;
-    
-    // Add zone-specific actions
-    if (cardZone === 'hand') {
-        menuHTML += `
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')">
-            <span class="icon">▶️</span> Play Card
-        </div>`;
-    }
-    
-    if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
-        const tapAction = isTapped ? 'Untap' : 'Tap';
-        const tapIcon = isTapped ? '⤴️' : '🔄';
-        const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
-        menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')">
-                <span class="icon">${tapIcon}</span> ${tapAction}
-            </div>`;
-    }
-    
+        document.removeEventListener('click', this.closeContextMenu);
+    },
 
-    menuHTML += `
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}', '${uniqueCardId}')">
-            <span class="icon">⚰️</span> Send to Graveyard
-        </div>
-        <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}', '${uniqueCardId}')">
-            <span class="icon">✨</span> Send to Exile
-        </div>`;
-    
-    // Return to hand (only if not already in hand)
-    if (cardZone !== 'hand') {
-        menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}', '${uniqueCardId}')">
-                <span class="icon">👋</span> Return to Hand
-            </div>`;
-    }
-    
-    // Close the actions container
-    menuHTML += `</div>`;
-    
-    // Set the menu HTML
-    menu.innerHTML = menuHTML;
-    
-    // Calculate optimal position based on mouse position and menu dimensions
-    const menuRect = menu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Initial position to the right of the mouse cursor
-    let x = event.clientX + 10; // Small offset from cursor
-    let y = event.clientY;
-    
-    // Adjust horizontal position if menu would go off right edge
-    if (x + menuRect.width > viewportWidth) {
-        x = event.clientX - menuRect.width - 10; // Position to the left of cursor
-    }
-    
-    // Adjust vertical position if menu would go off bottom edge
-    if (y + menuRect.height > viewportHeight) {
-        y = viewportHeight - menuRect.height - 10; // 10px margin from edge
-    }
-    
-    // Ensure menu doesn't go off left or top edges
-    x = Math.max(10, x);
-    y = Math.max(10, y);
-    
-    // Apply final position and make visible
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
-    menu.style.visibility = 'visible';
-    
-    // Close menu when clicking elsewhere
-    document.addEventListener('click', GameCards.closeContextMenu);
-}
-
-function closeContextMenu() {
-    const menu = document.getElementById('card-context-menu');
-    if (menu) {
-        menu.remove();
-    }
-    document.removeEventListener('click', GameCards.closeContextMenu);
-}
-
-// Global event handlers for card preview
-function handleCardPreviewClick(event) {
-    const preview = document.getElementById('card-preview-modal');
-    if (preview) {
-        preview.remove();
-        removeCardPreviewListeners();
-    }
-}
-
-function handleCardPreviewKeydown(event) {
-    if (event.key === 'Escape') {
+    handleCardPreviewClick: function(event) {
         const preview = document.getElementById('card-preview-modal');
         if (preview) {
             preview.remove();
-            removeCardPreviewListeners();
+            this.removeCardPreviewListeners();
         }
+    },
+
+    handleCardPreviewKeydown: function(event) {
+        if (event.key === 'Escape') {
+            const preview = document.getElementById('card-preview-modal');
+            if (preview) {
+                preview.remove();
+                this.removeCardPreviewListeners();
+            }
+        }
+    },
+
+    addCardPreviewListeners: function() {
+        setTimeout(() => {
+            document.addEventListener('click', this.handleCardPreviewClick.bind(this));
+            document.addEventListener('keydown', this.handleCardPreviewKeydown.bind(this));
+        }, 100);
+    },
+
+    removeCardPreviewListeners: function() {
+        document.removeEventListener('click', this.handleCardPreviewClick);
+        document.removeEventListener('keydown', this.handleCardPreviewKeydown);
     }
-}
-
-function addCardPreviewListeners() {
-    // Add a small delay to avoid the opening click from immediately closing the popup
-    setTimeout(() => {
-        document.addEventListener('click', handleCardPreviewClick);
-        document.addEventListener('keydown', handleCardPreviewKeydown);
-    }, 100);
-}
-
-function removeCardPreviewListeners() {
-    document.removeEventListener('click', handleCardPreviewClick);
-    document.removeEventListener('keydown', handleCardPreviewKeydown);
-}
-
-// Export cards module functionality
-window.GameCards = {
-    getSafeImageUrl,
-    debugCardImage,
-    preloadCardImages,
-    renderCardWithLoadingState,
-    showCardPreview,
-    showCardContextMenu,
-    closeContextMenu,
-    addCardPreviewListeners,
-    removeCardPreviewListeners
 };
+
+window.GameCards = GameCards;

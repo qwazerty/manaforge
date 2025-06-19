@@ -121,21 +121,18 @@ function changePlayer(playerType) {
     GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
-function tapCard(cardId, uniqueCardId) {
-    // Find the card element using unique ID if provided, otherwise fallback to cardId
+function findCardElement(cardId, uniqueCardId) {
     let cardElement;
     if (uniqueCardId) {
         cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
     }
-    
-    // Fallback logic: try to find the correct card for the current player
+
     if (!cardElement) {
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
         let playerPrefix = 'unknown';
         if (currentSelectedPlayer === 'player1') playerPrefix = 'p0';
         else if (currentSelectedPlayer === 'player2') playerPrefix = 'p1';
-        
-        // Try to find cards that belong to the current player
+
         const candidateElements = document.querySelectorAll(`[data-card-id="${cardId}"]`);
         for (const element of candidateElements) {
             const elementUniqueId = element.getAttribute('data-card-unique-id');
@@ -144,63 +141,56 @@ function tapCard(cardId, uniqueCardId) {
                 break;
             }
         }
-        
-        // If still not found, use the first match (original fallback)
+
         if (!cardElement && candidateElements.length > 0) {
             cardElement = candidateElements[0];
         }
     }
-    
+    return cardElement;
+}
+
+function tapCard(cardId, uniqueCardId) {
+    const cardElement = findCardElement(cardId, uniqueCardId);
+
     if (cardElement) {
-        // Get current state
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const newTappedState = !isTapped;
         const cardName = cardElement.getAttribute('data-card-name') || cardId;
-        
+
         console.log(`🃏 Card ${cardName}: ${isTapped ? 'tapped' : 'untapped'} -> ${newTappedState ? 'tapped' : 'untapped'}`);
-        
-        // Update visual state immediately for better UX (optimistic update)
+
         cardElement.setAttribute('data-card-tapped', newTappedState.toString());
         cardElement.classList.toggle('tapped', newTappedState);
         cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
-        
-        // Send action to server via WebSocket with explicit tapped state
+
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
-        const tapData = { 
+        const tapData = {
             card_id: cardId,
             tapped: newTappedState,
             unique_id: uniqueCardId || `${currentSelectedPlayer}-${cardId}`
         };
-        
-        console.log(`🃏 Sending tap_card action via WebSocket:`, tapData);
+
         performGameAction('tap_card', tapData);
-        
         const actionText = newTappedState ? 'tapped' : 'untapped';
         GameUI.showNotification(`${cardName} ${actionText}`, 'info');
     } else {
         console.warn(`🃏 Card element not found for cardId: ${cardId}, uniqueCardId: ${uniqueCardId}`);
-        
-        // Fallback if element not found - still send action to server
-        const tapData = { 
-            card_id: cardId,
-            unique_id: uniqueCardId
-        };
-        
-        performGameAction('tap_card', tapData);
+        performGameAction('tap_card', { card_id: cardId, unique_id: uniqueCardId });
         GameUI.showNotification(`Card tapped/untapped`, 'info');
     }
 }
 
-function sendToGraveyard(cardId, sourceZone, uniqueCardId = null) {
-    console.log(`🃏 Sending to graveyard: ${cardId} from ${sourceZone} (uniqueId: ${uniqueCardId})`);
-    
-    performGameAction('send_to_graveyard', { 
+function sendCardToZone(cardId, sourceZone, destinationZone, uniqueCardId = null) {
+    const actionType = `send_to_${destinationZone}`;
+    console.log(`🃏 Sending ${cardId} from ${sourceZone} to ${destinationZone} (uniqueId: ${uniqueCardId})`);
+
+    performGameAction(actionType, {
         card_id: cardId,
         source_zone: sourceZone,
         unique_id: uniqueCardId
     });
-    
-    // Update UI immediately for better UX (optimistic update)
+
+    // Optimistic UI update
     if (uniqueCardId) {
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
@@ -208,90 +198,31 @@ function sendToGraveyard(cardId, sourceZone, uniqueCardId = null) {
             cardElement.style.pointerEvents = 'none';
         }
     }
-    
-    GameUI.showNotification(`Card sent to graveyard`, 'info');
+
+    GameUI.showNotification(`Card sent to ${destinationZone}`, 'info');
+}
+
+function sendToGraveyard(cardId, sourceZone, uniqueCardId = null) {
+    sendCardToZone(cardId, sourceZone, 'graveyard', uniqueCardId);
 }
 
 function sendToExile(cardId, sourceZone, uniqueCardId = null) {
-    console.log(`🃏 Exiling: ${cardId} from ${sourceZone} (uniqueId: ${uniqueCardId})`);
-    
-    performGameAction('send_to_exile', { 
-        card_id: cardId,
-        source_zone: sourceZone,
-        unique_id: uniqueCardId
-    });
-    
-    // Update UI immediately for better UX (optimistic update)
-    if (uniqueCardId) {
-        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-        if (cardElement) {
-            cardElement.style.opacity = '0.5';
-            cardElement.style.pointerEvents = 'none';
-        }
-    }
-    
-    GameUI.showNotification(`Card exiled`, 'info');
+    sendCardToZone(cardId, sourceZone, 'exile', uniqueCardId);
 }
 
 function sendToHand(cardId, sourceZone, uniqueCardId = null) {
-    console.log(`🃏 Returning to hand: ${cardId} from ${sourceZone} (uniqueId: ${uniqueCardId})`);
-    
-    performGameAction('send_to_hand', { 
-        card_id: cardId,
-        source_zone: sourceZone,
-        unique_id: uniqueCardId
-    });
-    
-    // Update UI immediately for better UX (optimistic update)
-    if (uniqueCardId) {
-        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-        if (cardElement) {
-            cardElement.style.opacity = '0.5';
-            cardElement.style.pointerEvents = 'none';
-        }
-    }
-    
-    GameUI.showNotification(`Card returned to hand`, 'info');
+    sendCardToZone(cardId, sourceZone, 'hand', uniqueCardId);
 }
 
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
-    // Try to find by unique ID first, then fallback to card ID
-    let cardElement;
-    if (uniqueCardId) {
-        cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-    }
-    
-    if (!cardElement) {
-        // If no unique ID or not found, try to find by card ID but only for the current player's cards
-        const currentSelectedPlayer = GameCore.getSelectedPlayer();
-        let playerPrefix = 'unknown';
-        if (currentSelectedPlayer === 'player1') playerPrefix = 'p0';
-        else if (currentSelectedPlayer === 'player2') playerPrefix = 'p1';
-        
-        // Try to find cards that belong to the current player
-        const candidateElements = document.querySelectorAll(`[data-card-id="${cardId}"]`);
-        for (const element of candidateElements) {
-            const elementUniqueId = element.getAttribute('data-card-unique-id');
-            if (elementUniqueId && elementUniqueId.startsWith(playerPrefix)) {
-                cardElement = element;
-                break;
-            }
-        }
-        
-        // If still not found, use the first match (fallback)
-        if (!cardElement && candidateElements.length > 0) {
-            cardElement = candidateElements[0];
-        }
-    }
-    
+    const cardElement = findCardElement(cardId, uniqueCardId);
+
     if (cardElement) {
         cardElement.setAttribute('data-card-tapped', tapped.toString());
         cardElement.classList.toggle('tapped', tapped);
-        
-        // Update title
+
         const cardName = cardElement.getAttribute('data-card-name');
         cardElement.title = `${cardName}${tapped ? ' (Tapped)' : ''}`;
-        
     }
 }
 

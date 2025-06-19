@@ -89,15 +89,14 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchGameList();
 });
 
-// Main function for joining or creating battle
-async function joinOrCreateBattle() {
-    const gameId = document.getElementById('gameId').value.trim();
-    const decklistText = document.getElementById('decklistText').value.trim();
-    const statusDiv = document.getElementById('battle-status');
-    const battleButton = document.querySelector('button[onclick="joinOrCreateBattle()"]');
+// ===== HELPER FUNCTIONS =====
 
-    // Disable button and change appearance
-    function disableButton() {
+// Set button state to loading or enabled
+function setButtonState(isLoading) {
+    const battleButton = document.querySelector('button[onclick="joinOrCreateBattle()"]');
+    if (!battleButton) return;
+
+    if (isLoading) {
         battleButton.disabled = true;
         battleButton.classList.add('opacity-50', 'cursor-not-allowed');
         battleButton.innerHTML = `
@@ -105,10 +104,7 @@ async function joinOrCreateBattle() {
             Processing...
             <span class="ml-3 animate-pulse">⏳</span>
         `;
-    }
-
-    // Enable button and restore appearance
-    function enableButton() {
+    } else {
         battleButton.disabled = false;
         battleButton.classList.remove('opacity-50', 'cursor-not-allowed');
         battleButton.innerHTML = `
@@ -117,166 +113,118 @@ async function joinOrCreateBattle() {
             <span class="ml-3 group-hover:animate-pulse">⚔️</span>
         `;
     }
+}
 
-    // Validation
+// Display status messages
+function showStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('battle-status');
+    let colorClasses = 'border-blue-500/50 text-blue-400';
+    let icon = '🔍';
+
+    if (type === 'error') {
+        colorClasses = 'border-red-500/50 text-red-400';
+        icon = '❌';
+    } else if (type === 'success') {
+        colorClasses = 'border-green-500/50 text-green-400';
+        icon = '✨';
+    } else if (type === 'warning') {
+        colorClasses = 'border-yellow-500/50 text-yellow-400';
+        icon = '⏳';
+    }
+
+    statusDiv.innerHTML = `
+        <div class="arena-surface ${colorClasses} px-4 py-2 rounded-lg mt-2 animate-pulse">
+            ${icon} ${message}
+        </div>
+    `;
+}
+
+// ===== CORE BATTLE LOGIC =====
+
+// Step 1: Parse decklist
+async function parseDeck(decklistText) {
+    showStatus('Parsing your deck...');
+    const response = await fetch('/api/v1/decks/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decklist_text: decklistText })
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Failed to parse deck: ${error.detail || 'Unknown error'}`);
+    }
+
+    parsedDeck = await response.json();
+    showDeckPreview(parsedDeck);
+    return parsedDeck;
+}
+
+// Step 2: Check game and join or create
+async function checkAndJoinGame(gameId, decklistText) {
+    showStatus('Checking battlefield status...');
+    const gameCheckResponse = await fetch(`/api/v1/games/${gameId}/state`);
+    let playerRole = 'player1';
+    let actionText = 'Creating battlefield as Player 1';
+    let apiUrl = `/api/v1/games?game_id=${gameId}`;
+    let method = 'POST';
+
+    if (gameCheckResponse.ok) {
+        const gameData = await gameCheckResponse.json();
+        if (gameData.players && gameData.players.length >= 2) {
+            throw new Error('Battlefield is full (2 players already)');
+        }
+        playerRole = 'player2';
+        actionText = 'Joining battlefield as Player 2';
+        apiUrl = `/api/v1/games/${gameId}/join`;
+    }
+
+    showStatus(actionText + '...');
+    const gameResponse = await fetch(apiUrl, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decklist_text: decklistText })
+    });
+
+    if (!gameResponse.ok) {
+        const error = await gameResponse.json();
+        throw new Error(error.detail || 'Failed to join battlefield');
+    }
+
+    const gameData = await gameResponse.json();
+    if (gameData.players && gameData.players.length < 2) {
+        showStatus('Waiting for opponent to join...', 'warning');
+        waitForOpponent(gameId, playerRole);
+    } else {
+        showStatus('Both players ready! Starting the duel...', 'success');
+        setTimeout(() => {
+            window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
+        }, 1500);
+    }
+}
+
+// Main function for joining or creating battle
+async function joinOrCreateBattle() {
+    const gameId = document.getElementById('gameId').value.trim();
+    const decklistText = document.getElementById('decklistText').value.trim();
+
     if (!gameId) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                ⚠️ Please enter a battlefield name
-            </div>
-        `;
+        showStatus('Please enter a battlefield name', 'error');
         return;
     }
-
     if (!decklistText) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                ⚠️ Please paste your decklist
-            </div>
-        `;
+        showStatus('Please paste your decklist', 'error');
         return;
     }
 
-    // Disable button at start of process
-    disableButton();
+    setButtonState(true);
 
     try {
-        // Step 1: Parse the deck first
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-                🔍 Parsing your deck...
-            </div>
-        `;
-
-        const deckResponse = await fetch('/api/v1/decks/parse', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                decklist_text: decklistText
-            })
-        });
-
-        if (!deckResponse.ok) {
-            const error = await deckResponse.json();
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                    ❌ Failed to parse deck: ${error.detail || 'Unknown error'}
-                </div>
-            `;
-            enableButton(); // Re-enable button on error
-            return;
-        }
-
-        parsedDeck = await deckResponse.json();
-
-        // Show deck preview
-        showDeckPreview(parsedDeck);
-
-        // Step 2: Check if game exists
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-                🎯 Checking battlefield status...
-            </div>
-        `;
-
-        const gameCheckResponse = await fetch(`/api/v1/games/${gameId}/state`);
-        let playerRole = 'player1';
-        let actionText = 'Creating battlefield';
-
-        if (gameCheckResponse.ok) {
-            // Game exists, join as player 2
-            const gameData = await gameCheckResponse.json();
-            if (gameData.players && gameData.players.length >= 2) {
-                statusDiv.innerHTML = `
-                    <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                        ⚠️ Battlefield is full (2 players already)
-                    </div>
-                `;
-                enableButton(); // Re-enable button on error
-                return;
-            }
-            playerRole = 'player2';
-            actionText = 'Joining battlefield as Player 2';
-        } else {
-            actionText = 'Creating battlefield as Player 1';
-        }
-
-        // Step 3: Create/Join game with deck
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg mt-2 animate-pulse">
-                ⚔️ ${actionText}...
-            </div>
-        `;
-
-        let gameResponse;
-        if (playerRole === 'player2') {
-            // Join existing game
-            gameResponse = await fetch(`/api/v1/games/${gameId}/join`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    decklist_text: decklistText
-                })
-            });
-        } else {
-            // Create new game
-            gameResponse = await fetch(`/api/v1/games?game_id=${gameId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    decklist_text: decklistText
-                })
-            });
-        }
-
-        if (gameResponse.ok) {
-            const gameData = await gameResponse.json();
-
-            if (gameData.players && gameData.players.length < 2) {
-                // Waiting for second player
-                statusDiv.innerHTML = `
-                    <div class="arena-surface border border-yellow-500/50 text-yellow-400 px-4 py-2 rounded-lg mt-2">
-                        ⏳ Waiting for opponent to join the battlefield...
-                    </div>
-                `;
-
-                // Poll for second player
-                waitForOpponent(gameId, playerRole);
-            } else {
-                // Both players ready, start game
-                statusDiv.innerHTML = `
-                    <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
-                        ✨ Both players ready! Starting the duel...
-                    </div>
-                `;
-
-                setTimeout(() => {
-                    window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
-                }, 1500);
-            }
-        } else {
-            const error = await gameResponse.json();
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                    ❌ ${error.detail || 'Failed to join battlefield'}
-                </div>
-            `;
-            enableButton(); // Re-enable button on error
-        }
-
+        await parseDeck(decklistText);
+        await checkAndJoinGame(gameId, decklistText);
     } catch (error) {
-        statusDiv.innerHTML = `
-            <div class="arena-surface border border-red-500/50 text-red-400 px-4 py-2 rounded-lg mt-2">
-                💥 Error: ${error.message}
-            </div>
-        `;
-        enableButton(); // Re-enable button on error
+        showStatus(error.message, 'error');
+        setButtonState(false);
     }
 }
 
@@ -336,16 +284,7 @@ async function waitForOpponent(gameId, playerRole) {
                 </div>
             `;
             // Re-enable the main button when timeout occurs
-            const battleButton = document.querySelector('button[onclick="joinOrCreateBattle()"]');
-            if (battleButton) {
-                battleButton.disabled = false;
-                battleButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                battleButton.innerHTML = `
-                    <span class="mr-3 group-hover:animate-pulse">⚡</span>
-                    Enter Battlefield
-                    <span class="ml-3 group-hover:animate-pulse">⚔️</span>
-                `;
-            }
+            setButtonState(false);
         }
     }, 1000);
 }
