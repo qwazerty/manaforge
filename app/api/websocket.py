@@ -202,34 +202,44 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
             elif message.get("type") == "game_action":
                 # Process game action and broadcast result
                 action_type = message.get("action")
-                action_data = message.get("data", {})
+                request_data = message.get("data", {})
+                request_data['action_type'] = action_type # Ensure action_type is in the dict for handlers
                 
-                print(f"Processing game action: {action_type} from {player_id}")
+                print(f"[WS] Processing game action: {action_type} from {player_id}")
                 
-                # Broadcast action start to all players
-                await manager.broadcast_to_game(game_id, {
-                    "type": "game_action_start",
-                    "action": action_type,
-                    "player": player_id,
-                    "timestamp": time.time()
-                })
-                
-                # Process the action via game engine
+                # Use the same logic as the HTTP endpoint for consistency
                 try:
                     from app.api.routes import game_engine
+                    from app.api.decorators import action_registry
                     from app.models.game import GameAction
+
+                    # Get handler from registry
+                    handler_info = action_registry.get_handler(action_type)
+                    if not handler_info:
+                        raise ValueError(f"Unknown action_type: {action_type}")
+
+                    current_state = game_engine.games[game_id]
                     
+                    # Call the action handler
+                    handler = handler_info["handler"]
+                    handler_result = await handler(game_id, request_data, current_state)
+                    
+                    # If the handler overrides the action_type, use the new one.
+                    final_action_type = handler_result.get("action_type", action_type)
+                    
+                    # Create the game action
+                    action_params = {k: v for k, v in handler_result.items() if k not in ["broadcast_data", "action_type"]}
                     game_action = GameAction(
                         player_id=player_id,
-                        action_type=action_type,
-                        card_id=action_data.get("card_id"),
-                        additional_data=action_data
+                        action_type=final_action_type,
+                        **action_params
                     )
                     
+                    print(f"[WS] Dispatching to engine: {game_action.model_dump_json(indent=2)}")
                     updated_game_state = game_engine.process_action(game_id, game_action)
                     
-                    # Broadcast updated game state to all players
-                    await manager.broadcast_to_game(game_id, {
+                    # Prepare broadcast info
+                    broadcast_info = {
                         "type": "game_state_update",
                         "game_state": updated_game_state.model_dump(),
                         "action_result": {
@@ -238,25 +248,20 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                             "player": player_id
                         },
                         "timestamp": time.time()
-                    })
+                    }
+                    broadcast_info["action_result"].update(handler_result.get("broadcast_data", {}))
+
+                    # Broadcast updated game state to all players
+                    await manager.broadcast_to_game(game_id, broadcast_info)
                     
                 except Exception as e:
-                    print(f"Error processing game action: {e}")
+                    print(f"Error processing game action via WebSocket: {e}")
                     # Send error to requesting client
                     await websocket.send_text(json.dumps({
                         "type": "action_error",
                         "message": str(e),
                         "action": action_type
                     }))
-                    
-                    # Broadcast action failure to other players
-                    await manager.broadcast_to_game(game_id, {
-                        "type": "game_action_failed",
-                        "action": action_type,
-                        "player": player_id,
-                        "error": str(e),
-                        "timestamp": time.time()
-                    }, exclude_websocket=websocket)
             
             elif message.get("type") == "chat":
                 # Broadcast chat message to all players
