@@ -51,9 +51,9 @@ class UIZonesManager {
         }).join('');
 
         const clickHandler = isOpponent ? 
-            'onclick="UIZonesManager.showOpponentZoneModal(\'deck\')"' : 
+            '' : 
             'onclick="GameActions.drawCard()"';
-        const overlayText = isOpponent ? 'View<br>All' : 'Draw';
+        const overlayText = isOpponent ? '' : 'Draw';
         const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
 
         const zoneContent = UIUtils.generateZoneWrapper(`
