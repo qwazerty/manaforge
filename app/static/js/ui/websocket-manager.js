@@ -113,6 +113,15 @@ class WebSocketManager {
                     GameCore.setGameState(newGameState);
                     this._refreshGameUI();
                     
+                    // Check for pending actions like scry or surveil
+                    if (newGameState.pending_action && newGameState.pending_action.player_id === GameCore.getSelectedPlayer()) {
+                        const pending = newGameState.pending_action;
+                        const player = newGameState.players.find(p => p.id === pending.player_id);
+                        if (player && player.temporary_zone && player.temporary_zone.length > 0) {
+                            DecisionModal.show(pending.type, player.temporary_zone);
+                        }
+                    }
+                    
                     if (message.action_result && message.action_result.action === 'tap_card') {
                         const result = message.action_result;
                         console.log(`🃏 WebSocket: Tap action completed for ${result.player}`);

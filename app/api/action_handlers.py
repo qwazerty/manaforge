@@ -203,3 +203,49 @@ async def handle_copy_stack_spell(game_id: str, request: Optional[Dict], current
         "additional_data": {"stack_index": stack_index},
         "broadcast_data": {"card": card_id, "stack_index": stack_index}
     }
+
+@action_registry.register("mulligan")
+async def handle_mulligan(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
+    """Handle mulligan action."""
+    return {
+        "broadcast_data": {}
+    }
+
+@action_registry.register("scry", required_fields=["amount"])
+async def handle_scry(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
+    """Handle scry action."""
+    if not request:
+        raise HTTPException(status_code=400, detail="Request body required for scry")
+    
+    amount = request.get("amount")
+    
+    return {
+        "additional_data": {"amount": amount},
+        "broadcast_data": {"amount": amount}
+    }
+
+@action_registry.register("surveil", required_fields=["amount"])
+async def handle_surveil(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
+    """Handle surveil action."""
+    if not request:
+        raise HTTPException(status_code=400, detail="Request body required for surveil")
+    
+    amount = request.get("amount")
+    
+    return {
+        "additional_data": {"amount": amount},
+        "broadcast_data": {"amount": amount}
+    }
+
+@action_registry.register("resolve_temporary_zone", required_fields=["decisions"])
+async def handle_resolve_temporary_zone(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
+    """Handle resolving player decisions for scry/surveil."""
+    if not request:
+        raise HTTPException(status_code=400, detail="Request body required for resolving temporary zone")
+    
+    decisions = request.get("decisions")
+    
+    return {
+        "additional_data": {"decisions": decisions},
+        "broadcast_data": {"decisions": decisions}
+    }

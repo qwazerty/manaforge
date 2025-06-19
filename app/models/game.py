@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
-
 class CardType(str, Enum):
     """Card types in Magic The Gathering."""
     CREATURE = "creature"
@@ -17,14 +16,12 @@ class CardType(str, Enum):
     PLANESWALKER = "planeswalker"
     LAND = "land"
 
-
 class Rarity(str, Enum):
     """Card rarities."""
     COMMON = "common"
     UNCOMMON = "uncommon"
     RARE = "rare"
     MYTHIC = "mythic"
-
 
 class Color(str, Enum):
     """Magic colors."""
@@ -33,7 +30,6 @@ class Color(str, Enum):
     BLACK = "B"
     RED = "R"
     GREEN = "G"
-
 
 class Card(BaseModel):
     """A Magic The Gathering card."""
@@ -51,12 +47,10 @@ class Card(BaseModel):
     image_url: Optional[str] = Field(default=None, description="Card image URL")
     tapped: bool = Field(default=False, description="Whether the card is tapped")
 
-
 class DeckCard(BaseModel):
     """A card in a deck with quantity."""
     card: Card = Field(..., description="The card")
     quantity: int = Field(..., description="Number of copies in the deck")
-
 
 class Deck(BaseModel):
     """A Magic deck."""
@@ -75,7 +69,6 @@ class GameZone(str, Enum):
     EXILE = "exile"
     STACK = "stack"
 
-
 class GamePhase(str, Enum):
     """Simplified game phases like Magic Arena."""
     BEGIN = "begin"
@@ -83,7 +76,6 @@ class GamePhase(str, Enum):
     COMBAT = "combat"
     MAIN2 = "main2"
     END = "end"
-
 
 class Player(BaseModel):
     """A player in a game."""
@@ -96,7 +88,7 @@ class Player(BaseModel):
     exile: List[Card] = Field(default_factory=list, description="Cards in exile")
     library: List[Card] = Field(default_factory=list, description="Cards in library")
     mana_pool: Dict[str, int] = Field(default_factory=dict, description="Available mana")
-
+    temporary_zone: List[Card] = Field(default_factory=list, description="Temporary zone for scry/surveil")
 
 class GameState(BaseModel):
     """Current state of a Magic game."""
@@ -109,7 +101,7 @@ class GameState(BaseModel):
     players_played_this_round: List[bool] = Field(default_factory=lambda: [False, False], description="Track which players have played this round")
     stack: List[Dict[str, Any]] = Field(default_factory=list, description="Spells on the stack")
     priority_player: int = Field(default=0, description="Player with priority")
-
+    pending_action: Optional[Dict[str, Any]] = Field(default=None, description="A pending action requiring player input, e.g., for scry/surveil")
 
 class GameAction(BaseModel):
     """An action taken in the game."""

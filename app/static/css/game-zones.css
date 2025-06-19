@@ -1108,3 +1108,30 @@
     background-color: rgba(0, 0, 0, 0.2);
     color: rgba(201, 170, 113, 0.6);
 }
+
+.card-zones-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 180px; /* Ensure adequate height for 2x2 grid */
+}
+
+.zone-item {
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    position: relative;
+    padding: 0.5rem;
+    min-height: 70px; /* Adjusted for 2x2 grid layout */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== ZONE CONTENT LAYOUT ===== */
+.zone-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
