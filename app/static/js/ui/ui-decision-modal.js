@@ -60,7 +60,7 @@ class DecisionModal {
                     <button class="zone-modal-close">&times;</button>
                 </div>
                 <p class="text-gray-400 text-center mb-4">Choose a destination for each card.</p>
-                <div class="zone-cards-grid decision-cards-grid"></div>
+                <div class="zone-cards-container"></div>
                 <div class="text-center mt-6">
                     <button id="decision-modal-add-one" class="btn btn-secondary bg-arena-surface hover:bg-arena-surface-light border text-arena-text p-2 rounded">
                         ${this.actionType === 'scry' ? 'Scry 1 more' : 'Surveil 1 more'}
@@ -74,19 +74,12 @@ class DecisionModal {
     }
 
     static renderCards() {
-        const cardsContainer = this.modalElement.querySelector('.decision-cards-grid');
+        const cardsContainer = this.modalElement.querySelector('.zone-cards-container');
         cardsContainer.innerHTML = '';
 
-        this.cards.forEach(card => {
-            // Don't render cards for which a decision has already been made
-            if (this.decisions.some(d => d.card_id === card.id)) {
-                return;
-            }
+        const cardsToRender = this.cards.filter(card => !this.decisions.some(d => d.card_id === card.id));
 
-            const cardEl = document.createElement('div');
-            cardEl.className = 'zone-card-item';
-            cardEl.dataset.cardId = card.id;
-
+        const cardsHTML = cardsToRender.map(card => {
             const cardImage = `<img src="${card.image_url || '/static/images/card-back.jpg'}" alt="${card.name}" class="w-full rounded-lg mb-2">`;
             
             const scryButtons = `
@@ -101,23 +94,27 @@ class DecisionModal {
                     <button class="btn btn-danger btn-sm w-full bg-arena-surface hover:bg-arena-surface-light border text-arena-text p-2 rounded" data-destination="graveyard">Graveyard</button>
                 </div>`;
 
-            cardEl.innerHTML = `
-                ${cardImage}
-                <div class="zone-card-name">${card.name}</div>
-                <div class="decision-card-actions mt-2">
-                    ${this.actionType === 'scry' ? scryButtons : surveilButtons}
+            return `
+                <div class="zone-card-slider-item" data-card-id="${card.id}">
+                    ${cardImage}
+                    <div class="zone-card-name">${card.name}</div>
+                    <div class="decision-card-actions mt-2">
+                        ${this.actionType === 'scry' ? scryButtons : surveilButtons}
+                    </div>
                 </div>
             `;
+        }).join('');
 
-            cardEl.querySelectorAll('.decision-buttons button').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const destination = e.target.dataset.destination;
-                    this.makeDecision(card.id, destination, cardEl);
-                });
+        cardsContainer.innerHTML = `<div class="zone-cards-slider">${cardsHTML}</div>`;
+
+        cardsContainer.querySelectorAll('.decision-buttons button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const destination = e.target.dataset.destination;
+                const cardElement = e.target.closest('.zone-card-slider-item');
+                const cardId = cardElement.dataset.cardId;
+                this.makeDecision(cardId, destination, cardElement);
             });
-
-            cardsContainer.appendChild(cardEl);
         });
     }
 
@@ -131,7 +128,7 @@ class DecisionModal {
         cardElement.remove();
 
         // Check if all cards from the initial set have been decided
-        const remainingCards = this.modalElement.querySelector('.decision-cards-grid').children.length;
+        const remainingCards = this.modalElement.querySelector('.zone-cards-slider').children.length;
         if (remainingCards === 0) {
             this.confirmDecisions();
         }
@@ -167,7 +164,7 @@ class DecisionModal {
     static cancel() {
         // If user closes the modal, we need to resolve with default actions.
         // Let's assume putting all remaining cards to the bottom is the default.
-        const remainingCardElements = this.modalElement.querySelectorAll('.zone-card-item');
+        const remainingCardElements = this.modalElement.querySelectorAll('.zone-card-slider-item');
         remainingCardElements.forEach(cardEl => {
             const cardId = cardEl.dataset.cardId;
             if (!this.decisions.some(d => d.card_id === cardId)) {
