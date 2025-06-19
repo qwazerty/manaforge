@@ -69,6 +69,12 @@ class ZoneContextMenu {
 
         // Extract base zone name (remove opponent_ prefix if present)
         const baseZoneName = zoneName.replace('opponent_', '');
+
+        // Do not show context menu for opponent's deck
+        if (isOpponent && baseZoneName === 'deck') {
+            return;
+        }
+        
         const menuConfig = this.ZONE_MENUS[baseZoneName];
         
         if (!menuConfig) {
@@ -268,10 +274,14 @@ class ZoneContextMenu {
             this.showMenu(zoneName, e, isOpponent);
         });
 
-        // Add visual indicator for right-click availability
-        const actionType = isOpponent ? 'interact with opponent' : 'interact with';
+        // Add visual indicator for right-click availability, unless it's the opponent's deck
         const cleanZoneName = zoneName.replace('opponent_', '');
-        zoneElement.title = `Right-click to ${actionType} ${cleanZoneName}`;
+        if (!isOpponent || cleanZoneName !== 'deck') {
+            const actionType = isOpponent ? 'interact with opponent' : 'interact with';
+            zoneElement.title = `Right-click to ${actionType} ${cleanZoneName}`;
+        } else {
+            zoneElement.title = `Opponent's library`; // Or simply remove the title
+        }
     }
 }
 
