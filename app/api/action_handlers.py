@@ -249,3 +249,23 @@ async def handle_resolve_temporary_zone(game_id: str, request: Optional[Dict], c
         "additional_data": {"decisions": decisions},
         "broadcast_data": {"decisions": decisions}
     }
+
+@action_registry.register("add_to_temporary_zone", required_fields=["action_name", "count"])
+async def handle_add_to_temporary_zone(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
+    """Handle adding more cards to the temporary zone for scry/surveil."""
+    if not request:
+        raise HTTPException(status_code=400, detail="Request body required for this action")
+
+    action_name = request.get("action_name")
+    count = request.get("count", 1)
+
+    if action_name not in ["scry", "surveil"]:
+        raise HTTPException(status_code=400, detail="Invalid action_name for add_to_temporary_zone")
+
+    # This handler transforms the action into a scry or surveil action.
+    # The router will use the new action_type to call the game engine.
+    return {
+        "action_type": action_name,
+        "additional_data": {"amount": count},
+        "broadcast_data": {"action_type": action_name, "count": count}
+    }

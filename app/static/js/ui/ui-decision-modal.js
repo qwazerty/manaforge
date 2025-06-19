@@ -6,6 +6,7 @@
 class DecisionModal {
     static modalElement = null;
     static decisions = [];
+    static cards = [];
     static actionType = '';
 
     static initialize() {
@@ -14,23 +15,27 @@ class DecisionModal {
     }
 
     static show(actionType, cards) {
-        this.actionType = actionType;
-        this.cards = [...cards];
-        this.decisions = [];
-
-        if (this.modalElement) {
+        // If the backend sends an empty list of cards, it means the action is over.
+        if (!cards || cards.length === 0) {
             this.close();
+            return;
         }
 
-        this.createModalElement();
-        document.body.appendChild(this.modalElement);
+        this.actionType = actionType;
+        this.cards = [...cards];
+        
+        // If the modal is not already open, create it.
+        if (!this.modalElement) {
+            this.decisions = []; // Reset decisions only when opening for the first time
+            this.createModalElement();
+            document.body.appendChild(this.modalElement);
+            // Animate modal appearance
+            setTimeout(() => {
+                this.modalElement.classList.add('active');
+            }, 10);
+        }
 
         this.renderCards();
-
-        // Animate modal appearance
-        setTimeout(() => {
-            this.modalElement.classList.add('active');
-        }, 10);
     }
 
     static close() {
@@ -51,19 +56,21 @@ class DecisionModal {
         this.modalElement.innerHTML = `
             <div class="zone-modal-content">
                 <div class="zone-modal-header">
-                    <h2 class="zone-modal-title">${this.actionType === 'scry' ? 'Scry' : 'Surveil'}</h2>
+                    <h2 class="zone-modal-title">${this.actionType.charAt(0).toUpperCase() + this.actionType.slice(1)}</h2>
                     <button class="zone-modal-close">&times;</button>
                 </div>
                 <p class="text-gray-400 text-center mb-4">Choose a destination for each card.</p>
                 <div class="zone-cards-grid decision-cards-grid"></div>
                 <div class="text-center mt-6">
-                    <button id="decision-modal-confirm" class="btn btn-primary bg-arena-surface hover:bg-arena-surface-light border text-arena-text p-2 rounded" disabled>Confirm Decisions</button>
+                    <button id="decision-modal-add-one" class="btn btn-secondary bg-arena-surface hover:bg-arena-surface-light border text-arena-text p-2 rounded">
+                        ${this.actionType === 'scry' ? 'Scry 1 more' : 'Surveil 1 more'}
+                    </button>
                 </div>
             </div>
         `;
 
-        this.modalElement.querySelector('.zone-modal-close').addEventListener('click', () => this.close());
-        this.modalElement.querySelector('#decision-modal-confirm').addEventListener('click', () => this.confirmDecisions());
+        this.modalElement.querySelector('.zone-modal-close').addEventListener('click', () => this.cancel());
+        this.modalElement.querySelector('#decision-modal-add-one').addEventListener('click', () => this.addOneMore());
     }
 
     static renderCards() {
@@ -71,8 +78,13 @@ class DecisionModal {
         cardsContainer.innerHTML = '';
 
         this.cards.forEach(card => {
+            // Don't render cards for which a decision has already been made
+            if (this.decisions.some(d => d.card_id === card.id)) {
+                return;
+            }
+
             const cardEl = document.createElement('div');
-            cardEl.className = 'zone-card-item'; // Combine classes
+            cardEl.className = 'zone-card-item';
             cardEl.dataset.cardId = card.id;
 
             const cardImage = `<img src="${card.image_url || '/static/images/card-back.jpg'}" alt="${card.name}" class="w-full rounded-lg mb-2">`;
@@ -99,7 +111,7 @@ class DecisionModal {
 
             cardEl.querySelectorAll('.decision-buttons button').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent modal from closing if clicked inside
+                    e.stopPropagation();
                     const destination = e.target.dataset.destination;
                     this.makeDecision(card.id, destination, cardEl);
                 });
@@ -111,42 +123,58 @@ class DecisionModal {
 
     static makeDecision(cardId, destination, cardElement) {
         const existingDecision = this.decisions.find(d => d.card_id === cardId);
-        if (existingDecision) {
-            existingDecision.destination = destination;
-        } else {
+        if (!existingDecision) {
             this.decisions.push({ card_id: cardId, destination: destination });
         }
 
-        // Visual feedback
-        cardElement.style.borderColor = '#7289da';
-        cardElement.style.boxShadow = '0 0 15px rgba(114, 137, 218, 0.5)';
-        
-        cardElement.querySelectorAll('.decision-buttons button').forEach(btn => {
-            btn.classList.remove('bg-green-500', 'text-white');
-        });
-        const selectedButton = cardElement.querySelector(`[data-destination="${destination}"]`);
-        selectedButton.classList.add('bg-green-500', 'text-white');
+        // Remove the card from view
+        cardElement.remove();
 
-        if (this.decisions.length === this.cards.length) {
-            this.modalElement.querySelector('#decision-modal-confirm').disabled = false;
+        // Check if all cards from the initial set have been decided
+        const remainingCards = this.modalElement.querySelector('.decision-cards-grid').children.length;
+        if (remainingCards === 0) {
+            this.confirmDecisions();
         }
     }
 
     static confirmDecisions() {
-        if (this.decisions.length !== this.cards.length) {
-            UINotifications.showNotification('You must make a decision for all cards.', 'warning');
-            return;
+        if (this.decisions.length > 0) {
+            if (window.GameActions && window.GameActions.performGameAction) {
+                window.GameActions.performGameAction('resolve_temporary_zone', { decisions: this.decisions });
+                UINotifications.showNotification(`Resolving ${this.actionType}...`, 'info');
+            } else {
+                console.error('GameActions not available to resolve temporary zone.');
+                UINotifications.showNotification('Action could not be performed.', 'error');
+            }
         }
+        this.close();
+        this.decisions = []; // Clear decisions after confirming
+    }
 
+    static addOneMore() {
+        // This action needs to be implemented on the backend.
+        // It should add a card to the player's temporary zone and trigger a state update.
         if (window.GameActions && window.GameActions.performGameAction) {
-            window.GameActions.performGameAction('resolve_temporary_zone', { decisions: this.decisions });
-            UINotifications.showNotification(`Resolving ${this.actionType}...`, 'info');
+            // The action_type for the endpoint is 'add_to_temporary_zone'.
+            // The actual keyword (scry/surveil) is passed in the payload as 'action_name'.
+            window.GameActions.performGameAction('add_to_temporary_zone', { action_name: this.actionType, count: 1 });
         } else {
-            console.error('GameActions not available to resolve temporary zone.');
+            console.error('GameActions not available for add_to_temporary_zone.');
             UINotifications.showNotification('Action could not be performed.', 'error');
         }
-
-        this.close();
+    }
+    
+    static cancel() {
+        // If user closes the modal, we need to resolve with default actions.
+        // Let's assume putting all remaining cards to the bottom is the default.
+        const remainingCardElements = this.modalElement.querySelectorAll('.zone-card-item');
+        remainingCardElements.forEach(cardEl => {
+            const cardId = cardEl.dataset.cardId;
+            if (!this.decisions.some(d => d.card_id === cardId)) {
+                this.decisions.push({ card_id: cardId, destination: 'bottom' });
+            }
+        });
+        this.confirmDecisions();
     }
 }
 

@@ -534,12 +534,7 @@ class SimpleGameEngine:
         """Handle scry action by moving cards to the temporary zone for player decision."""
         player = self._get_player(game_state, action.player_id)
         amount = action.additional_data.get("amount", 1)
-
-        # Ensure the temporary zone is clear before starting a new scry
-        if player.temporary_zone:
-            print(f"Warning: Player {action.player_id} had cards in temporary_zone before scrying. Clearing it.")
-            player.library.extend(player.temporary_zone)
-            player.temporary_zone = []
+        print(f"[Engine] Scry action received for player {action.player_id} with amount {amount}.")
 
         scry_cards = player.library[:amount]
         player.library = player.library[amount:]
@@ -552,18 +547,13 @@ class SimpleGameEngine:
             "count": len(scry_cards)
         }
         
-        print(f"Player {action.player_id} is scrying {len(scry_cards)} cards.")
+        print(f"Player {action.player_id} is scrying {len(scry_cards)} cards. Temp zone size: {len(player.temporary_zone)}")
 
     def _surveil(self, game_state: GameState, action: GameAction) -> None:
         """Handle surveil action by moving cards to the temporary zone for player decision."""
         player = self._get_player(game_state, action.player_id)
         amount = action.additional_data.get("amount", 1)
-
-        # Ensure the temporary zone is clear
-        if player.temporary_zone:
-            print(f"Warning: Player {action.player_id} had cards in temporary_zone before surveiling. Clearing it.")
-            player.library.extend(player.temporary_zone)
-            player.temporary_zone = []
+        print(f"[Engine] Surveil action received for player {action.player_id} with amount {amount}.")
 
         surveil_cards = player.library[:amount]
         player.library = player.library[amount:]
@@ -576,7 +566,7 @@ class SimpleGameEngine:
             "count": len(surveil_cards)
         }
 
-        print(f"Player {action.player_id} is surveiling {len(surveil_cards)} cards.")
+        print(f"Player {action.player_id} is surveiling {len(surveil_cards)} cards. Temp zone size: {len(player.temporary_zone)}")
 
     def _resolve_temporary_zone(self, game_state: GameState, action: GameAction) -> None:
         """Resolve player decisions for cards in the temporary zone (from scry/surveil)."""

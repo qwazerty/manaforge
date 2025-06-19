@@ -259,11 +259,15 @@ async def perform_game_action(
         handler = handler_info["handler"]
         action_data = await handler(game_id, request, current_state)
         
+        # If the handler overrides the action_type, use the new one.
+        final_action_type = action_data.get("action_type", action_type)
+        
         # Create the game action
+        action_params = {k: v for k, v in action_data.items() if k not in ["broadcast_data", "action_type"]}
         action = GameAction(
             player_id=player_id,
-            action_type=action_type,
-            **{k: v for k, v in action_data.items() if k != "broadcast_data"}
+            action_type=final_action_type,
+            **action_params
         )
         
         # Process the action
