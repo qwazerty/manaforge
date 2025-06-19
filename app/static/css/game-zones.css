@@ -584,8 +584,6 @@
 .zone-cards-slider .zone-card-slider-item:hover {
     z-index: 10;
     transform: translateY(-8px) scale(1.03);
-    margin-left: 10px;
-    margin-right: -25px;
 }
 
 .zone-cards-slider::-webkit-scrollbar {

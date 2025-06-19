@@ -80,7 +80,7 @@ class DecisionModal {
         const cardsToRender = this.cards.filter(card => !this.decisions.some(d => d.card_id === card.id));
 
         const cardsHTML = cardsToRender.map(card => {
-            const cardImage = `<img src="${card.image_url || '/static/images/card-back.jpg'}" alt="${card.name}" class="w-full rounded-lg mb-2">`;
+            const cardImage = `<img src="${card.image_url || '/static/images/card-back.jpg'}" alt="${card.name}" class="card-mini">`;
             
             const scryButtons = `
                 <div class="decision-buttons">
