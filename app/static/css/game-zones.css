@@ -922,7 +922,7 @@
 }
 
 .lands-zone-content {
-    display: flex;
+    display: flex-start;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -1122,13 +1122,6 @@
     position: relative;
     padding: 0.5rem;
     min-height: 70px; /* Adjusted for 2x2 grid layout */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* ===== ZONE CONTENT LAYOUT ===== */
-.zone-content {
     display: flex;
     align-items: center;
     justify-content: center;
