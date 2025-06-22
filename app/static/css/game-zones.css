@@ -28,27 +28,6 @@
     box-sizing: border-box;
 }
 
-/* Empty state styles */
-.zone-empty .card-fallback,
-.card-fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-    font-size: 16px;
-    opacity: 0.7;
-    width: 100%;
-    height: 100%;
-    padding: 10px;
-}
-
-.card-fallback span {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-
 /* ===== DECK ZONE STYLES ===== */
 /* Styles for deck zone with card stack and draw interactions */
 
@@ -939,7 +918,7 @@
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: hidden;
     align-items: flex-start;
     justify-content: center;
@@ -1007,15 +986,6 @@
     content: "PERMANENTS";
 }
 
-/* Opponent hand optimization */
-/* .flex.justify-center.space-x-1.overflow-x-auto.py-1 {
-    flex-wrap: nowrap !important;
-    gap: 2px !important;
-    justify-content: center !important;
-    padding: 4px;
-    min-height: 100px;
-} */
-
 /* Dynamic overlap will be handled by JavaScript */
 
 /* ===== OPPONENT CARD ZONES STYLES ===== */
@@ -1025,13 +995,12 @@
 .opponent-hand-zone {
     display: flex;
     justify-content: center !important;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: nowrap;
     gap: 0;
     padding: 0.25rem;
     text-align: center;
-    max-height: 80px;
-    height: 80px;
+    max-height: 50px;
     overflow: hidden;
 }
 
@@ -1044,9 +1013,12 @@
 }
 
 .card-zones-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100%;
+    min-height: 180px; /* Ensure adequate height for 2x2 grid */
     flex-direction: column;
-    gap: 1rem;
 }
 
 .zone-display {
@@ -1110,20 +1082,10 @@
     color: rgba(201, 170, 113, 0.6);
 }
 
-.card-zones-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 0.5rem;
-    width: 100%;
-    min-height: 180px; /* Ensure adequate height for 2x2 grid */
-}
-
 .zone-item {
     transition: all 0.2s ease-in-out;
     cursor: pointer;
     position: relative;
-    padding: 0.5rem;
     min-height: 70px; /* Adjusted for 2x2 grid layout */
     display: flex;
     align-items: center;
