@@ -111,21 +111,6 @@
     transform: scale(1.05);
 }
 
-/* Card fallback styles */
-.card-fallback {
-    background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #c9aa71;
-    text-align: center;
-    font-size: 12px;
-    padding: 4px;
-    width: 100%;
-    height: 100%;
-}
-
 /* ===== COMPACT CARD STYLES FOR 1080px HEIGHT OPTIMIZATION ===== */
 
 /* Ultra-compact card sizes for tight layouts */
