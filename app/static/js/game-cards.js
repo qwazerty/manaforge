@@ -238,16 +238,31 @@ const GameCards = {
         }
     },
 
+    // Ajout des propriétés pour stocker les références liées
+    _boundHandleCardPreviewClick: null,
+    _boundHandleCardPreviewKeydown: null,
+
     addCardPreviewListeners: function() {
+        // Utiliser des références liées persistantes
+        if (!this._boundHandleCardPreviewClick) {
+            this._boundHandleCardPreviewClick = this.handleCardPreviewClick.bind(this);
+        }
+        if (!this._boundHandleCardPreviewKeydown) {
+            this._boundHandleCardPreviewKeydown = this.handleCardPreviewKeydown.bind(this);
+        }
         setTimeout(() => {
-            document.addEventListener('click', this.handleCardPreviewClick.bind(this));
-            document.addEventListener('keydown', this.handleCardPreviewKeydown.bind(this));
+            document.addEventListener('click', this._boundHandleCardPreviewClick);
+            document.addEventListener('keydown', this._boundHandleCardPreviewKeydown);
         }, 100);
     },
 
     removeCardPreviewListeners: function() {
-        document.removeEventListener('click', this.handleCardPreviewClick);
-        document.removeEventListener('keydown', this.handleCardPreviewKeydown);
+        if (this._boundHandleCardPreviewClick) {
+            document.removeEventListener('click', this._boundHandleCardPreviewClick);
+        }
+        if (this._boundHandleCardPreviewKeydown) {
+            document.removeEventListener('keydown', this._boundHandleCardPreviewKeydown);
+        }
     }
 };
 
