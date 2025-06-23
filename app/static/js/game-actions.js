@@ -321,5 +321,14 @@ window.GameActions = {
     counterStackSpell,
     copyStackSpell,
     drawCard,
-    modifyLife
+    modifyLife,
+    moveCard
 };
+
+/**
+ * Déplacement générique d'une carte entre zones via drag and drop.
+ * Utilise les API existantes selon la zone cible.
+ */
+function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null) {
+    sendCardToZone(cardId, sourceZone, targetZone, uniqueCardId);
+}
