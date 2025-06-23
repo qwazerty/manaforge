@@ -58,7 +58,9 @@ class UIZonesManager {
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
-                <div class="${deckClass}" ${clickHandler}>
+                <div class="${deckClass}" ${clickHandler}
+                    ondragover="UIZonesManager.handleZoneDragOver(event)"
+                    ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
                     ${stackCards}
                     <div class="deck-click-overlay">
                         <span class="draw-hint">${overlayText}</span>
@@ -112,7 +114,9 @@ class UIZonesManager {
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
-                <div class="graveyard-cards-stack" onclick="${clickHandler}">
+                <div class="graveyard-cards-stack" onclick="${clickHandler}"
+                    ondragover="UIZonesManager.handleZoneDragOver(event)"
+                    ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
                     ${stackCards}
                     <div class="graveyard-click-overlay">
                         <span class="zone-view-hint">View<br>All</span>
@@ -163,7 +167,9 @@ class UIZonesManager {
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4">
-                <div class="exile-stack" onclick="${clickHandler}">
+                <div class="exile-stack" onclick="${clickHandler}"
+                    ondragover="UIZonesManager.handleZoneDragOver(event)"
+                    ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
                     ${stackCards}
                     <div class="exile-top-card">
                         ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
@@ -331,6 +337,34 @@ class UIZonesManager {
             if (typeKey !== 'default' && type.includes(typeKey)) return icon;
         }
         return this.CARD_TYPE_ICONS.default;
+    }
+
+    // ===== DRAG AND DROP HANDLERS =====
+
+    static handleZoneDragOver(event) {
+        event.preventDefault();
+        // Optionally: add visual feedback
+        if (event.currentTarget) {
+            event.currentTarget.classList.add('zone-drag-over');
+        }
+    }
+
+    static handleZoneDrop(event, targetZone) {
+        event.preventDefault();
+        if (event.currentTarget) {
+            event.currentTarget.classList.remove('zone-drag-over');
+        }
+        try {
+            const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+            // Appeler une action pour déplacer la carte (à adapter selon la logique backend)
+            if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
+                window.GameActions.moveCard(data.cardId, data.cardZone, targetZone, data.uniqueCardId);
+            } else {
+                UINotifications.showNotification('Déplacement de carte non implémenté côté backend.', 'warning');
+            }
+        } catch (e) {
+            UINotifications.showNotification('Erreur lors du drop de carte.', 'error');
+        }
     }
 
     // ===== PRIVATE HELPER METHODS =====

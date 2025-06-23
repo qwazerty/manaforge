@@ -56,6 +56,8 @@ const GameCards = {
                 data-card-tapped="${isTapped}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
+                draggable="true"
+                ondragstart="GameCards.handleDragStart(event, this)"
                 ${onClickAction}
                 oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
                 ${imageUrl ? `
@@ -267,6 +269,19 @@ const GameCards = {
         if (this._boundHandleCardPreviewKeydown) {
             document.removeEventListener('keydown', this._boundHandleCardPreviewKeydown);
         }
+    },
+
+    handleDragStart: function(event, cardElement) {
+        const cardId = cardElement.getAttribute('data-card-id');
+        const cardZone = cardElement.getAttribute('data-card-zone');
+        const uniqueCardId = cardElement.getAttribute('data-card-unique-id');
+        event.dataTransfer.setData('text/plain', JSON.stringify({
+            cardId,
+            cardZone,
+            uniqueCardId
+        }));
+        // Optionally: add visual feedback
+        cardElement.classList.add('dragging');
     }
 };
 

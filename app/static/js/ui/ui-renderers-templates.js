@@ -202,7 +202,9 @@ class UIRenderersTemplates {
 
         return `
             <div class="battlefield-zone ${zoneName}-zone compact-zones">
-                <div class="${zoneName}-zone-content zone-content" data-card-count="${cardCount}">
+                <div class="${zoneName}-zone-content zone-content" data-card-count="${cardCount}"
+                    ondragover="UIZonesManager.handleZoneDragOver(event)"
+                    ondrop="UIZonesManager.handleZoneDrop(event, '${zoneName}')">
                     ${cardsHtml}
                 </div>
             </div>
@@ -408,7 +410,9 @@ class UIRenderersTemplates {
                 <div class="stack-header">
                     📜 The Stack (${stack.length})
                 </div>
-                <div class="stack-content">
+                <div class="stack-content"
+                    ondragover="UIZonesManager.handleZoneDragOver(event)"
+                    ondrop="UIZonesManager.handleZoneDrop(event, 'stack')">
                     ${stack.length > 0 ? 
                         stack.map((spell, index) => this._renderStackSpell(spell, index)).reverse().join('')
                         : this._renderEmptyStack()
@@ -522,7 +526,9 @@ class UIRenderersTemplates {
                 ${this.generateBattlefieldZone(player?.battlefield, 'permanents', false, controlledIdx)}
                 ${this.generateBattlefieldZone(player?.battlefield, 'lands', false, controlledIdx)}
 
-                <div class="hand-zone-content zone-content" data-card-count="${handSize}">
+                <div class="hand-zone-content zone-content" data-card-count="${handSize}"
+                    ondragover="UIZonesManager.handleZoneDragOver(event)"
+                    ondrop="UIZonesManager.handleZoneDrop(event, 'hand')">
                     ${this.generatePlayerHand(player?.hand || [], controlledIdx)}
                 </div>
             </div>
