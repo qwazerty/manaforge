@@ -918,7 +918,6 @@
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    overflow-x: hidden;
     overflow-y: hidden;
     align-items: flex-start;
     justify-content: center;
