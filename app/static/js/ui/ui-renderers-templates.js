@@ -193,11 +193,11 @@ class UIRenderersTemplates {
     /**
      * Generate battlefield zone
      */
-    static generateBattlefieldZone(cards, zoneName, title, icon, playerId = null) {
+    static generateBattlefieldZone(cards, zoneName, isOpponent, playerId = null) {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
         const cardCount = filteredCards.length;
         const cardsHtml = filteredCards.map((card, index) => 
-            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, index, playerId)
+            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, index, playerId)
         ).join('');
 
         return `
@@ -218,7 +218,7 @@ class UIRenderersTemplates {
         }
 
         return hand.map((card, index) => 
-            GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, false, 'hand', index, playerId)
+            GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, false, 'hand', false, index, playerId)
         ).join('');
     }
 
@@ -502,9 +502,9 @@ class UIRenderersTemplates {
                 <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
                     ${this.generateOpponentHand(handSize)}
                 </div>
-                
-                ${this.generateBattlefieldZone(opponent?.battlefield, 'lands', 'Lands', '🌍', opponentIdx)}
-                ${this.generateBattlefieldZone(opponent?.battlefield, 'permanents', 'Permanents', '⚔️', opponentIdx)}
+
+                ${this.generateBattlefieldZone(opponent?.battlefield, 'lands', true, opponentIdx)}
+                ${this.generateBattlefieldZone(opponent?.battlefield, 'permanents', true, opponentIdx)}
             </div>
         `;
     }
@@ -519,9 +519,9 @@ class UIRenderersTemplates {
         
         return `
             <div class="arena-card rounded-lg p-3 hand-zone ${activeTurnClass}">
-                ${this.generateBattlefieldZone(player?.battlefield, 'permanents', 'Your Permanents', '⚔️', controlledIdx)}
-                ${this.generateBattlefieldZone(player?.battlefield, 'lands', 'Your Lands', '🌍', controlledIdx)}
-                
+                ${this.generateBattlefieldZone(player?.battlefield, 'permanents', false, controlledIdx)}
+                ${this.generateBattlefieldZone(player?.battlefield, 'lands', false, controlledIdx)}
+
                 <div class="hand-zone-content zone-content" data-card-count="${handSize}">
                     ${this.generatePlayerHand(player?.hand || [], controlledIdx)}
                 </div>

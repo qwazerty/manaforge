@@ -26,7 +26,7 @@ const GameCards = {
         });
     },
 
-    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', index = 0, playerId = null) {
+    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null) {
         const cardId = card.id || card.name;
         const cardName = card.name || 'Unknown';
         const imageUrl = this.getSafeImageUrl(card);
@@ -48,15 +48,16 @@ const GameCards = {
 
         return `
             <div class="${cardClass}${tappedClass}" 
-                 data-card-id="${cardId}"
-                 data-card-unique-id="${uniqueCardId}"
-                 data-card-name="${escapedCardName}"
-                 data-card-image="${escapedImageUrl}"
-                 data-card-zone="${zone}"
-                 data-card-tapped="${isTapped}"
-                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
-                 ${onClickAction}
-                 oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
+                data-card-id="${escapedCardId}"
+                data-card-unique-id="${escapedUniqueId}"
+                data-card-name="${escapedCardName}"
+                data-card-image="${escapedImageUrl}"
+                data-card-zone="${zone}"
+                data-card-tapped="${isTapped}"
+                data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
+                data-is-opponent="${isOpponent}"
+                ${onClickAction}
+                oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
                 ${imageUrl ? `
                     <div class="relative">
                         <img src="${imageUrl}" 
@@ -142,8 +143,9 @@ const GameCards = {
         const cardZone = cardElement.getAttribute('data-card-zone') || 'unknown';
         const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
+        const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
 
-        console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId})`);
+        console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId}, Opponent: ${isOpponent})`);
 
         const existingMenu = document.getElementById('card-context-menu');
         if (existingMenu) {
@@ -168,22 +170,24 @@ const GameCards = {
             <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${cardId}', '${cardName}', '${cardImage}')"><span class="icon">🔍</span> View Full Size</div>
             <div class="card-context-menu-divider"></div>`;
 
-        if (cardZone === 'hand') {
-            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')"><span class="icon">▶️</span> Play Card</div>`;
-        }
+        if (!isOpponent) {
+            if (cardZone === 'hand') {
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')"><span class="icon">▶️</span> Play Card</div>`;
+            }
 
-        if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
-            const tapAction = isTapped ? 'Untap' : 'Tap';
-            const tapIcon = isTapped ? '⤴️' : '🔄';
-            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
-        }
+            if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
+                const tapAction = isTapped ? 'Untap' : 'Tap';
+                const tapIcon = isTapped ? '⤴️' : '🔄';
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
+            }
 
-        menuHTML += `
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
+            menuHTML += `
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
 
-        if (cardZone !== 'hand') {
-            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
+            if (cardZone !== 'hand') {
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToHand('${cardId}', '${cardZone}', '${uniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
+            }
         }
 
         menuHTML += `</div>`;
