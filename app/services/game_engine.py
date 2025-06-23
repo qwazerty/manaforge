@@ -460,24 +460,33 @@ class SimpleGameEngine:
         return card_found
 
     def _move_card(self, game_state: GameState, action: GameAction, destination_zone_name: str) -> None:
-        """Generic method to move a card from a source zone to a destination zone."""
-        player = self._get_player(game_state, action.player_id)
+        """
+        Permet de déplacer une carte depuis n'importe quelle zone de n'importe quel joueur
+        vers la zone de destination du joueur propriétaire de la carte.
+        """
         card_id = action.card_id
         source_zone = action.additional_data.get("source_zone", "unknown")
 
         if not card_id:
             raise ValueError(f"card_id is required for moving a card to {destination_zone_name}")
 
-        card_found = self._find_and_remove_card(player, card_id, source_zone, game_state, destination_zone_name=destination_zone_name)
+        # Cherche la carte dans tous les joueurs
+        card_found = None
+        owner_player = None
+        for player in game_state.players:
+            card_found = self._find_and_remove_card(player, card_id, source_zone, game_state, destination_zone_name=destination_zone_name)
+            if card_found:
+                owner_player = player
+                break
 
-        if not card_found:
-            raise ValueError(f"Card {card_id} not found in {source_zone} for player {action.player_id}")
+        if not card_found or not owner_player:
+            raise ValueError(f"Card {card_id} not found in {source_zone} for any player")
 
-        # Get destination zone list from player object and add the card
-        destination_zone_list = getattr(player, destination_zone_name)
+        # Ajoute la carte dans la zone de destination du joueur propriétaire
+        destination_zone_list = getattr(owner_player, destination_zone_name)
         destination_zone_list.append(card_found)
         
-        print(f"Player {action.player_id} moved {card_found.name} to {destination_zone_name} from {source_zone}")
+        print(f"Card {card_found.name} moved to {destination_zone_name} from {source_zone} (owner: {owner_player.id}, action by: {action.player_id})")
 
     def _send_to_graveyard(self, game_state: GameState, action: GameAction) -> None:
         """Move a card from any zone to graveyard."""
