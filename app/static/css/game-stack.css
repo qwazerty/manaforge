@@ -28,9 +28,6 @@
 }
 
 .stack-spell {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 12px;
-    padding: 12px;
     transition: all 0.2s ease;
     cursor: pointer;
     position: relative;
@@ -38,14 +35,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
     text-align: center;
 }
 
 .stack-spell:hover {
-    background: rgba(0, 0, 0, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Visual feedback for context menu availability */
@@ -61,6 +55,12 @@
 
 .stack-spell:hover::after {
     opacity: 0.6;
+}
+
+/* === Overlap effect for stack cards === */
+.stack-content .stack-spell:not(:first-child) {
+    margin-top: -144px;
+    z-index: 1;
 }
 
 /* Stack card container and image styles */
