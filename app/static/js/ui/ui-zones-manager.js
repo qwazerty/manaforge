@@ -57,10 +57,10 @@ class UIZonesManager {
         const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
 
         const zoneContent = UIUtils.generateZoneWrapper(`
-            <div class="relative flex flex-col items-center py-4">
-                <div class="${deckClass}" ${clickHandler}
-                    ondragover="UIZonesManager.handleZoneDragOver(event)"
-                    ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
+            <div class="relative flex flex-col items-center py-4"
+                ondragover="UIZonesManager.handleZoneDragOver(event)"
+                ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
+                <div class="${deckClass}" ${clickHandler}>
                     ${stackCards}
                     <div class="deck-click-overlay">
                         <span class="draw-hint">${overlayText}</span>
@@ -113,10 +113,10 @@ class UIZonesManager {
             "UIZonesManager.showZoneModal('graveyard')";
 
         const zoneContent = UIUtils.generateZoneWrapper(`
-            <div class="relative flex flex-col items-center py-4">
-                <div class="graveyard-cards-stack" onclick="${clickHandler}"
-                    ondragover="UIZonesManager.handleZoneDragOver(event)"
-                    ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
+            <div class="relative flex flex-col items-center py-4"
+                ondragover="UIZonesManager.handleZoneDragOver(event)"
+                ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
+                <div class="graveyard-cards-stack" onclick="${clickHandler}">
                     ${stackCards}
                     <div class="graveyard-click-overlay">
                         <span class="zone-view-hint">View<br>All</span>
@@ -166,10 +166,10 @@ class UIZonesManager {
             "UIZonesManager.showZoneModal('exile')";
 
         const zoneContent = UIUtils.generateZoneWrapper(`
-            <div class="relative flex flex-col items-center py-4">
-                <div class="exile-stack" onclick="${clickHandler}"
-                    ondragover="UIZonesManager.handleZoneDragOver(event)"
-                    ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
+            <div class="relative flex flex-col items-center py-4"
+                ondragover="UIZonesManager.handleZoneDragOver(event)"
+                ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
+                <div class="exile-stack" onclick="${clickHandler}">
                     ${stackCards}
                     <div class="exile-top-card">
                         ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}

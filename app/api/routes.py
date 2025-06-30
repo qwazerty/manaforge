@@ -414,6 +414,13 @@ async def copy_stack_spell_legacy(game_id: str, request: dict) -> dict:
     action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+@router.post("/games/{game_id}/move-card")
+async def move_card_legacy(game_id: str, request: dict) -> dict:
+    """Legacy endpoint for move-card."""
+    action_request = {"action_type": "move_card"}
+    action_request.update(request)
+    return await perform_game_action(game_id, action_request, get_game_engine())
+
 # === DECK ROUTES ===
 
 @router.post("/decks/parse")

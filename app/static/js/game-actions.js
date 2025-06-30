@@ -59,6 +59,9 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'untap_all':
                 endpoint = `/api/v1/games/${gameId}/untap-all`;
                 break;
+            case 'move_card':
+                endpoint = `/api/v1/games/${gameId}/move-card`;
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }
@@ -180,38 +183,16 @@ function tapCard(cardId, uniqueCardId) {
     }
 }
 
-function sendCardToZone(cardId, sourceZone, destinationZone, uniqueCardId = null) {
-    const actionType = `send_to_${destinationZone}`;
-    console.log(`🃏 Sending ${cardId} from ${sourceZone} to ${destinationZone} (uniqueId: ${uniqueCardId})`);
-
-    performGameAction(actionType, {
-        card_id: cardId,
-        source_zone: sourceZone,
-        unique_id: uniqueCardId
-    });
-
-    // Optimistic UI update
-    if (uniqueCardId) {
-        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-        if (cardElement) {
-            cardElement.style.opacity = '0.5';
-            cardElement.style.pointerEvents = 'none';
-        }
-    }
-
-    GameUI.showNotification(`Card sent to ${destinationZone}`, 'info');
-}
-
 function sendToGraveyard(cardId, sourceZone, uniqueCardId = null) {
-    sendCardToZone(cardId, sourceZone, 'graveyard', uniqueCardId);
+    moveCard(cardId, sourceZone, 'graveyard', uniqueCardId);
 }
 
 function sendToExile(cardId, sourceZone, uniqueCardId = null) {
-    sendCardToZone(cardId, sourceZone, 'exile', uniqueCardId);
+    moveCard(cardId, sourceZone, 'exile', uniqueCardId);
 }
 
 function sendToHand(cardId, sourceZone, uniqueCardId = null) {
-    sendCardToZone(cardId, sourceZone, 'hand', uniqueCardId);
+    moveCard(cardId, sourceZone, 'hand', uniqueCardId);
 }
 
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
@@ -330,5 +311,21 @@ window.GameActions = {
  * Utilise les API existantes selon la zone cible.
  */
 function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null) {
-    sendCardToZone(cardId, sourceZone, targetZone, uniqueCardId);
+    performGameAction('move_card', {
+        card_id: cardId,
+        source_zone: sourceZone,
+        target_zone: targetZone,
+        unique_id: uniqueCardId
+    });
+
+    // Optimistic UI update
+    if (uniqueCardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (cardElement) {
+            cardElement.style.opacity = '0.5';
+            cardElement.style.pointerEvents = 'none';
+        }
+    }
+
+    GameUI.showNotification(`Card moved to ${targetZone}`, 'info');
 }
