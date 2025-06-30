@@ -29,19 +29,17 @@ async def handle_draw_card(game_id: str, request: Optional[Dict], current_state:
         "broadcast_data": {}
     }
 
-@action_registry.register("play_card", required_fields=["card_id", "card_name"])
+@action_registry.register("play_card", required_fields=["card_id"])
 async def handle_play_card(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
-    """Handle play card action."""
+    """Handle play card action from hand."""
     if not request:
         raise HTTPException(status_code=400, detail="Request body required for play_card")
     
-    card_name = request.get("card_name")
     card_id = request.get("card_id")
     
     return {
-        "card_id": card_id or card_name,
-        "additional_data": {"card_name": card_name} if card_name else {},
-        "broadcast_data": {"card": card_name or card_id}
+        "card_id": card_id,
+        "broadcast_data": {"card": card_id}
     }
 
 @action_registry.register("tap_card", required_fields=["card_id"])
@@ -225,22 +223,16 @@ async def handle_move_card(game_id: str, request: Optional[Dict], current_state:
     card_id = request.get("card_id")
     source_zone = request.get("source_zone")
     target_zone = request.get("target_zone")
-    unique_id = request.get("unique_id")
-
-    if not all([card_id, source_zone, target_zone]):
-        raise HTTPException(status_code=400, detail="card_id, source_zone, and target_zone are required")
 
     return {
         "card_id": card_id,
         "additional_data": {
             "source_zone": source_zone,
             "target_zone": target_zone,
-            "unique_id": unique_id,
         },
         "broadcast_data": {
             "card": card_id,
             "source_zone": source_zone,
             "target_zone": target_zone,
-            "unique_id": unique_id,
         },
     }

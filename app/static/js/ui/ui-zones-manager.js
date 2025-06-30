@@ -289,6 +289,26 @@ class UIZonesManager {
     }
 
     /**
+     * Refresh zone modal content by closing and reopening it
+     */
+    static refreshZoneModal(zoneName) {
+        this.closeZoneModal(zoneName);
+
+        // Determine if it's an opponent's zone
+        const isOpponent = zoneName.startsWith('opponent_');
+        const baseZoneName = zoneName.replace('opponent_', '');
+
+        // Re-open the modal after a short delay to allow for closing animation
+        setTimeout(() => {
+            if (isOpponent) {
+                this.showOpponentZoneModal(baseZoneName);
+            } else {
+                this.showZoneModal(baseZoneName);
+            }
+        }, 350);
+    }
+
+    /**
      * Update zone counts in UI
      */
     static updateZoneCounts() {

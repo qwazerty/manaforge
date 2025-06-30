@@ -183,16 +183,16 @@ function tapCard(cardId, uniqueCardId) {
     }
 }
 
-function sendToGraveyard(cardId, sourceZone, uniqueCardId = null) {
-    moveCard(cardId, sourceZone, 'graveyard', uniqueCardId);
+function sendToGraveyard(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    moveCard(cardId, sourceZone, 'graveyard', uniqueCardId, null, callback);
 }
 
-function sendToExile(cardId, sourceZone, uniqueCardId = null) {
-    moveCard(cardId, sourceZone, 'exile', uniqueCardId);
+function sendToExile(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    moveCard(cardId, sourceZone, 'exile', uniqueCardId, null, callback);
 }
 
-function sendToHand(cardId, sourceZone, uniqueCardId = null) {
-    moveCard(cardId, sourceZone, 'hand', uniqueCardId);
+function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    moveCard(cardId, sourceZone, 'hand', uniqueCardId, null, callback);
 }
 
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
@@ -310,7 +310,7 @@ window.GameActions = {
  * Déplacement générique d'une carte entre zones via drag and drop.
  * Utilise les API existantes selon la zone cible.
  */
-function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null) {
+function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null) {
     const actionData = {
         card_id: cardId,
         source_zone: sourceZone,
@@ -334,4 +334,8 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
     }
 
     GameUI.showNotification(`Card moved to ${targetZone}`, 'info');
+
+    if (callback) {
+        callback();
+    }
 }
