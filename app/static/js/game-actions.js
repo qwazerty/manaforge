@@ -29,7 +29,6 @@ async function performHttpGameAction(actionType, actionData = {}) {
         
         switch (actionType) {
             case 'pass_phase':
-            case 'pass_turn':
                 endpoint = `/api/v1/games/${gameId}/pass-phase`;
                 break;
             case 'draw_card':

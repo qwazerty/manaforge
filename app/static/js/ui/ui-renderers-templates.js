@@ -384,10 +384,11 @@ class UIRenderersTemplates {
         );
 
         const passTurnBtn = UIUtils.generateButton(
-            "GameActions.performGameAction('pass_turn')",
-            UIConfig.CSS_CLASSES.button.secondary,
+            "GameActions.performGameAction('pass_phase')",
+            `${UIConfig.CSS_CLASSES.button.secondary} disabled:opacity-50`,
             "Pass turn to opponent",
-            "⏸️ Pass Turn"
+            "⏸️ Pass Turn",
+            true
         );
 
         return `
