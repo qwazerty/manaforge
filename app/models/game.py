@@ -34,6 +34,7 @@ class Color(str, Enum):
 class Card(BaseModel):
     """A Magic The Gathering card."""
     id: str = Field(..., description="Unique card identifier")
+    unique_id: str = Field(..., description="Unique instance identifier for a card in a game")
     name: str = Field(..., description="Card name")
     mana_cost: str = Field(default="", description="Mana cost (e.g., '2RG')")
     cmc: int = Field(default=0, description="Converted mana cost")
@@ -46,6 +47,7 @@ class Card(BaseModel):
     rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
     image_url: Optional[str] = Field(default=None, description="Card image URL")
     tapped: bool = Field(default=False, description="Whether the card is tapped")
+    targeted: bool = Field(default=False, description="Whether the card is targeted")
 
 class DeckCard(BaseModel):
     """A card in a deck with quantity."""

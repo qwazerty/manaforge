@@ -84,6 +84,12 @@
     opacity: 0.85;
 }
 
+.card-mini.targeted,
+.card-battlefield.targeted {
+    box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.7);
+    border: 3px solid red;
+}
+
 
 /* Card back styles */
 .card-back {

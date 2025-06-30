@@ -51,7 +51,7 @@ async def get_card(
 
 @router.post("/games")
 async def create_game(
-    request: Optional[dict] = None,
+    request: Optional[Dict[str, Any]] = None,
     game_id: Optional[str] = Query(None),
     card_service: CardService = Depends(get_card_service)
 ) -> GameState:
@@ -64,7 +64,7 @@ async def create_game(
     # Check if custom deck is provided
     if request and "decklist_text" in request:
         # Parse custom deck for player 1
-        deck1 = await card_service.parse_decklist(request["decklist_text"])
+        deck1 = await card_service.parse_decklist(request.get("decklist_text", ""))
         # Create game with just player 1, waiting for player 2
         game_state = game_engine.create_game_player1(game_id, deck1)
     else:
@@ -370,6 +370,13 @@ async def pass_priority_legacy(game_id: str, request: Optional[dict] = None) -> 
     action_request = {"action_type": "pass_priority"}
     if request:
         action_request.update(request)
+    return await perform_game_action(game_id, action_request, get_game_engine())
+
+@router.post("/games/{game_id}/target-card")
+async def target_card_legacy(game_id: str, request: dict) -> dict:
+    """Legacy endpoint for target-card."""
+    action_request = {"action_type": "target_card"}
+    action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
 # === DECK ROUTES ===

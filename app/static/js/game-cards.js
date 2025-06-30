@@ -146,6 +146,7 @@ const GameCards = {
         const uniqueCardId = cardElement.getAttribute('data-card-unique-id') || '';
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
+        const isTargeted = cardElement.classList.contains('targeted');
 
         console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId}, Opponent: ${isOpponent})`);
 
@@ -171,6 +172,10 @@ const GameCards = {
             <div class="card-context-menu-divider"></div>
             <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${cardId}', '${cardName}', '${cardImage}')"><span class="icon">🔍</span> View Full Size</div>
             <div class="card-context-menu-divider"></div>`;
+        
+        const targetAction = isTargeted ? 'Untarget' : 'Target';
+        const targetIcon = isTargeted ? '❌' : '🎯';
+        menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.toggleCardTarget('${uniqueCardId}')"><span class="icon">${targetIcon}</span> ${targetAction}</div>`;
 
         if (!isOpponent) {
             if (cardZone === 'hand') {
@@ -216,6 +221,24 @@ const GameCards = {
         menu.style.visibility = 'visible';
 
         document.addEventListener('click', this.closeContextMenu.bind(this));
+    },
+
+    toggleCardTarget: function(uniqueCardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (cardElement) {
+            const isTargeted = cardElement.classList.toggle('targeted');
+            const cardId = cardElement.getAttribute('data-card-id');
+            
+            GameActions.performGameAction('target_card', {
+                unique_id: uniqueCardId,
+                card_id: cardId,
+                targeted: isTargeted
+            });
+
+            const cardName = cardElement.getAttribute('data-card-name');
+            const actionText = isTargeted ? 'targeted' : 'untargeted';
+            GameUI.showNotification(`${cardName} ${actionText}`, 'info');
+        }
     },
 
     closeContextMenu: function() {

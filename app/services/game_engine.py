@@ -147,8 +147,31 @@ class SimpleGameEngine:
             if not isinstance(source_zone, str) or not isinstance(target_zone, str):
                 raise ValueError("source_zone and target_zone (str) are required for move_card action")
             self._move_card(game_state, action, source_zone_name=source_zone, destination_zone_name=target_zone)
+        elif action.action_type == "target_card":
+            self._target_card(game_state, action)
 
         return game_state
+    
+    def _target_card(self, game_state: GameState, action: GameAction) -> None:
+        """Handle targeting or untargeting a card."""
+        unique_id = action.additional_data.get("unique_id")
+        targeted = action.additional_data.get("targeted")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for target_card action")
+
+        # Find the card in any zone of any player
+        for p in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "stack", "library"]:
+                zone = self._get_zone_list(game_state, p, zone_name)
+                for card in zone:
+                    if card.unique_id == unique_id:
+                        card.targeted = targeted
+                        action_text = "targeted" if targeted else "untargeted"
+                        print(f"Player {action.player_id} {action_text} {card.name}")
+                        return
+
+        raise ValueError(f"Card with unique_id {unique_id} not found")
     
     def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
         """Convert deck list to shuffled list of Card objects."""
@@ -158,8 +181,8 @@ class SimpleGameEngine:
             # Add quantity copies of each card with unique IDs
             for copy_index in range(deck_card.quantity):
                 # Create a unique copy of the card with a unique ID
-                card_copy = deck_card.card.model_copy()
-                card_copy.id = f"{deck_card.card.id}_{uuid.uuid4().hex[:8]}"
+                card_copy = deck_card.card.model_copy(deep=True)
+                card_copy.unique_id = f"{deck_card.card.id}_{uuid.uuid4().hex[:8]}"
                 cards.append(card_copy)
         
         random.shuffle(cards)
