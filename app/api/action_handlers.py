@@ -236,3 +236,26 @@ async def handle_move_card(game_id: str, request: Optional[Dict], current_state:
             "target_zone": target_zone,
         },
     }
+
+@action_registry.register("target_card", required_fields=["unique_id", "card_id", "targeted"])
+async def handle_target_card(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
+    """Handle targeting or untargeting a card."""
+    if not request:
+        raise HTTPException(status_code=400, detail="Request body required for target_card")
+
+    unique_id = request.get("unique_id")
+    card_id = request.get("card_id")
+    targeted = request.get("targeted")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "targeted": targeted,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_id": card_id,
+            "targeted": targeted,
+        },
+    }

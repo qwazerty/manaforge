@@ -123,7 +123,7 @@ echo "5.6: Modifier les points de vie"
 curl_test "Dégâts au joueur 2" "POST" "$API_BASE/games/$GAME_ID/modify-life" "{\"player_id\": \"player1\", \"target_player\": \"player2\", \"amount\": -3}" "success"
 
 echo "🔍 Test 6: État final de la partie"
-FINAL_STATE=$(curl -s -X GET "$API_BASE/games/$GAME_ID" -H "Content-Type: application/json")
+FINAL_STATE=$(curl -s -X GET "$API_BASE/games/$GAME_ID/state" -H "Content-Type: application/json")
 PLAYER1_LIFE=$(echo "$FINAL_STATE" | jq -r '.players[0].life')
 PLAYER2_LIFE=$(echo "$FINAL_STATE" | jq -r '.players[1].life')
 CURRENT_PHASE=$(echo "$FINAL_STATE" | jq -r '.phase')

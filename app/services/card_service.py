@@ -152,9 +152,12 @@ class CardService:
 
         # Create unique ID from name
         card_id = scryfall_data["name"].lower().replace(" ", "_").replace("'", "").replace(",", "").replace("-", "_")
+        import uuid
+        unique_id = f"{card_id}_{uuid.uuid4().hex[:8]}"
 
         return {
             "id": card_id,
+            "unique_id": unique_id,
             "name": scryfall_data["name"],
             "mana_cost": scryfall_data.get("mana_cost", ""),
             "cmc": scryfall_data.get("cmc", 0),
@@ -178,7 +181,7 @@ class CardService:
         
         # Regular expression to match card entries: quantity + card name, ignoring content in parentheses
         # Format: "4 Lightning Bolt (M10) 146" -> captures "4" and "Lightning Bolt"
-        card_entry_regex = re.compile(r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*)?$")
+        card_entry_regex = re.compile(r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$")
         
         deck_cards = []
         for line in lines:
