@@ -173,10 +173,10 @@ class SimpleGameEngine:
         
         # Search in the stack
         for spell in game_state.stack:
-            if spell["unique_id"] == unique_id:
-                spell["targeted"] = targeted
+            if spell.unique_id == unique_id:
+                spell.targeted = targeted
                 action_text = "targeted" if targeted else "untargeted"
-                print(f"Player {action.player_id} {action_text} {spell['name']} on the stack")
+                print(f"Player {action.player_id} {action_text} {spell.name} on the stack")
                 return
 
         raise ValueError(f"Card with unique_id {unique_id} not found")
