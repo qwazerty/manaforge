@@ -29,26 +29,29 @@ async def handle_draw_card(game_id: str, request: Optional[Dict], current_state:
         "broadcast_data": {}
     }
 
-@action_registry.register("play_card", required_fields=["card_id"])
+@action_registry.register("play_card", required_fields=["card_id", "unique_id"])
 async def handle_play_card(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
     """Handle play card action from hand."""
     if not request:
         raise HTTPException(status_code=400, detail="Request body required for play_card")
     
     card_id = request.get("card_id")
+    unique_id = request.get("unique_id")
     
     return {
         "card_id": card_id,
-        "broadcast_data": {"card": card_id}
+        "additional_data": {"unique_id": unique_id},
+        "broadcast_data": {"card": card_id, "unique_id": unique_id}
     }
 
-@action_registry.register("tap_card", required_fields=["card_id"])
+@action_registry.register("tap_card", required_fields=["card_id", "unique_id"])
 async def handle_tap_card(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
     """Handle tap/untap card action."""
     if not request:
         raise HTTPException(status_code=400, detail="Request body required for tap_card")
     
     card_id = request.get("card_id")
+    unique_id = request.get("unique_id")
     tapped = request.get("tapped")
     
     if not card_id:
@@ -56,8 +59,11 @@ async def handle_tap_card(game_id: str, request: Optional[Dict], current_state: 
     
     return {
         "card_id": card_id,
-        "additional_data": {"tapped": tapped} if tapped is not None else {},
-        "broadcast_data": {"card": card_id, "tapped": tapped}
+        "additional_data": {
+            "unique_id": unique_id,
+            "tapped": tapped
+        } if tapped is not None else {"unique_id": unique_id},
+        "broadcast_data": {"card": card_id, "unique_id": unique_id, "tapped": tapped}
     }
 
 @action_registry.register("untap_all")
@@ -214,7 +220,7 @@ async def handle_add_to_temporary_zone(game_id: str, request: Optional[Dict], cu
         "broadcast_data": {"action_type": action_name, "count": count}
     }
 
-@action_registry.register("move_card", required_fields=["card_id", "source_zone", "target_zone"])
+@action_registry.register("move_card", required_fields=["card_id", "source_zone", "target_zone", "unique_id"])
 async def handle_move_card(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
     """Handle moving a card from one zone to another."""
     if not request:
@@ -223,17 +229,20 @@ async def handle_move_card(game_id: str, request: Optional[Dict], current_state:
     card_id = request.get("card_id")
     source_zone = request.get("source_zone")
     target_zone = request.get("target_zone")
+    unique_id = request.get("unique_id")
 
     return {
         "card_id": card_id,
         "additional_data": {
             "source_zone": source_zone,
             "target_zone": target_zone,
+            "unique_id": unique_id,
         },
         "broadcast_data": {
             "card": card_id,
             "source_zone": source_zone,
             "target_zone": target_zone,
+            "unique_id": unique_id,
         },
     }
 

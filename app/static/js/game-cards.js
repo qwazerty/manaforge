@@ -34,18 +34,17 @@ const GameCards = {
         const isTargeted = card.targeted || false;
         const tappedClass = isTapped ? ' tapped' : '';
         const targetedClass = isTargeted ? ' targeted' : '';
-        const playerPrefix = playerId !== null ? `p${playerId}` : 'unknown';
-        const uniqueCardId = `${playerPrefix}-battlefield-${index}`;
+        const uniqueCardId = card.unique_id;
         const escapedCardId = GameUtils.escapeJavaScript(cardId);
         const escapedCardName = GameUtils.escapeJavaScript(cardName);
         const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
         const escapedUniqueId = GameUtils.escapeJavaScript(uniqueCardId);
 
         let onClickAction = '';
-        if (zone === 'permanents' || zone === 'lands') {
+        if (zone === 'permanents' || zone === 'lands' || zone === 'battlefield') {
             onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
         } else if (zone === 'hand') {
-            onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', ${index}); event.stopPropagation();"`;
+            onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
         }
 
         return `
