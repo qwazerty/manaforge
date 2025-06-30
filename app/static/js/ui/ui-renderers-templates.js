@@ -197,8 +197,7 @@ class UIRenderersTemplates {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
         const cardCount = filteredCards.length;
         const cardsHtml = filteredCards.map(card => {
-            const originalIndex = cards.findIndex(c => c.unique_id === card.unique_id);
-            return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, originalIndex, playerId);
+            return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, 'battlefield', isOpponent, null, playerId);
         }).join('');
 
         return `
@@ -427,14 +426,13 @@ class UIRenderersTemplates {
     /**
      * Render individual stack spell
      */
-    static _renderStackSpell(spell, index) {
-        const cardName = spell.name || 'Unknown Spell';
-        const imageUrl = GameCards.getSafeImageUrl(spell);
-        const cardId = spell.card_id || spell.id || spell.name;
-        const card = spell.card_object || {};
+    static _renderStackSpell(card, index) {
+        const cardName = card.name || 'Unknown Spell';
+        const imageUrl = GameCards.getSafeImageUrl(card);
+        const cardId = card.id || card.name;
         const isTargeted = card.targeted || false;
         const targetedClass = isTargeted ? ' targeted' : '';
-        const uniqueId = `stack-${index}`;
+        const uniqueId = card.unique_id;
 
         const escapedCardId = GameUtils.escapeJavaScript(cardId);
         const escapedCardName = GameUtils.escapeJavaScript(cardName);

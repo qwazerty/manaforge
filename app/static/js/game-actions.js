@@ -93,10 +93,10 @@ async function performHttpGameAction(actionType, actionData = {}) {
     }
 }
 
-function playCardFromHand(cardId, handIndex) {
+function playCardFromHand(cardId, uniqueId) {
     performGameAction('play_card', { 
         card_id: cardId,
-        hand_index: handIndex 
+        unique_id: uniqueId 
     });
 
     // Find card name for better user feedback
@@ -126,36 +126,8 @@ function changePlayer(playerType) {
     GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
-function findCardElement(cardId, uniqueCardId) {
-    let cardElement;
-    if (uniqueCardId) {
-        cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-    }
-
-    if (!cardElement) {
-        const currentSelectedPlayer = GameCore.getSelectedPlayer();
-        let playerPrefix = 'unknown';
-        if (currentSelectedPlayer === 'player1') playerPrefix = 'p0';
-        else if (currentSelectedPlayer === 'player2') playerPrefix = 'p1';
-
-        const candidateElements = document.querySelectorAll(`[data-card-id="${cardId}"]`);
-        for (const element of candidateElements) {
-            const elementUniqueId = element.getAttribute('data-card-unique-id');
-            if (elementUniqueId && elementUniqueId.startsWith(playerPrefix)) {
-                cardElement = element;
-                break;
-            }
-        }
-
-        if (!cardElement && candidateElements.length > 0) {
-            cardElement = candidateElements[0];
-        }
-    }
-    return cardElement;
-}
-
 function tapCard(cardId, uniqueCardId) {
-    const cardElement = findCardElement(cardId, uniqueCardId);
+    const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
     if (cardElement) {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
@@ -168,11 +140,10 @@ function tapCard(cardId, uniqueCardId) {
         cardElement.classList.toggle('tapped', newTappedState);
         cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
 
-        const currentSelectedPlayer = GameCore.getSelectedPlayer();
         const tapData = {
             card_id: cardId,
             tapped: newTappedState,
-            unique_id: uniqueCardId || `${currentSelectedPlayer}-${cardId}`
+            unique_id: uniqueCardId
         };
 
         performGameAction('tap_card', tapData);
@@ -198,7 +169,7 @@ function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
 }
 
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
-    const cardElement = findCardElement(cardId, uniqueCardId);
+    const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
     if (cardElement) {
         cardElement.setAttribute('data-card-tapped', tapped.toString());

@@ -153,55 +153,43 @@ class SimpleGameEngine:
         return game_state
     
     def _target_card(self, game_state: GameState, action: GameAction) -> None:
-        """Handle targeting or untargeting a card."""
+        """Handle targeting or untargeting a card using its persistent unique_id."""
         unique_id = action.additional_data.get("unique_id")
         targeted = action.additional_data.get("targeted")
 
         if not unique_id:
             raise ValueError("unique_id is required for target_card action")
 
-        try:
-            parts = unique_id.split('-')
-            if parts[0] == 'stack':
-                # Handle stack targeting
-                card_index = int(parts[1])
-                zone = game_state.stack
-                if 0 <= card_index < len(zone):
-                    spell = zone[card_index]
-                    card = spell.get("card_object")
-                    if card:
+        # Search for the card across all player zones and the stack
+        for p in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library"]:
+                zone = self._get_zone_list(game_state, p, zone_name)
+                for card in zone:
+                    if card.unique_id == unique_id:
                         card.targeted = targeted
                         action_text = "targeted" if targeted else "untargeted"
-                        print(f"Player {action.player_id} {action_text} {card.name} on the stack")
+                        print(f"Player {action.player_id} {action_text} {card.name} in {zone_name}")
                         return
-            else:
-                # Handle player zone targeting
-                player_index, zone_name, card_index = parts
-                player_index = int(player_index[1:])
-                card_index = int(card_index)
-
-                player = game_state.players[player_index]
-                zone_name = self._normalize_zone_name(zone_name)
-                zone = self._get_zone_list(game_state, player, zone_name)
-                
-                if 0 <= card_index < len(zone):
-                    card = zone[card_index]
-                    card.targeted = targeted
-                    action_text = "targeted" if targeted else "untargeted"
-                    print(f"Player {action.player_id} {action_text} {card.name}")
-                    return
-                    
-        except (ValueError, IndexError, KeyError) as e:
-            print(f"Could not parse unique_id '{unique_id}': {e}")
+        
+        # Search in the stack
+        for spell in game_state.stack:
+            if spell.unique_id == unique_id:
+                spell.targeted = targeted
+                action_text = "targeted" if targeted else "untargeted"
+                print(f"Player {action.player_id} {action_text} {spell.name} on the stack")
+                return
 
         raise ValueError(f"Card with unique_id {unique_id} not found")
     
     def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
-        """Convert deck list to shuffled list of Card objects."""
+        """Convert deck list to shuffled list of Card objects with persistent unique IDs."""
+        import uuid
         cards = []
         for deck_card in deck_cards:
             for _ in range(deck_card.quantity):
-                cards.append(deck_card.card.model_copy(deep=True))
+                card_copy = deck_card.card.model_copy(deep=True)
+                card_copy.unique_id = uuid.uuid4().hex
+                cards.append(card_copy)
         
         random.shuffle(cards)
         return cards
@@ -215,20 +203,17 @@ class SimpleGameEngine:
     
     def _play_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle playing a card from hand."""
-        # The core logic is now handled by _move_card
-        # We set the source_zone to 'hand' and the destination based on card type
-        
         player = self._get_player(game_state, action.player_id)
-        
-        # Find the card in the player's hand to determine its type
+        unique_id = action.additional_data.get("unique_id")
+
         card_to_play = None
         for card in player.hand:
-            if card.id == action.card_id or card.name == action.card_id:
+            if card.unique_id == unique_id:
                 card_to_play = card
                 break
         
         if not card_to_play:
-            print(f"Card {action.card_id} not found in hand of player {action.player_id}")
+            print(f"Card with unique_id {unique_id} not found in hand of player {action.player_id}")
             return
 
         # Determine destination zone based on card type
@@ -352,13 +337,11 @@ class SimpleGameEngine:
         # Get the top spell from the stack (last added)
         spell = game_state.stack.pop()
         
-        # Get the player who cast the spell and the card object
-        casting_player = self._get_player(game_state, spell["player_id"])
-        card_object = spell.get("card_object")
+        # Get the player who cast the spell
+        casting_player = self._get_player(game_state, action.player_id)
         
         # Put the spell in the graveyard after resolution
-        if card_object:
-            casting_player.graveyard.append(card_object)
+        casting_player.graveyard.append(spell)
         
         # For now, spells just resolve without complex effects
         # In a full implementation, this would trigger spell effects
@@ -409,23 +392,23 @@ class SimpleGameEngine:
     def _tap_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle tapping or untapping a card."""
         player = self._get_player(game_state, action.player_id)
-        card_id = action.card_id
+        unique_id = action.additional_data.get("unique_id")
         
-        if not card_id:
-            raise ValueError("card_id is required for tap_card action")
+        if not unique_id:
+            raise ValueError("unique_id is required for tap_card action")
         
         # Get the desired tapped state from additional_data, default to toggle
         desired_tapped_state = action.additional_data.get("tapped")
         
-        # Find the card on the battlefield by ID only
+        # Find the card on the battlefield by unique_id
         card_found = None
         for card in player.battlefield:
-            if card.id == card_id:
+            if card.unique_id == unique_id:
                 card_found = card
                 break
         
         if not card_found:
-            raise ValueError(f"Card {card_id} not found on battlefield for player {action.player_id}")
+            raise ValueError(f"Card with unique_id {unique_id} not found on battlefield for player {action.player_id}")
         
         # Set the tapped state
         if desired_tapped_state is not None:
@@ -444,11 +427,11 @@ class SimpleGameEngine:
         Moves a card from a source zone to a destination zone for a specific player.
         This is the new centralized function for all card movements.
         """
-        card_id = action.card_id
+        unique_id = action.additional_data.get("unique_id")
         player_id = action.player_id
 
-        if not card_id:
-            raise ValueError(f"card_id is required for moving a card to {destination_zone_name}")
+        if not unique_id:
+            raise ValueError(f"unique_id is required for moving a card to {destination_zone_name}")
 
         player = self._get_player(game_state, player_id)
 
@@ -458,56 +441,40 @@ class SimpleGameEngine:
 
         # Find and remove the card from the source zone
         card_found = None
-        source_zone_list = self._get_zone_list(game_state, player, source_zone_name)
         
         if source_zone_name == "stack":
             # Search in the global stack
             for i, spell in enumerate(game_state.stack):
-                if spell.get("card_id") == card_id and spell.get("player_id") == player_id:
-                    card_found = game_state.stack.pop(i).get("card_object")
+                if spell.unique_id == unique_id:
+                    card_found = game_state.stack.pop(i)
                     break
         else:
             # Search in player's zone
+            source_zone_list = self._get_zone_list(game_state, player, source_zone_name)
             for i, card in enumerate(source_zone_list):
-                if card.id == card_id or card.name == card_id:
+                if card.unique_id == unique_id:
                     card_found = source_zone_list.pop(i)
                     break
         
         if not card_found:
-            raise ValueError(f"Card {card_id} not found in {source_zone_name} for player {player_id}")
+            raise ValueError(f"Card with unique_id {unique_id} not found in {source_zone_name} for player {player_id}")
 
         # Add the card to the destination zone
         if destination_zone_name == "stack":
-            spell_on_stack = {
-                "name": card_found.name,
-                "card_name": card_found.name,
-                "card_type": card_found.card_type.value,
-                "mana_cost": card_found.mana_cost,
-                "text": card_found.text,
-                "oracle_text": card_found.text,
-                "image_url": card_found.image_url,
-                "player_id": player_id,
-                "card_id": card_found.id,
-                "card_object": card_found,
-            }
-            game_state.stack.append(spell_on_stack)
+            game_state.stack.append(card_found)
             # Give priority to the opponent for responses
             game_state.priority_player = 1 - int(player_id.replace('player', ''))
-        destination_zone_list = self._get_zone_list(game_state, player, destination_zone_name)
-        
-        # Assign unique_id before adding to the zone
-        player_index = game_state.players.index(player)
-        card_index = len(destination_zone_list)
-        card_found.unique_id = f"p{player_index}-{destination_zone_name}-{card_index}"
-
-        # Handle deck position
-        if destination_zone_name == "library" and "deck_position" in action.additional_data:
-            if action.additional_data["deck_position"] == "bottom":
-                destination_zone_list.append(card_found)
-            else: # Default to top
-                destination_zone_list.insert(0, card_found)
         else:
-            destination_zone_list.append(card_found)
+            destination_zone_list = self._get_zone_list(game_state, player, destination_zone_name)
+            
+            # Handle deck position
+            if destination_zone_name == "library" and "deck_position" in action.additional_data:
+                if action.additional_data["deck_position"] == "bottom":
+                    destination_zone_list.append(card_found)
+                else: # Default to top
+                    destination_zone_list.insert(0, card_found)
+            else:
+                destination_zone_list.append(card_found)
         
         print(f"Card {card_found.name} moved from {source_zone_name} to {destination_zone_name} for player {player_id}")
 
