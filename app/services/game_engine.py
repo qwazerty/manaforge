@@ -477,16 +477,31 @@ class SimpleGameEngine:
             raise ValueError(f"Card {card_id} not found in {source_zone} for any player")
 
         # Ajoute la carte dans la zone de destination du joueur propriétaire
-        destination_zone_list = getattr(owner_player, destination_zone_name)
-        
-        # Handle deck position
-        if destination_zone_name == "library" and "deck_position" in action.additional_data:
-            if action.additional_data["deck_position"] == "bottom":
-                destination_zone_list.append(card_found)
-            else:
-                destination_zone_list.insert(0, card_found)
+        if destination_zone_name == "stack":
+            spell_on_stack = {
+                "name": card_found.name,
+                "card_name": card_found.name,
+                "card_type": card_found.card_type.value,
+                "mana_cost": card_found.mana_cost,
+                "text": card_found.text,
+                "oracle_text": card_found.text,
+                "image_url": card_found.image_url,
+                "player_id": owner_player.id,
+                "card_id": card_found.id,
+                "card_object": card_found,
+            }
+            game_state.stack.append(spell_on_stack)
         else:
-            destination_zone_list.append(card_found)
+            destination_zone_list = getattr(owner_player, destination_zone_name)
+            
+            # Handle deck position
+            if destination_zone_name == "library" and "deck_position" in action.additional_data:
+                if action.additional_data["deck_position"] == "bottom":
+                    destination_zone_list.append(card_found)
+                else:
+                    destination_zone_list.insert(0, card_found)
+            else:
+                destination_zone_list.append(card_found)
         
         print(f"Card {card_found.name} moved to {destination_zone_name} from {source_zone} (owner: {owner_player.id}, action by: {action.player_id})")
     
