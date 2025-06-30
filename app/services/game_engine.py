@@ -147,6 +147,11 @@ class SimpleGameEngine:
             self._surveil(game_state, action)
         elif action.action_type == "resolve_temporary_zone":
             self._resolve_temporary_zone(game_state, action)
+        elif action.action_type == "move_card":
+            target_zone = action.additional_data.get("target_zone")
+            if not isinstance(target_zone, str) or not target_zone:
+                raise ValueError("target_zone (str) is required for move_card action")
+            self._move_card(game_state, action, target_zone)
         
         return game_state
     
@@ -434,8 +439,12 @@ class SimpleGameEngine:
             # Normalize some zone names
             if source_zone in ["permanents", "lands"]:
                 source_zone = "battlefield"
+            if destination_zone_name in ["permanents", "lands"]:
+                destination_zone_name = "battlefield"
             if source_zone == "deck":
                 source_zone = "library"
+            if destination_zone_name == "deck":
+                destination_zone_name = "library"
 
             if source_zone in player_zones:
                 for i, card in enumerate(player_zones[source_zone]):
