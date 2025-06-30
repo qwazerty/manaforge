@@ -414,7 +414,7 @@ class UIRenderersTemplates {
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'stack')">
                     ${stack.length > 0 ? 
-                        stack.map((spell, index) => this._renderStackSpell(spell, index)).reverse().join('')
+                        stack.map((spell, index) => this._renderStackSpell(spell, index)).join('')
                         : this._renderEmptyStack()
                     }
                 </div>
