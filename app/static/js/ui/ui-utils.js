@@ -21,11 +21,12 @@ class UIUtils {
     /**
      * Generate HTML button element
      */
-    static generateButton(onclick, classes, title, content) {
+    static generateButton(onclick, classes, title, content, disabled = false) {
         return `
             <button onclick="${onclick}" 
                     class="${classes}"
-                    title="${title}">
+                    title="${title}"
+                    ${disabled ? 'disabled' : ''}>
                 ${content}
             </button>
         `;
