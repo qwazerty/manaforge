@@ -372,55 +372,6 @@ async def pass_priority_legacy(game_id: str, request: Optional[dict] = None) -> 
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
-@router.post("/games/{game_id}/send-to-graveyard")
-async def send_to_graveyard_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for send-to-graveyard."""
-    action_request = {"action_type": "send_to_graveyard"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
-@router.post("/games/{game_id}/send-to-exile")
-async def send_to_exile_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for send-to-exile."""
-    action_request = {"action_type": "send_to_exile"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
-@router.post("/games/{game_id}/send-to-hand")
-async def send_to_hand_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for send-to-hand."""
-    action_request = {"action_type": "send_to_hand"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
-@router.post("/games/{game_id}/resolve-stack-spell")
-async def resolve_stack_spell_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for resolve-stack-spell."""
-    action_request = {"action_type": "resolve_stack_spell"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
-@router.post("/games/{game_id}/counter-stack-spell")
-async def counter_stack_spell_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for counter-stack-spell."""
-    action_request = {"action_type": "counter_stack_spell"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
-@router.post("/games/{game_id}/copy-stack-spell")
-async def copy_stack_spell_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for copy-stack-spell."""
-    action_request = {"action_type": "copy_stack_spell"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
-@router.post("/games/{game_id}/move-card")
-async def move_card_legacy(game_id: str, request: dict) -> dict:
-    """Legacy endpoint for move-card."""
-    action_request = {"action_type": "move_card"}
-    action_request.update(request)
-    return await perform_game_action(game_id, action_request, get_game_engine())
-
 # === DECK ROUTES ===
 
 @router.post("/decks/parse")

@@ -129,12 +129,6 @@ class SimpleGameEngine:
             self._modify_life(game_state, action)
         elif action.action_type == "tap_card":
             self._tap_card(game_state, action)
-        elif action.action_type == "send_to_graveyard":
-            self._send_to_graveyard(game_state, action)
-        elif action.action_type == "send_to_exile":
-            self._send_to_exile(game_state, action)
-        elif action.action_type == "send_to_hand":
-            self._send_to_hand(game_state, action)
         elif action.action_type == "shuffle_library":
             self._shuffle_library(game_state, action)
         elif action.action_type == "untap_all":
@@ -484,21 +478,17 @@ class SimpleGameEngine:
 
         # Ajoute la carte dans la zone de destination du joueur propriétaire
         destination_zone_list = getattr(owner_player, destination_zone_name)
-        destination_zone_list.append(card_found)
+        
+        # Handle deck position
+        if destination_zone_name == "library" and "deck_position" in action.additional_data:
+            if action.additional_data["deck_position"] == "bottom":
+                destination_zone_list.append(card_found)
+            else:
+                destination_zone_list.insert(0, card_found)
+        else:
+            destination_zone_list.append(card_found)
         
         print(f"Card {card_found.name} moved to {destination_zone_name} from {source_zone} (owner: {owner_player.id}, action by: {action.player_id})")
-
-    def _send_to_graveyard(self, game_state: GameState, action: GameAction) -> None:
-        """Move a card from any zone to graveyard."""
-        self._move_card(game_state, action, "graveyard")
-    
-    def _send_to_exile(self, game_state: GameState, action: GameAction) -> None:
-        """Move a card from any zone to exile."""
-        self._move_card(game_state, action, "exile")
-    
-    def _send_to_hand(self, game_state: GameState, action: GameAction) -> None:
-        """Move a card from any zone to hand."""
-        self._move_card(game_state, action, "hand")
     
     def _shuffle_library(self, game_state: GameState, action: GameAction) -> None:
         """Shuffle a player's library."""
