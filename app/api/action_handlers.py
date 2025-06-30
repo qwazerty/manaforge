@@ -105,60 +105,6 @@ async def handle_pass_priority(game_id: str, request: Optional[Dict], current_st
         "broadcast_data": {}
     }
 
-@action_registry.register("send_to_graveyard", required_fields=["card_id"])
-async def handle_send_to_graveyard(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
-    """Handle send card to graveyard action."""
-    if not request:
-        raise HTTPException(status_code=400, detail="Request body required for send_to_graveyard")
-    
-    card_id = request.get("card_id")
-    source_zone = request.get("source_zone", "unknown")
-    
-    if not card_id:
-        raise HTTPException(status_code=400, detail="card_id is required")
-    
-    return {
-        "card_id": card_id,
-        "additional_data": {"source_zone": source_zone},
-        "broadcast_data": {"card": card_id, "source_zone": source_zone}
-    }
-
-@action_registry.register("send_to_exile", required_fields=["card_id"])
-async def handle_send_to_exile(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
-    """Handle send card to exile action."""
-    if not request:
-        raise HTTPException(status_code=400, detail="Request body required for send_to_exile")
-    
-    card_id = request.get("card_id")
-    source_zone = request.get("source_zone", "unknown")
-    
-    if not card_id:
-        raise HTTPException(status_code=400, detail="card_id is required")
-    
-    return {
-        "card_id": card_id,
-        "additional_data": {"source_zone": source_zone},
-        "broadcast_data": {"card": card_id, "source_zone": source_zone}
-    }
-
-@action_registry.register("send_to_hand", required_fields=["card_id"])
-async def handle_send_to_hand(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
-    """Handle send card to hand action."""
-    if not request:
-        raise HTTPException(status_code=400, detail="Request body required for send_to_hand")
-    
-    card_id = request.get("card_id")
-    source_zone = request.get("source_zone", "unknown")
-    
-    if not card_id:
-        raise HTTPException(status_code=400, detail="card_id is required")
-    
-    return {
-        "card_id": card_id,
-        "additional_data": {"source_zone": source_zone},
-        "broadcast_data": {"card": card_id, "source_zone": source_zone}
-    }
-
 @action_registry.register("resolve_stack_spell")
 async def handle_resolve_stack_spell(game_id: str, request: Optional[Dict], current_state: GameState) -> Dict[str, Any]:
     """Handle resolve stack spell action."""

@@ -310,13 +310,19 @@ window.GameActions = {
  * Déplacement générique d'une carte entre zones via drag and drop.
  * Utilise les API existantes selon la zone cible.
  */
-function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null) {
-    performGameAction('move_card', {
+function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null) {
+    const actionData = {
         card_id: cardId,
         source_zone: sourceZone,
         target_zone: targetZone,
-        unique_id: uniqueCardId
-    });
+        unique_id: uniqueCardId,
+    };
+
+    if (deckPosition) {
+        actionData.deck_position = deckPosition;
+    }
+
+    performGameAction('move_card', actionData);
 
     // Optimistic UI update
     if (uniqueCardId) {
