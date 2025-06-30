@@ -142,11 +142,12 @@ class SimpleGameEngine:
         elif action.action_type == "resolve_temporary_zone":
             self._resolve_temporary_zone(game_state, action)
         elif action.action_type == "move_card":
+            source_zone = action.additional_data.get("source_zone")
             target_zone = action.additional_data.get("target_zone")
-            if not isinstance(target_zone, str) or not target_zone:
-                raise ValueError("target_zone (str) is required for move_card action")
-            self._move_card(game_state, action, target_zone)
-        
+            if not isinstance(source_zone, str) or not isinstance(target_zone, str):
+                raise ValueError("source_zone and target_zone (str) are required for move_card action")
+            self._move_card(game_state, action, source_zone_name=source_zone, destination_zone_name=target_zone)
+
         return game_state
     
     def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
@@ -172,49 +173,38 @@ class SimpleGameEngine:
                 player.hand.append(card)
     
     def _play_card(self, game_state: GameState, action: GameAction) -> None:
-        """Handle playing a card."""
+        """Handle playing a card from hand."""
+        # The core logic is now handled by _move_card
+        # We set the source_zone to 'hand' and the destination based on card type
+        
         player = self._get_player(game_state, action.player_id)
         
-        # Find card in hand by ID first, then by name
+        # Find the card in the player's hand to determine its type
         card_to_play = None
-        for i, card in enumerate(player.hand):
-            if card.id == action.card_id:
-                card_to_play = player.hand.pop(i)
+        for card in player.hand:
+            if card.id == action.card_id or card.name == action.card_id:
+                card_to_play = card
                 break
         
-        # If not found by ID, try by name
         if not card_to_play:
-            for i, card in enumerate(player.hand):
-                if card.name == action.card_id:
-                    card_to_play = player.hand.pop(i)
-                    break
-        
-        if not card_to_play:
+            print(f"Card {action.card_id} not found in hand of player {action.player_id}")
             return
-        
-        # Lands go directly to battlefield (no stack)
+
+        # Determine destination zone based on card type
         if card_to_play.card_type == CardType.LAND:
-            player.battlefield.append(card_to_play)
-        # Instants and sorceries go to the stack
+            destination_zone = "battlefield"
         elif card_to_play.card_type in [CardType.INSTANT, CardType.SORCERY]:
-            spell_on_stack = {
-                "name": card_to_play.name,
-                "card_name": card_to_play.name,
-                "card_type": card_to_play.card_type.value,
-                "mana_cost": card_to_play.mana_cost,
-                "text": card_to_play.text,
-                "oracle_text": card_to_play.text,
-                "image_url": card_to_play.image_url,  # Include image URL for stack display
-                "player_id": action.player_id,
-                "card_id": card_to_play.id,
-                "card_object": card_to_play  # Store the full card for later resolution
-            }
-            game_state.stack.append(spell_on_stack)
-            # Give priority to the opponent for responses
-            game_state.priority_player = 1 - int(action.player_id.replace('player', ''))
-        # Other permanents (creatures, artifacts, enchantments, planeswalkers) go to battlefield
-        else:
-            player.battlefield.append(card_to_play)
+            destination_zone = "stack"
+        else: # Creatures, artifacts, enchantments, etc.
+            destination_zone = "battlefield"
+
+        # Use the generic move_card function
+        self._move_card(
+            game_state,
+            action,
+            source_zone_name="hand",
+            destination_zone_name=destination_zone
+        )
     
     def _pass_turn(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing the turn (skips to end of turn)."""
@@ -407,76 +397,45 @@ class SimpleGameEngine:
         action_text = "tapped" if card_found.tapped else "untapped"
         print(f"Player {action.player_id} {action_text} {card_found.name}")
     
-    def _move_card(self, game_state: GameState, action: GameAction, destination_zone_name: str) -> None:
+    def _move_card(self, game_state: GameState, action: GameAction, 
+                   source_zone_name: str, destination_zone_name: str) -> None:
         """
-        Permet de déplacer une carte depuis n'importe quelle zone de n'importe quel joueur
-        vers la zone de destination du joueur propriétaire de la carte.
+        Moves a card from a source zone to a destination zone for a specific player.
+        This is the new centralized function for all card movements.
         """
         card_id = action.card_id
-        source_zone = action.additional_data.get("source_zone", "unknown")
+        player_id = action.player_id
 
         if not card_id:
             raise ValueError(f"card_id is required for moving a card to {destination_zone_name}")
 
-        # Cherche la carte dans tous les joueurs
+        player = self._get_player(game_state, player_id)
+
+        # Normalize zone names
+        source_zone_name = self._normalize_zone_name(source_zone_name)
+        destination_zone_name = self._normalize_zone_name(destination_zone_name)
+
+        # Find and remove the card from the source zone
         card_found = None
-        owner_player = None
-        for player in game_state.players:
-            player_zones = {
-                "hand": player.hand,
-                "battlefield": player.battlefield,
-                "graveyard": player.graveyard,
-                "exile": player.exile,
-                "library": player.library,
-            }
-            
-            # Normalize some zone names
-            if source_zone in ["permanents", "lands"]:
-                source_zone = "battlefield"
-            if destination_zone_name in ["permanents", "lands"]:
-                destination_zone_name = "battlefield"
-            if source_zone == "deck":
-                source_zone = "library"
-            if destination_zone_name == "deck":
-                destination_zone_name = "library"
+        source_zone_list = self._get_zone_list(game_state, player, source_zone_name)
+        
+        if source_zone_name == "stack":
+            # Search in the global stack
+            for i, spell in enumerate(game_state.stack):
+                if spell.get("card_id") == card_id and spell.get("player_id") == player_id:
+                    card_found = game_state.stack.pop(i).get("card_object")
+                    break
+        else:
+            # Search in player's zone
+            for i, card in enumerate(source_zone_list):
+                if card.id == card_id or card.name == card_id:
+                    card_found = source_zone_list.pop(i)
+                    break
+        
+        if not card_found:
+            raise ValueError(f"Card {card_id} not found in {source_zone_name} for player {player_id}")
 
-            if source_zone in player_zones:
-                for i, card in enumerate(player_zones[source_zone]):
-                    if card.id == card_id:
-                        card_found = player_zones[source_zone].pop(i)
-                        break
-            elif source_zone == "stack":
-                for i, spell in enumerate(game_state.stack):
-                    if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
-                        spell_data = game_state.stack.pop(i)
-                        card_found = spell_data.get("card_object")
-                        break
-            else: # source_zone is "unknown"
-                # Search all player zones, excluding the destination if provided
-                search_zones = {k: v for k, v in player_zones.items() if k != destination_zone_name}
-                for zone_name, zone_list in search_zones.items():
-                    for i, card in enumerate(zone_list):
-                        if card.id == card_id:
-                            card_found = zone_list.pop(i)
-                            break
-                    if card_found:
-                        break
-                
-                # If not found, check the stack
-                if not card_found:
-                    for i, spell in enumerate(game_state.stack):
-                        if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
-                            spell_data = game_state.stack.pop(i)
-                            card_found = spell_data.get("card_object")
-                            break
-            if card_found:
-                owner_player = player
-                break
-
-        if not card_found or not owner_player:
-            raise ValueError(f"Card {card_id} not found in {source_zone} for any player")
-
-        # Ajoute la carte dans la zone de destination du joueur propriétaire
+        # Add the card to the destination zone
         if destination_zone_name == "stack":
             spell_on_stack = {
                 "name": card_found.name,
@@ -486,25 +445,41 @@ class SimpleGameEngine:
                 "text": card_found.text,
                 "oracle_text": card_found.text,
                 "image_url": card_found.image_url,
-                "player_id": owner_player.id,
+                "player_id": player_id,
                 "card_id": card_found.id,
                 "card_object": card_found,
             }
             game_state.stack.append(spell_on_stack)
+            # Give priority to the opponent for responses
+            game_state.priority_player = 1 - int(player_id.replace('player', ''))
         else:
-            destination_zone_list = getattr(owner_player, destination_zone_name)
+            destination_zone_list = self._get_zone_list(game_state, player, destination_zone_name)
             
             # Handle deck position
             if destination_zone_name == "library" and "deck_position" in action.additional_data:
                 if action.additional_data["deck_position"] == "bottom":
                     destination_zone_list.append(card_found)
-                else:
+                else: # Default to top
                     destination_zone_list.insert(0, card_found)
             else:
                 destination_zone_list.append(card_found)
         
-        print(f"Card {card_found.name} moved to {destination_zone_name} from {source_zone} (owner: {owner_player.id}, action by: {action.player_id})")
-    
+        print(f"Card {card_found.name} moved from {source_zone_name} to {destination_zone_name} for player {player_id}")
+
+    def _normalize_zone_name(self, zone_name: str) -> str:
+        """Normalize zone names to be consistent."""
+        if zone_name in ["permanents", "lands"]:
+            return "battlefield"
+        if zone_name == "deck":
+            return "library"
+        return zone_name
+
+    def _get_zone_list(self, game_state: GameState, player: Player, zone_name: str) -> List:
+        """Get the list representing a zone."""
+        if zone_name == "stack":
+            return game_state.stack
+        return getattr(player, zone_name)
+
     def _shuffle_library(self, game_state: GameState, action: GameAction) -> None:
         """Shuffle a player's library."""
         player = self._get_player(game_state, action.player_id)
