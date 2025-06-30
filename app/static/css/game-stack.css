@@ -156,26 +156,3 @@
 .stack-spell-instant {
     border-left: 4px solid #3b82f6;
 }
-
-.stack-spell-instant .stack-player-indicator {
-    border-color: #3b82f6;
-    color: #93c5fd;
-}
-
-.stack-spell-sorcery {
-    border-left: 4px solid #dc2626;
-}
-
-.stack-spell-sorcery .stack-player-indicator {
-    border-color: #dc2626;
-    color: #fca5a5;
-}
-
-.stack-spell-ability {
-    border-left: 4px solid #7c3aed;
-}
-
-.stack-spell-ability .stack-player-indicator {
-    border-color: #7c3aed;
-    color: #c4b5fd;
-}

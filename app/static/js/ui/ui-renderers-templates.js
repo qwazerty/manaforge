@@ -431,21 +431,26 @@ class UIRenderersTemplates {
         const cardName = spell.name || 'Unknown Spell';
         const imageUrl = GameCards.getSafeImageUrl(spell);
         const cardId = spell.card_id || spell.id || spell.name;
-        
+        const card = spell.card_object || {};
+        const isTargeted = card.targeted || false;
+        const targetedClass = isTargeted ? ' targeted' : '';
+        const uniqueId = `stack-${index}`;
+
         const escapedCardId = GameUtils.escapeJavaScript(cardId);
         const escapedCardName = GameUtils.escapeJavaScript(cardName);
         const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
         
         return `
-            <div class="stack-spell" 
+            <div class="stack-spell${targetedClass}" 
                  data-index="${index}"
                  data-card-id="${cardId}"
+                 data-card-unique-id="${uniqueId}"
                  data-card-name="${escapedCardName}"
                  data-card-image="${escapedImageUrl}"
                  data-card-zone="stack"
                  data-stack-index="${index}"
                  oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="GameActions.sendToGraveyard('${escapedCardId}', 'stack', '${escapedCardId}-stack-${index}'); event.stopPropagation();">
+                 onclick="GameActions.sendToGraveyard('${escapedCardId}', 'stack', '${uniqueId}'); event.stopPropagation();">
                 
                 <div class="stack-card-container">
                     ${imageUrl ? `
