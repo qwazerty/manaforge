@@ -10,31 +10,33 @@ from app.models.game import Card, Deck, DeckCard, GameState, GameAction
 from app.services.card_service import CardService
 from app.services.game_engine import SimpleGameEngine
 from app.api.decorators import broadcast_game_update, action_registry
-from app.api.action_handlers import *  # Import to register all handlers
+from app.api.action_handlers import *
+
 
 router = APIRouter(prefix="/api/v1")
 
-# Global game engine instance (in production, use proper dependency injection)
 game_engine = SimpleGameEngine()
+
 
 async def get_card_service() -> CardService:
     """Get card service dependency."""
     return CardService()
 
+
 def get_game_engine() -> SimpleGameEngine:
     """Get game engine dependency."""
     return game_engine
 
-# === CARD ROUTES ===
 
 @router.get("/cards/search")
 async def search_cards(
-    q: str, 
+    q: str,
     limit: int = 20,
     card_service: CardService = Depends(get_card_service)
 ) -> List[Card]:
     """Search for cards by name."""
     return await card_service.search_cards(q, limit)
+
 
 @router.get("/cards/{card_id}")
 async def get_card(
@@ -47,7 +49,6 @@ async def get_card(
         raise HTTPException(status_code=404, detail="Card not found")
     return card
 
-# === GAME MANAGEMENT ROUTES ===
 
 @router.post("/games")
 async def create_game(
@@ -56,21 +57,15 @@ async def create_game(
     card_service: CardService = Depends(get_card_service)
 ) -> GameState:
     """Create a new game with custom or sample decks."""
-    # Generate a default game_id if not provided
     if game_id is None:
         import uuid
         game_id = f"game-{str(uuid.uuid4())[:8]}"
     
-    # Check if custom deck is provided
     if request and "decklist_text" in request:
-        # Parse custom deck for player 1
         deck1 = await card_service.parse_decklist(request.get("decklist_text", ""))
-        # Create game with just player 1, waiting for player 2
         game_state = game_engine.create_game_player1(game_id, deck1)
     else:
-        # Create test decks with Scryfall API cards
         try:
-            # Create deck 1 with basic cards
             deck1_cards = []
             for card_name, quantity in [
                 ("Lightning Bolt", 4),
@@ -82,7 +77,6 @@ async def create_game(
                 if card:
                     deck1_cards.append(DeckCard(card=card, quantity=quantity))
             
-            # Create deck 2 with more complex cards
             deck2_cards = []
             for card_name, quantity in [
                 ("Lightning Bolt", 4),
@@ -99,17 +93,16 @@ async def create_game(
             deck1 = Deck(name="Red-Green Deck", cards=deck1_cards)
             deck2 = Deck(name="Blue-White-Red Deck", cards=deck2_cards)
             
-            # Create full game with both players (legacy mode)
             game_state = game_engine.create_game(game_id, deck1, deck2)
             
         except Exception as e:
             print(f"Error creating sample decks: {e}")
-            # Fallback to minimal deck if Scryfall fails
             deck1 = Deck(name="Basic Red Deck", cards=[])
             deck2 = Deck(name="Basic Blue Deck", cards=[])
             game_state = game_engine.create_game(game_id, deck1, deck2)
     
     return game_state
+
 
 @router.get("/games/list")
 async def list_games() -> List[Dict[str, Any]]:
@@ -128,12 +121,14 @@ async def list_games() -> List[Dict[str, Any]]:
     print(f"Returning games list: {games_list}")
     return games_list
 
+
 @router.get("/games/{game_id}/state")
 async def get_game_state(game_id: str) -> GameState:
     """Get current game state."""
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
     return game_engine.games[game_id]
+
 
 @router.get("/games/{game_id}/ui-data")
 async def get_game_ui_data(game_id: str) -> dict:
@@ -144,7 +139,7 @@ async def get_game_ui_data(game_id: str) -> dict:
     game_state = game_engine.games[game_id]
     
     def safe_model_dump(obj):
-        """Safely convert object to dict, handling both Pydantic models and dicts."""
+        """Safely convert object to dict, handling Pydantic models and dicts."""
         if hasattr(obj, 'model_dump'):
             return obj.model_dump()
         elif isinstance(obj, dict):
@@ -152,11 +147,10 @@ async def get_game_ui_data(game_id: str) -> dict:
         else:
             return str(obj)
     
-    # Convert to UI-friendly format
     return {
         'id': game_state.id,
         'turn': game_state.turn,
-        'phase': game_state.phase.value if hasattr(game_state.phase, 'value') else str(game_state.phase),
+        'phase': game_state.phase.value,
         'active_player': game_state.active_player,
         'priority_player': game_state.priority_player,
         'players': [
@@ -164,9 +158,13 @@ async def get_game_ui_data(game_id: str) -> dict:
                 'name': player.name,
                 'life': player.life,
                 'hand': [safe_model_dump(card) for card in player.hand],
-                'battlefield': [safe_model_dump(card) for card in player.battlefield],
+                'battlefield': [
+                    safe_model_dump(card) for card in player.battlefield
+                ],
                 'library': len(player.library),
-                'graveyard': [safe_model_dump(card) for card in player.graveyard],
+                'graveyard': [
+                    safe_model_dump(card) for card in player.graveyard
+                ],
                 'exile': [safe_model_dump(card) for card in player.exile]
             }
             for player in game_state.players
@@ -174,24 +172,22 @@ async def get_game_ui_data(game_id: str) -> dict:
         'stack': [safe_model_dump(spell) for spell in game_state.stack]
     }
 
+
 @router.post("/games/{game_id}/join")
 async def join_game(
-    game_id: str, 
+    game_id: str,
     request: dict,
     card_service: CardService = Depends(get_card_service)
 ) -> GameState:
     """Join an existing game as player 2 with a deck."""
-    # Check if game exists
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
     
     current_state = game_engine.games[game_id]
     
-    # Check if game is already full
     if len(current_state.players) >= 2:
         raise HTTPException(status_code=400, detail="Game is already full")
     
-    # Parse the deck from request
     decklist_text = request.get("decklist_text", "")
     if not decklist_text:
         raise HTTPException(status_code=400, detail="Decklist text is required")
@@ -199,10 +195,8 @@ async def join_game(
     try:
         deck = await card_service.parse_decklist(decklist_text)
         
-        # Join the game with the parsed deck as player 2
         game_state = game_engine.join_game(game_id, deck)
         
-        # Broadcast update to notify all connected clients
         await broadcast_game_update(game_id, game_state, {
             "action": "player_joined",
             "player": "2",
@@ -212,13 +206,14 @@ async def join_game(
         return game_state
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error joining game: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Error joining game: {str(e)}"
+        )
 
-# === UNIFIED GAME ACTION ENDPOINT ===
 
 @router.post("/games/{game_id}/action")
 async def perform_game_action(
-    game_id: str, 
+    game_id: str,
     request: dict,
     engine: SimpleGameEngine = Depends(get_game_engine)
 ) -> dict:
@@ -230,50 +225,45 @@ async def perform_game_action(
     if not action_type:
         raise HTTPException(status_code=400, detail="action_type is required")
     
-    # Get handler from registry
     handler_info = action_registry.get_handler(action_type)
     if not handler_info:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Unknown action_type: {action_type}. Available: {action_registry.list_actions()}"
+            status_code=400,
+            detail=f"Unknown action_type: {action_type}. "
+                   f"Available: {action_registry.list_actions()}"
         )
     
-    # Validate game exists
     if game_id not in engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
     
     current_state = engine.games[game_id]
     
-    # Extract player_id with fallback logic
     if "player_id" in request:
         player_id = request["player_id"]
     else:
-        # Use appropriate fallback based on action type
         if action_type in ["pass_priority", "resolve_stack"]:
             player_id = f"player{current_state.priority_player}"
         else:
             player_id = str(current_state.active_player)
     
     try:
-        # Call the action handler
         handler = handler_info["handler"]
         action_data = await handler(game_id, request, current_state)
         
-        # If the handler overrides the action_type, use the new one.
         final_action_type = action_data.get("action_type", action_type)
         
-        # Create the game action
-        action_params = {k: v for k, v in action_data.items() if k not in ["broadcast_data", "action_type"]}
+        action_params = {
+            k: v for k, v in action_data.items()
+            if k not in ["broadcast_data", "action_type"]
+        }
         action = GameAction(
             player_id=player_id,
             action_type=final_action_type,
             **action_params
         )
         
-        # Process the action
         game_state = engine.process_action(game_id, action)
         
-        # Prepare broadcast info
         broadcast_info = {
             "action": action_type,
             "player": player_id,
@@ -281,7 +271,6 @@ async def perform_game_action(
         }
         broadcast_info.update(action_data.get("broadcast_data", {}))
         
-        # Broadcast update via WebSocket
         await broadcast_game_update(game_id, game_state, broadcast_info)
         
         return {"success": True, "game_state": game_state}
@@ -291,7 +280,6 @@ async def perform_game_action(
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# === LEGACY ENDPOINTS (for backward compatibility) ===
 
 @router.post("/games/{game_id}/actions")
 async def perform_action(game_id: str, action: GameAction) -> GameState:
@@ -302,7 +290,7 @@ async def perform_action(game_id: str, action: GameAction) -> GameState:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# Legacy endpoints that redirect to unified action endpoint
+
 @router.post("/games/{game_id}/pass-phase")
 async def pass_phase_legacy(game_id: str, request: Optional[dict] = None) -> dict:
     """Legacy endpoint for pass-phase."""
@@ -311,13 +299,17 @@ async def pass_phase_legacy(game_id: str, request: Optional[dict] = None) -> dic
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+
 @router.post("/games/{game_id}/shuffle-library")
-async def shuffle_library_legacy(game_id: str, request: Optional[dict] = None) -> dict:
+async def shuffle_library_legacy(
+    game_id: str, request: Optional[dict] = None
+) -> dict:
     """Legacy endpoint for shuffle-library."""
     action_request = {"action_type": "shuffle_library"}
     if request:
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
+
 
 @router.post("/games/{game_id}/draw-card")
 async def draw_card_legacy(game_id: str, request: Optional[dict] = None) -> dict:
@@ -327,6 +319,7 @@ async def draw_card_legacy(game_id: str, request: Optional[dict] = None) -> dict
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+
 @router.post("/games/{game_id}/play-card")
 async def play_card_legacy(game_id: str, request: dict) -> dict:
     """Legacy endpoint for play-card."""
@@ -334,12 +327,14 @@ async def play_card_legacy(game_id: str, request: dict) -> dict:
     action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+
 @router.post("/games/{game_id}/tap-card")
 async def tap_card_legacy(game_id: str, request: dict) -> dict:
     """Legacy endpoint for tap-card."""
     action_request = {"action_type": "tap_card"}
     action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
+
 
 @router.post("/games/{game_id}/untap-all")
 async def untap_all_legacy(game_id: str, request: Optional[dict] = None) -> dict:
@@ -349,6 +344,7 @@ async def untap_all_legacy(game_id: str, request: Optional[dict] = None) -> dict
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+
 @router.post("/games/{game_id}/modify-life")
 async def modify_life_legacy(game_id: str, request: dict) -> dict:
     """Legacy endpoint for modify-life."""
@@ -356,21 +352,28 @@ async def modify_life_legacy(game_id: str, request: dict) -> dict:
     action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+
 @router.post("/games/{game_id}/resolve-stack")
-async def resolve_stack_legacy(game_id: str, request: Optional[dict] = None) -> dict:
+async def resolve_stack_legacy(
+    game_id: str, request: Optional[dict] = None
+) -> dict:
     """Legacy endpoint for resolve-stack."""
     action_request = {"action_type": "resolve_stack"}
     if request:
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
+
 @router.post("/games/{game_id}/pass-priority")
-async def pass_priority_legacy(game_id: str, request: Optional[dict] = None) -> dict:
+async def pass_priority_legacy(
+    game_id: str, request: Optional[dict] = None
+) -> dict:
     """Legacy endpoint for pass-priority."""
     action_request = {"action_type": "pass_priority"}
     if request:
         action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
+
 
 @router.post("/games/{game_id}/target-card")
 async def target_card_legacy(game_id: str, request: dict) -> dict:
@@ -379,7 +382,6 @@ async def target_card_legacy(game_id: str, request: dict) -> dict:
     action_request.update(request)
     return await perform_game_action(game_id, action_request, get_game_engine())
 
-# === DECK ROUTES ===
 
 @router.post("/decks/parse")
 async def parse_decklist(
@@ -395,14 +397,18 @@ async def parse_decklist(
         deck = await card_service.parse_decklist(decklist_text)
         return deck
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error parsing decklist: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Error parsing decklist: {str(e)}"
+        )
+
 
 @router.get("/decks/{deck_id}")
 async def get_deck(deck_id: str) -> Deck:
     """Get a deck by ID - Note: This endpoint is deprecated without database."""
-    raise HTTPException(status_code=501, detail="Deck storage not implemented without database")
+    raise HTTPException(
+        status_code=501, detail="Deck storage not implemented without database"
+    )
 
-# === UTILITY ENDPOINTS ===
 
 @router.get("/actions")
 async def list_available_actions() -> Dict[str, Any]:
