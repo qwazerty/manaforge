@@ -161,22 +161,37 @@ class SimpleGameEngine:
             raise ValueError("unique_id is required for target_card action")
 
         try:
-            player_index, zone_name, card_index = unique_id.split('-')
-            player_index = int(player_index[1:])
-            card_index = int(card_index)
+            parts = unique_id.split('-')
+            if parts[0] == 'stack':
+                # Handle stack targeting
+                card_index = int(parts[1])
+                zone = game_state.stack
+                if 0 <= card_index < len(zone):
+                    spell = zone[card_index]
+                    card = spell.get("card_object")
+                    if card:
+                        card.targeted = targeted
+                        action_text = "targeted" if targeted else "untargeted"
+                        print(f"Player {action.player_id} {action_text} {card.name} on the stack")
+                        return
+            else:
+                # Handle player zone targeting
+                player_index, zone_name, card_index = parts
+                player_index = int(player_index[1:])
+                card_index = int(card_index)
 
-            player = game_state.players[player_index]
-            zone_name = self._normalize_zone_name(zone_name)
-            zone = self._get_zone_list(game_state, player, zone_name)
-            
-            if 0 <= card_index < len(zone):
-                card = zone[card_index]
-                card.targeted = targeted
-                action_text = "targeted" if targeted else "untargeted"
-                print(f"Player {action.player_id} {action_text} {card.name}")
-                return
+                player = game_state.players[player_index]
+                zone_name = self._normalize_zone_name(zone_name)
+                zone = self._get_zone_list(game_state, player, zone_name)
                 
-        except (ValueError, IndexError) as e:
+                if 0 <= card_index < len(zone):
+                    card = zone[card_index]
+                    card.targeted = targeted
+                    action_text = "targeted" if targeted else "untargeted"
+                    print(f"Player {action.player_id} {action_text} {card.name}")
+                    return
+                    
+        except (ValueError, IndexError, KeyError) as e:
             print(f"Could not parse unique_id '{unique_id}': {e}")
 
         raise ValueError(f"Card with unique_id {unique_id} not found")
