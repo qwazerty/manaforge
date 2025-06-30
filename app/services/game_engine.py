@@ -408,57 +408,6 @@ class SimpleGameEngine:
         action_text = "tapped" if card_found.tapped else "untapped"
         print(f"Player {action.player_id} {action_text} {card_found.name}")
     
-    def _find_and_remove_card(self, player: Player, card_id: str, source_zone: str, game_state: GameState, destination_zone_name: Optional[str] = None) -> Optional[Card]:
-        """Finds a card by its ID in a specified zone (or all zones) and removes it."""
-        
-        card_found = None
-        
-        player_zones = {
-            "hand": player.hand,
-            "battlefield": player.battlefield,
-            "graveyard": player.graveyard,
-            "exile": player.exile,
-            "library": player.library,
-        }
-        
-        # Normalize some zone names
-        if source_zone in ["permanents", "lands"]:
-            source_zone = "battlefield"
-        if source_zone == "deck":
-            source_zone = "library"
-
-        def find_and_remove_from_list(zone_list: List[Card], c_id: str) -> Optional[Card]:
-            for i, card in enumerate(zone_list):
-                if card.id == c_id:
-                    return zone_list.pop(i)
-            return None
-
-        if source_zone in player_zones:
-            card_found = find_and_remove_from_list(player_zones[source_zone], card_id)
-        elif source_zone == "stack":
-            for i, spell in enumerate(game_state.stack):
-                if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
-                    spell_data = game_state.stack.pop(i)
-                    card_found = spell_data.get("card_object")
-                    break
-        else: # source_zone is "unknown"
-            # Search all player zones, excluding the destination if provided
-            search_zones = {k: v for k, v in player_zones.items() if k != destination_zone_name}
-            for zone_list in search_zones.values():
-                card_found = find_and_remove_from_list(zone_list, card_id)
-                if card_found:
-                    break
-            
-            # If not found, check the stack
-            if not card_found:
-                for i, spell in enumerate(game_state.stack):
-                    if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
-                        spell_data = game_state.stack.pop(i)
-                        card_found = spell_data.get("card_object")
-                        break
-                        
-        return card_found
-
     def _move_card(self, game_state: GameState, action: GameAction, destination_zone_name: str) -> None:
         """
         Permet de déplacer une carte depuis n'importe quelle zone de n'importe quel joueur
@@ -474,7 +423,49 @@ class SimpleGameEngine:
         card_found = None
         owner_player = None
         for player in game_state.players:
-            card_found = self._find_and_remove_card(player, card_id, source_zone, game_state, destination_zone_name=destination_zone_name)
+            player_zones = {
+                "hand": player.hand,
+                "battlefield": player.battlefield,
+                "graveyard": player.graveyard,
+                "exile": player.exile,
+                "library": player.library,
+            }
+            
+            # Normalize some zone names
+            if source_zone in ["permanents", "lands"]:
+                source_zone = "battlefield"
+            if source_zone == "deck":
+                source_zone = "library"
+
+            if source_zone in player_zones:
+                for i, card in enumerate(player_zones[source_zone]):
+                    if card.id == card_id:
+                        card_found = player_zones[source_zone].pop(i)
+                        break
+            elif source_zone == "stack":
+                for i, spell in enumerate(game_state.stack):
+                    if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
+                        spell_data = game_state.stack.pop(i)
+                        card_found = spell_data.get("card_object")
+                        break
+            else: # source_zone is "unknown"
+                # Search all player zones, excluding the destination if provided
+                search_zones = {k: v for k, v in player_zones.items() if k != destination_zone_name}
+                for zone_name, zone_list in search_zones.items():
+                    for i, card in enumerate(zone_list):
+                        if card.id == card_id:
+                            card_found = zone_list.pop(i)
+                            break
+                    if card_found:
+                        break
+                
+                # If not found, check the stack
+                if not card_found:
+                    for i, spell in enumerate(game_state.stack):
+                        if spell.get("card_id") == card_id and spell.get("player_id") == player.id:
+                            spell_data = game_state.stack.pop(i)
+                            card_found = spell_data.get("card_object")
+                            break
             if card_found:
                 owner_player = player
                 break
