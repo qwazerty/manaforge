@@ -160,30 +160,33 @@ class SimpleGameEngine:
         if not unique_id:
             raise ValueError("unique_id is required for target_card action")
 
-        # Find the card in any zone of any player
-        for p in game_state.players:
-            for zone_name in ["hand", "battlefield", "graveyard", "exile", "stack", "library"]:
-                zone = self._get_zone_list(game_state, p, zone_name)
-                for card in zone:
-                    if card.unique_id == unique_id:
-                        card.targeted = targeted
-                        action_text = "targeted" if targeted else "untargeted"
-                        print(f"Player {action.player_id} {action_text} {card.name}")
-                        return
+        try:
+            player_index, zone_name, card_index = unique_id.split('-')
+            player_index = int(player_index[1:])
+            card_index = int(card_index)
+
+            player = game_state.players[player_index]
+            zone_name = self._normalize_zone_name(zone_name)
+            zone = self._get_zone_list(game_state, player, zone_name)
+            
+            if 0 <= card_index < len(zone):
+                card = zone[card_index]
+                card.targeted = targeted
+                action_text = "targeted" if targeted else "untargeted"
+                print(f"Player {action.player_id} {action_text} {card.name}")
+                return
+                
+        except (ValueError, IndexError) as e:
+            print(f"Could not parse unique_id '{unique_id}': {e}")
 
         raise ValueError(f"Card with unique_id {unique_id} not found")
     
     def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
         """Convert deck list to shuffled list of Card objects."""
-        import uuid
         cards = []
         for deck_card in deck_cards:
-            # Add quantity copies of each card with unique IDs
-            for copy_index in range(deck_card.quantity):
-                # Create a unique copy of the card with a unique ID
-                card_copy = deck_card.card.model_copy(deep=True)
-                card_copy.unique_id = f"{deck_card.card.id}_{uuid.uuid4().hex[:8]}"
-                cards.append(card_copy)
+            for _ in range(deck_card.quantity):
+                cards.append(deck_card.card.model_copy(deep=True))
         
         random.shuffle(cards)
         return cards
@@ -475,17 +478,21 @@ class SimpleGameEngine:
             game_state.stack.append(spell_on_stack)
             # Give priority to the opponent for responses
             game_state.priority_player = 1 - int(player_id.replace('player', ''))
-        else:
-            destination_zone_list = self._get_zone_list(game_state, player, destination_zone_name)
-            
-            # Handle deck position
-            if destination_zone_name == "library" and "deck_position" in action.additional_data:
-                if action.additional_data["deck_position"] == "bottom":
-                    destination_zone_list.append(card_found)
-                else: # Default to top
-                    destination_zone_list.insert(0, card_found)
-            else:
+        destination_zone_list = self._get_zone_list(game_state, player, destination_zone_name)
+        
+        # Assign unique_id before adding to the zone
+        player_index = game_state.players.index(player)
+        card_index = len(destination_zone_list)
+        card_found.unique_id = f"p{player_index}-{destination_zone_name}-{card_index}"
+
+        # Handle deck position
+        if destination_zone_name == "library" and "deck_position" in action.additional_data:
+            if action.additional_data["deck_position"] == "bottom":
                 destination_zone_list.append(card_found)
+            else: # Default to top
+                destination_zone_list.insert(0, card_found)
+        else:
+            destination_zone_list.append(card_found)
         
         print(f"Card {card_found.name} moved from {source_zone_name} to {destination_zone_name} for player {player_id}")
 
