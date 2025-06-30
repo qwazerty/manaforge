@@ -30,7 +30,7 @@ Déploiement: Docker + docker compose
 ```
 app/
 ├── main.py              # Point d'entrée FastAPI
-├── api/                 # Routes API et WebSockets
+├── api/                 # Routes API, WebSockets et gestionnaires d'actions
 ├── core/                # Configuration et base de données
 ├── models/              # Modèles Pydantic (Card, GameState, etc.)
 ├── services/            # Services métier (CardService, GameEngine)
@@ -42,9 +42,11 @@ app/
 
 ### ✅ Implémenté
 - **Création de parties** avec decks personnalisés ou pré-configurés
-- **Actions de jeu de base** : piocher, jouer cartes, passer tour/phase
+- **Endpoint d'action unifié** (`/api/v1/games/{game_id}/action`) pour toutes les actions de jeu
+- **Actions de jeu de base** : piocher, jouer cartes, passer tour/phase, tapper/détapper, modifier vie
+- **Actions de jeu avancées** : ciblage de cartes, `scry`, `surveil`, `mulligan`
 - **Interface web** complète avec zones de jeu visuelles
-- **WebSockets** pour communication temps réel
+- **WebSockets** pour communication temps réel (actions de jeu, chat, état)
 - **Recherche de cartes** via API Scryfall
 - **Parsing de decklists** (format texte)
 - **Gestion des phases** simplifiées (Begin → Main1 → Combat → Main2 → End)
@@ -80,9 +82,12 @@ app/
 
 ### 🧪 Comment tester les modifications
 
-1. **Pour l'API :** Utiliser `curl` directement
+1. **Pour l'API :** Utiliser `curl` directement sur l'endpoint unifié
    ```bash
-   curl -X POST http://localhost:8000/api/v1/games -H "Content-Type: application/json" -d '{}'
+   # Jouer une carte (remplacer GAME_ID, PLAYER_ID, et CARD_UNIQUE_ID)
+   curl -X POST http://localhost:8000/api/v1/games/GAME_ID/action \
+        -H "Content-Type: application/json" \
+        -d '{"action_type": "play_card", "player_id": "PLAYER_ID", "additional_data": {"unique_id": "CARD_UNIQUE_ID"}}'
    ```
 
 2. **Pour le jeu complet :** Lancer le script de test
@@ -140,8 +145,9 @@ app/
 
 **WebSockets :**
 - Implémentés dans `app/api/websocket.py`
-- Utilisés pour les updates de jeu en temps réel
+- Utilisés pour les updates de jeu en temps réel, le chat et la synchronisation d'état
 - Gestion des rooms par game_id
+- **Endpoints d'API legacy** : Plusieurs routes d'action (ex: `/draw-card`, `/play-card`) existent encore pour la rétrocompatibilité mais sont dépréciées au profit de l'endpoint `/action`.
 
 ### 💡 Exemples d'améliorations courantes
 
