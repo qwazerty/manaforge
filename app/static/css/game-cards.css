@@ -84,8 +84,7 @@
     opacity: 0.85;
 }
 
-.card-mini.targeted,
-.card-battlefield.targeted {
+.targeted {
     box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.7);
     border: 3px solid red;
 }
@@ -218,5 +217,3 @@
 .card-back-1080:hover {
     transform: scale(1.05);
 }
-
-/* ===== ORIGINAL STYLES CONTINUE BELOW ===== */

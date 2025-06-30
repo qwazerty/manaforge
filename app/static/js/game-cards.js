@@ -31,9 +31,11 @@ const GameCards = {
         const cardName = card.name || 'Unknown';
         const imageUrl = this.getSafeImageUrl(card);
         const isTapped = card.tapped || false;
+        const isTargeted = card.targeted || false;
         const tappedClass = isTapped ? ' tapped' : '';
+        const targetedClass = isTargeted ? ' targeted' : '';
         const playerPrefix = playerId !== null ? `p${playerId}` : 'unknown';
-        const uniqueCardId = `${playerPrefix}-${zone}-${index}`;
+        const uniqueCardId = `${playerPrefix}-battlefield-${index}`;
         const escapedCardId = GameUtils.escapeJavaScript(cardId);
         const escapedCardName = GameUtils.escapeJavaScript(cardName);
         const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
@@ -47,13 +49,14 @@ const GameCards = {
         }
 
         return `
-            <div class="${cardClass}${tappedClass}" 
+            <div class="${cardClass}${tappedClass}${targetedClass}" 
                 data-card-id="${escapedCardId}"
                 data-card-unique-id="${escapedUniqueId}"
                 data-card-name="${escapedCardName}"
                 data-card-image="${escapedImageUrl}"
                 data-card-zone="${zone}"
                 data-card-tapped="${isTapped}"
+                data-card-targeted="${isTargeted}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
                 draggable="true"

@@ -196,9 +196,10 @@ class UIRenderersTemplates {
     static generateBattlefieldZone(cards, zoneName, isOpponent, playerId = null) {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
         const cardCount = filteredCards.length;
-        const cardsHtml = filteredCards.map((card, index) => 
-            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, index, playerId)
-        ).join('');
+        const cardsHtml = filteredCards.map(card => {
+            const originalIndex = cards.findIndex(c => c.unique_id === card.unique_id);
+            return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, originalIndex, playerId);
+        }).join('');
 
         return `
             <div class="battlefield-zone ${zoneName}-zone compact-zones">
