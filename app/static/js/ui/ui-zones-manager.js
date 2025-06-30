@@ -32,40 +32,39 @@ class UIZonesManager {
      */
     static generateDeckZone(deck = [], isOpponent = false) {
         const deckArray = Array.isArray(deck) ? deck : [];
-        
-        if (deckArray.length === 0) {
-            return UIUtils.generateZoneWrapper(
-                UIUtils.generateEmptyZoneContent('📖', 'Deck is empty'), 'deck'
-            );
-        }
-
         const cardsRemaining = deckArray.length;
-        const stackLayers = Math.min(5, Math.max(1, deckArray.length));
-        
-        const stackCards = Array(stackLayers).fill().map((_, index) => {
-            const transforms = {
-                x: index * 1, y: index * 1.5,
-                rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
-            };
-            return UIUtils.generateCardLayer(null, index, transforms);
-        }).join('');
-
-        const clickHandler = isOpponent ? 
-            '' : 
-            'onclick="GameActions.drawCard()"';
+        const clickHandler = isOpponent ? '' : 'onclick="GameActions.drawCard()"';
         const overlayText = isOpponent ? '' : 'Draw';
         const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
 
-        const zoneContent = UIUtils.generateZoneWrapper(`
-            <div class="relative flex flex-col items-center py-4"
-                ondragover="UIZonesManager.handleZoneDragOver(event)"
-                ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
+        let stackCardsHTML;
+        if (cardsRemaining === 0) {
+            stackCardsHTML = UIUtils.generateEmptyZoneContent('📖', 'Deck is empty');
+        } else {
+            const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
+            const stackCards = Array(stackLayers).fill().map((_, index) => {
+                const transforms = {
+                    x: index * 1, y: index * 1.5,
+                    rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
+                };
+                return UIUtils.generateCardLayer(null, index, transforms);
+            }).join('');
+
+            stackCardsHTML = `
                 <div class="${deckClass}" ${clickHandler}>
                     ${stackCards}
                     <div class="deck-click-overlay">
                         <span class="draw-hint">${overlayText}</span>
                     </div>
                 </div>
+            `;
+        }
+
+        const zoneContent = UIUtils.generateZoneWrapper(`
+            <div class="relative flex flex-col items-center py-4"
+                ondragover="UIZonesManager.handleZoneDragOver(event)"
+                ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
+                ${stackCardsHTML}
                 <div class="deck-cards-count mt-2">
                     <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
                 </div>
@@ -73,7 +72,7 @@ class UIZonesManager {
         `, 'deck');
 
         // Add context menu after DOM update
-        this._attachContextMenu(isOpponent ? '.deck-cards-stack.opponent-deck' : '.deck-cards-stack:not(.opponent-deck)', 
+        this._attachContextMenu(isOpponent ? '.deck-cards-stack.opponent-deck' : '.deck-cards-stack:not(.opponent-deck)',
                                isOpponent ? 'opponent_deck' : 'deck');
         return zoneContent;
     }
@@ -83,44 +82,43 @@ class UIZonesManager {
      */
     static generateGraveyardZone(graveyard = [], isOpponent = false) {
         const graveyardArray = Array.isArray(graveyard) ? graveyard : [];
-        
-        if (graveyardArray.length === 0) {
-            return UIUtils.generateZoneWrapper(`
-                <div class="relative flex flex-col items-center py-4">
-                    <div class="graveyard-empty">
-                        <span>⚰️</span>
-                        <div class="zone-empty-text">Empty</div>
-                    </div>
-                </div>
-            `, 'graveyard');
-        }
-
         const cardsRemaining = graveyardArray.length;
-        const stackLayers = Math.min(5, Math.max(1, graveyardArray.length));
-        
-        const stackCards = Array(stackLayers).fill().map((_, index) => {
-            const transforms = {
-                x: index * 1, y: index * 1.5,
-                rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
-            };
-            const cardIndex = Math.max(0, graveyardArray.length - stackLayers + index);
-            const card = graveyardArray[cardIndex];
-            return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
-        }).join('');
-
-        const clickHandler = isOpponent ? 
-            "UIZonesManager.showOpponentZoneModal('graveyard')" : 
+        const clickHandler = isOpponent ?
+            "UIZonesManager.showOpponentZoneModal('graveyard')" :
             "UIZonesManager.showZoneModal('graveyard')";
+
+        let stackCardsHTML;
+        if (cardsRemaining === 0) {
+            stackCardsHTML = `
+                <div class="graveyard-empty">
+                    <span>⚰️</span>
+                    <div class="zone-empty-text">Empty</div>
+                </div>
+            `;
+        } else {
+            const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
+            stackCardsHTML = Array(stackLayers).fill().map((_, index) => {
+                const transforms = {
+                    x: index * 1, y: index * 1.5,
+                    rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
+                };
+                const cardIndex = Math.max(0, cardsRemaining - stackLayers + index);
+                const card = graveyardArray[cardIndex];
+                return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
+            }).join('');
+        }
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
                 <div class="graveyard-cards-stack" onclick="${clickHandler}">
-                    ${stackCards}
+                    ${stackCardsHTML}
+                    ${cardsRemaining > 0 ? `
                     <div class="graveyard-click-overlay">
                         <span class="zone-view-hint">View<br>All</span>
                     </div>
+                    ` : ''}
                 </div>
                 <div class="graveyard-cards-count mt-2">
                     <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
@@ -137,38 +135,31 @@ class UIZonesManager {
      */
     static generateExileZone(exile = [], isOpponent = false) {
         const exileArray = Array.isArray(exile) ? exile : [];
-        
-        if (exileArray.length === 0) {
-            return UIUtils.generateZoneWrapper(`
-                <div class="relative flex flex-col items-center py-4">
-                    <div class="exile-empty">
-                        <span>🌌</span>
-                        <div class="zone-empty-text">Empty</div>
-                    </div>
-                </div>
-            `, 'exile');
-        }
-
         const cardsRemaining = exileArray.length;
-        const stackLayers = Math.min(5, Math.max(1, exileArray.length));
-        
-        const stackCards = Array(stackLayers).fill().map((_, index) => {
-            const transforms = {
-                x: index * 1, y: index * 1,
-                rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
-            };
-            return UIUtils.generateCardLayer(null, index, transforms, 'exile-card-layer');
-        }).join('');
-
-        const topCard = exileArray[exileArray.length - 1];
-        const clickHandler = isOpponent ? 
-            "UIZonesManager.showOpponentZoneModal('exile')" : 
+        const clickHandler = isOpponent ?
+            "UIZonesManager.showOpponentZoneModal('exile')" :
             "UIZonesManager.showZoneModal('exile')";
 
-        const zoneContent = UIUtils.generateZoneWrapper(`
-            <div class="relative flex flex-col items-center py-4"
-                ondragover="UIZonesManager.handleZoneDragOver(event)"
-                ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
+        let exileContentHTML;
+        if (cardsRemaining === 0) {
+            exileContentHTML = `
+                <div class="exile-empty">
+                    <span>🌌</span>
+                    <div class="zone-empty-text">Empty</div>
+                </div>
+            `;
+        } else {
+            const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
+            const stackCards = Array(stackLayers).fill().map((_, index) => {
+                const transforms = {
+                    x: index * 1, y: index * 1,
+                    rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
+                };
+                return UIUtils.generateCardLayer(null, index, transforms, 'exile-card-layer');
+            }).join('');
+            const topCard = exileArray[exileArray.length - 1];
+
+            exileContentHTML = `
                 <div class="exile-stack" onclick="${clickHandler}">
                     ${stackCards}
                     <div class="exile-top-card">
@@ -178,6 +169,14 @@ class UIZonesManager {
                         <span class="zone-view-hint">View<br>All</span>
                     </div>
                 </div>
+            `;
+        }
+
+        const zoneContent = UIUtils.generateZoneWrapper(`
+            <div class="relative flex flex-col items-center py-4"
+                ondragover="UIZonesManager.handleZoneDragOver(event)"
+                ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
+                ${exileContentHTML}
                 <div class="exile-cards-count mt-2">
                     <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
                 </div>
