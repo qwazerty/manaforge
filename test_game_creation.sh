@@ -6,6 +6,7 @@
 set -e
 
 API_BASE="http://localhost:8000/api/v1"
+# API_BASE="https://manaforge.houke.fr/api/v1"
 GAME_ID="test-game-001"
 
 echo "🎮 Test de création de parties ManaForge"
