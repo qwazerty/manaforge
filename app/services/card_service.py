@@ -150,6 +150,28 @@ class CardService:
         import uuid
         unique_id = f"{card_id}_{uuid.uuid4().hex[:8]}"
 
+        # Check if this is a double-faced card
+        is_double_faced = "card_faces" in scryfall_data and len(scryfall_data["card_faces"]) > 1
+        card_faces = []
+        
+        if is_double_faced:
+            for i, face in enumerate(scryfall_data["card_faces"]):
+                face_image_url = None
+                if "image_uris" in face and "normal" in face["image_uris"]:
+                    # Pour les cartes double faces, on accepte toutes les images, y compris celles avec "/back/"
+                    face_image_url = face["image_uris"]["normal"]
+                
+                face_data = {
+                    "name": face.get("name", scryfall_data["name"]),
+                    "mana_cost": face.get("mana_cost", ""),
+                    "type_line": face.get("type_line", ""),
+                    "oracle_text": face.get("oracle_text", ""),
+                    "power": face.get("power"),
+                    "toughness": face.get("toughness"),
+                    "image_url": face_image_url
+                }
+                card_faces.append(face_data)
+
         return {
             "id": card_id,
             "unique_id": unique_id,
@@ -163,7 +185,10 @@ class CardService:
             "toughness": scryfall_data.get("toughness"),
             "colors": colors,
             "rarity": rarity,
-            "image_url": image_url
+            "image_url": image_url,
+            "is_double_faced": is_double_faced,
+            "current_face": 0,
+            "card_faces": card_faces
         }
     
     async def parse_decklist(self, decklist_text: str) -> Deck:

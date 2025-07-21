@@ -5,7 +5,17 @@
 const GameCards = {
     getSafeImageUrl: function(card) {
         if (!card || !card.image_url) return null;
-        if (card.image_url.includes("/back/")) return null;
+        
+        // Pour les cartes double faces, permettre les images de face arrière
+        if (card.is_double_faced && card.card_faces && card.card_faces.length > 1) {
+            const currentFace = card.current_face || 0;
+            if (currentFace < card.card_faces.length && card.card_faces[currentFace].image_url) {
+                return card.card_faces[currentFace].image_url;
+            }
+        }
+        
+        // Pour les cartes simples, éviter les images "/back/" (dos de cartes génériques)
+        if (card.image_url.includes("/back/") && !card.is_double_faced) return null;
         return card.image_url;
     },
 
@@ -179,6 +189,16 @@ const GameCards = {
         const targetIcon = isTargeted ? '❌' : '🎯';
         menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.toggleCardTarget('${uniqueCardId}')"><span class="icon">${targetIcon}</span> ${targetAction}</div>`;
 
+        // Check if this is a double-faced card by looking at the card data
+        const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
+        const isDoubleFaced = cardData.is_double_faced && cardData.card_faces && cardData.card_faces.length > 1;
+        
+        if (isDoubleFaced && !isOpponent) {
+            const currentFace = cardData.current_face || 0;
+            const faceText = currentFace === 0 ? 'Back' : 'Front';
+            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.flipCard('${cardId}', '${uniqueCardId}')"><span class="icon">🔄</span> Flip to ${faceText}</div>`;
+        }
+
         if (!isOpponent) {
             if (cardZone === 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')"><span class="icon">▶️</span> Play Card</div>`;
@@ -295,6 +315,31 @@ const GameCards = {
         }
         if (this._boundHandleCardPreviewKeydown) {
             document.removeEventListener('keydown', this._boundHandleCardPreviewKeydown);
+        }
+    },
+
+    flipCard: function(cardId, uniqueCardId) {
+        GameActions.performGameAction('flip_card', {
+            card_id: cardId,
+            unique_id: uniqueCardId
+        });
+
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (cardElement) {
+            const cardName = cardElement.getAttribute('data-card-name');
+            GameUI.showNotification(`${cardName} flipped`, 'info');
+            
+            // Attendre un peu pour que le serveur traite l'action, puis rafraîchir l'affichage
+            setTimeout(() => {
+                // Déclencher un rafraîchissement des données de jeu pour mettre à jour l'interface
+                if (window.gameWebSocket && window.gameWebSocket.readyState === WebSocket.OPEN) {
+                    // Le WebSocket se chargera automatiquement de rafraîchir l'interface
+                    console.log('Card flip processed, interface will update via WebSocket');
+                } else {
+                    // Fallback: rafraîchir manuellement si pas de WebSocket
+                    window.location.reload();
+                }
+            }, 500);
         }
     },
 

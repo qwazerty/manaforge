@@ -65,6 +65,16 @@ class Card(BaseModel):
     targeted: bool = Field(
         default=False, description="Whether the card is targeted"
     )
+    # Double-faced card support
+    is_double_faced: bool = Field(
+        default=False, description="Whether this card has multiple faces"
+    )
+    current_face: int = Field(
+        default=0, description="Current face index (0 for front, 1 for back)"
+    )
+    card_faces: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Data for each face of the card"
+    )
 
 
 class DeckCard(BaseModel):
