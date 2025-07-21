@@ -396,45 +396,13 @@ class UIRenderersTemplates {
             </div>
             
             <!-- Card Search Section -->
-            <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
-                <h5 class="text-arena-accent font-semibold mb-3 text-sm text-center">🔍 Rechercher une carte</h5>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    ${UIUtils.generateButton(
-                        "showCardSearch('hand')",
-                        UIConfig.CSS_CLASSES.button.secondary,
-                        "Ajouter à la main",
-                        "✋ Main"
-                    )}
-                    ${UIUtils.generateButton(
-                        "showCardSearch('battlefield')",
-                        UIConfig.CSS_CLASSES.button.secondary,
-                        "Ajouter au champ de bataille",
-                        "⚔️ Champ"
-                    )}
-                </div>
-                <div class="grid grid-cols-3 gap-1 text-xs">
-                    ${UIUtils.generateButton(
-                        "showCardSearch('graveyard')",
-                        UIConfig.CSS_CLASSES.button.secondary + ' text-xs py-1 px-2',
-                        "Ajouter au cimetière",
-                        "🪦 Cimetière"
-                    )}
-                    ${UIUtils.generateButton(
-                        "showCardSearch('exile')",
-                        UIConfig.CSS_CLASSES.button.secondary + ' text-xs py-1 px-2',
-                        "Ajouter à l'exil",
-                        "🚫 Exil"
-                    )}
-                    ${UIUtils.generateButton(
-                        "showCardSearch('library')",
-                        UIConfig.CSS_CLASSES.button.secondary + ' text-xs py-1 px-2',
-                        "Ajouter à la bibliothèque",
-                        "📚 Bibli"
-                    )}
-                </div>
-                <div class="text-xs text-gray-400 text-center mt-2">
-                    Tapez "Bir" pour Birds of Paradise, "Light" pour Lightning Bolt...
-                </div>
+            <div class="mb-4">
+                ${UIUtils.generateButton(
+                    "showCardSearch('battlefield')",
+                    UIConfig.CSS_CLASSES.button.secondary + ' w-full',
+                    "Search for a card to add to the battlefield",
+                    "🔍 Search cards"
+                )}
             </div>
             
             <div class="grid grid-cols-2 gap-2 text-xs mb-3">
