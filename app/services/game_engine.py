@@ -124,6 +124,7 @@ class SimpleGameEngine:
             "surveil": self._surveil,
             "resolve_temporary_zone": self._resolve_temporary_zone,
             "target_card": self._target_card,
+            "flip_card": self._flip_card,
         }
         
         
@@ -663,3 +664,90 @@ class SimpleGameEngine:
 
         game_state.priority_player = game_state.active_player
         print(f"All {resolved_count} spells resolved, priority returned to active player")
+
+    def _flip_card(self, game_state: GameState, action: GameAction) -> None:
+        """Handle flipping a double-faced card."""
+        unique_id = action.additional_data.get("unique_id")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for flip_card action")
+
+        # Find the card in all zones and stack
+        card_found = None
+        for p in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library"]:
+                zone = self._get_zone_list(game_state, p, zone_name)
+                for card in zone:
+                    if card.unique_id == unique_id:
+                        card_found = card
+                        break
+                if card_found:
+                    break
+            if card_found:
+                break
+
+        # Check stack as well
+        if not card_found:
+            for spell in game_state.stack:
+                if spell.unique_id == unique_id:
+                    card_found = spell
+                    break
+
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        # Only flip if it's a double-faced card
+        if not card_found.is_double_faced or not card_found.card_faces:
+            print(f"Card {card_found.name} is not a double-faced card")
+            return
+
+        # Flip to the other face
+        if card_found.current_face == 0:
+            card_found.current_face = 1
+        else:
+            card_found.current_face = 0
+
+        # Update card properties from the new face data
+        if card_found.current_face < len(card_found.card_faces):
+            face_data = card_found.card_faces[card_found.current_face]
+            
+            # Update card properties with face data
+            if "name" in face_data:
+                card_found.name = face_data["name"]
+            if "mana_cost" in face_data:
+                card_found.mana_cost = face_data["mana_cost"]
+            if "type_line" in face_data:
+                # Parse type_line to update card_type and subtype
+                type_line = face_data["type_line"].lower()
+                if "creature" in type_line:
+                    card_found.card_type = CardType.CREATURE
+                elif "instant" in type_line:
+                    card_found.card_type = CardType.INSTANT
+                elif "sorcery" in type_line:
+                    card_found.card_type = CardType.SORCERY
+                elif "enchantment" in type_line:
+                    card_found.card_type = CardType.ENCHANTMENT
+                elif "artifact" in type_line:
+                    card_found.card_type = CardType.ARTIFACT
+                elif "planeswalker" in type_line:
+                    card_found.card_type = CardType.PLANESWALKER
+                elif "land" in type_line:
+                    card_found.card_type = CardType.LAND
+                
+                # Update subtype
+                if "—" in face_data["type_line"]:
+                    card_found.subtype = face_data["type_line"].split("—")[1].strip()
+                elif " — " in face_data["type_line"]:
+                    card_found.subtype = face_data["type_line"].split(" — ")[1].strip()
+            
+            if "oracle_text" in face_data:
+                card_found.text = face_data["oracle_text"]
+            if "power" in face_data:
+                card_found.power = face_data["power"]
+            if "toughness" in face_data:
+                card_found.toughness = face_data["toughness"]
+            if "image_url" in face_data:
+                card_found.image_url = face_data["image_url"]
+
+        face_name = "back" if card_found.current_face == 1 else "front"
+        print(f"Player {action.player_id} flipped {card_found.name} to {face_name} face")
