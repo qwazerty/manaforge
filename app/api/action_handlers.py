@@ -414,3 +414,99 @@ async def handle_flip_card(
             "card_id": card_id,
         },
     }
+
+@action_registry.register(
+    "add_counter", required_fields=["unique_id", "card_id", "counter_type"]
+)
+async def handle_add_counter(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle adding counters to a card."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for add_counter"
+        )
+
+    unique_id = request.get("unique_id")
+    card_id = request.get("card_id")
+    counter_type = request.get("counter_type")
+    amount = request.get("amount", 1)
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "counter_type": counter_type,
+            "amount": amount,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_id": card_id,
+            "counter_type": counter_type,
+            "amount": amount,
+        },
+    }
+
+@action_registry.register(
+    "remove_counter", required_fields=["unique_id", "card_id", "counter_type"]
+)
+async def handle_remove_counter(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle removing counters from a card."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for remove_counter"
+        )
+
+    unique_id = request.get("unique_id")
+    card_id = request.get("card_id")
+    counter_type = request.get("counter_type")
+    amount = request.get("amount", 1)
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "counter_type": counter_type,
+            "amount": amount,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_id": card_id,
+            "counter_type": counter_type,
+            "amount": amount,
+        },
+    }
+
+@action_registry.register(
+    "set_counter", required_fields=["unique_id", "card_id", "counter_type", "amount"]
+)
+async def handle_set_counter(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle setting counters on a card to a specific amount."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for set_counter"
+        )
+
+    unique_id = request.get("unique_id")
+    card_id = request.get("card_id")
+    counter_type = request.get("counter_type")
+    amount = request.get("amount", 0)
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "counter_type": counter_type,
+            "amount": amount,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_id": card_id,
+            "counter_type": counter_type,
+            "amount": amount,
+        },
+    }

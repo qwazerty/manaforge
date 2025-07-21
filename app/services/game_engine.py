@@ -125,6 +125,9 @@ class SimpleGameEngine:
             "resolve_temporary_zone": self._resolve_temporary_zone,
             "target_card": self._target_card,
             "flip_card": self._flip_card,
+            "add_counter": self._add_counter,
+            "remove_counter": self._remove_counter,
+            "set_counter": self._set_counter,
         }
         
         
@@ -751,3 +754,150 @@ class SimpleGameEngine:
 
         face_name = "back" if card_found.current_face == 1 else "front"
         print(f"Player {action.player_id} flipped {card_found.name} to {face_name} face")
+
+    def _add_counter(self, game_state: GameState, action: GameAction) -> None:
+        """Add counters to a card."""
+        unique_id = action.additional_data.get("unique_id")
+        counter_type = action.additional_data.get("counter_type")
+        amount = action.additional_data.get("amount", 1)
+
+        if not unique_id:
+            raise ValueError("unique_id is required for add_counter action")
+        if not counter_type:
+            raise ValueError("counter_type is required for add_counter action")
+
+        # Find the card in all zones
+        card_found = None
+        for p in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library"]:
+                zone = self._get_zone_list(game_state, p, zone_name)
+                for card in zone:
+                    if card.unique_id == unique_id:
+                        card_found = card
+                        break
+                if card_found:
+                    break
+            if card_found:
+                break
+
+        # Check stack as well
+        if not card_found:
+            for spell in game_state.stack:
+                if spell.unique_id == unique_id:
+                    card_found = spell
+                    break
+
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        # Add counters
+        if counter_type not in card_found.counters:
+            card_found.counters[counter_type] = 0
+        card_found.counters[counter_type] += amount
+
+        # Special handling for loyalty counters on planeswalkers
+        if counter_type == "loyalty" and card_found.card_type == CardType.PLANESWALKER:
+            card_found.loyalty = card_found.counters["loyalty"]
+
+        print(f"Added {amount} {counter_type} counter(s) to {card_found.name}. Total: {card_found.counters[counter_type]}")
+
+    def _remove_counter(self, game_state: GameState, action: GameAction) -> None:
+        """Remove counters from a card."""
+        unique_id = action.additional_data.get("unique_id")
+        counter_type = action.additional_data.get("counter_type")
+        amount = action.additional_data.get("amount", 1)
+
+        if not unique_id:
+            raise ValueError("unique_id is required for remove_counter action")
+        if not counter_type:
+            raise ValueError("counter_type is required for remove_counter action")
+
+        # Find the card in all zones
+        card_found = None
+        for p in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library"]:
+                zone = self._get_zone_list(game_state, p, zone_name)
+                for card in zone:
+                    if card.unique_id == unique_id:
+                        card_found = card
+                        break
+                if card_found:
+                    break
+            if card_found:
+                break
+
+        # Check stack as well
+        if not card_found:
+            for spell in game_state.stack:
+                if spell.unique_id == unique_id:
+                    card_found = spell
+                    break
+
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        # Remove counters
+        if counter_type not in card_found.counters:
+            card_found.counters[counter_type] = 0
+
+        old_amount = card_found.counters[counter_type]
+        card_found.counters[counter_type] = max(0, card_found.counters[counter_type] - amount)
+        removed_amount = old_amount - card_found.counters[counter_type]
+
+        # Clean up counter type if it reaches 0
+        if card_found.counters[counter_type] == 0:
+            del card_found.counters[counter_type]
+
+        # Special handling for loyalty counters on planeswalkers
+        if counter_type == "loyalty" and card_found.card_type == CardType.PLANESWALKER:
+            card_found.loyalty = card_found.counters.get("loyalty", 0)
+
+        print(f"Removed {removed_amount} {counter_type} counter(s) from {card_found.name}. Total: {card_found.counters.get(counter_type, 0)}")
+
+    def _set_counter(self, game_state: GameState, action: GameAction) -> None:
+        """Set the number of counters on a card to a specific amount."""
+        unique_id = action.additional_data.get("unique_id")
+        counter_type = action.additional_data.get("counter_type")
+        amount = action.additional_data.get("amount", 0)
+
+        if not unique_id:
+            raise ValueError("unique_id is required for set_counter action")
+        if not counter_type:
+            raise ValueError("counter_type is required for set_counter action")
+
+        # Find the card in all zones
+        card_found = None
+        for p in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library"]:
+                zone = self._get_zone_list(game_state, p, zone_name)
+                for card in zone:
+                    if card.unique_id == unique_id:
+                        card_found = card
+                        break
+                if card_found:
+                    break
+            if card_found:
+                break
+
+        # Check stack as well
+        if not card_found:
+            for spell in game_state.stack:
+                if spell.unique_id == unique_id:
+                    card_found = spell
+                    break
+
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        # Set counters
+        if amount <= 0:
+            if counter_type in card_found.counters:
+                del card_found.counters[counter_type]
+        else:
+            card_found.counters[counter_type] = amount
+
+        # Special handling for loyalty counters on planeswalkers
+        if counter_type == "loyalty" and card_found.card_type == CardType.PLANESWALKER:
+            card_found.loyalty = card_found.counters.get("loyalty", 0)
+
+        print(f"Set {counter_type} counters on {card_found.name} to {amount}")

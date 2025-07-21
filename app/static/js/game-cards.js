@@ -57,6 +57,9 @@ const GameCards = {
             onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
         }
 
+        // Generate counters display
+        const countersHtml = this.generateCountersHtml(card);
+
         return `
             <div class="${cardClass}${tappedClass}${targetedClass}" 
                 data-card-id="${escapedCardId}"
@@ -81,13 +84,93 @@ const GameCards = {
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;">
                         </div>
+                        ${countersHtml}
                     </div>
                 ` : `
                     <div class="card-fallback">
+                        ${countersHtml}
                     </div>
                 `}
             </div>
         `;
+    },
+
+    generateCountersHtml: function(card) {
+        if (!card.counters || Object.keys(card.counters).length === 0) {
+            return '';
+        }
+
+        let countersHtml = '<div class="card-counters">';
+        
+        // Sort counters to show loyalty first for planeswalkers
+        const counterTypes = Object.keys(card.counters).sort((a, b) => {
+            if (a === 'loyalty') return -1;
+            if (b === 'loyalty') return 1;
+            return a.localeCompare(b);
+        });
+
+        for (const counterType of counterTypes) {
+            const count = card.counters[counterType];
+            if (count > 0) {
+                const counterClass = this.getCounterClass(counterType);
+                
+                // Special handling for +1/+1 and -1/-1 counters
+                if (counterType === '+1/+1') {
+                    countersHtml += `
+                        <div class="counter ${counterClass}" title="${count} ${counterType} counter(s)">
+                            <span class="counter-value">+${count}/+${count}</span>
+                        </div>
+                    `;
+                } else if (counterType === '-1/-1') {
+                    countersHtml += `
+                        <div class="counter ${counterClass}" title="${count} ${counterType} counter(s)">
+                            <span class="counter-value">-${count}/-${count}</span>
+                        </div>
+                    `;
+                } else {
+                    // Default handling for other counter types
+                    const counterIcon = this.getCounterIcon(counterType);
+                    countersHtml += `
+                        <div class="counter ${counterClass}" title="${count} ${counterType} counter(s)">
+                            <span class="counter-icon">${counterIcon}</span>
+                            <span class="counter-value">${count}</span>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        countersHtml += '</div>';
+        return countersHtml;
+    },
+
+    getCounterIcon: function(counterType) {
+        const icons = {
+            'loyalty': '🛡️',
+            '+1/+1': '💪',
+            '-1/-1': '💀',
+            'charge': '⚡',
+            'poison': '☠️',
+            'energy': '⚡',
+            'experience': '🎓',
+            'treasure': '💰',
+            'food': '🍖',
+            'clue': '🔍',
+            'blood': '🩸',
+            'oil': '🛢️'
+        };
+        return icons[counterType] || '🔢';
+    },
+
+    getCounterClass: function(counterType) {
+        const classes = {
+            'loyalty': 'counter-loyalty',
+            '+1/+1': 'counter-plus',
+            '-1/-1': 'counter-minus',
+            'charge': 'counter-charge',
+            'poison': 'counter-poison'
+        };
+        return classes[counterType] || 'counter-generic';
     },
 
     showCardPreview: function(cardId, cardName, imageUrl, event = null) {
@@ -210,9 +293,18 @@ const GameCards = {
                 const tapAction = isTapped ? 'Untap' : 'Tap';
                 const tapIcon = isTapped ? '⤴️' : '🔄';
                 menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
+                
+                // Add counter management options
+                if (cardData.counters && Object.keys(cardData.counters).length > 0) {
+                    menuHTML += `<div class="card-context-menu-divider"></div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCounterModal('${uniqueCardId}', '${cardId}')"><span class="icon">🔢</span> Manage Counters</div>`;
+                } else {
+                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showAddCounterModal('${uniqueCardId}', '${cardId}')"><span class="icon">➕</span> Add Counter</div>`;
+                }
             }
 
             menuHTML += `
+                <div class="card-context-menu-divider"></div>
                 <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${cardId}', '${cardZone}', 'graveyard', '${uniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
                 <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${cardId}', '${cardZone}', 'exile', '${uniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
 
@@ -354,6 +446,180 @@ const GameCards = {
         }));
         // Optionally: add visual feedback
         cardElement.classList.add('dragging');
+    },
+
+    showCounterModal: function(uniqueCardId, cardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (!cardElement) return;
+
+        const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
+        const cardName = cardData.name || 'Unknown Card';
+
+        // Remove any existing counter modal
+        const existingModal = document.getElementById('counter-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'counter-modal';
+        modal.className = 'counter-modal';
+        modal.innerHTML = `
+            <div class="counter-modal-content">
+                <div class="counter-modal-header">
+                    <h3>${cardName} - Manage Counters</h3>
+                    <button class="counter-modal-close" onclick="GameCards.closeCounterModal()">&times;</button>
+                </div>
+                <div class="counter-modal-body">
+                    ${this.generateCounterControls(cardData, uniqueCardId, cardId)}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+    },
+
+    showAddCounterModal: function(uniqueCardId, cardId) {
+        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        if (!cardElement) return;
+
+        const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
+        const cardName = cardData.name || 'Unknown Card';
+
+        // Remove any existing counter modal
+        const existingModal = document.getElementById('counter-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'counter-modal';
+        modal.className = 'counter-modal';
+        modal.innerHTML = `
+            <div class="counter-modal-content">
+                <div class="counter-modal-header">
+                    <h3>${cardName} - Add Counter</h3>
+                    <button class="counter-modal-close" onclick="GameCards.closeCounterModal()">&times;</button>
+                </div>
+                <div class="counter-modal-body">
+                    <div class="add-counter-form">
+                        <label for="counter-type-select">Counter Type:</label>
+                        <select id="counter-type-select">
+                            <option value="+1/+1">+1/+1</option>
+                            <option value="-1/-1">-1/-1</option>
+                            <option value="loyalty">Loyalty</option>
+                            <option value="charge">Charge</option>
+                            <option value="poison">Poison</option>
+                            <option value="energy">Energy</option>
+                            <option value="experience">Experience</option>
+                            <option value="treasure">Treasure</option>
+                            <option value="food">Food</option>
+                            <option value="clue">Clue</option>
+                            <option value="blood">Blood</option>
+                            <option value="oil">Oil</option>
+                        </select>
+                        <label for="counter-amount-input">Amount:</label>
+                        <input type="number" id="counter-amount-input" value="1" min="1" max="20">
+                        <button onclick="GameCards.addCounterFromModal('${uniqueCardId}', '${cardId}')">Add Counter</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+    },
+
+    generateCounterControls: function(cardData, uniqueCardId, cardId) {
+        if (!cardData.counters || Object.keys(cardData.counters).length === 0) {
+            return '<p>No counters on this card.</p>';
+        }
+
+        let html = '<div class="counter-controls">';
+        
+        for (const [counterType, count] of Object.entries(cardData.counters)) {
+            if (count > 0) {
+                const counterIcon = this.getCounterIcon(counterType);
+                html += `
+                    <div class="counter-control-row">
+                        <span class="counter-icon">${counterIcon}</span>
+                        <span class="counter-type">${counterType}</span>
+                        <div class="counter-controls-buttons">
+                            <button onclick="GameCards.modifyCounter('${uniqueCardId}', '${cardId}', '${counterType}', -1)">-</button>
+                            <span class="counter-amount">${count}</span>
+                            <button onclick="GameCards.modifyCounter('${uniqueCardId}', '${cardId}', '${counterType}', 1)">+</button>
+                            <button class="remove-counter-btn" onclick="GameCards.removeAllCounters('${uniqueCardId}', '${cardId}', '${counterType}')">Remove All</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        html += '</div>';
+        html += `<button class="add-new-counter-btn" onclick="GameCards.showAddCounterModal('${uniqueCardId}', '${cardId}')">Add New Counter Type</button>`;
+        
+        return html;
+    },
+
+    addCounterFromModal: function(uniqueCardId, cardId) {
+        const counterType = document.getElementById('counter-type-select').value;
+        const amount = parseInt(document.getElementById('counter-amount-input').value) || 1;
+        
+        GameActions.performGameAction('add_counter', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            counter_type: counterType,
+            amount: amount
+        });
+
+        this.closeCounterModal();
+        GameUI.showNotification(`Added ${amount} ${counterType} counter(s)`, 'success');
+    },
+
+    modifyCounter: function(uniqueCardId, cardId, counterType, change) {
+        if (change > 0) {
+            GameActions.performGameAction('add_counter', {
+                unique_id: uniqueCardId,
+                card_id: cardId,
+                counter_type: counterType,
+                amount: change
+            });
+        } else {
+            GameActions.performGameAction('remove_counter', {
+                unique_id: uniqueCardId,
+                card_id: cardId,
+                counter_type: counterType,
+                amount: Math.abs(change)
+            });
+        }
+
+        // Refresh the modal content
+        setTimeout(() => {
+            const modal = document.getElementById('counter-modal');
+            if (modal) {
+                this.showCounterModal(uniqueCardId, cardId);
+            }
+        }, 100);
+    },
+
+    removeAllCounters: function(uniqueCardId, cardId, counterType) {
+        GameActions.performGameAction('set_counter', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            counter_type: counterType,
+            amount: 0
+        });
+
+        this.closeCounterModal();
+        GameUI.showNotification(`Removed all ${counterType} counters`, 'info');
+    },
+
+    closeCounterModal: function() {
+        const modal = document.getElementById('counter-modal');
+        if (modal) {
+            modal.remove();
+        }
     }
 };
 

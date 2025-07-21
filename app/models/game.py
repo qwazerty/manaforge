@@ -75,6 +75,16 @@ class Card(BaseModel):
     card_faces: List[Dict[str, Any]] = Field(
         default_factory=list, description="Data for each face of the card"
     )
+    
+    # Counter support
+    counters: Dict[str, int] = Field(
+        default_factory=dict, description="Counters on this card (e.g., {'loyalty': 3, '+1/+1': 2})"
+    )
+    
+    # Planeswalker loyalty (separate from counters for easier access)
+    loyalty: Optional[int] = Field(
+        default=None, description="Current loyalty for planeswalkers"
+    )
 
 
 class DeckCard(BaseModel):

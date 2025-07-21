@@ -172,6 +172,29 @@ class CardService:
                 }
                 card_faces.append(face_data)
 
+        # Initialize counters and loyalty for planeswalkers
+        counters = {}
+        loyalty = None
+        
+        if card_type == CardType.PLANESWALKER:
+            # Extract starting loyalty from card text or use default
+            loyalty_value = scryfall_data.get("loyalty")
+            if loyalty_value is not None:
+                try:
+                    loyalty = int(loyalty_value)
+                    counters["loyalty"] = loyalty
+                except (ValueError, TypeError):
+                    # Fallback to parsing from text if loyalty field is not numeric
+                    oracle_text = scryfall_data.get("oracle_text", "")
+                    loyalty_match = re.search(r"Starting loyalty (\d+)", oracle_text)
+                    if loyalty_match:
+                        loyalty = int(loyalty_match.group(1))
+                        counters["loyalty"] = loyalty
+                    else:
+                        # Default loyalty if can't determine
+                        loyalty = 3
+                        counters["loyalty"] = loyalty
+
         return {
             "id": card_id,
             "unique_id": unique_id,
@@ -188,7 +211,9 @@ class CardService:
             "image_url": image_url,
             "is_double_faced": is_double_faced,
             "current_face": 0,
-            "card_faces": card_faces
+            "card_faces": card_faces,
+            "counters": counters,
+            "loyalty": loyalty
         }
     
     async def parse_decklist(self, decklist_text: str) -> Deck:
