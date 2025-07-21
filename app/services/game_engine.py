@@ -21,15 +21,18 @@ class SimpleGameEngine:
         self, game_id: str, player1_deck: Deck, player2_deck: Deck
     ) -> GameState:
         """Create a new game with two players."""
+        player1_id = "player1"
+        player2_id = "player2"
+
         player1 = Player(
-            id="player1",
+            id=player1_id,
             name="Player 1",
-            library=self._shuffle_deck(player1_deck.cards)
+            library=self._shuffle_deck(player1_deck.cards, player1_id)
         )
         player2 = Player(
-            id="player2",
+            id=player2_id,
             name="Player 2",
-            library=self._shuffle_deck(player2_deck.cards)
+            library=self._shuffle_deck(player2_deck.cards, player2_id)
         )
         
         self._draw_cards(player1, 7)
@@ -51,10 +54,11 @@ class SimpleGameEngine:
         self, game_id: str, player1_deck: Deck
     ) -> GameState:
         """Create a new game with only player 1, waiting for player 2."""
+        player1_id = "player1"
         player1 = Player(
-            id="player1",
+            id=player1_id,
             name="Player 1",
-            library=self._shuffle_deck(player1_deck.cards)
+            library=self._shuffle_deck(player1_deck.cards, player1_id)
         )
         
         self._draw_cards(player1, 7)
@@ -79,10 +83,11 @@ class SimpleGameEngine:
         if len(game_state.players) >= 2:
             raise ValueError("Game is already full")
         
+        player2_id = "player2"
         player2 = Player(
-            id="player2",
+            id=player2_id,
             name="Player 2",
-            library=self._shuffle_deck(player2_deck.cards)
+            library=self._shuffle_deck(player2_deck.cards, player2_id)
         )
         
         self._draw_cards(player2, 7)
@@ -100,6 +105,7 @@ class SimpleGameEngine:
         
         action_map = {
             "play_card": self._play_card,
+            "play_card_from_library": self._play_card_from_library,
             "pass_turn": self._pass_turn,
             "pass_phase": self._pass_phase,
             "draw_card": self._draw_card_action,
@@ -119,6 +125,7 @@ class SimpleGameEngine:
             "target_card": self._target_card,
         }
         
+        
         if action.action_type in action_map:
             action_map[action.action_type](game_state, action)
         elif action.action_type == "move_card":
@@ -134,6 +141,8 @@ class SimpleGameEngine:
                 source_zone_name=source_zone,
                 destination_zone_name=target_zone
             )
+        else:
+            raise ValueError(f"Unknown action_type: {action.action_type}")
 
         return game_state
     
@@ -144,6 +153,8 @@ class SimpleGameEngine:
 
         if not unique_id:
             raise ValueError("unique_id is required for target_card action")
+        if targeted is None:
+            raise ValueError("targeted (bool) is required for target_card action")
 
         for p in game_state.players:
             for zone_name in ["hand", "battlefield", "graveyard", "exile", "library"]:
@@ -170,14 +181,18 @@ class SimpleGameEngine:
 
         raise ValueError(f"Card with unique_id {unique_id} not found")
     
-    def _shuffle_deck(self, deck_cards: List[DeckCard]) -> List[Card]:
-        """Convert deck list to shuffled list of Card objects with persistent unique IDs."""
+    def _shuffle_deck(self, deck_cards: List[DeckCard], owner_id: str) -> List[Card]:
+        """
+        Convert deck list to shuffled list of Card objects with persistent unique IDs
+        and owner ID.
+        """
         import uuid
         cards = []
         for deck_card in deck_cards:
             for _ in range(deck_card.quantity):
                 card_copy = deck_card.card.model_copy(deep=True)
                 card_copy.unique_id = uuid.uuid4().hex
+                card_copy.owner_id = owner_id
                 cards.append(card_copy)
         
         random.shuffle(cards)
@@ -219,6 +234,34 @@ class SimpleGameEngine:
             game_state,
             action,
             source_zone_name="hand",
+            destination_zone_name=destination_zone
+        )
+
+    def _play_card_from_library(self, game_state: GameState, action: GameAction) -> None:
+        """Handle playing a card from the library."""
+        player = self._get_player(game_state, action.player_id)
+        unique_id = action.additional_data.get("unique_id")
+
+        card_to_play = None
+        for card in player.library:
+            if card.unique_id == unique_id:
+                card_to_play = card
+                break
+
+        if not card_to_play:
+            print(
+                f"Card with unique_id {unique_id} not found in library of "
+                f"player {action.player_id}"
+            )
+            return
+
+        # For now, assume all cards from library go to battlefield
+        destination_zone = "battlefield"
+
+        self._move_card(
+            game_state,
+            action,
+            source_zone_name="library",
             destination_zone_name=destination_zone
         )
     
@@ -317,13 +360,17 @@ class SimpleGameEngine:
         """Resolve the top spell on the stack."""
         if not game_state.stack:
             return
-        
+
         spell = game_state.stack.pop()
-        
-        casting_player = self._get_player(game_state, action.player_id)
-        
-        casting_player.graveyard.append(spell)
-        
+
+        if not spell.owner_id:
+            raise ValueError(
+                f"Card {spell.name} ({spell.unique_id}) on stack lacks an owner_id."
+            )
+
+        owner = self._get_player(game_state, spell.owner_id)
+        owner.graveyard.append(spell)
+
         game_state.priority_player = game_state.active_player
     
     def _pass_priority(self, game_state: GameState, action: GameAction) -> None:

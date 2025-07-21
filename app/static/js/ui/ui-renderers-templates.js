@@ -448,7 +448,7 @@ class UIRenderersTemplates {
                  data-card-zone="stack"
                  data-stack-index="${index}"
                  oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="GameActions.sendToGraveyard('${escapedCardId}', 'stack', '${uniqueId}'); event.stopPropagation();">
+                 onclick="GameActions.performGameAction('resolve_stack', { card_id: '${escapedCardId}', unique_id: '${uniqueId}' }); event.stopPropagation();">
                 
                 <div class="stack-card-container">
                     ${imageUrl ? `

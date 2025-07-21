@@ -41,6 +41,9 @@ class Card(BaseModel):
     unique_id: str = Field(
         ..., description="Unique instance identifier for a card in a game"
     )
+    owner_id: Optional[str] = Field(
+        default=None, description="ID of the player who owns this card instance"
+    )
     name: str = Field(..., description="Card name")
     mana_cost: str = Field(default="", description="Mana cost (e.g., '2RG')")
     cmc: int = Field(default=0, description="Converted mana cost")

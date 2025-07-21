@@ -463,11 +463,15 @@ class UIZonesManager {
             `;
         }
         
-        const cardsHTML = cards.map((card, index) => `
-            <div class="zone-card-slider-item" onclick="UIZonesManager.showCardDetails('${card.id || index}', '${zoneName}')">
-                ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, zoneName)}
-            </div>
-        `).join('');
+        const baseZoneName = zoneName.replace('opponent_', '');
+        const cardsHTML = cards.map((card, index) => {
+            // The onclick is removed from the div wrapper because renderCardWithLoadingState now handles it.
+            return `
+                <div class="zone-card-slider-item">
+                    ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, baseZoneName)}
+                </div>
+            `;
+        }).join('');
         
         return `<div class="zone-cards-slider">${cardsHTML}</div>`;
     }
