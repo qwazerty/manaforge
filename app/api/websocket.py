@@ -240,7 +240,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                         "[WS] Dispatching to engine: "
                         f"{game_action.model_dump_json(indent=2)}"
                     )
-                    updated_game_state = game_engine.process_action(
+                    updated_game_state = await game_engine.process_action(
                         game_id, game_action
                     )
                     
