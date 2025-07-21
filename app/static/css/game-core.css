@@ -158,11 +158,11 @@ body {
 /* Counter display on cards */
 .card-counters {
     position: absolute;
-    top: 4px;
+    bottom: 20px;
     right: 4px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     max-width: 60px;
 }
 
@@ -171,9 +171,8 @@ body {
     align-items: center;
     background: rgba(0, 0, 0, 0.8);
     border-radius: 8px;
-    padding: 2px 4px;
+    padding: 2px 2px;
     min-width: 24px;
-    font-size: 10px;
     font-weight: bold;
     border: 1px solid;
 }
@@ -185,7 +184,7 @@ body {
 
 .counter-value {
     color: white;
-    font-size: 10px;
+    font-size: 8px;
     font-weight: bold;
 }
 
