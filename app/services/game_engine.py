@@ -113,6 +113,7 @@ class SimpleGameEngine:
             "declare_blockers": self._declare_blockers,
             "combat_damage": self._resolve_combat_damage,
             "resolve_stack": self._resolve_stack,
+            "resolve_all_stack": self._resolve_all_stack,
             "pass_priority": self._pass_priority,
             "modify_life": self._modify_life,
             "tap_card": self._tap_card,
@@ -638,3 +639,27 @@ class SimpleGameEngine:
             game_state.pending_action = None
         
         print(f"Player {action.player_id} resolved temporary zone actions.")
+
+    def _resolve_all_stack(self, game_state: GameState, action: GameAction) -> None:
+        """Resolve all spells on the stack."""
+        if not game_state.stack:
+            print("No spells on the stack to resolve")
+            return
+
+        resolved_count = len(game_state.stack)
+        print(f"Resolving all {resolved_count} spells on the stack")
+
+        while game_state.stack:
+            spell = game_state.stack.pop()
+
+            if not spell.owner_id:
+                raise ValueError(
+                    f"Card {spell.name} ({spell.unique_id}) on stack lacks an owner_id."
+                )
+
+            owner = self._get_player(game_state, spell.owner_id)
+            owner.graveyard.append(spell)
+            print(f"Resolved {spell.name}, moved to {spell.owner_id}'s graveyard")
+
+        game_state.priority_player = game_state.active_player
+        print(f"All {resolved_count} spells resolved, priority returned to active player")
