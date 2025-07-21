@@ -58,6 +58,25 @@ async def handle_play_card(
         "broadcast_data": {"card": card_id, "unique_id": unique_id}
     }
 
+@action_registry.register("play_card_from_library", required_fields=["card_id", "unique_id"])
+async def handle_play_card_from_library(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle play card action from library."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for play_card_from_library"
+        )
+    
+    card_id = request.get("card_id")
+    unique_id = request.get("unique_id")
+    
+    return {
+        "card_id": card_id,
+        "additional_data": {"unique_id": unique_id},
+        "broadcast_data": {"card": card_id, "unique_id": unique_id}
+    }
+
 
 @action_registry.register("tap_card", required_fields=["card_id", "unique_id"])
 async def handle_tap_card(
