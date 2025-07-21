@@ -182,6 +182,8 @@ const GameCards = {
         if (!isOpponent) {
             if (cardZone === 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')"><span class="icon">▶️</span> Play Card</div>`;
+            } else if (cardZone === 'deck') {
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.performGameAction('play_card_from_library', { unique_id: '${uniqueCardId}' }); UIZonesManager.closeZoneModal('deck');"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
 
             if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {

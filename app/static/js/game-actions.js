@@ -61,6 +61,9 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'move_card':
                 endpoint = `/api/v1/games/${gameId}/move-card`;
                 break;
+            case 'play_card_from_library':
+                endpoint = `/api/v1/games/${gameId}/play-card-from-library`;
+                break;
             case 'target_card':
                 endpoint = `/api/v1/games/${gameId}/target-card`;
                 break;
