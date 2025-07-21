@@ -38,6 +38,9 @@ class Color(str, Enum):
 class Card(BaseModel):
     """A Magic The Gathering card."""
     id: str = Field(..., description="Unique card identifier")
+    scryfall_id: Optional[str] = Field(
+        default=None, description="Scryfall's unique ID for this card"
+    )
     unique_id: str = Field(
         ..., description="Unique instance identifier for a card in a game"
     )

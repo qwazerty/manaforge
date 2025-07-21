@@ -114,14 +114,14 @@ class UIUtils {
      */
     static filterCardsByType(cards, zoneName) {
         if (!cards || !Array.isArray(cards)) return [];
-        
+
         if (zoneName === 'lands') {
-            return cards.filter(card => 
-                card.card_type === 'land' || card.card_type === 'LAND'
+            return cards.filter(card =>
+                (card.card_type === 'land' || card.card_type === 'LAND') && !card.is_token
             );
         } else if (zoneName === 'permanents') {
-            return cards.filter(card => 
-                card.card_type !== 'land' && card.card_type !== 'LAND'
+            return cards.filter(card =>
+                card.is_token || (card.card_type !== 'land' && card.card_type !== 'LAND')
             );
         }
         return cards;

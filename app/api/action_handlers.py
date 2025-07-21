@@ -545,7 +545,7 @@ async def handle_search_and_add_card(
         },
     }
 
-@action_registry.register("create_token", required_fields=["card_name"])
+@action_registry.register("create_token", required_fields=["scryfall_id"])
 async def handle_create_token(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -555,28 +555,13 @@ async def handle_create_token(
             status_code=400, detail="Request body required for create_token"
         )
 
-    card_name = request.get("card_name")
-    power = request.get("power", "1")
-    toughness = request.get("toughness", "1")
-    colors = request.get("colors", [])
-    subtypes = request.get("subtypes", "")
-    abilities = request.get("abilities", "")
+    scryfall_id = request.get("scryfall_id")
 
     return {
         "additional_data": {
-            "card_name": card_name,
-            "power": power,
-            "toughness": toughness,
-            "colors": colors,
-            "subtypes": subtypes,
-            "abilities": abilities,
+            "scryfall_id": scryfall_id,
         },
         "broadcast_data": {
-            "card_name": card_name,
-            "power": power,
-            "toughness": toughness,
-            "colors": colors,
-            "subtypes": subtypes,
-            "abilities": abilities,
+            "scryfall_id": scryfall_id,
         },
     }
