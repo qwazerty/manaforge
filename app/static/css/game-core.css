@@ -107,21 +107,7 @@ h4 {
 
 /* Fullscreen mode adjustments */
 .fullscreen-mode {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 9999;
-    background: #0f172a;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
-.fullscreen-mode .game-container {
-    height: 100%;
-    width: 100%;
-    padding: 0;
+    padding-top: 0 !important;
 }
 
 /* ===== GAME LAYOUT & GLOBAL STYLES ===== */
@@ -147,14 +133,8 @@ body {
 
 /* Fullscreen Styles */
 .game-container-1080.fullscreen-mode {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1000;
-    background-color: black; /* Optional: Set a background color for fullscreen */
-    overflow: hidden;
+    height: 100vh;
+    overflow-y: auto;
 }
 
 /* Adjust the main game content container in fullscreen */
