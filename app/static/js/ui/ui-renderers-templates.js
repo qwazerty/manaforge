@@ -383,12 +383,11 @@ class UIRenderersTemplates {
             "🔄 Untap All"
         );
 
-        const passTurnBtn = UIUtils.generateButton(
-            "GameActions.performGameAction('pass_phase')",
-            `${UIConfig.CSS_CLASSES.button.secondary} disabled:opacity-50`,
-            "Pass turn to opponent",
-            "⏸️ Pass Turn",
-            true
+        const resolveStackBtn = UIUtils.generateButton(
+            "GameActions.performGameAction('resolve_all_stack')",
+            UIConfig.CSS_CLASSES.button.secondary,
+            "Resolve all spells on the stack",
+            "🎯 Resolve All Stack"
         );
 
         return `
@@ -397,7 +396,7 @@ class UIRenderersTemplates {
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                 ${untapBtn}
-                ${passTurnBtn}
+                ${resolveStackBtn}
             </div>
         `;
     }

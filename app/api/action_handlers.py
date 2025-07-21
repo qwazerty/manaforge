@@ -155,6 +155,15 @@ async def handle_resolve_stack(
         "broadcast_data": {}
     }
 
+@action_registry.register("resolve_all_stack")
+async def handle_resolve_all_stack(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle resolve all stack action - resolves all spells on the stack."""
+    return {
+        "broadcast_data": {}
+    }
+
 
 @action_registry.register("pass_priority")
 async def handle_pass_priority(
