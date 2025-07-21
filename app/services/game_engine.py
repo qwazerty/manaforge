@@ -128,6 +128,8 @@ class SimpleGameEngine:
             "add_counter": self._add_counter,
             "remove_counter": self._remove_counter,
             "set_counter": self._set_counter,
+            "search_and_add_card": self._search_and_add_card,
+            "create_token": self._create_token,
         }
         
         
@@ -901,3 +903,89 @@ class SimpleGameEngine:
             card_found.loyalty = card_found.counters.get("loyalty", 0)
 
         print(f"Set {counter_type} counters on {card_found.name} to {amount}")
+
+    def _search_and_add_card(self, game_state: GameState, action: GameAction) -> None:
+        """Handle searching for a card and adding it to the specified zone."""
+        from app.services.card_service import CardService
+        import asyncio
+        import uuid
+        
+        card_name = action.additional_data.get("card_name")
+        target_zone = action.additional_data.get("target_zone")
+        is_token = action.additional_data.get("is_token", False)
+        
+        if not card_name:
+            raise ValueError("card_name is required for search_and_add_card action")
+        if not target_zone:
+            raise ValueError("target_zone is required for search_and_add_card action")
+        
+        player = self._get_player(game_state, action.player_id)
+        
+        try:
+            # Use asyncio to run the async card service method
+            card_service = CardService()
+            card_data = asyncio.run(card_service.get_card_data_from_scryfall(card_name))
+            
+            if not card_data:
+                print(f"Card '{card_name}' not found in Scryfall database")
+                return
+            
+            # Create card from Scryfall data
+            from app.models.game import Card
+            card = Card(**card_data)
+            
+            # Generate unique ID and set owner
+            card.unique_id = uuid.uuid4().hex
+            card.owner_id = action.player_id
+            
+            # Mark as token if requested
+            if is_token:
+                card.is_token = True
+            
+            # Add card to the specified zone
+            target_zone_list = self._get_zone_list(game_state, player, target_zone)
+            target_zone_list.append(card)
+            
+            print(f"Player {action.player_id} added {card.name} to {target_zone}")
+            
+        except Exception as e:
+            print(f"Error searching and adding card '{card_name}': {e}")
+
+    def _create_token(self, game_state: GameState, action: GameAction) -> None:
+        """Handle creating a token creature."""
+        import uuid
+        from app.models.game import Card, CardType, Color
+        
+        card_name = action.additional_data.get("card_name")
+        power = action.additional_data.get("power", "1")
+        toughness = action.additional_data.get("toughness", "1")
+        colors = action.additional_data.get("colors", [])
+        subtypes = action.additional_data.get("subtypes", "")
+        abilities = action.additional_data.get("abilities", "")
+        
+        if not card_name:
+            raise ValueError("card_name is required for create_token action")
+        
+        player = self._get_player(game_state, action.player_id)
+        
+        # Create token card
+        token = Card(
+            id=card_name.lower().replace(" ", "_"),
+            unique_id=uuid.uuid4().hex,
+            name=card_name,
+            mana_cost="",
+            cmc=0,
+            card_type=CardType.CREATURE,
+            subtype=subtypes,
+            text=abilities,
+            power=power,
+            toughness=toughness,
+            colors=[Color(c) for c in colors if c in ['W', 'U', 'B', 'R', 'G']],
+            is_token=True,
+            owner_id=action.player_id
+        )
+        
+        # Add token to battlefield
+        player.battlefield.append(token)
+        
+        print(f"Player {action.player_id} created {card_name} token ({power}/{toughness})")

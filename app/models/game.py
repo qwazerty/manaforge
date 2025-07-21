@@ -85,6 +85,11 @@ class Card(BaseModel):
     loyalty: Optional[int] = Field(
         default=None, description="Current loyalty for planeswalkers"
     )
+    
+    # Token support
+    is_token: bool = Field(
+        default=False, description="Whether this card is a token"
+    )
 
 
 class DeckCard(BaseModel):

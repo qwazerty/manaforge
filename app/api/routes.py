@@ -32,10 +32,11 @@ def get_game_engine() -> SimpleGameEngine:
 async def search_cards(
     q: str,
     limit: int = 20,
+    type: Optional[str] = None,
     card_service: CardService = Depends(get_card_service)
 ) -> List[Card]:
-    """Search for cards by name."""
-    return await card_service.search_cards(q, limit)
+    """Search for cards by name with optional type filtering (e.g., type=token, type=creature, etc.)."""
+    return await card_service.search_cards(q, limit, type)
 
 
 @router.get("/cards/{card_id}")

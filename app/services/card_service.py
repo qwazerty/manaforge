@@ -29,15 +29,19 @@ class CardService:
             return Card(**card_data)
         return None
     
-    async def search_cards(self, query: str, limit: int = 20) -> List[Card]:
-        """Search cards by name using Scryfall API."""
+    async def search_cards(self, query: str, limit: int = 20, card_type: Optional[str] = None) -> List[Card]:
+        """Search cards by name using Scryfall API with optional type filtering (e.g., token, creature, instant, etc.)."""
         if not query.strip():
             return []
         
         try:
-            formatted_query = query.replace(" ", "+")
+            # Build Scryfall query with optional type filter
+            scryfall_query = query.replace(" ", "+")
+            if card_type:
+                scryfall_query = f"t:{card_type}+{scryfall_query}"
+            
             url = (
-                f"https://api.scryfall.com/cards/search?q={formatted_query}"
+                f"https://api.scryfall.com/cards/search?q={scryfall_query}"
                 "&unique=cards&order=name"
             )
             
@@ -54,6 +58,9 @@ class CardService:
                                 cards.append(Card(**card_data))
                         
                         return cards
+                    elif response.status == 404:
+                        # No results found
+                        return []
         except Exception as e:
             print(f"Error searching cards: {e}")
         
