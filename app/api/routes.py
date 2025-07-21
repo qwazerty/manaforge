@@ -263,7 +263,7 @@ async def perform_game_action(
             **action_params
         )
         
-        game_state = engine.process_action(game_id, action)
+        game_state = await engine.process_action(game_id, action)
         
         broadcast_info = {
             "action": action_type,
@@ -286,7 +286,7 @@ async def perform_game_action(
 async def perform_action(game_id: str, action: GameAction) -> GameState:
     """Legacy endpoint - perform an action in the game."""
     try:
-        game_state = game_engine.process_action(game_id, action)
+        game_state = await game_engine.process_action(game_id, action)
         return game_state
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

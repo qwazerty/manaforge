@@ -11,6 +11,7 @@ class CardSearchModal {
         this.currentResults = [];
         this.targetZone = 'hand';
         this.selectedIndex = -1;
+        this.boundHandleKeydown = this.handleKeydown.bind(this);
     }
 
     /**
@@ -41,7 +42,7 @@ class CardSearchModal {
         this.isOpen = false;
         this.currentResults = [];
         this.selectedIndex = -1;
-        document.removeEventListener('keydown', this.handleEscape.bind(this));
+        document.removeEventListener('keydown', this.boundHandleKeydown);
     }
 
     /**
@@ -127,7 +128,7 @@ class CardSearchModal {
         });
 
         // Close on escape key, navigation with arrows
-        document.addEventListener('keydown', this.handleKeydown.bind(this));
+        document.addEventListener('keydown', this.boundHandleKeydown);
 
         // Search input with live autocomplete
         const searchInput = this.modal.querySelector('#card-search-input');
@@ -221,6 +222,7 @@ class CardSearchModal {
      * Search for cards via API
      */
     async searchCards(query) {
+        if (!this.modal) return;
         const loadingEl = this.modal.querySelector('#search-loading');
         const isTokenOnly = this.modal.querySelector('#token-checkbox').checked;
         
@@ -250,6 +252,7 @@ class CardSearchModal {
      * Display search results as a list
      */
     displayResults(cards, query) {
+        if (!this.modal) return;
         const resultsContainer = this.modal.querySelector('#search-results');
         
         if (cards.length === 0) {
@@ -351,6 +354,7 @@ class CardSearchModal {
      * Display error message
      */
     displayError(message) {
+        if (!this.modal) return;
         const resultsContainer = this.modal.querySelector('#search-results');
         resultsContainer.innerHTML = `
             <div class="text-center text-red-400 py-8">
@@ -383,12 +387,7 @@ class CardSearchModal {
                 actionData = {
                     action_type: 'create_token',
                     player_id: playerId,
-                    card_name: card.name,
-                    power: card.power?.toString() || '1',
-                    toughness: card.toughness?.toString() || '1',
-                    colors: card.colors || [],
-                    subtypes: card.subtype || '',
-                    abilities: card.text || ''
+                    scryfall_id: card.scryfall_id,
                 };
             } else {
                 // Add as regular card

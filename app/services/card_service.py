@@ -67,15 +67,17 @@ class CardService:
         return []
     
     async def get_card_data_from_scryfall(
-        self, card_name: str
+        self, identifier: str, by_id: bool = False
     ) -> Optional[Dict[str, Any]]:
-        """Get complete card data from Scryfall API."""
-        formatted_name = card_name.lower().replace(
-            " ", "+"
-        ).replace("'", "").replace(",", "")
-        
-        url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
-        
+        """Get complete card data from Scryfall API by name or ID."""
+        if by_id:
+            url = f"https://api.scryfall.com/cards/{identifier}"
+        else:
+            formatted_name = identifier.lower().replace(
+                " ", "+"
+            ).replace("'", "").replace(",", "")
+            url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
@@ -83,7 +85,7 @@ class CardService:
                         data = await response.json()
                         return self._parse_scryfall_card(data)
         except Exception as e:
-            print(f"Error fetching card data for {card_name}: {e}")
+            print(f"Error fetching card data for {identifier}: {e}")
         
         return None
     
@@ -204,6 +206,7 @@ class CardService:
 
         return {
             "id": card_id,
+            "scryfall_id": scryfall_data.get("id"),
             "unique_id": unique_id,
             "name": scryfall_data["name"],
             "mana_cost": scryfall_data.get("mana_cost", ""),

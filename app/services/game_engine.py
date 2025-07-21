@@ -4,6 +4,7 @@ This will be replaced by XMage integration later.
 """
 
 import random
+import asyncio
 from typing import List
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
@@ -96,13 +97,13 @@ class SimpleGameEngine:
         
         return game_state
     
-    def process_action(self, game_id: str, action: GameAction) -> GameState:
+    async def process_action(self, game_id: str, action: GameAction) -> GameState:
         """Process a player action and return updated game state."""
         if game_id not in self.games:
             raise ValueError(f"Game {game_id} not found")
-        
+
         game_state = self.games[game_id]
-        
+
         action_map = {
             "play_card": self._play_card,
             "play_card_from_library": self._play_card_from_library,
@@ -131,10 +132,13 @@ class SimpleGameEngine:
             "search_and_add_card": self._search_and_add_card,
             "create_token": self._create_token,
         }
-        
-        
+
         if action.action_type in action_map:
-            action_map[action.action_type](game_state, action)
+            handler = action_map[action.action_type]
+            if asyncio.iscoroutinefunction(handler):
+                await handler(game_state, action)
+            else:
+                handler(game_state, action)
         elif action.action_type == "move_card":
             source_zone = action.additional_data.get("source_zone")
             target_zone = action.additional_data.get("target_zone")
@@ -904,28 +908,26 @@ class SimpleGameEngine:
 
         print(f"Set {counter_type} counters on {card_found.name} to {amount}")
 
-    def _search_and_add_card(self, game_state: GameState, action: GameAction) -> None:
+    async def _search_and_add_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle searching for a card and adding it to the specified zone."""
         from app.services.card_service import CardService
-        import asyncio
         import uuid
-        
+
         card_name = action.additional_data.get("card_name")
         target_zone = action.additional_data.get("target_zone")
         is_token = action.additional_data.get("is_token", False)
-        
+
         if not card_name:
             raise ValueError("card_name is required for search_and_add_card action")
         if not target_zone:
             raise ValueError("target_zone is required for search_and_add_card action")
-        
+
         player = self._get_player(game_state, action.player_id)
-        
+
         try:
-            # Use asyncio to run the async card service method
             card_service = CardService()
-            card_data = asyncio.run(card_service.get_card_data_from_scryfall(card_name))
-            
+            card_data = await card_service.get_card_data_from_scryfall(card_name)
+
             if not card_data:
                 print(f"Card '{card_name}' not found in Scryfall database")
                 return
@@ -951,41 +953,38 @@ class SimpleGameEngine:
         except Exception as e:
             print(f"Error searching and adding card '{card_name}': {e}")
 
-    def _create_token(self, game_state: GameState, action: GameAction) -> None:
-        """Handle creating a token creature."""
+    async def _create_token(self, game_state: GameState, action: GameAction) -> None:
+        """Handle creating a token creature by fetching its data from Scryfall."""
         import uuid
-        from app.models.game import Card, CardType, Color
-        
-        card_name = action.additional_data.get("card_name")
-        power = action.additional_data.get("power", "1")
-        toughness = action.additional_data.get("toughness", "1")
-        colors = action.additional_data.get("colors", [])
-        subtypes = action.additional_data.get("subtypes", "")
-        abilities = action.additional_data.get("abilities", "")
-        
-        if not card_name:
-            raise ValueError("card_name is required for create_token action")
-        
+        from app.services.card_service import CardService
+        from app.models.game import Card
+
+        scryfall_id = action.additional_data.get("scryfall_id")
+        if not scryfall_id:
+            raise ValueError("scryfall_id is required for create_token action")
+
         player = self._get_player(game_state, action.player_id)
-        
-        # Create token card
-        token = Card(
-            id=card_name.lower().replace(" ", "_"),
-            unique_id=uuid.uuid4().hex,
-            name=card_name,
-            mana_cost="",
-            cmc=0,
-            card_type=CardType.CREATURE,
-            subtype=subtypes,
-            text=abilities,
-            power=power,
-            toughness=toughness,
-            colors=[Color(c) for c in colors if c in ['W', 'U', 'B', 'R', 'G']],
-            is_token=True,
-            owner_id=action.player_id
-        )
-        
-        # Add token to battlefield
-        player.battlefield.append(token)
-        
-        print(f"Player {action.player_id} created {card_name} token ({power}/{toughness})")
+
+        try:
+            card_service = CardService()
+            card_data = await card_service.get_card_data_from_scryfall(scryfall_id, by_id=True)
+
+            if not card_data:
+                print(f"Token with Scryfall ID '{scryfall_id}' not found")
+                return
+
+            # Create a Card instance from the fetched data
+            token = Card(**card_data)
+
+            # Override certain properties for the token instance
+            token.unique_id = uuid.uuid4().hex
+            token.owner_id = action.player_id
+            token.is_token = True
+
+            # Add token to the battlefield
+            player.battlefield.append(token)
+
+            print(f"Player {action.player_id} created token: {token.name}")
+
+        except Exception as e:
+            print(f"Error creating token with Scryfall ID '{scryfall_id}': {e}")
