@@ -510,3 +510,73 @@ async def handle_set_counter(
             "amount": amount,
         },
     }
+
+@action_registry.register(
+    "search_and_add_card", required_fields=["card_name", "target_zone"]
+)
+async def handle_search_and_add_card(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle searching for a card and adding it to the specified zone."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for search_and_add_card"
+        )
+
+    card_name = request.get("card_name")
+    target_zone = request.get("target_zone")
+    is_token = request.get("is_token", False)
+    
+    if target_zone not in ["hand", "battlefield", "graveyard", "exile", "library"]:
+        raise HTTPException(
+            status_code=400, detail="Invalid target zone"
+        )
+
+    return {
+        "additional_data": {
+            "card_name": card_name,
+            "target_zone": target_zone,
+            "is_token": is_token,
+        },
+        "broadcast_data": {
+            "card_name": card_name,
+            "target_zone": target_zone,
+            "is_token": is_token,
+        },
+    }
+
+@action_registry.register("create_token", required_fields=["card_name"])
+async def handle_create_token(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle creating a token creature."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for create_token"
+        )
+
+    card_name = request.get("card_name")
+    power = request.get("power", "1")
+    toughness = request.get("toughness", "1")
+    colors = request.get("colors", [])
+    subtypes = request.get("subtypes", "")
+    abilities = request.get("abilities", "")
+
+    return {
+        "additional_data": {
+            "card_name": card_name,
+            "power": power,
+            "toughness": toughness,
+            "colors": colors,
+            "subtypes": subtypes,
+            "abilities": abilities,
+        },
+        "broadcast_data": {
+            "card_name": card_name,
+            "power": power,
+            "toughness": toughness,
+            "colors": colors,
+            "subtypes": subtypes,
+            "abilities": abilities,
+        },
+    }
