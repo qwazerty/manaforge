@@ -212,6 +212,7 @@ class DraftPlayer(BaseModel):
     id: str
     name: str
     is_bot: bool = False
+    has_picked_card: bool = False
     drafted_cards: List[Card] = []
     current_pack: List[Card] = []
 

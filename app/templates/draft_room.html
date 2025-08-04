@@ -23,6 +23,7 @@
                 </div>
                 <div class="mt-4">
                     <button id="add-bot-button" class="arena-button w-full py-4 px-8 rounded-lg">Add Bot</button>
+                    <button id="fill-bots-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Fill with Bots</button>
                     <button id="start-draft-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Start Draft</button>
                     <button id="confirm-pick-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2" disabled>Confirm Pick</button>
                 </div>
@@ -60,19 +61,62 @@
 {% block extra_js %}
 <script>
     const roomId = "{{ room.id }}";
-    let playerId = localStorage.getItem(`draft_player_id_${roomId}`);
+    const urlParams = new URLSearchParams(window.location.search);
+    const playerId = urlParams.get('player');
     let websocket;
 
     function initializeWebSocket() {
+        if (!playerId) {
+            alert("Player ID not found. Returning to lobby.");
+            window.location.href = '/draft';
+            return;
+        }
+
         websocket = new WebSocket(`ws://${window.location.host}/ws/game/${roomId}?player=${playerId}`);
 
         websocket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.type === 'draft_state_update') {
+            if (data.type === 'draft_starting') {
+                const packContainer = document.getElementById('current-pack');
+                packContainer.innerHTML = `<div class="col-span-full text-center text-arena-text-dim p-8">Starting Draft...</div>`;
+                const packHeader = document.getElementById('pack-header');
+                packHeader.innerText = 'Starting Draft...';
+
+                const addBotButton = document.getElementById('add-bot-button');
+                const fillBotsButton = document.getElementById('fill-bots-button');
+                const startDraftButton = document.getElementById('start-draft-button');
+
+                addBotButton.disabled = true;
+                addBotButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+                fillBotsButton.disabled = true;
+                fillBotsButton.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                startDraftButton.disabled = true;
+                startDraftButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+                const loadingIndicator = document.querySelector('.fixed.inset-0');
+                if (loadingIndicator) {
+                    loadingIndicator.remove();
+                }
+            } else if (data.type === 'draft_state_update') {
                 const room = data.room_state;
                 const me = room.players.find(p => p.id === playerId);
+                const packContainer = document.getElementById('current-pack');
+
                 if (me) {
-                    renderPack(me.current_pack);
+                    if (me.has_picked_card) {
+                        packContainer.innerHTML = `<div class="col-span-full text-center text-arena-text-dim p-8">Waiting for other players to pick...</div>`;
+                        packContainer.classList.add('opacity-50', 'pointer-events-none');
+                        document.getElementById('confirm-pick-button').disabled = true;
+                    } else {
+                        packContainer.classList.remove('opacity-50', 'pointer-events-none');
+                        if (room.state.toLowerCase() === 'drafting' && me.current_pack.length === 0) {
+                             packContainer.innerHTML = `<div class="col-span-full text-center text-arena-text-dim p-8">Waiting for next pack...</div>`;
+                        } else {
+                            renderPack(me.current_pack);
+                        }
+                    }
                     renderDraftedCards(me.drafted_cards);
                 }
                 // Update player list
@@ -95,6 +139,8 @@
                     startButton.style.display = 'none';
                     const addBotButton = document.getElementById('add-bot-button');
                     addBotButton.style.display = 'none';
+                    const fillBotsButton = document.getElementById('fill-bots-button');
+                    fillBotsButton.style.display = 'none';
                     const confirmPickButton = document.getElementById('confirm-pick-button');
                     confirmPickButton.style.display = 'block';
                 } else if (room.state.toLowerCase() === 'completed') {
@@ -104,7 +150,12 @@
                     let content = '';
                     for (const player of room.players) {
                         content += `<div class="mb-8 arena-card p-4">`;
-                        content += `<h3 class="font-magic text-2xl text-arena-accent mb-4">${player.name}'s Drafted Cards</h3>`;
+                        content += `<div class="flex justify-between items-center mb-4">`;
+                        content += `<h3 class="font-magic text-2xl text-arena-accent">${player.name}'s Drafted Cards</h3>`;
+                        if (player.id === playerId) {
+                            content += `<button onclick="exportDecklist(event)" class="arena-button">Export Decklist</button>`;
+                        }
+                        content += `</div>`;
                         content += `<div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
                         content += player.drafted_cards.map(card => `
                             <div oncontextmenu="showCardPopup(event, '${card.image_url}')">
@@ -159,6 +210,35 @@
         }
     }
 
+    function exportDecklist(event) {
+        event.stopPropagation();
+        websocket.send(JSON.stringify({ type: 'get_decklist' }));
+
+        // We need to listen for the response
+        const originalOnMessage = websocket.onmessage;
+        websocket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'decklist_data') {
+                const decklist = data.decklist;
+                const blob = new Blob([decklist], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'drafted-deck.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Restore original onmessage handler
+                websocket.onmessage = originalOnMessage;
+            } else {
+                // If it's not the decklist, process it with the original handler
+                originalOnMessage(event);
+            }
+        };
+    }
+
     function showCardPopup(event, imageUrl) {
         event.preventDefault();
         const popup = document.createElement('div');
@@ -184,55 +264,22 @@
         document.body.appendChild(popup);
     }
 
-    async function joinRoom() {
-        if (!playerId) {
-            // If no player ID, means we are a new player joining
-            const newPlayerId = `player-${Math.random().toString(36).substr(2, 9)}`;
-            const response = await fetch(`/api/v1/draft/rooms/${roomId}/join`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ player_id: newPlayerId })
-            });
-
-            if (response.ok) {
-                const player = await response.json();
-                playerId = player.id;
-                localStorage.setItem(`draft_player_id_${roomId}`, playerId);
-                initializeWebSocket();
-            } else {
-                alert('Failed to join room. It might be full or has already started.');
-                window.location.href = '/draft';
-            }
-        } else {
-            // Player ID exists, just initialize websocket
-            initializeWebSocket();
-        }
-    }
-    
     document.getElementById('add-bot-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'add_bot' }));
+    });
+
+    document.getElementById('fill-bots-button').addEventListener('click', () => {
+        if (websocket) websocket.send(JSON.stringify({ type: 'fill_bots' }));
     });
 
     document.getElementById('confirm-pick-button').addEventListener('click', pickCard);
     document.getElementById('confirm-pick-button').style.display = 'none';
 
     document.getElementById('start-draft-button').addEventListener('click', () => {
-        const startButton = document.getElementById('start-draft-button');
-        startButton.disabled = true;
-        startButton.innerHTML = 'Starting...';
-
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.innerHTML = `
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-                <div class="text-white text-2xl">Starting Draft...</div>
-            </div>
-        `;
-        document.body.appendChild(loadingIndicator);
-
         if (websocket) websocket.send(JSON.stringify({ type: 'start_draft' }));
     });
 
-    window.addEventListener('load', joinRoom);
+    window.addEventListener('load', initializeWebSocket);
 
 </script>
 {% endblock %}
