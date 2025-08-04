@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.core.config import settings
 from app.api.routes import router
 from app.api.websocket import websocket_router
+from app.api.draft_routes import router as draft_router
 
 
 async def lifespan(app: FastAPI):
@@ -26,6 +27,7 @@ app.mount("/static", StaticFiles(directory="/app/app/static"), name="static")
 
 app.include_router(router)
 app.include_router(websocket_router)
+app.include_router(draft_router)
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -91,4 +93,28 @@ async def game_lobby(request: Request):
     return templates.TemplateResponse(
         "game_lobby.html",
         {"request": request, "title": "Game Lobby"}
+    )
+
+@app.get("/draft")
+async def draft_lobby(request: Request):
+    """Draft lobby page."""
+    return templates.TemplateResponse(
+        "draft_lobby.html",
+        {"request": request, "title": "Draft Lobby"}
+    )
+
+@app.get("/draft/{room_id}")
+async def draft_room(request: Request, room_id: str):
+    """Draft room page."""
+    from app.api.draft_routes import get_draft_engine
+    engine = get_draft_engine()
+    room = engine.get_draft_room(room_id)
+    if not room:
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "message": "Draft room not found"}
+        )
+    return templates.TemplateResponse(
+        "draft_room.html",
+        {"request": request, "room": room}
     )

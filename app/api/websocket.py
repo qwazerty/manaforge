@@ -163,6 +163,17 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
     
     await manager.connect(websocket, game_id, player_id)
     
+    # If it's a draft room, broadcast the initial state
+    if game_id.startswith("draft-"):
+        from app.api.draft_routes import get_draft_engine
+        engine = get_draft_engine()
+        room = engine.get_draft_room(game_id)
+        if room:
+            await manager.broadcast_to_game(game_id, {
+                "type": "draft_state_update",
+                "room_state": room.model_dump()
+            })
+    
     try:
         while True:
             data = await websocket.receive_text()
@@ -283,6 +294,24 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     "player": player_id,
                     "connected_players": manager.get_connection_count(game_id)
                 }, exclude_websocket=websocket)
+            
+            # Handle draft-specific messages
+            elif game_id.startswith("draft-"):
+                from app.api.draft_routes import get_draft_engine
+                engine = get_draft_engine()
+                room = engine.get_draft_room(game_id)
+                if room:
+                    if message.get("type") == "add_bot":
+                        engine.add_bot_to_room(game_id)
+                    elif message.get("type") == "start_draft":
+                        await engine.start_draft(game_id)
+                    elif message.get("type") == "pick_card":
+                        engine.pick_card(game_id, player_id, message.get("card_unique_id"))
+
+                    await manager.broadcast_to_game(game_id, {
+                        "type": "draft_state_update",
+                        "room_state": room.model_dump()
+                    })
     
     except WebSocketDisconnect:
         manager.disconnect(websocket, game_id)

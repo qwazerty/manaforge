@@ -223,7 +223,7 @@ class CardService:
             "current_face": 0,
             "card_faces": card_faces,
             "counters": counters,
-            "loyalty": loyalty
+            "loyalty": loyalty,
         }
     
     async def parse_decklist(self, decklist_text: str) -> Deck:
