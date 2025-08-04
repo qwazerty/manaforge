@@ -85,18 +85,24 @@
             return;
         }
 
+        // Generate a simple unique ID for the creator
+        const creatorId = `player-${Math.random().toString(36).substr(2, 9)}`;
+
         const response = await fetch('/api/v1/draft/rooms', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name: roomName,
                 set_code: setCode,
-                set_name: setFullName
+                set_name: setFullName,
+                creator_id: creatorId
             })
         });
 
         if (response.ok) {
             const room = await response.json();
+            // Store player ID to join with it
+            localStorage.setItem(`draft_player_id_${room.id}`, creatorId);
             window.location.href = `/draft/${room.id}`;
         } else {
             alert('Failed to create draft room.');
@@ -107,15 +113,35 @@
         const response = await fetch('/api/v1/draft/rooms');
         const rooms = await response.json();
         const listDiv = document.getElementById('draft-room-list');
+        if (rooms.length === 0) {
+            listDiv.innerHTML = `<p class="text-center text-arena-text-dim">No active draft rooms found.</p>`;
+            return;
+        }
         listDiv.innerHTML = rooms.map(room => `
             <div class="p-4 bg-arena-surface rounded-lg flex justify-between items-center">
                 <div>
                     <h3 class="font-bold text-lg">${room.name}</h3>
                     <p class="text-sm text-arena-text-dim">${room.set_name} - ${room.players.length}/${room.max_players} players</p>
                 </div>
-                <a href="/draft/${room.id}" class="arena-button px-4 py-2 rounded-lg">Join</a>
+                <button onclick="joinDraftRoom('${room.id}')" class="arena-button px-4 py-2 rounded-lg">Join</button>
             </div>
         `).join('');
+    }
+
+    async function joinDraftRoom(roomId) {
+        const playerId = `player-${Math.random().toString(36).substr(2, 9)}`;
+        const response = await fetch(`/api/v1/draft/rooms/${roomId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player_id: playerId })
+        });
+
+        if (response.ok) {
+            localStorage.setItem(`draft_player_id_${roomId}`, playerId);
+            window.location.href = `/draft/${roomId}`;
+        } else {
+            alert('Failed to join draft room. It might be full or already started.');
+        }
     }
 
     document.getElementById('setName').addEventListener('input', searchSets);

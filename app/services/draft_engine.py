@@ -15,8 +15,8 @@ class DraftEngine:
         self.draft_service = draft_service
         self.draft_rooms: Dict[str, DraftRoom] = {}
 
-    def create_draft_room(self, name: str, set_code: str, set_name: str, max_players: int) -> DraftRoom:
-        """Creates a new draft room."""
+    def create_draft_room(self, name: str, set_code: str, set_name: str, max_players: int, creator_id: str) -> DraftRoom:
+        """Creates a new draft room and adds the creator as Player 1."""
         room_id = f"draft-{uuid.uuid4().hex[:8]}"
         room = DraftRoom(
             id=room_id,
@@ -25,6 +25,11 @@ class DraftEngine:
             set_name=set_name,
             max_players=max_players,
         )
+
+        # Add the creator as the first player
+        creator_player = DraftPlayer(id=creator_id, name="Player 1")
+        room.players.append(creator_player)
+
         self.draft_rooms[room_id] = room
         return room
 
@@ -32,14 +37,18 @@ class DraftEngine:
         """Retrieves a draft room by its ID."""
         return self.draft_rooms.get(room_id)
 
-    def add_player_to_room(self, room_id: str) -> Optional[DraftPlayer]:
+    def add_player_to_room(self, room_id: str, player_id: str) -> Optional[DraftPlayer]:
         """Adds a player to a draft room."""
         room = self.get_draft_room(room_id)
         if not room or len(room.players) >= room.max_players:
             return None
 
-        player_id = f"player-{uuid.uuid4().hex[:8]}"
-        player_name = f"Player {len(room.players) + 1}"
+        # Check if player is already in the room
+        if any(p.id == player_id for p in room.players):
+            return next((p for p in room.players if p.id == player_id), None)
+
+        human_players = len([p for p in room.players if not p.is_bot])
+        player_name = f"Player {human_players + 1}"
         player = DraftPlayer(id=player_id, name=player_name)
         room.players.append(player)
         return player
