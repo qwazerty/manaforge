@@ -31,7 +31,7 @@
             <div class="lg:col-span-3">
                 <!-- Current Pack -->
                 <div class="arena-card p-4 mb-8">
-                    <h2 class="font-magic text-2xl text-arena-accent mb-4">Current Pack (Pack {{ room.current_pack_number }}, Pick {{ room.current_pick_number }})</h2>
+                    <h2 id="pack-header" class="font-magic text-2xl text-arena-accent mb-4">Current Pack (Pack {{ room.current_pack_number }}, Pick {{ room.current_pick_number }})</h2>
                     <div id="current-pack" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         <!-- Cards in the current pack will be rendered here -->
                     </div>
@@ -76,18 +76,11 @@
         `).join('');
     }
 
-    async function pickCard(cardUniqueId) {
-        const response = await fetch(`/api/v1/draft/rooms/${roomId}/pick`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                player_id: playerId,
-                card_unique_id: cardUniqueId
-            })
-        });
-        if (!response.ok) {
-            alert('Failed to pick card.');
-        }
+    function pickCard(cardUniqueId) {
+        websocket.send(JSON.stringify({
+            type: 'pick_card',
+            card_unique_id: cardUniqueId
+        }));
     }
 
     async function joinRoom() {
@@ -110,12 +103,24 @@
         }
     }
     
-    document.getElementById('add-bot-button').addEventListener('click', async () => {
-        await fetch(`/api/v1/draft/rooms/${roomId}/add-bot`, { method: 'POST' });
+    document.getElementById('add-bot-button').addEventListener('click', () => {
+        websocket.send(JSON.stringify({ type: 'add_bot' }));
     });
 
-    document.getElementById('start-draft-button').addEventListener('click', async () => {
-        await fetch(`/api/v1/draft/rooms/${roomId}/start`, { method: 'POST' });
+    document.getElementById('start-draft-button').addEventListener('click', () => {
+        const startButton = document.getElementById('start-draft-button');
+        startButton.disabled = true;
+        startButton.innerHTML = 'Starting...';
+
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.innerHTML = `
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+                <div class="text-white text-2xl">Starting Draft...</div>
+            </div>
+        `;
+        document.body.appendChild(loadingIndicator);
+
+        websocket.send(JSON.stringify({ type: 'start_draft' }));
     });
 
     websocket.onmessage = (event) => {
@@ -134,6 +139,20 @@
                     ${p.name} ${p.is_bot ? '(Bot)' : ''}
                 </div>
             `).join('');
+
+            const packHeader = document.getElementById('pack-header');
+            packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
+
+            if (room.state.toLowerCase() === 'drafting') {
+                const loadingIndicator = document.querySelector('.fixed.inset-0');
+                if (loadingIndicator) {
+                    loadingIndicator.remove();
+                }
+                const startButton = document.getElementById('start-draft-button');
+                startButton.style.display = 'none';
+                const addBotButton = document.getElementById('add-bot-button');
+                addBotButton.style.display = 'none';
+            }
         }
     };
 

@@ -31,6 +31,10 @@ class CreateRoomRequest(BaseModel):
     set_name: str
     max_players: int = 8
 
+class PickCardRequest(BaseModel):
+    player_id: str
+    card_unique_id: str
+
 @router.post("/rooms", response_model=DraftRoom)
 async def create_draft_room(
     request: CreateRoomRequest,
@@ -81,12 +85,11 @@ async def start_draft(
 @router.post("/rooms/{room_id}/pick")
 async def pick_card(
     room_id: str,
-    player_id: str,
-    card_unique_id: str,
+    request: PickCardRequest,
     engine: DraftEngine = Depends(get_draft_engine)
 ):
     """Pick a card from a pack."""
-    success = engine.pick_card(room_id, player_id, card_unique_id)
+    success = engine.pick_card(room_id, request.player_id, request.card_unique_id)
     if not success:
         raise HTTPException(status_code=400, detail="Invalid pick")
     return {"message": "Card picked"}

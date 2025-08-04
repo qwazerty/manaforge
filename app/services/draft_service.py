@@ -19,11 +19,20 @@ class DraftService:
         if not query:
             return []
         
-        url = f"https://api.scryfall.com/sets?q={query}"
+        url = "https://api.scryfall.com/sets"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
+                    all_sets = data.get("data", [])
+                    
+                    # Filter sets by name
+                    filtered_sets = [
+                        s for s in all_sets
+                        if query.lower() in s.get("name", "").lower()
+                        and s.get("set_type") in ["core", "expansion", "masters"]
+                    ]
+                    
                     return [
                         {
                             "code": s.get("code"),
@@ -31,8 +40,7 @@ class DraftService:
                             "icon_svg_uri": s.get("icon_svg_uri"),
                             "released_at": s.get("released_at"),
                         }
-                        for s in data.get("data", [])
-                        if s.get("set_type") in ["core", "expansion", "masters"]
+                        for s in filtered_sets
                     ]
         return []
 
