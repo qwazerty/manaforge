@@ -12,7 +12,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <!-- Player List -->
-            <div class="lg:col-span-1 arena-card p-4">
+            <div class="lg:col-span-1 arena-card p-4 rounded-lg">
                 <h2 class="font-magic text-2xl text-arena-accent mb-4">Players</h2>
                 <div id="player-list" class="space-y-2">
                     {% for player in room.players %}
@@ -26,13 +26,20 @@
                     <button id="fill-bots-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Fill with Bots</button>
                     <button id="start-draft-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Start Draft</button>
                     <button id="confirm-pick-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2" disabled>Confirm Pick</button>
+                    <div id="export-container" class="mt-4 hidden">
+                        <button onclick="exportDecklist(event)" class="arena-button w-full py-4 px-8 rounded-lg">Export Decklist</button>
+                    </div>
                 </div>
             </div>
 
             <!-- Main Draft Area -->
             <div class="lg:col-span-3">
+                <div id="draft-complete-message" class="hidden text-center p-4 rounded-lg mb-4 arena-card">
+                    <h2 class="text-2xl font-bold text-arena-accent">Draft Complete!</h2>
+                    <p class="text-arena-text-dim">You can now export your decklist.</p>
+                </div>
                 <!-- Current Pack -->
-                <div class="arena-card p-4 mb-8">
+                <div id="current-pack-container" class="arena-card p-4 mb-8 rounded-lg">
                     <h2 id="pack-header" class="font-magic text-2xl text-arena-accent mb-4">Current Pack (Pack {{ room.current_pack_number }}, Pick {{ room.current_pick_number }})</h2>
                     <div id="current-pack" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         <!-- Cards in the current pack will be rendered here -->
@@ -40,7 +47,7 @@
                 </div>
 
                 <!-- Drafted Cards -->
-                <div class="arena-card p-4">
+                <div class="arena-card p-4 rounded-lg">
                     <h2 class="font-magic text-2xl text-arena-accent mb-4">Your Drafted Cards</h2>
                     <div id="drafted-cards" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">
                         <!-- Player's drafted cards will be rendered here -->
@@ -145,6 +152,12 @@
                     const confirmPickButton = document.getElementById('confirm-pick-button');
                     confirmPickButton.style.display = 'block';
                 } else if (room.state.toLowerCase() === 'completed') {
+                    // Hide drafting elements and show completion message
+                    document.getElementById('current-pack-container').style.display = 'none';
+                    document.getElementById('confirm-pick-button').style.display = 'none';
+                    document.getElementById('draft-complete-message').classList.remove('hidden');
+                    document.getElementById('export-container').classList.remove('hidden');
+
                     const allDraftedCardsContainer = document.getElementById('all-drafted-cards');
                     allDraftedCardsContainer.classList.remove('hidden');
                     
@@ -153,9 +166,6 @@
                         content += `<div class="mb-8 arena-card p-4">`;
                         content += `<div class="flex justify-between items-center mb-4">`;
                         content += `<h3 class="font-magic text-2xl text-arena-accent">${player.name}'s Drafted Cards</h3>`;
-                        if (player.id === playerId) {
-                            content += `<button onclick="exportDecklist(event)" class="arena-button">Export Decklist</button>`;
-                        }
                         content += `</div>`;
                         content += `<div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
                         content += player.drafted_cards.map(card => `
