@@ -2,6 +2,7 @@
 Engine for managing draft rooms and the drafting process.
 """
 import uuid
+import random
 from typing import Dict, List, Optional
 
 from app.models.game import DraftRoom, DraftPlayer, Card, DraftState
@@ -94,11 +95,27 @@ class DraftEngine:
         player.drafted_cards.append(card_to_pick)
         player.current_pack.remove(card_to_pick)
         
-        # Check if all players have picked
-        if all(len(p.current_pack) == 14 - room.current_pick_number for p in room.players):
+        # After a human player picks, let the bots pick
+        self._bots_pick_cards(room_id)
+
+        # Check if all players have made their pick for the current card
+        if all(len(p.current_pack) == len(player.current_pack) for p in room.players):
             self._pass_packs(room_id)
-        
+
         return True
+
+    def _bots_pick_cards(self, room_id: str):
+        """Makes all bots in a room pick a card."""
+        room = self.get_draft_room(room_id)
+        if not room:
+            return
+
+        for player in room.players:
+            if player.is_bot and player.current_pack:
+                # Simple bot logic: pick a random card
+                card_to_pick = random.choice(player.current_pack)
+                player.drafted_cards.append(card_to_pick)
+                player.current_pack.remove(card_to_pick)
 
     def _pass_packs(self, room_id: str):
         """Passes the packs to the next player."""
@@ -106,27 +123,30 @@ class DraftEngine:
         if not room:
             return
 
+        if not any(p.current_pack for p in room.players):
+            # All packs are empty, start the next round
+            room.current_pack_number += 1
+            room.current_pick_number = 1
+            room.pack_direction *= -1  # Change direction for next pack
+
+            if room.current_pack_number > 3:
+                room.state = DraftState.COMPLETED
+                return
+            else:
+                # Distribute the next pack
+                for i, player in enumerate(room.players):
+                    player.current_pack = room.packs[i][room.current_pack_number - 1]
+                return
+
         num_players = len(room.players)
         current_packs = [p.current_pack for p in room.players]
         
-        if room.pack_direction == 1: # Pass left
+        if room.pack_direction == 1:  # Pass left
             new_packs = [current_packs[-1]] + current_packs[:-1]
-        else: # Pass right
+        else:  # Pass right
             new_packs = current_packs[1:] + [current_packs[0]]
 
         for i, player in enumerate(room.players):
             player.current_pack = new_packs[i]
             
         room.current_pick_number += 1
-        
-        if room.current_pick_number > 15:
-            room.current_pick_number = 1
-            room.current_pack_number += 1
-            room.pack_direction *= -1 # Change direction for next pack
-            
-            if room.current_pack_number > 3:
-                room.state = DraftState.COMPLETED
-            else:
-                # Distribute the next pack
-                for i, player in enumerate(room.players):
-                    player.current_pack = room.packs[i][room.current_pack_number - 1]
