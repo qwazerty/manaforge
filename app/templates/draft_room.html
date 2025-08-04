@@ -22,8 +22,9 @@
                     {% endfor %}
                 </div>
                 <div class="mt-4">
-                    <button id="add-bot-button" class="arena-button w-full py-2">Add Bot</button>
-                    <button id="start-draft-button" class="arena-button w-full py-2 mt-2">Start Draft</button>
+                    <button id="add-bot-button" class="arena-button w-full py-4 px-8 rounded-lg">Add Bot</button>
+                    <button id="start-draft-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Start Draft</button>
+                    <button id="confirm-pick-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2" disabled>Confirm Pick</button>
                 </div>
             </div>
 
@@ -46,6 +47,12 @@
                 </div>
             </div>
         </div>
+
+        <!-- All Drafted Cards -->
+        <div id="all-drafted-cards" class="hidden mt-8">
+            <h2 class="font-magic text-3xl text-arena-accent mb-4 text-center">Draft Complete!</h2>
+            <!-- Drafted cards for all players will be rendered here -->
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -53,15 +60,71 @@
 {% block extra_js %}
 <script>
     const roomId = "{{ room.id }}";
-    let playerId = localStorage.getItem(`manaforge-player-id-${roomId}`);
-    let playerName = localStorage.getItem(`manaforge-player-name-${roomId}`);
+    let playerId = localStorage.getItem(`draft_player_id_${roomId}`);
+    let websocket;
 
-    const websocket = new WebSocket(`ws://${window.location.host}/ws/game/${roomId}?player=${playerId}`);
+    function initializeWebSocket() {
+        websocket = new WebSocket(`ws://${window.location.host}/ws/game/${roomId}?player=${playerId}`);
+
+        websocket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'draft_state_update') {
+                const room = data.room_state;
+                const me = room.players.find(p => p.id === playerId);
+                if (me) {
+                    renderPack(me.current_pack);
+                    renderDraftedCards(me.drafted_cards);
+                }
+                // Update player list
+                const playerList = document.getElementById('player-list');
+                playerList.innerHTML = room.players.map(p => `
+                    <div id="player-${p.id}" class="p-2 bg-arena-surface rounded ${p.id === playerId ? 'font-bold' : ''}">
+                        ${p.name} ${p.is_bot ? '(Bot)' : ''}
+                    </div>
+                `).join('');
+
+                const packHeader = document.getElementById('pack-header');
+                packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
+
+                if (room.state.toLowerCase() === 'drafting') {
+                    const loadingIndicator = document.querySelector('.fixed.inset-0');
+                    if (loadingIndicator) {
+                        loadingIndicator.remove();
+                    }
+                    const startButton = document.getElementById('start-draft-button');
+                    startButton.style.display = 'none';
+                    const addBotButton = document.getElementById('add-bot-button');
+                    addBotButton.style.display = 'none';
+                    const confirmPickButton = document.getElementById('confirm-pick-button');
+                    confirmPickButton.style.display = 'block';
+                } else if (room.state.toLowerCase() === 'completed') {
+                    const allDraftedCardsContainer = document.getElementById('all-drafted-cards');
+                    allDraftedCardsContainer.classList.remove('hidden');
+                    
+                    let content = '';
+                    for (const player of room.players) {
+                        content += `<div class="mb-8 arena-card p-4">`;
+                        content += `<h3 class="font-magic text-2xl text-arena-accent mb-4">${player.name}'s Drafted Cards</h3>`;
+                        content += `<div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
+                        content += player.drafted_cards.map(card => `
+                            <div oncontextmenu="showCardPopup(event, '${card.image_url}')">
+                                <img src="${card.image_url}" alt="${card.name}" class="rounded-lg w-full">
+                            </div>
+                        `).join('');
+                        content += `</div></div>`;
+                    }
+                    allDraftedCardsContainer.innerHTML = content;
+                }
+            }
+        };
+    }
+
+    let selectedCardId = null;
 
     function renderPack(pack) {
         const packContainer = document.getElementById('current-pack');
         packContainer.innerHTML = pack.map(card => `
-            <div class="cursor-pointer" onclick="pickCard('${card.unique_id}')">
+            <div id="card-${card.unique_id}" class="cursor-pointer" onclick="selectCard('${card.unique_id}')" oncontextmenu="showCardPopup(event, '${card.image_url}')">
                 <img src="${card.image_url}" alt="${card.name}" class="rounded-lg w-full">
             </div>
         `).join('');
@@ -70,42 +133,88 @@
     function renderDraftedCards(cards) {
         const draftedContainer = document.getElementById('drafted-cards');
         draftedContainer.innerHTML = cards.map(card => `
-            <div>
+            <div oncontextmenu="showCardPopup(event, '${card.image_url}')">
                 <img src="${card.image_url}" alt="${card.name}" class="rounded-lg w-full">
             </div>
         `).join('');
     }
 
-    function pickCard(cardUniqueId) {
-        websocket.send(JSON.stringify({
-            type: 'pick_card',
-            card_unique_id: cardUniqueId
-        }));
+    function selectCard(cardUniqueId) {
+        if (selectedCardId) {
+            document.getElementById(`card-${selectedCardId}`).classList.remove('ring-2', 'ring-yellow-400');
+        }
+        selectedCardId = cardUniqueId;
+        document.getElementById(`card-${selectedCardId}`).classList.add('ring-2', 'ring-yellow-400');
+        document.getElementById('confirm-pick-button').disabled = false;
+    }
+
+    function pickCard() {
+        if (selectedCardId) {
+            websocket.send(JSON.stringify({
+                type: 'pick_card',
+                card_unique_id: selectedCardId
+            }));
+            selectedCardId = null;
+            document.getElementById('confirm-pick-button').disabled = true;
+        }
+    }
+
+    function showCardPopup(event, imageUrl) {
+        event.preventDefault();
+        const popup = document.createElement('div');
+        popup.style.position = 'fixed';
+        popup.style.left = '0';
+        popup.style.top = '0';
+        popup.style.width = '100%';
+        popup.style.height = '100%';
+        popup.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+        popup.style.display = 'flex';
+        popup.style.alignItems = 'center';
+        popup.style.justifyContent = 'center';
+        popup.style.zIndex = '1000';
+        popup.onclick = () => popup.remove();
+
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.style.maxWidth = '80%';
+        img.style.maxHeight = '80%';
+        img.style.borderRadius = '10px';
+
+        popup.appendChild(img);
+        document.body.appendChild(popup);
     }
 
     async function joinRoom() {
         if (!playerId) {
+            // If no player ID, means we are a new player joining
+            const newPlayerId = `player-${Math.random().toString(36).substr(2, 9)}`;
             const response = await fetch(`/api/v1/draft/rooms/${roomId}/join`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_id: newPlayerId })
             });
 
             if (response.ok) {
                 const player = await response.json();
                 playerId = player.id;
-                playerName = player.name;
-                localStorage.setItem(`manaforge-player-id-${roomId}`, playerId);
-                localStorage.setItem(`manaforge-player-name-${roomId}`, playerName);
+                localStorage.setItem(`draft_player_id_${roomId}`, playerId);
+                initializeWebSocket();
             } else {
-                alert('Failed to join room.');
+                alert('Failed to join room. It might be full or has already started.');
                 window.location.href = '/draft';
             }
+        } else {
+            // Player ID exists, just initialize websocket
+            initializeWebSocket();
         }
     }
     
     document.getElementById('add-bot-button').addEventListener('click', () => {
-        websocket.send(JSON.stringify({ type: 'add_bot' }));
+        if (websocket) websocket.send(JSON.stringify({ type: 'add_bot' }));
     });
+
+    document.getElementById('confirm-pick-button').addEventListener('click', pickCard);
+    document.getElementById('confirm-pick-button').style.display = 'none';
 
     document.getElementById('start-draft-button').addEventListener('click', () => {
         const startButton = document.getElementById('start-draft-button');
@@ -120,41 +229,8 @@
         `;
         document.body.appendChild(loadingIndicator);
 
-        websocket.send(JSON.stringify({ type: 'start_draft' }));
+        if (websocket) websocket.send(JSON.stringify({ type: 'start_draft' }));
     });
-
-    websocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'draft_state_update') {
-            const room = data.room_state;
-            const me = room.players.find(p => p.id === playerId);
-            if (me) {
-                renderPack(me.current_pack);
-                renderDraftedCards(me.drafted_cards);
-            }
-            // Update player list
-            const playerList = document.getElementById('player-list');
-            playerList.innerHTML = room.players.map(p => `
-                <div id="player-${p.id}" class="p-2 bg-arena-surface rounded ${p.id === playerId ? 'font-bold' : ''}">
-                    ${p.name} ${p.is_bot ? '(Bot)' : ''}
-                </div>
-            `).join('');
-
-            const packHeader = document.getElementById('pack-header');
-            packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
-
-            if (room.state.toLowerCase() === 'drafting') {
-                const loadingIndicator = document.querySelector('.fixed.inset-0');
-                if (loadingIndicator) {
-                    loadingIndicator.remove();
-                }
-                const startButton = document.getElementById('start-draft-button');
-                startButton.style.display = 'none';
-                const addBotButton = document.getElementById('add-bot-button');
-                addBotButton.style.display = 'none';
-            }
-        }
-    };
 
     window.addEventListener('load', joinRoom);
 

@@ -27,6 +27,7 @@ def get_draft_engine() -> DraftEngine:
 
 class CreateRoomRequest(BaseModel):
     name: str
+    creator_id: str
     set_code: str
     set_name: str
     max_players: int = 8
@@ -42,7 +43,11 @@ async def create_draft_room(
 ):
     """Create a new draft room."""
     room = engine.create_draft_room(
-        request.name, request.set_code, request.set_name, request.max_players
+        name=request.name,
+        set_code=request.set_code,
+        set_name=request.set_name,
+        max_players=request.max_players,
+        creator_id=request.creator_id
     )
     return room
 
@@ -51,13 +56,17 @@ async def list_draft_rooms(engine: DraftEngine = Depends(get_draft_engine)):
     """List all active draft rooms."""
     return list(engine.draft_rooms.values())
 
+class JoinRoomRequest(BaseModel):
+    player_id: str
+
 @router.post("/rooms/{room_id}/join")
 async def join_draft_room(
     room_id: str,
+    request: JoinRoomRequest,
     engine: DraftEngine = Depends(get_draft_engine)
 ):
     """Join a draft room."""
-    player = engine.add_player_to_room(room_id)
+    player = engine.add_player_to_room(room_id, request.player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Room not found or full")
     return player
