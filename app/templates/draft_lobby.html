@@ -73,11 +73,14 @@
         const response = await fetch(`/api/v1/draft/sets?q=${setName}`);
         const sets = await response.json();
 
-        suggestionsDiv.innerHTML = sets.map(set => `
-            <div class="p-2 hover:bg-arena-surface cursor-pointer" onclick="selectSet('${set.code}', '${set.name}')">
-                <img src="${set.icon_svg_uri}" class="w-6 h-6 inline-block mr-2">${set.name}
-            </div>
-        `).join('');
+        suggestionsDiv.innerHTML = sets.map(set => {
+            const escapedName = set.name.replace(/'/g, "\\'");
+            return `
+                <div class="p-2 hover:bg-arena-surface cursor-pointer" onclick="selectSet('${set.code}', '${escapedName}')">
+                    <img src="${set.icon_svg_uri}" class="w-6 h-6 inline-block mr-2">${set.name}
+                </div>
+            `;
+        }).join('');
     }
 
     function selectSet(code, name) {
