@@ -65,11 +65,34 @@ class DraftEngine:
         room.players.append(bot)
         return bot
 
+    def fill_bots(self, room_id: str):
+        """Fills the room with bots up to max_players."""
+        room = self.get_draft_room(room_id)
+        if not room:
+            return
+
+        while len(room.players) < room.max_players:
+            self.add_bot_to_room(room_id)
+
     async def start_draft(self, room_id: str):
         """Starts the draft for a room."""
         room = self.get_draft_room(room_id)
         if not room:
             return
+
+        # Randomize player order before starting
+        random.shuffle(room.players)
+
+        # Re-assign player names based on the new order
+        human_player_count = 1
+        bot_count = 1
+        for player in room.players:
+            if player.is_bot:
+                player.name = f"Bot {bot_count}"
+                bot_count += 1
+            else:
+                player.name = f"Player {human_player_count}"
+                human_player_count += 1
 
         room.state = DraftState.DRAFTING
         
@@ -103,24 +126,35 @@ class DraftEngine:
 
         player.drafted_cards.append(card_to_pick)
         player.current_pack.remove(card_to_pick)
+        player.has_picked_card = True
         
-        # After a human player picks, let the bots pick
-        self._bots_pick_cards(room_id)
+        # The target pack size for all players after this round of picks
+        target_pack_size = len(player.current_pack)
 
-        # Check if all players have made their pick for the current card
-        if all(len(p.current_pack) == len(player.current_pack) for p in room.players):
+        # Check if all human players have now made their pick
+        human_players = [p for p in room.players if not p.is_bot]
+        all_humans_picked = all(len(p.current_pack) == target_pack_size for p in human_players)
+
+        if all_humans_picked:
+            # If all humans are done, bots make their picks
+            self._bots_pick_cards(room_id, target_pack_size)
+
+        # Check if all players (humans and bots) have completed their pick
+        # This is the condition to pass the packs
+        if all(len(p.current_pack) == target_pack_size for p in room.players):
             self._pass_packs(room_id)
 
         return True
 
-    def _bots_pick_cards(self, room_id: str):
-        """Makes all bots in a room pick a card."""
+    def _bots_pick_cards(self, room_id: str, target_pack_size: int):
+        """Makes all bots in a room pick a card if they haven't already."""
         room = self.get_draft_room(room_id)
         if not room:
             return
 
         for player in room.players:
-            if player.is_bot and player.current_pack:
+            # A bot should pick if it's a bot, has a pack, and its pack is larger than the target size
+            if player.is_bot and player.current_pack and len(player.current_pack) > target_pack_size:
                 # Simple bot logic: pick a random card
                 card_to_pick = random.choice(player.current_pack)
                 player.drafted_cards.append(card_to_pick)
@@ -145,6 +179,7 @@ class DraftEngine:
                 # Distribute the next pack
                 for i, player in enumerate(room.players):
                     player.current_pack = room.packs[i][room.current_pack_number - 1]
+                    player.has_picked_card = False
                 return
 
         num_players = len(room.players)
@@ -157,5 +192,6 @@ class DraftEngine:
 
         for i, player in enumerate(room.players):
             player.current_pack = new_packs[i]
+            player.has_picked_card = False
             
         room.current_pick_number += 1

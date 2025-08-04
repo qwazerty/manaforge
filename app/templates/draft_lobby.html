@@ -18,9 +18,21 @@
             <div class="p-8">
                 <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Create a Draft Room</h2>
                 <div class="max-w-2xl mx-auto space-y-6">
-                    <div>
-                        <label for="roomName" class="block text-arena-text-dim mb-2">Room Name</label>
-                        <input type="text" id="roomName" placeholder="Enter a name for your draft room" class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200">
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="roomName"
+                            placeholder="Enter Draft Room Name..."
+                            value=""
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
+                        >
+                        <button
+                            onclick="generateRandomRoomName()"
+                            class="absolute left-4 top-1/2 transform -translate-y-1/2 text-arena-accent hover:text-arena-accent-bright transition-colors"
+                            title="Generate random name"
+                        >
+                            🎲
+                        </button>
                     </div>
                     <div>
                         <label for="setName" class="block text-arena-text-dim mb-2">Set Name</label>
@@ -80,8 +92,8 @@
         const setCode = document.getElementById('setCode').value;
         const setFullName = document.getElementById('setFullName').value;
 
-        if (!roomName || !setCode) {
-            alert('Please enter a room name and select a set.');
+        if (!setCode) {
+            alert('Please select a set.');
             return;
         }
 
@@ -101,9 +113,7 @@
 
         if (response.ok) {
             const room = await response.json();
-            // Store player ID to join with it
-            localStorage.setItem(`draft_player_id_${room.id}`, creatorId);
-            window.location.href = `/draft/${room.id}`;
+            window.location.href = `/draft/${room.id}?player=${creatorId}`;
         } else {
             alert('Failed to create draft room.');
         }
@@ -137,14 +147,28 @@
         });
 
         if (response.ok) {
-            localStorage.setItem(`draft_player_id_${roomId}`, playerId);
-            window.location.href = `/draft/${roomId}`;
+            window.location.href = `/draft/${roomId}?player=${playerId}`;
         } else {
             alert('Failed to join draft room. It might be full or already started.');
         }
     }
 
+    function generateRandomRoomName() {
+        const ADJECTIVES = ["Mystic", "Arcane", "Forbidden", "Ancient", "Cosmic", "Shadowy", "Radiant", "Eternal"];
+        const NOUNS = ["Nexus", "Crucible", "Sanctum", "Rift", "Spire", "Obelisk", "Chamber", "Gauntlet"];
+
+        const randomAdjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+        const randomNoun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+        const randomNumber = Math.floor(Math.random() * 999) + 1;
+
+        const randomName = `${randomAdjective}-${randomNoun}-${randomNumber}`;
+        document.getElementById('roomName').value = randomName;
+    }
+
     document.getElementById('setName').addEventListener('input', searchSets);
-    window.addEventListener('load', loadDraftRooms);
+    window.addEventListener('load', () => {
+        loadDraftRooms();
+        generateRandomRoomName();
+    });
 </script>
 {% endblock %}

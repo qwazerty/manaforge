@@ -303,10 +303,25 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 if room:
                     if message.get("type") == "add_bot":
                         engine.add_bot_to_room(game_id)
+                    elif message.get("type") == "fill_bots":
+                        engine.fill_bots(game_id)
                     elif message.get("type") == "start_draft":
+                        await manager.broadcast_to_game(game_id, {"type": "draft_starting"})
                         await engine.start_draft(game_id)
                     elif message.get("type") == "pick_card":
                         engine.pick_card(game_id, player_id, message.get("card_unique_id"))
+                    elif message.get("type") == "get_decklist":
+                        player = next((p for p in room.players if p.id == player_id), None)
+                        if player:
+                            decklist = ""
+                            for card in player.drafted_cards:
+                                decklist += f"1 {card.name}\n"
+                            await websocket.send_text(json.dumps({
+                                "type": "decklist_data",
+                                "decklist": decklist
+                            }))
+                        # Don't broadcast after this, it's a direct response
+                        continue
 
                     await manager.broadcast_to_game(game_id, {
                         "type": "draft_state_update",

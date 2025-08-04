@@ -2,8 +2,9 @@
 API routes for the draft feature.
 """
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+import random
 
 from app.models.game import DraftRoom
 from app.services.card_service import CardService
@@ -25,8 +26,15 @@ draft_engine = DraftEngine(get_draft_service(get_card_service()))
 def get_draft_engine() -> DraftEngine:
     return draft_engine
 
+ADJECTIVES = ["Mystic", "Arcane", "Forbidden", "Ancient", "Cosmic", "Shadowy", "Radiant", "Eternal"]
+NOUNS = ["Nexus", "Crucible", "Sanctum", "Rift", "Spire", "Obelisk", "Chamber", "Gauntlet"]
+
+def generate_random_name():
+    """Generates a random room name."""
+    return f"{random.choice(ADJECTIVES)} {random.choice(NOUNS)}"
+
 class CreateRoomRequest(BaseModel):
-    name: str
+    name: Optional[str] = None
     creator_id: str
     set_code: str
     set_name: str
@@ -42,8 +50,9 @@ async def create_draft_room(
     engine: DraftEngine = Depends(get_draft_engine)
 ):
     """Create a new draft room."""
+    room_name = request.name if request.name else generate_random_name()
     room = engine.create_draft_room(
-        name=request.name,
+        name=room_name,
         set_code=request.set_code,
         set_name=request.set_name,
         max_players=request.max_players,
