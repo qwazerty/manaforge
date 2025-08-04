@@ -1,0 +1,124 @@
+{% extends "base_arena.html" %}
+
+{% block title %}Draft Lobby - ManaForge{% endblock %}
+
+{% block content %}
+<div class="py-12 px-4">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-12">
+            <h1 class="font-magic text-4xl md:text-5xl font-bold text-arena-accent mb-4">
+                &#x1F4E6; Draft Lobby
+            </h1>
+            <p class="text-xl text-arena-text-dim">
+                Create or join a draft to build your deck.
+            </p>
+        </div>
+
+        <div class="arena-card rounded-xl mb-8">
+            <div class="p-8">
+                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Create a Draft Room</h2>
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <div>
+                        <label for="roomName" class="block text-arena-text-dim mb-2">Room Name</label>
+                        <input type="text" id="roomName" placeholder="Enter a name for your draft room" class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200">
+                    </div>
+                    <div>
+                        <label for="setName" class="block text-arena-text-dim mb-2">Set Name</label>
+                        <input type="text" id="setName" placeholder="Search for a set (e.g., Dominaria United)" class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200">
+                        <div id="set-suggestions" class="mt-2"></div>
+                    </div>
+                    <input type="hidden" id="setCode">
+                    <input type="hidden" id="setFullName">
+                    <button onclick="createDraftRoom()" class="arena-button w-full py-4 px-8 rounded-lg font-semibold text-xl transition-all duration-300 group">
+                        Create Room
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena-card rounded-xl">
+            <div class="p-8">
+                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Join a Draft Room</h2>
+                <div id="draft-room-list" class="space-y-4">
+                    <!-- Draft rooms will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function searchSets() {
+        const setName = document.getElementById('setName').value;
+        const suggestionsDiv = document.getElementById('set-suggestions');
+        if (setName.length < 3) {
+            suggestionsDiv.innerHTML = '';
+            return;
+        }
+
+        const response = await fetch(`/api/v1/draft/sets?q=${setName}`);
+        const sets = await response.json();
+
+        suggestionsDiv.innerHTML = sets.map(set => `
+            <div class="p-2 hover:bg-arena-surface cursor-pointer" onclick="selectSet('${set.code}', '${set.name}')">
+                <img src="${set.icon_svg_uri}" class="w-6 h-6 inline-block mr-2">${set.name}
+            </div>
+        `).join('');
+    }
+
+    function selectSet(code, name) {
+        document.getElementById('setName').value = name;
+        document.getElementById('setCode').value = code;
+        document.getElementById('setFullName').value = name;
+        document.getElementById('set-suggestions').innerHTML = '';
+    }
+
+    async function createDraftRoom() {
+        const roomName = document.getElementById('roomName').value;
+        const setCode = document.getElementById('setCode').value;
+        const setFullName = document.getElementById('setFullName').value;
+
+        if (!roomName || !setCode) {
+            alert('Please enter a room name and select a set.');
+            return;
+        }
+
+        const response = await fetch('/api/v1/draft/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: roomName,
+                set_code: setCode,
+                set_name: setFullName
+            })
+        });
+
+        if (response.ok) {
+            const room = await response.json();
+            window.location.href = `/draft/${room.id}`;
+        } else {
+            alert('Failed to create draft room.');
+        }
+    }
+
+    async function loadDraftRooms() {
+        const response = await fetch('/api/v1/draft/rooms');
+        const rooms = await response.json();
+        const listDiv = document.getElementById('draft-room-list');
+        listDiv.innerHTML = rooms.map(room => `
+            <div class="p-4 bg-arena-surface rounded-lg flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg">${room.name}</h3>
+                    <p class="text-sm text-arena-text-dim">${room.set_name} - ${room.players.length}/${room.max_players} players</p>
+                </div>
+                <a href="/draft/${room.id}" class="arena-button px-4 py-2 rounded-lg">Join</a>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('setName').addEventListener('input', searchSets);
+    window.addEventListener('load', loadDraftRooms);
+</script>
+{% endblock %}

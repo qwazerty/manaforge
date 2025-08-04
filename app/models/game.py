@@ -53,8 +53,8 @@ class Card(BaseModel):
     card_type: CardType = Field(..., description="Primary card type")
     subtype: str = Field(default="", description="Card subtype")
     text: str = Field(default="", description="Card text/abilities")
-    power: Optional[int] = Field(default=None, description="Creature power")
-    toughness: Optional[int] = Field(
+    power: Optional[str] = Field(default=None, description="Creature power")
+    toughness: Optional[str] = Field(
         default=None, description="Creature toughness"
     )
     colors: List[Color] = Field(default_factory=list, description="Card colors")
@@ -197,3 +197,34 @@ class GameAction(BaseModel):
     additional_data: Dict[str, Any] = Field(
         default_factory=dict, description="Additional action data"
     )
+
+# Models for the draft feature
+class DraftType(str, Enum):
+    BOOSTER_DRAFT = "booster_draft"
+    SEALED = "sealed"
+
+class DraftState(str, Enum):
+    WAITING = "waiting"
+    DRAFTING = "drafting" 
+    COMPLETED = "completed"
+
+class DraftPlayer(BaseModel):
+    id: str
+    name: str
+    is_bot: bool = False
+    drafted_cards: List[Card] = []
+    current_pack: List[Card] = []
+
+class DraftRoom(BaseModel):
+    id: str
+    name: str
+    set_code: str
+    set_name: str
+    max_players: int = 8
+    players: List[DraftPlayer] = []
+    draft_type: DraftType = DraftType.BOOSTER_DRAFT
+    state: DraftState = DraftState.WAITING
+    current_pack_number: int = 1
+    current_pick_number: int = 1
+    packs: List[List[List[Card]]] = []
+    pack_direction: int = 1
