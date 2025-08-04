@@ -47,10 +47,10 @@ class DraftEngine:
         if any(p.id == player_id for p in room.players):
             return next((p for p in room.players if p.id == player_id), None)
 
-        human_players = len([p for p in room.players if not p.is_bot])
-        player_name = f"Player {human_players + 1}"
-        player = DraftPlayer(id=player_id, name=player_name)
+        player = DraftPlayer(id=player_id, name="")  # Name will be set by _update_player_names
         room.players.append(player)
+        random.shuffle(room.players)
+        self._update_player_names(room)
         return player
 
     def add_bot_to_room(self, room_id: str) -> Optional[DraftPlayer]:
@@ -60,10 +60,23 @@ class DraftEngine:
             return None
 
         bot_id = f"bot-{uuid.uuid4().hex[:8]}"
-        bot_name = f"Bot {len([p for p in room.players if p.is_bot]) + 1}"
-        bot = DraftPlayer(id=bot_id, name=bot_name, is_bot=True)
+        bot = DraftPlayer(id=bot_id, name="", is_bot=True)  # Name will be set by _update_player_names
         room.players.append(bot)
+        random.shuffle(room.players)
+        self._update_player_names(room)
         return bot
+
+    def _update_player_names(self, room: DraftRoom):
+        """Re-assigns player and bot names based on their current order in the list."""
+        human_player_count = 1
+        bot_count = 1
+        for player in room.players:
+            if player.is_bot:
+                player.name = f"Bot {bot_count}"
+                bot_count += 1
+            else:
+                player.name = f"Player {human_player_count}"
+                human_player_count += 1
 
     def fill_bots(self, room_id: str):
         """Fills the room with bots up to max_players."""
@@ -79,20 +92,6 @@ class DraftEngine:
         room = self.get_draft_room(room_id)
         if not room:
             return
-
-        # Randomize player order before starting
-        random.shuffle(room.players)
-
-        # Re-assign player names based on the new order
-        human_player_count = 1
-        bot_count = 1
-        for player in room.players:
-            if player.is_bot:
-                player.name = f"Bot {bot_count}"
-                bot_count += 1
-            else:
-                player.name = f"Player {human_player_count}"
-                human_player_count += 1
 
         room.state = DraftState.DRAFTING
         
