@@ -72,7 +72,8 @@
             return;
         }
 
-        websocket = new WebSocket(`ws://${window.location.host}/ws/game/${roomId}?player=${playerId}`);
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        websocket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/game/${roomId}?player=${playerId}`);
 
         websocket.onmessage = (event) => {
             const data = JSON.parse(event.data);
