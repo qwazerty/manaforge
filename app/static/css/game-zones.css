@@ -1012,12 +1012,11 @@
 }
 
 .card-zones-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.75rem;
     width: 100%;
-    min-height: 180px; /* Ensure adequate height for 2x2 grid */
-    flex-direction: column;
 }
 
 .zone-display {
@@ -1085,8 +1084,40 @@
     transition: all 0.2s ease-in-out;
     cursor: pointer;
     position: relative;
-    min-height: 70px; /* Adjusted for 2x2 grid layout */
+    min-height: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.card-zones-container .zone-item {
+    flex: 1 1 0;
+    min-height: 140px;
+}
+
+.card-zones-container .life-zone {
+    flex: 0 0 200px;
+    margin-left: auto;
+}
+
+.card-zones-container .life-zone .life-zone-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+@media (max-width: 1024px) {
+    .card-zones-container {
+        flex-wrap: wrap;
+    }
+    
+    .card-zones-container .zone-item {
+        flex: 1 1 calc(50% - 0.75rem);
+    }
+    
+    .card-zones-container .life-zone {
+        flex: 1 1 100%;
+        margin-left: 0;
+    }
 }

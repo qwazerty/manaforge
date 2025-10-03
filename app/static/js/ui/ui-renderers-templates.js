@@ -139,9 +139,7 @@ class UIRenderersTemplates {
         const config = UIUtils.getZoneConfiguration(isOpponent, playerIndex);
         const zoneTemplates = this._generateZoneTemplates(playerData, config, isOpponent);
 
-        const zoneOrder = isOpponent 
-            ? ['exile', 'graveyard', 'life', 'deck']
-            : ['life', 'deck', 'exile', 'graveyard'];
+        const zoneOrder = ['exile', 'graveyard', 'deck', 'life'];
 
         const orderedZones = zoneOrder.map(zoneName => zoneTemplates[zoneName]);
 
