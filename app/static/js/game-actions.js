@@ -3,7 +3,408 @@
  * Handles game actions like playing cards, changing phases, etc.
  */
 
-// ===== GAME ACTION FUNCTIONS =====
+/* ===== ACTION HISTORY HELPERS ===== */
+function sanitizeActionDetails(data) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+
+    const sanitized = {};
+    const refs = {
+        uniqueIds: new Set(),
+        cardIds: new Set(),
+        names: new Set()
+    };
+
+    Object.entries(data).forEach(([key, value]) => {
+        collectCardRefsFromValue(refs, key, value);
+
+        if (
+            key === 'player_id' ||
+            value === undefined ||
+            value === null ||
+            value === ''
+        ) {
+            return;
+        }
+
+        const normalizedKey = String(key).toLowerCase();
+        if (normalizedKey.includes('unique') && typeof value === 'string') {
+            return;
+        }
+
+        if (value && typeof value === 'object') {
+            try {
+                sanitized[key] = JSON.parse(JSON.stringify(value));
+            } catch (_error) {
+                sanitized[key] = value;
+            }
+        } else {
+            sanitized[key] = value;
+        }
+    });
+
+    const cardInfo = resolveCardInfoFromRefs(refs);
+    if (cardInfo) {
+        sanitized.card = cardInfo;
+    } else {
+        const fallback =
+            firstSetValue(refs.names) || firstSetValue(refs.cardIds);
+        if (fallback) {
+            sanitized.card_name = formatCardName(fallback);
+        }
+    }
+
+    return Object.keys(sanitized).length ? sanitized : null;
+}
+
+function collectCardRefsFromValue(refs, key, value) {
+    if (!refs) {
+        return;
+    }
+
+    if (value === undefined || value === null) {
+        return;
+    }
+
+    const normalizedKey = key ? String(key).toLowerCase() : '';
+
+    if (typeof value === 'string' || typeof value === 'number') {
+        const textValue = String(value);
+        if (normalizedKey.includes('unique')) {
+            refs.uniqueIds.add(textValue);
+        }
+        if (normalizedKey.includes('card')) {
+            if (normalizedKey.includes('name')) {
+                refs.names.add(textValue);
+            } else {
+                refs.cardIds.add(textValue);
+            }
+        }
+        return;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach((item) => collectCardRefsFromValue(refs, key, item));
+        return;
+    }
+
+    if (typeof value === 'object') {
+        ['unique_id', 'uniqueId', 'card_unique_id', 'cardUniqueId'].forEach((prop) => {
+            if (value[prop]) {
+                refs.uniqueIds.add(String(value[prop]));
+            }
+        });
+        ['card_id', 'cardId', 'id'].forEach((prop) => {
+            if (value[prop]) {
+                refs.cardIds.add(String(value[prop]));
+            }
+        });
+        ['name', 'card_name', 'cardName'].forEach((prop) => {
+            if (value[prop]) {
+                refs.names.add(String(value[prop]));
+            }
+        });
+
+        Object.entries(value).forEach(([childKey, childValue]) => {
+            collectCardRefsFromValue(refs, childKey, childValue);
+        });
+    }
+}
+
+function resolveCardInfoFromRefs(refs) {
+    if (!refs) {
+        return null;
+    }
+
+    const uniqueIds = Array.from(refs.uniqueIds || []);
+    const cardIds = Array.from(refs.cardIds || []);
+    const names = Array.from(refs.names || []);
+
+    const domInfo = findCardInfoInDom(uniqueIds, cardIds, names);
+    if (domInfo) {
+        return domInfo;
+    }
+
+    const stateInfo = findCardInfoInState(uniqueIds, cardIds, names);
+    if (stateInfo) {
+        return stateInfo;
+    }
+
+    const fallbackId = firstSetValue(refs.cardIds);
+    const fallbackUniqueId = firstSetValue(refs.uniqueIds);
+    const fallbackName =
+        firstSetValue(refs.names) ||
+        (fallbackId ? formatCardName(fallbackId) : null);
+
+    if (fallbackId || fallbackName) {
+        return {
+            id: fallbackId || null,
+            card_id: fallbackId || null,
+            unique_id: fallbackUniqueId || null,
+            name: fallbackName || null,
+            image_url: null
+        };
+    }
+
+    return null;
+}
+
+function findCardInfoInDom(uniqueIds, cardIds, names) {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    const hydrate = (element) => {
+        if (!element) {
+            return null;
+        }
+        const info = getCardInfoFromElement(element);
+        if (info && !info.name) {
+            const fallback =
+                info.card_id ||
+                info.id ||
+                (names.length ? names[0] : null);
+            if (fallback) {
+                info.name = formatCardName(fallback);
+            }
+        }
+        return info;
+    };
+
+    for (const uniqueId of uniqueIds) {
+        const element = document.querySelector(`[data-card-unique-id="${uniqueId}"]`);
+        const info = hydrate(element);
+        if (info) {
+            return info;
+        }
+    }
+
+    for (const cardId of cardIds) {
+        const element = document.querySelector(`[data-card-id="${cardId}"]`);
+        const info = hydrate(element);
+        if (info) {
+            return info;
+        }
+    }
+
+    for (const candidateName of names) {
+        const normalized = formatCardName(candidateName);
+        const element = Array.from(
+            document.querySelectorAll('[data-card-name]')
+        ).find(
+            (el) => formatCardName(el.getAttribute('data-card-name')) === normalized
+        );
+        const info = hydrate(element);
+        if (info) {
+            return info;
+        }
+    }
+
+    return null;
+}
+
+function getCardInfoFromElement(element) {
+    if (!element) {
+        return null;
+    }
+    return {
+        id: element.getAttribute('data-card-id') || null,
+        card_id: element.getAttribute('data-card-id') || null,
+        unique_id: element.getAttribute('data-card-unique-id') || null,
+        name: element.getAttribute('data-card-name') || null,
+        image_url: element.getAttribute('data-card-image') || null
+    };
+}
+
+function findCardInfoInState(uniqueIds, cardIds, names) {
+    if (
+        typeof GameCore === 'undefined' ||
+        typeof GameCore.getGameState !== 'function'
+    ) {
+        return null;
+    }
+
+    const state = GameCore.getGameState();
+    if (!state) {
+        return null;
+    }
+
+    const uniqueIdSet = new Set(uniqueIds);
+    const cardIdSet = new Set(cardIds);
+    const normalizedNames = names.map((name) => formatCardName(name));
+
+    const matchesCard = (card) => {
+        if (!card) {
+            return null;
+        }
+        if (card.unique_id && uniqueIdSet.has(card.unique_id)) {
+            return card;
+        }
+        const candidateId = card.id || card.card_id;
+        if (candidateId && cardIdSet.has(candidateId)) {
+            return card;
+        }
+        if (
+            card.name &&
+            normalizedNames.includes(formatCardName(card.name))
+        ) {
+            return card;
+        }
+        return null;
+    };
+
+    if (Array.isArray(state.stack)) {
+        for (const spell of state.stack) {
+            const match = matchesCard(spell);
+            if (match) {
+                return createCardInfoFromCard(match);
+            }
+        }
+    }
+
+    if (Array.isArray(state.players)) {
+        const zones = [
+            'hand',
+            'battlefield',
+            'graveyard',
+            'exile',
+            'temporary_zone',
+            'library'
+        ];
+        for (const player of state.players) {
+            for (const zoneName of zones) {
+                const zone = player[zoneName];
+                if (!Array.isArray(zone)) {
+                    continue;
+                }
+                for (const card of zone) {
+                    const match = matchesCard(card);
+                    if (match) {
+                        return createCardInfoFromCard(match);
+                    }
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function createCardInfoFromCard(card) {
+    if (!card) {
+        return null;
+    }
+
+    const info = {
+        id: card.id || card.card_id || null,
+        card_id: card.id || card.card_id || null,
+        unique_id: card.unique_id || null,
+        name: card.name || null,
+        image_url: null
+    };
+
+    if (
+        typeof GameCards !== 'undefined' &&
+        typeof GameCards.getSafeImageUrl === 'function'
+    ) {
+        info.image_url = GameCards.getSafeImageUrl(card);
+    } else if (card.image_url) {
+        info.image_url = card.image_url;
+    } else if (
+        Array.isArray(card.card_faces) &&
+        card.card_faces.length > 0
+    ) {
+        const face = card.card_faces[card.current_face || 0] || card.card_faces[0];
+        if (face && face.image_url) {
+            info.image_url = face.image_url;
+        }
+        if (!info.name && face && face.name) {
+            info.name = face.name;
+        }
+    }
+
+    if (!info.name) {
+        const fallback = info.card_id || card.unique_id || card.id;
+        if (fallback) {
+            info.name = formatCardName(fallback);
+        }
+    }
+
+    return info;
+}
+
+function firstSetValue(set) {
+    if (!set || typeof set.values !== 'function') {
+        return null;
+    }
+    const iterator = set.values();
+    const result = iterator.next();
+    return result && result.value ? result.value : null;
+}
+
+function formatCardName(value) {
+    if (!value) {
+        return '';
+    }
+    const text = String(value).replace(/[_-]+/g, ' ').trim();
+    if (!text) {
+        return '';
+    }
+    return text
+        .split(/\s+/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
+
+function recordActionHistory(actionType, success, data = null, message = null, playerOverride = null) {
+    if (typeof UIActionHistory === 'undefined') {
+        return;
+    }
+
+    const player = playerOverride || GameCore.getSelectedPlayer();
+    let details = sanitizeActionDetails(data);
+
+    if (message) {
+        details = details || {};
+        details.message = message;
+    }
+
+    UIActionHistory.addEntry({
+        action: actionType,
+        player,
+        success,
+        details
+    });
+}
+
+function recordActionFailure(actionType, message, data = null, playerOverride = null) {
+    if (typeof UIActionHistory === 'undefined') {
+        return;
+    }
+
+    const player = playerOverride || GameCore.getSelectedPlayer();
+    let details = sanitizeActionDetails(data);
+
+    if (message) {
+        details = details || {};
+        details.error = message;
+    }
+
+    if (!details || (Object.keys(details).length === 1 && details.error)) {
+        UIActionHistory.addFailure(actionType, message || 'Action failed', player);
+        return;
+    }
+
+    UIActionHistory.addEntry({
+        action: actionType,
+        player,
+        success: false,
+        details
+    });
+}
+
+/* ===== GAME ACTION FUNCTIONS ===== */
 function performGameAction(actionType, actionData = {}) {
    const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
@@ -82,17 +483,22 @@ async function performHttpGameAction(actionType, actionData = {}) {
         if (response.ok) {
             const result = await response.json();
             if (result.success) {
-                GameUI.showNotification(`Action performed: ${actionType}`, 'success');
+                recordActionHistory(actionType, true, actionData, null, currentSelectedPlayer);
             } else {
-                GameUI.showNotification(`Action failed: ${result.error}`, 'error');
+                const errorMessage = result.error || 'Action failed';
+                GameUI.showNotification(`Action failed: ${errorMessage}`, 'error');
+                recordActionFailure(actionType, errorMessage, actionData, currentSelectedPlayer);
             }
         } else {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            GameUI.showNotification(`Error: ${errorMessage}`, 'error');
+            recordActionFailure(actionType, errorMessage, actionData, currentSelectedPlayer);
         }
         
     } catch (error) {
         console.error('HTTP action error:', error);
         GameUI.showNotification(`Error: ${error.message}`, 'error');
+        recordActionFailure(actionType, error.message, actionData, currentSelectedPlayer);
     }
 }
 

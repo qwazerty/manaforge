@@ -127,6 +127,10 @@ class WebSocketManager {
                         console.log(`🃏 WebSocket: Tap action completed for ${result.player}`);
                     }
                 }
+
+                if (message.action_result) {
+                    WebSocketManager._recordActionResult(message.action_result);
+                }
                 break;
                 
             case 'game_action_start':
@@ -134,10 +138,14 @@ class WebSocketManager {
                 
             case 'game_action_failed':
                 UINotifications.showNotification(`Action failed: ${message.error}`, 'error');
+                
+                WebSocketManager._recordActionFailure(message.action, message.error, message.player);
                 break;
                 
             case 'action_error':
                 UINotifications.showNotification(`Error: ${message.message}`, 'error');
+                
+                WebSocketManager._recordActionFailure(message.action, message.message, message.player);
                 break;
                 
             case 'chat':
@@ -178,6 +186,8 @@ class WebSocketManager {
                 
             case 'error':
                 UINotifications.showNotification(`Server error: ${message.message}`, 'error');
+                
+                WebSocketManager._recordActionFailure('server_error', message.message);
                 break;
                 
             default:
@@ -282,6 +292,20 @@ class WebSocketManager {
         
         // Update zone counts and previews
         UIZonesManager.updateZoneCounts();
+    }
+
+    static _recordActionResult(actionResult) {
+        if (typeof UIActionHistory === 'undefined' || !actionResult) {
+            return;
+        }
+        UIActionHistory.addFromActionResult(actionResult);
+    }
+
+    static _recordActionFailure(action, message, player = null) {
+        if (typeof UIActionHistory === 'undefined' || !action) {
+            return;
+        }
+        UIActionHistory.addFailure(action, message, player);
     }
 
     /**

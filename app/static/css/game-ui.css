@@ -348,6 +348,95 @@
     to { transform: rotate(360deg); }
 }
 
+/* Action History */
+.action-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+}
+
+.action-history-entry {
+    background: rgba(15, 15, 23, 0.6);
+    border: 1px solid rgba(201, 170, 113, 0.18);
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.action-history-entry:hover {
+    border-color: rgba(201, 170, 113, 0.35);
+    transform: translateY(-1px);
+}
+
+.action-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.action-history-player {
+    font-weight: 600;
+    color: #c9aa71;
+    letter-spacing: 0.02em;
+}
+
+.action-history-action {
+    color: rgba(229, 221, 213, 0.85);
+    flex: 1;
+}
+
+.action-history-status {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: rgba(229, 221, 213, 0.65);
+}
+
+.action-history-status.success {
+    color: #10b981;
+}
+
+.action-history-status.failure {
+    color: #ef4444;
+}
+
+.action-history-detail {
+    color: rgba(229, 221, 213, 0.75);
+    line-height: 1.35;
+}
+
+.action-history-time {
+    font-size: 0.65rem;
+    color: rgba(229, 221, 213, 0.5);
+    letter-spacing: 0.05em;
+}
+
+.action-history-empty {
+    font-size: 0.75rem;
+    color: rgba(229, 221, 213, 0.5);
+    padding: 1rem 0;
+}
+
+.action-history-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.action-history-list::-webkit-scrollbar-thumb {
+    background: rgba(201, 170, 113, 0.3);
+    border-radius: 9999px;
+}
+
+.action-history-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 170, 113, 0.45);
+}
+
 /* Chat Messages */
 .chat-message {
     display: flex;
