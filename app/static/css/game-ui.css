@@ -412,6 +412,31 @@
     line-height: 1.35;
 }
 
+.action-history-card-link {
+    color: #93c5fd;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: rgba(147, 197, 253, 0.5);
+    text-underline-offset: 2px;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.action-history-card-link:hover,
+.action-history-card-link:focus {
+    color: #bfdbfe;
+    text-decoration-color: rgba(191, 219, 254, 0.8);
+    outline: none;
+}
+
+.action-history-card-link:active {
+    color: #60a5fa;
+    text-decoration-color: rgba(96, 165, 250, 0.9);
+}
+
 .action-history-time {
     font-size: 0.65rem;
     color: rgba(229, 221, 213, 0.5);
