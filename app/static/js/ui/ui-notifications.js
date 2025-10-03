@@ -11,6 +11,8 @@ class UINotifications {
         error: 'notification-error'
     };
 
+    static ENABLE_NOTIFICATIONS = false;
+
     static NOTIFICATION_DURATION = 3000; // 3 seconds
     static FADE_DURATION = 500; // 0.5 seconds
 
@@ -18,8 +20,12 @@ class UINotifications {
      * Show notification message
      */
     static showNotification(message, type = 'info') {
+        if (!this.ENABLE_NOTIFICATIONS) {
+            return;
+        }
+
         console.log(`[${type}] ${message}`);
-        
+
         const notification = this.createNotificationElement(message, type);
         const notificationsArea = this.getNotificationsArea();
         
@@ -33,6 +39,10 @@ class UINotifications {
      * Show auto refresh indicator
      */
     static showAutoRefreshIndicator(message, type = 'info') {
+        if (!this.ENABLE_NOTIFICATIONS) {
+            return;
+        }
+
         const indicator = document.getElementById('auto-refresh-indicator');
         if (!indicator) return;
         
@@ -79,6 +89,10 @@ class UINotifications {
      * Show success feedback
      */
     static showSuccessFeedback(message) {
+        if (!this.ENABLE_NOTIFICATIONS) {
+            return;
+        }
+
         this.showNotification(message, 'success');
         this.showAutoRefreshIndicator(message, 'success');
     }
@@ -88,15 +102,24 @@ class UINotifications {
      */
     static showErrorFeedback(message, error = null) {
         const errorMessage = error ? `${message}: ${error.message}` : message;
+        console.error(message, error);
+
+        if (!this.ENABLE_NOTIFICATIONS) {
+            return;
+        }
+
         this.showNotification(errorMessage, 'error');
         this.showAutoRefreshIndicator('Error occurred', 'error');
-        console.error(message, error);
     }
 
     /**
      * Show warning feedback
      */
     static showWarningFeedback(message) {
+        if (!this.ENABLE_NOTIFICATIONS) {
+            return;
+        }
+
         this.showNotification(message, 'warning');
         this.showAutoRefreshIndicator(message, 'warning');
     }
