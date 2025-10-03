@@ -199,16 +199,19 @@ class UIZonesManager {
      * Generate life total zone with enhanced life controls
      */
     static generateLifeZone(life, playerId, titlePrefix) {
+        const negativeControls = UIConfig.LIFE_CONTROLS.filter(c => c.value < 0);
+        const positiveControls = UIConfig.LIFE_CONTROLS.filter(c => c.value > 0);
+
         return UIUtils.generateZoneWrapper(`
             <div class="life-zone-container p-4">
-                <div class="text-center mb-3">
+                <div class="life-total-wrapper">
                     <div class="text-2xl font-bold text-red-400 life-total-display">
                         ❤️ ${life}
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2 text-center">
-                    <div class="space-y-1">
-                        ${UIConfig.LIFE_CONTROLS.filter(c => c.value < 0).map(control => 
+                <div class="life-controls-stack">
+                    <div class="life-controls-group">
+                        ${negativeControls.map(control =>
                             UIUtils.generateButton(
                                 `GameActions.modifyLife('${playerId}', ${control.value})`,
                                 UIConfig.CSS_CLASSES.button.life[control.class],
@@ -217,8 +220,8 @@ class UIZonesManager {
                             )
                         ).join('')}
                     </div>
-                    <div class="space-y-1">
-                        ${UIConfig.LIFE_CONTROLS.filter(c => c.value > 0).map(control => 
+                    <div class="life-controls-group">
+                        ${positiveControls.map(control =>
                             UIUtils.generateButton(
                                 `GameActions.modifyLife('${playerId}', ${control.value})`,
                                 UIConfig.CSS_CLASSES.button.life[control.class],
