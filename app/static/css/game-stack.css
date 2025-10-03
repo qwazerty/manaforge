@@ -1,12 +1,81 @@
 /* ===== MANAFORGE STACK STYLES ===== */
 
-.stack-container {
-    border-radius: 12px;
+.stack-popup {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    width: min(380px, 90vw);
+    max-height: 80vh;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    z-index: 60;
+    color: #e2e8f0;
+    pointer-events: auto;
+    overflow: hidden;
+}
+
+.stack-popup.hidden {
+    display: none;
+}
+
+.stack-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 16px;
+    background: rgba(30, 41, 59, 0.85);
+    border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.stack-popup-dragging {
+    cursor: grabbing;
+}
+
+.stack-popup-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    color: #facc15;
+}
+
+.stack-popup-icon {
+    font-size: 1.25rem;
+}
+
+.stack-popup-count {
+    background: rgba(250, 204, 21, 0.15);
+    color: #facc15;
+    font-weight: 700;
+    font-size: 0.875rem;
+    padding: 2px 10px;
+    border-radius: 9999px;
+}
+
+.stack-popup-body {
     padding: 16px;
-    min-height: 300px;
-    min-width: 200px;
-    position: sticky;
-    top: 20px;
+    overflow-y: auto;
+    max-height: calc(80vh - 64px);
+}
+
+.stack-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+[data-draggable-handle] {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
 }
 
 .stack-header {

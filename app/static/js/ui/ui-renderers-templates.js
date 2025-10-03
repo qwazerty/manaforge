@@ -116,12 +116,12 @@ class UIRenderersTemplates {
                     <span class="mr-2">⚡</span>Game Actions
                 </h4>
                 ${isActivePlayer ? this.generateActionButtons() : this.generateSpectatorView()}
-                
-                <!-- The Stack -->
-                ${this._generateStackContent(stack)}
             `;
+
+            this._updateStackOverlay(stack);
         } catch (error) {
             this._renderError(actionPanelContainer, 'Error', error.message);
+            this._updateStackOverlay([]);
         }
     }
 
@@ -413,14 +413,218 @@ class UIRenderersTemplates {
     }
 
     /**
+     * Update stack overlay visibility and content
+     */
+    static _updateStackOverlay(stack) {
+        const elements = this._ensureStackPopup();
+        if (!elements) {
+            return;
+        }
+
+        const { panel, body, countLabel } = elements;
+
+        if (!Array.isArray(stack) || stack.length === 0) {
+            panel.classList.add('hidden');
+            panel.setAttribute('aria-hidden', 'true');
+            body.innerHTML = '';
+            countLabel.textContent = '0';
+            delete panel.dataset.userMoved;
+            return;
+        }
+
+        countLabel.textContent = String(stack.length);
+        body.innerHTML = this._generateStackContent(stack);
+        panel.classList.remove('hidden');
+        panel.setAttribute('aria-hidden', 'false');
+
+        if (panel.dataset.userMoved !== 'true') {
+            requestAnimationFrame(() => this._positionStackPopupRelativeToBoard(panel));
+        }
+    }
+
+    static _ensureStackPopup() {
+        if (this._stackPopupElements && this._stackPopupElements.panel) {
+            return this._stackPopupElements;
+        }
+
+        if (typeof document === 'undefined') {
+            return null;
+        }
+
+        let panel = document.getElementById('stack-popup');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'stack-popup';
+            panel.className = 'stack-popup hidden';
+            panel.setAttribute('role', 'dialog');
+            panel.setAttribute('aria-label', 'Stack');
+            panel.setAttribute('aria-hidden', 'true');
+            panel.innerHTML = `
+                <div class="stack-popup-header" data-draggable-handle>
+                    <div class="stack-popup-title">
+                        <span class="stack-popup-icon">📜</span>
+                        <span class="stack-popup-label">Stack</span>
+                        <span class="stack-popup-count" id="stack-popup-count">0</span>
+                    </div>
+                </div>
+                <div class="stack-popup-body" id="stack-popup-body"></div>
+            `;
+            document.body.appendChild(panel);
+        }
+
+        const handle = panel.querySelector('[data-draggable-handle]');
+        const body = panel.querySelector('#stack-popup-body');
+        const countLabel = panel.querySelector('#stack-popup-count');
+
+        this._makeStackPopupDraggable(panel, handle);
+
+        this._stackPopupElements = { panel, body, countLabel };
+        return this._stackPopupElements;
+    }
+
+    static _positionStackPopupRelativeToBoard(panel) {
+        if (!panel) {
+            return;
+        }
+
+        const board = document.getElementById('game-board');
+        if (!board) {
+            return;
+        }
+
+        const padding = 16;
+        const boardRect = board.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        const panelHeight = panelRect.height || panel.offsetHeight || 0;
+        const panelWidth = panelRect.width || panel.offsetWidth || 0;
+
+        let top = boardRect.top + (boardRect.height / 2) - (panelHeight / 2);
+        let left = boardRect.right - panelWidth - padding;
+
+        top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
+
+        const minLeft = boardRect.left + padding;
+        const maxLeft = window.innerWidth - panelWidth - padding;
+        left = Math.max(minLeft, Math.min(left, maxLeft));
+
+        panel.style.top = `${top}px`;
+        panel.style.left = `${left}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
+    }
+
+    static _makeStackPopupDraggable(panel, handle) {
+        if (!panel || !handle || panel.dataset.draggableInit === 'true') {
+            return;
+        }
+
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        const startDragging = (clientX, clientY) => {
+            isDragging = true;
+            panel.dataset.userMoved = 'true';
+            panel.classList.add('stack-popup-dragging');
+            const rect = panel.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            panel.style.transform = 'none';
+        };
+
+        const stopDragging = () => {
+            if (!isDragging) {
+                return;
+            }
+            isDragging = false;
+            panel.classList.remove('stack-popup-dragging');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+        };
+
+        const onMouseMove = (event) => {
+            if (!isDragging) {
+                return;
+            }
+            this._positionStackPopup(panel, event.clientX - dragOffsetX, event.clientY - dragOffsetY);
+        };
+
+        const onMouseUp = () => {
+            stopDragging();
+        };
+
+        const onTouchMove = (event) => {
+            if (!isDragging) {
+                return;
+            }
+            const touch = event.touches[0];
+            if (!touch) {
+                return;
+            }
+            this._positionStackPopup(panel, touch.clientX - dragOffsetX, touch.clientY - dragOffsetY);
+        };
+
+        const onTouchEnd = () => {
+            stopDragging();
+        };
+
+        const onMouseDown = (event) => {
+            if (event.button !== 0 || event.target.closest('button')) {
+                return;
+            }
+            startDragging(event.clientX, event.clientY);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            event.preventDefault();
+        };
+
+        const onTouchStart = (event) => {
+            const touch = event.touches[0];
+            if (!touch || event.target.closest('button')) {
+                return;
+            }
+            startDragging(touch.clientX, touch.clientY);
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+            event.preventDefault();
+        };
+
+        handle.addEventListener('mousedown', onMouseDown);
+        handle.addEventListener('touchstart', onTouchStart, { passive: false });
+
+        panel.dataset.draggableInit = 'true';
+    }
+
+    static _positionStackPopup(panel, left, top) {
+        if (!panel) {
+            return;
+        }
+
+        const padding = 16;
+        const width = panel.offsetWidth;
+        const height = panel.offsetHeight;
+        const maxX = window.innerWidth - width - padding;
+        const maxY = window.innerHeight - height - padding;
+
+        const clampedLeft = Math.min(Math.max(left, padding), Math.max(maxX, padding));
+        const clampedTop = Math.min(Math.max(top, padding), Math.max(maxY, padding));
+
+        panel.style.left = `${clampedLeft}px`;
+        panel.style.top = `${clampedTop}px`;
+        panel.style.transform = 'none';
+    }
+
+    /**
      * Generate stack content HTML
      */
     static _generateStackContent(stack) {
         return `
             <div class="stack-container">
-                <div class="stack-header">
-                    📜 The Stack (${stack.length})
-                </div>
                 <div class="stack-content"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'stack')">
