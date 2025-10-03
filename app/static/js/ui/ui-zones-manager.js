@@ -36,10 +36,15 @@ class UIZonesManager {
         const clickHandler = isOpponent ? '' : 'onclick="GameActions.drawCard()"';
         const overlayText = isOpponent ? '' : 'Draw';
         const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
+        const zoneIdentifier = isOpponent ? 'opponent_deck' : 'deck';
 
         let stackCardsHTML;
         if (cardsRemaining === 0) {
-            stackCardsHTML = UIUtils.generateEmptyZoneContent('📖', 'Deck is empty');
+            stackCardsHTML = `
+                <div class="${deckClass}" data-zone-context="${zoneIdentifier}" ${clickHandler}>
+                    ${UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
+                </div>
+            `;
         } else {
             const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
             const stackCards = Array(stackLayers).fill().map((_, index) => {
@@ -51,7 +56,7 @@ class UIZonesManager {
             }).join('');
 
             stackCardsHTML = `
-                <div class="${deckClass}" ${clickHandler}>
+                <div class="${deckClass}" data-zone-context="${zoneIdentifier}" ${clickHandler}>
                     ${stackCards}
                     <div class="deck-click-overlay">
                         <span class="draw-hint">${overlayText}</span>
@@ -72,8 +77,7 @@ class UIZonesManager {
         `, 'deck');
 
         // Add context menu after DOM update
-        this._attachContextMenu(isOpponent ? '.deck-cards-stack.opponent-deck' : '.deck-cards-stack:not(.opponent-deck)',
-                               isOpponent ? 'opponent_deck' : 'deck');
+        this._attachContextMenu('.deck-cards-stack', zoneIdentifier);
         return zoneContent;
     }
 
@@ -83,6 +87,7 @@ class UIZonesManager {
     static generateGraveyardZone(graveyard = [], isOpponent = false) {
         const graveyardArray = Array.isArray(graveyard) ? graveyard : [];
         const cardsRemaining = graveyardArray.length;
+        const zoneIdentifier = isOpponent ? 'opponent_graveyard' : 'graveyard';
         const clickHandler = isOpponent ?
             "UIZonesManager.showOpponentZoneModal('graveyard')" :
             "UIZonesManager.showZoneModal('graveyard')";
@@ -112,7 +117,7 @@ class UIZonesManager {
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
-                <div class="graveyard-cards-stack" onclick="${clickHandler}">
+                <div class="graveyard-cards-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
                     ${stackCardsHTML}
                     ${cardsRemaining > 0 ? `
                     <div class="graveyard-click-overlay">
@@ -126,7 +131,7 @@ class UIZonesManager {
             </div>
         `, 'graveyard');
 
-        this._attachContextMenu('.graveyard-cards-stack', isOpponent ? 'opponent_graveyard' : 'graveyard');
+        this._attachContextMenu('.graveyard-cards-stack', zoneIdentifier);
         return zoneContent;
     }
 
@@ -136,6 +141,7 @@ class UIZonesManager {
     static generateExileZone(exile = [], isOpponent = false) {
         const exileArray = Array.isArray(exile) ? exile : [];
         const cardsRemaining = exileArray.length;
+        const zoneIdentifier = isOpponent ? 'opponent_exile' : 'exile';
         const clickHandler = isOpponent ?
             "UIZonesManager.showOpponentZoneModal('exile')" :
             "UIZonesManager.showZoneModal('exile')";
@@ -143,9 +149,11 @@ class UIZonesManager {
         let exileContentHTML;
         if (cardsRemaining === 0) {
             exileContentHTML = `
-                <div class="exile-empty">
-                    <span>🌌</span>
-                    <div class="zone-empty-text">Empty</div>
+                <div class="exile-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
+                    <div class="exile-empty">
+                        <span>🌌</span>
+                        <div class="zone-empty-text">Empty</div>
+                    </div>
                 </div>
             `;
         } else {
@@ -160,7 +168,7 @@ class UIZonesManager {
             const topCard = exileArray[exileArray.length - 1];
 
             exileContentHTML = `
-                <div class="exile-stack" onclick="${clickHandler}">
+                <div class="exile-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
                     ${stackCards}
                     <div class="exile-top-card">
                         ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
@@ -183,7 +191,7 @@ class UIZonesManager {
             </div>
         `, 'exile');
 
-        this._attachContextMenu('.exile-stack', isOpponent ? 'opponent_exile' : 'exile');
+        this._attachContextMenu('.exile-stack', zoneIdentifier);
         return zoneContent;
     }
 
@@ -415,10 +423,15 @@ class UIZonesManager {
      */
     static _attachContextMenu(selector, zoneName) {
         setTimeout(() => {
-            const element = document.querySelector(selector);
-            if (element && window.ZoneContextMenu) {
+            let element = document.querySelector(`${selector}[data-zone-context="${zoneName}"]`);
+            if (!element) {
+                const candidates = document.querySelectorAll(selector);
+                element = Array.from(candidates).find(candidate => candidate.dataset?.zoneContext === zoneName);
+            }
+            if (element && window.ZoneContextMenu && element.dataset.zoneMenuAttached !== 'true') {
                 window.ZoneContextMenu.attachToZone(element, zoneName);
                 element.classList.add('zone-context-menu-enabled');
+                element.dataset.zoneMenuAttached = 'true';
             }
         }, 100);
     }
