@@ -25,9 +25,11 @@ class UIActionHistory {
             return;
         }
 
+        const rawAction = action;
         const preparedDetails = this._prepareDetails(details, context);
         const entry = {
-            action: this._formatLabel(action),
+            action: this._formatLabel(rawAction),
+            rawAction,
             player: this._formatPlayer(player),
             success: success !== false,
             details: preparedDetails.items,
@@ -38,6 +40,10 @@ class UIActionHistory {
         };
 
         this._enrichCardDetails(entry, context);
+
+        if (this._shouldSkipActionEntry(rawAction, entry)) {
+            return;
+        }
 
         this.entries.push(entry);
         if (this.entries.length > this.MAX_ENTRIES) {
@@ -340,6 +346,107 @@ class UIActionHistory {
         return candidate;
     }
 
+    static _shouldSkipActionEntry(action, entry) {
+        if (!action) {
+            return false;
+        }
+
+        const normalized = String(action).toLowerCase();
+        if (normalized !== 'tap_card') {
+            return false;
+        }
+
+        if (!entry?.cardRefs || entry.cardRefs.length === 0) {
+            return false;
+        }
+
+        return entry.cardRefs.some((ref) => {
+            let info = ref.info;
+            if (!info) {
+                return false;
+            }
+            info = this._ensureCardInfoEnrichment(info);
+            if (!info || !info.card_type) {
+                return false;
+            }
+            return String(info.card_type).toLowerCase() === 'land';
+        });
+    }
+
+    static _applyRefOverrides(ref, info) {
+        if (!info) {
+            return info;
+        }
+
+        const cardType =
+            (ref && ref.cardType) ||
+            info.card_type ||
+            info.cardType ||
+            null;
+
+        if (cardType) {
+            if (!info.card_type) {
+                info.card_type = cardType;
+            }
+            if (!info.cardType) {
+                info.cardType = cardType;
+            }
+        }
+
+        return this._ensureCardInfoEnrichment(info);
+    }
+
+    static _ensureCardInfoEnrichment(info) {
+        if (!info) {
+            return info;
+        }
+
+        const needsType = !info.card_type && !info.cardType;
+        const needsImage = !info.imageUrl && !info.image_url;
+        const needsName = !info.name;
+
+        if (!needsType && !needsImage && !needsName) {
+            return info;
+        }
+
+        if (
+            typeof GameCore === 'undefined' ||
+            typeof GameCore.getGameState !== 'function'
+        ) {
+            return info;
+        }
+
+        const state = GameCore.getGameState();
+        if (!state) {
+            return info;
+        }
+
+        const ref = {
+            cardId: info.cardId || info.card_id || null,
+            uniqueId: info.uniqueId || info.unique_id || null,
+            name: info.name || null
+        };
+
+        const card = this._searchCardInfoInState(state, ref);
+        if (!card) {
+            return info;
+        }
+
+        const enriched = this.createCardInfoFromCard(card);
+        if (needsType && enriched.card_type) {
+            info.card_type = enriched.card_type;
+            info.cardType = enriched.card_type;
+        }
+        if (needsImage && enriched.image_url) {
+            info.imageUrl = enriched.image_url;
+        }
+        if (needsName && enriched.name) {
+            info.name = enriched.name;
+        }
+
+        return info;
+    }
+
     static _enrichCardDetails(entry, context) {
         const refs = entry.cardRefs || [];
         const extraRefs = this._extractCardRefsFromContext(context);
@@ -394,6 +501,9 @@ class UIActionHistory {
                     ref.cardId = value;
                 }
             }
+            if (normalizedKey.includes('type')) {
+                ref.cardType = value;
+            }
         }
 
         if (Object.keys(ref).length > 0) {
@@ -418,6 +528,8 @@ class UIActionHistory {
         if (obj.name) ref.name = obj.name;
         if (obj.card_name) ref.name = obj.card_name;
         if (obj.image_url) ref.imageUrl = obj.image_url;
+        if (obj.card_type) ref.cardType = obj.card_type;
+        if (obj.cardType) ref.cardType = obj.cardType;
 
         if (Object.keys(ref).length > 0) {
             return ref;
@@ -491,7 +603,7 @@ class UIActionHistory {
 
         const element = this._findCardElement(ref);
         if (element) {
-            const info = {
+            let info = {
                 name:
                     element.getAttribute('data-card-name') ||
                     this._formatCardName(ref.name || ref.cardId || 'Card'),
@@ -505,6 +617,7 @@ class UIActionHistory {
                     ref.uniqueId ||
                     null
             };
+            info = this._applyRefOverrides(ref, info);
             ref.info = info;
             return info;
         }
@@ -517,40 +630,90 @@ class UIActionHistory {
         if (state) {
             const card = this._searchCardInfoInState(state, ref);
             if (card) {
-                const info = {
+                let info = {
                     name: card.name || this._formatCardName(ref.cardId || ref.name || 'Card'),
                     imageUrl: card.image_url || null,
                     cardId: card.id || ref.cardId || null,
-                    uniqueId: card.unique_id || ref.uniqueId || null
+                    uniqueId: card.unique_id || ref.uniqueId || null,
+                    card_type: card.card_type || null,
+                    cardType: card.card_type || null
                 };
+                info = this._applyRefOverrides(ref, info);
                 ref.info = info;
                 return info;
             }
         }
 
         if (ref.name) {
-            const info = {
+            let info = {
                 name: this._formatCardName(ref.name),
                 imageUrl: ref.imageUrl || null,
                 cardId: ref.cardId || null,
-                uniqueId: ref.uniqueId || null
+                uniqueId: ref.uniqueId || null,
+                card_type: ref.cardType || null,
+                cardType: ref.cardType || null
             };
+            info = this._applyRefOverrides(ref, info);
             ref.info = info;
             return info;
         }
 
         if (ref.cardId) {
-            const info = {
+            let info = {
                 name: this._formatCardName(ref.cardId),
                 imageUrl: ref.imageUrl || null,
                 cardId: ref.cardId,
-                uniqueId: ref.uniqueId || null
+                uniqueId: ref.uniqueId || null,
+                card_type: ref.cardType || null,
+                cardType: ref.cardType || null
             };
+            info = this._applyRefOverrides(ref, info);
             ref.info = info;
             return info;
         }
 
         return null;
+    }
+
+    static createCardInfoFromCard(card) {
+        const info = {
+            id: card.id || card.card_id || null,
+            card_id: card.id || card.card_id || null,
+            unique_id: card.unique_id || null,
+            name: card.name || null,
+            image_url: null,
+            card_type: card.card_type || null,
+            cardType: card.card_type || null
+        };
+
+        if (
+            typeof GameCards !== 'undefined' &&
+            typeof GameCards.getSafeImageUrl === 'function'
+        ) {
+            info.image_url = GameCards.getSafeImageUrl(card);
+        } else if (card.image_url) {
+            info.image_url = card.image_url;
+        } else if (
+            Array.isArray(card.card_faces) &&
+            card.card_faces.length > 0
+        ) {
+            const face = card.card_faces[card.current_face || 0] || card.card_faces[0];
+            if (face && face.image_url) {
+                info.image_url = face.image_url;
+            }
+            if (!info.name && face && face.name) {
+                info.name = face.name;
+            }
+        }
+
+        if (!info.name) {
+            const fallback = info.card_id || card.unique_id || card.id;
+            if (fallback) {
+                info.name = this._formatCardName(fallback);
+            }
+        }
+
+        return info;
     }
 
     static _searchCardInfoInState(state, ref) {
