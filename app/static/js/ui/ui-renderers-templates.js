@@ -52,6 +52,9 @@ class UIRenderersTemplates {
                     ${this.generateCardZones(opponent, true, opponentIdx)}
                 </div>
 
+                <!-- Game Actions Panel -->
+                <div id="action-panel" class="arena-card rounded-lg p-4 mb-3"></div>
+
                 <!-- Player's Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
@@ -60,6 +63,8 @@ class UIRenderersTemplates {
                     ${this.generateCardZones(player, false, controlledIdx)}
                 </div>
             `;
+
+            this.renderActionPanel();
         } catch (error) {
             this._renderError(stackContainer, 'Error loading stack', error.message);
         }
