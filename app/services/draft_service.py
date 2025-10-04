@@ -14,35 +14,46 @@ class DraftService:
     def __init__(self, card_service: CardService):
         self.card_service = card_service
 
-    async def search_sets(self, query: str) -> List[Dict[str, Any]]:
+    async def search_sets(self, query: Optional[str] = None) -> List[Dict[str, Any]]:
         """Search for MTG sets using the Scryfall API."""
-        if not query:
-            return []
-        
         url = "https://api.scryfall.com/sets"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    all_sets = data.get("data", [])
-                    
-                    # Filter sets by name
-                    filtered_sets = [
-                        s for s in all_sets
-                        if query.lower() in s.get("name", "").lower()
-                        and s.get("set_type") in ["core", "expansion", "masters"]
-                    ]
-                    
-                    return [
-                        {
-                            "code": s.get("code"),
-                            "name": s.get("name"),
-                            "icon_svg_uri": s.get("icon_svg_uri"),
-                            "released_at": s.get("released_at"),
-                        }
-                        for s in filtered_sets
-                    ]
-        return []
+                if response.status != 200:
+                    return []
+
+                data = await response.json()
+
+        all_sets = data.get("data", [])
+        allowed_set_types = {"core", "expansion", "masters", "draft_innovation", "cube"}
+        filtered_sets = [
+            s
+            for s in all_sets
+            if s.get("set_type") in allowed_set_types
+        ]
+
+        if query:
+            normalized_query = query.strip().lower()
+            filtered_sets = [
+                s
+                for s in filtered_sets
+                if normalized_query in s.get("name", "").lower()
+            ]
+
+        filtered_sets.sort(
+            key=lambda s: s.get("released_at") or "",
+            reverse=True
+        )
+
+        return [
+            {
+                "code": s.get("code"),
+                "name": s.get("name"),
+                "icon_svg_uri": s.get("icon_svg_uri"),
+                "released_at": s.get("released_at"),
+            }
+            for s in filtered_sets
+        ]
 
     async def generate_booster(self, set_code: str) -> List[Card]:
         """Generate a random booster pack for a given set."""

@@ -114,7 +114,7 @@ async def pick_card(
 
 @router.get("/sets")
 async def search_sets(
-    q: str,
+    q: Optional[str] = None,
     draft_service: DraftService = Depends(get_draft_service)
 ):
     """Search for MTG sets."""
