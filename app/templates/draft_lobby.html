@@ -62,45 +62,152 @@
 
 {% block extra_js %}
 <script>
-    async function searchSets() {
-        const setName = document.getElementById('setName').value;
-        const suggestionsDiv = document.getElementById('set-suggestions');
-        if (setName.length < 3) {
-            suggestionsDiv.innerHTML = '';
+    let setInput;
+    let suggestionsDiv;
+    let setCodeInput;
+    let setFullNameInput;
+    let allSets = [];
+    let isLoadingSets = false;
+
+    async function ensureSetsLoaded() {
+        if (allSets.length || isLoadingSets) {
+            return allSets;
+        }
+
+        isLoadingSets = true;
+        try {
+            const response = await fetch('/api/v1/draft/sets');
+            if (!response.ok) {
+                allSets = [];
+                return allSets;
+            }
+
+            allSets = await response.json();
+            return allSets;
+        } catch (error) {
+            allSets = [];
+            return allSets;
+        } finally {
+            isLoadingSets = false;
+        }
+    }
+
+    function renderLoadingSets() {
+        if (!suggestionsDiv) {
             return;
         }
 
-        const response = await fetch(`/api/v1/draft/sets?q=${setName}`);
-        const sets = await response.json();
+        suggestionsDiv.innerHTML = `
+            <div class="p-4 text-center text-arena-text-muted text-sm">
+                Loading sets...
+            </div>
+        `;
+    }
 
-        suggestionsDiv.innerHTML = sets.map(set => {
-            const escapedName = set.name.replace(/'/g, "\\'");
-            return `
-                <div class="p-2 hover:bg-arena-surface cursor-pointer" onclick="selectSet('${set.code}', '${escapedName}')">
-                    <img src="${set.icon_svg_uri}" class="w-6 h-6 inline-block mr-2">${set.name}
+    function renderSetSuggestions(sets) {
+        if (!suggestionsDiv) {
+            return;
+        }
+
+        if (!sets.length) {
+            suggestionsDiv.innerHTML = `
+                <div class="p-4 text-center text-arena-text-muted text-sm">
+                    No sets found.
                 </div>
             `;
-        }).join('');
+            return;
+        }
+
+        suggestionsDiv.innerHTML = `
+            <div class="max-h-72 overflow-y-auto border border-arena-accent/20 rounded-lg divide-y divide-arena-accent/10 bg-arena-surface/90 backdrop-blur">
+                ${sets.map(set => `
+                    <button
+                        type="button"
+                        class="w-full flex items-center justify-between px-4 py-3 hover:bg-arena-surface transition-colors text-left"
+                        data-code="${set.code ?? ''}"
+                        data-name="${encodeURIComponent(set.name ?? '')}"
+                    >
+                        <div class="flex items-center gap-3">
+                            ${set.icon_svg_uri ? `<img src="${set.icon_svg_uri}" alt="${String(set.code ?? '').toUpperCase()} icon" class="w-8 h-8">` : `<div class="w-8 h-8 rounded-full bg-arena-accent/20"></div>`}
+                            <div>
+                                <p class="font-semibold text-sm md:text-base text-arena-text">${set.name ?? 'Unknown Set'}</p>
+                                <p class="text-xs text-arena-text-muted uppercase tracking-wide">${String(set.code ?? '').toUpperCase()}</p>
+                            </div>
+                        </div>
+                        <span class="text-xs text-arena-text-muted">${set.released_at ?? 'TBD'}</span>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function hideSetSuggestions() {
+        if (suggestionsDiv) {
+            suggestionsDiv.innerHTML = '';
+        }
+    }
+
+    function getFilteredSets(term) {
+        if (!term) {
+            return allSets;
+        }
+
+        const normalized = term.toLowerCase();
+        return allSets.filter(set =>
+            (set.name ?? '').toLowerCase().includes(normalized) ||
+            (set.code ?? '').toLowerCase().includes(normalized)
+        );
+    }
+
+    async function showSetSuggestions() {
+        if (!setInput) {
+            return;
+        }
+
+        if (!allSets.length) {
+            renderLoadingSets();
+            await ensureSetsLoaded();
+        }
+
+        const filtered = getFilteredSets(setInput.value.trim());
+        renderSetSuggestions(filtered);
+    }
+
+    async function handleSetInput() {
+        if (!setInput) {
+            return;
+        }
+
+        if (!allSets.length) {
+            renderLoadingSets();
+            await ensureSetsLoaded();
+        }
+
+        const filtered = getFilteredSets(setInput.value.trim());
+        renderSetSuggestions(filtered);
     }
 
     function selectSet(code, name) {
-        document.getElementById('setName').value = name;
-        document.getElementById('setCode').value = code;
-        document.getElementById('setFullName').value = name;
-        document.getElementById('set-suggestions').innerHTML = '';
+        if (!setInput || !setCodeInput || !setFullNameInput) {
+            return;
+        }
+
+        setInput.value = name;
+        setCodeInput.value = code;
+        setFullNameInput.value = name;
+        hideSetSuggestions();
     }
 
     async function createDraftRoom() {
         const roomName = document.getElementById('roomName').value;
-        const setCode = document.getElementById('setCode').value;
-        const setFullName = document.getElementById('setFullName').value;
+        const setCode = setCodeInput ? setCodeInput.value : document.getElementById('setCode').value;
+        const setFullName = setFullNameInput ? setFullNameInput.value : document.getElementById('setFullName').value;
 
         if (!setCode) {
             alert('Please select a set.');
             return;
         }
 
-        // Generate a simple unique ID for the creator
         const creatorId = `player-${Math.random().toString(36).substr(2, 9)}`;
 
         const response = await fetch('/api/v1/draft/rooms', {
@@ -168,8 +275,45 @@
         document.getElementById('roomName').value = randomName;
     }
 
-    document.getElementById('setName').addEventListener('input', searchSets);
+    function initializeSetSelection() {
+        setInput = document.getElementById('setName');
+        suggestionsDiv = document.getElementById('set-suggestions');
+        setCodeInput = document.getElementById('setCode');
+        setFullNameInput = document.getElementById('setFullName');
+
+        if (!setInput || !suggestionsDiv) {
+            return;
+        }
+
+        setInput.addEventListener('focus', showSetSuggestions);
+        setInput.addEventListener('input', handleSetInput);
+
+        suggestionsDiv.addEventListener('click', (event) => {
+            const targetButton = event.target.closest('button[data-code]');
+            if (!targetButton) {
+                return;
+            }
+
+            const code = targetButton.dataset.code ?? '';
+            const name = targetButton.dataset.name ? decodeURIComponent(targetButton.dataset.name) : '';
+            selectSet(code, name);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!setInput || !suggestionsDiv) {
+                return;
+            }
+
+            if (event.target === setInput || suggestionsDiv.contains(event.target)) {
+                return;
+            }
+
+            hideSetSuggestions();
+        });
+    }
+
     window.addEventListener('load', () => {
+        initializeSetSelection();
         loadDraftRooms();
         generateRandomRoomName();
     });

@@ -351,7 +351,6 @@ class UIRenderersTemplates {
     static _generateGamePhases(currentPhase) {
         return `
             <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
-                <h5 class="text-arena-accent font-semibold mb-3 text-sm text-center">Game Phases</h5>
                 <div class="grid grid-cols-5 gap-1">
                     ${UIConfig.GAME_PHASES.map(phase => `
                         <div class="text-center py-2 px-1 rounded transition-all duration-200 ${
