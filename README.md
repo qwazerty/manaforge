@@ -17,7 +17,7 @@ ManaForge is a functional web-based platform for playing Magic The Gathering onl
 ### Using Docker (Recommended)
 
 ```bash
-# Start the application with MongoDB
+# Start the application with Docker Compose
 docker compose up --build -d
 
 # The application will be available at http://localhost:8000
