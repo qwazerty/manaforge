@@ -376,7 +376,7 @@ class CardSearchModal {
             return;
         }
 
-        const playerId = window.gameData.playerId || 'player1';
+        const playerId = window.GameCore?.getSelectedPlayer?.();
         const isToken = this.modal.querySelector('#token-checkbox').checked;
 
         try {
