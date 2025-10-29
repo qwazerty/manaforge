@@ -96,7 +96,11 @@ class CardService:
         type_line = scryfall_data.get("type_line", "").lower()
         card_type = CardType.CREATURE
         
-        if "instant" in type_line:
+        if "land" in type_line:
+            card_type = CardType.LAND
+        elif "creature" in type_line:
+            card_type = CardType.CREATURE
+        elif "instant" in type_line:
             card_type = CardType.INSTANT
         elif "sorcery" in type_line:
             card_type = CardType.SORCERY
@@ -106,10 +110,6 @@ class CardService:
             card_type = CardType.ARTIFACT
         elif "planeswalker" in type_line:
             card_type = CardType.PLANESWALKER
-        elif "land" in type_line:
-            card_type = CardType.LAND
-        elif "creature" in type_line:
-            card_type = CardType.CREATURE
         
         subtype = ""
         if "—" in scryfall_data.get("type_line", ""):
