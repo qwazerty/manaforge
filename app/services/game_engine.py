@@ -728,7 +728,9 @@ class SimpleGameEngine:
             if "type_line" in face_data:
                 # Parse type_line to update card_type and subtype
                 type_line = face_data["type_line"].lower()
-                if "creature" in type_line:
+                if "land" in type_line:
+                    card_found.card_type = CardType.LAND
+                elif "creature" in type_line:
                     card_found.card_type = CardType.CREATURE
                 elif "instant" in type_line:
                     card_found.card_type = CardType.INSTANT
@@ -740,8 +742,6 @@ class SimpleGameEngine:
                     card_found.card_type = CardType.ARTIFACT
                 elif "planeswalker" in type_line:
                     card_found.card_type = CardType.PLANESWALKER
-                elif "land" in type_line:
-                    card_found.card_type = CardType.LAND
                 
                 # Update subtype
                 if "—" in face_data["type_line"]:
