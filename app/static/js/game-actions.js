@@ -521,6 +521,11 @@ function playCardFromHand(cardId, uniqueId) {
 function changePlayer(playerType) {
     GameCore.setSelectedPlayer(playerType);
     GameUtils.setPlayerInUrl(playerType);
+
+    if (window.gameData && playerType !== 'spectator') {
+        window.gameData.playerId = playerType;
+    }
+
     GameUI.updateRoleDisplay();
     GameUI.generateGameBoard();
     GameUI.generateActionPanel();
