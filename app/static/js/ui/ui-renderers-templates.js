@@ -215,6 +215,19 @@ class UIRenderersTemplates {
     }
 
     /**
+     * Generate the battlefield layout with its subzones
+     */
+    static generateBattlefieldLayout(cards, isOpponent, playerId = null) {
+        return `
+            <div class="battlefield-layout">
+                ${this.generateBattlefieldZone(cards, 'lands', isOpponent, playerId)}
+                ${this.generateBattlefieldZone(cards, 'creatures', isOpponent, playerId)}
+                ${this.generateBattlefieldZone(cards, 'support', isOpponent, playerId)}
+            </div>
+        `;
+    }
+
+    /**
      * Generate player's hand
      */
     static generatePlayerHand(hand = [], playerId = null) {
@@ -728,8 +741,7 @@ class UIRenderersTemplates {
                     ${this.generateOpponentHand(handSize)}
                 </div>
 
-                ${this.generateBattlefieldZone(opponent?.battlefield, 'lands', true, opponentIdx)}
-                ${this.generateBattlefieldZone(opponent?.battlefield, 'permanents', true, opponentIdx)}
+                ${this.generateBattlefieldLayout(opponent?.battlefield, true, opponentIdx)}
             </div>
         `;
     }
@@ -744,8 +756,7 @@ class UIRenderersTemplates {
         
         return `
             <div class="arena-card rounded-lg p-3 hand-zone ${activeTurnClass}">
-                ${this.generateBattlefieldZone(player?.battlefield, 'permanents', false, controlledIdx)}
-                ${this.generateBattlefieldZone(player?.battlefield, 'lands', false, controlledIdx)}
+                ${this.generateBattlefieldLayout(player?.battlefield, false, controlledIdx)}
 
                 <div class="hand-zone-content zone-content" data-card-count="${handSize}"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"

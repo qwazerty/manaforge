@@ -885,33 +885,32 @@
 /* ===== SINGLE LINE ZONES OPTIMIZATION ===== */
 /* Ensures Permanents, Lands, and Hands zones always fit on a single line */
 
-/* Base styles for single-line zones */
-.permanents-zone-content {
+/* Base styles for battlefield zones */
+.creatures-zone-content,
+.support-zone-content,
+.lands-zone-content {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     align-items: flex-start;
-    justify-content: center;
-    gap: 2px;
-    padding: 4px;
+    gap: 6px;
+    padding: 6px;
     scrollbar-width: thin;
     scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
 }
 
+.creatures-zone-content {
+    justify-content: center;
+}
+
+.support-zone-content {
+    justify-content: flex-end;
+}
+
 .lands-zone-content {
-    display: flex-start;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    align-items: flex-start;
     justify-content: flex-start;
-    gap: 2px;
-    padding: 4px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
 }
 
 .hand-zone-content {
@@ -944,7 +943,8 @@
     border-radius: 3px;
 }
 
-.permanents-zone-content::-webkit-scrollbar-thumb:hover,
+.creatures-zone-content::-webkit-scrollbar-thumb:hover,
+.support-zone-content::-webkit-scrollbar-thumb:hover,
 .lands-zone-content::-webkit-scrollbar-thumb:hover,
 .hand-zone-content::-webkit-scrollbar-thumb:hover {
     background: rgba(201, 170, 113, 0.5);
@@ -976,13 +976,12 @@
     font-family: 'Arial Black', sans-serif;
 }
 
-/* Titres spécifiques pour chaque zone */
-.lands-zone::before {
-    content: "LANDS";
-}
-
-.permanents-zone::before {
-    content: "PERMANENTS";
+/* Remove default zone watermark labels */
+.lands-zone::before,
+.permanents-zone::before,
+.creatures-zone::before,
+.support-zone::before {
+    content: none;
 }
 
 /* Dynamic overlap will be handled by JavaScript */

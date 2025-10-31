@@ -1,34 +1,85 @@
 /* ===== MANAFORGE BATTLEFIELD STYLES ===== */
 
 /* Battlefield zone containers */
+.battlefield-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+        "creatures creatures"
+        "lands support";
+    column-gap: 0;
+    row-gap: 12px;
+    align-items: stretch;
+    justify-items: stretch;
+    margin: 8px 0;
+}
+
 .battlefield-zone {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(201, 170, 113, 0.3);
-    border-radius: 8px;
-    padding: 4px;
-    margin: 4px;
+    border-radius: 10px;
+    padding: 8px;
+    min-height: 0;
+    position: relative;
+}
+
+.battlefield-zone .zone-content {
+    min-height: 0;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .lands-zone {
-    border-color: rgba(34, 197, 94, 0.4);
+    grid-area: lands;
+    border-color: rgba(34, 197, 94, 0.5);
+    justify-self: stretch;
+    min-width: 0;
 }
 
-.lands-zone h5 {
-    color: #22c55e;
+.creatures-zone {
+    grid-area: creatures;
+    border-color: rgba(59, 130, 246, 0.5);
+    grid-column: 1 / -1;
 }
 
-.permanents-zone {
-    border-color: rgba(147, 51, 234, 0.4);
+.support-zone {
+    grid-area: support;
+    border-color: rgba(251, 191, 36, 0.5);
+    justify-self: end;
+    min-width: calc(130px + 16px);
 }
 
-.permanents-zone h5 {
-    color: #9333ea;
+.lands-zone .zone-content {
+    justify-content: flex-start;
 }
 
-/* Zone content area */
-.zone-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+.creatures-zone .zone-content {
     justify-content: center;
+}
+
+.support-zone .zone-content {
+    justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+    .battlefield-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(3, minmax(0, auto));
+        grid-template-areas:
+            "creatures"
+            "lands"
+            "support";
+        row-gap: 12px;
+    }
+
+    .support-zone {
+        justify-self: stretch;
+        min-width: 0;
+    }
+
+    .support-zone .zone-content {
+        justify-content: center;
+    }
 }

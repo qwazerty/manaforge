@@ -24,7 +24,8 @@ class UIHorizontalScroll {
     static attachScrollListeners() {
         // Define selectors for horizontal scrollable zones
         const horizontalZoneSelectors = [
-            '.permanents-zone-content',
+            '.creatures-zone-content',
+            '.support-zone-content',
             '.lands-zone-content', 
             '.hand-zone-content',
             '.zone-content',
@@ -140,7 +141,7 @@ class UIHorizontalScroll {
                         }
                         
                         // Check for scrollable zones within the added node
-                        const scrollableZones = node.querySelectorAll && node.querySelectorAll('.permanents-zone-content, .lands-zone-content, .hand-zone-content, .zone-content, .zone-cards-slider, .zone-cards-grid, .overflow-x-auto');
+                        const scrollableZones = node.querySelectorAll && node.querySelectorAll('.creatures-zone-content, .support-zone-content, .lands-zone-content, .hand-zone-content, .zone-content, .zone-cards-slider, .zone-cards-grid, .overflow-x-auto');
                         if (scrollableZones) {
                             scrollableZones.forEach(zone => {
                                 this.attachWheelListener(zone);
@@ -165,7 +166,8 @@ class UIHorizontalScroll {
      */
     static isHorizontalScrollableZone(element) {
         const scrollableClasses = [
-            'permanents-zone-content',
+            'creatures-zone-content',
+            'support-zone-content',
             'lands-zone-content',
             'hand-zone-content', 
             'zone-content'

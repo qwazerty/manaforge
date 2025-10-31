@@ -519,7 +519,7 @@ class SimpleGameEngine:
 
     def _normalize_zone_name(self, zone_name: str) -> str:
         """Normalize zone names to be consistent."""
-        if zone_name in ["permanents", "lands"]:
+        if zone_name in ["permanents", "lands", "creatures", "support"]:
             return "battlefield"
         if zone_name == "deck":
             return "library"

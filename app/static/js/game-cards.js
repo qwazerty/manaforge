@@ -51,7 +51,7 @@ const GameCards = {
         const escapedUniqueId = GameUtils.escapeJavaScript(uniqueCardId);
 
         let onClickAction = '';
-        if (zone === 'permanents' || zone === 'lands' || zone === 'battlefield') {
+        if (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield') {
             onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
         } else if (zone === 'hand') {
             onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
@@ -289,7 +289,7 @@ const GameCards = {
                 menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.performGameAction('play_card_from_library', { unique_id: '${uniqueCardId}' }); UIZonesManager.closeZoneModal('deck');"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
 
-            if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands') {
+            if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands' || cardZone === 'creatures' || cardZone === 'support') {
                 const tapAction = isTapped ? 'Untap' : 'Tap';
                 const tapIcon = isTapped ? '⤴️' : '🔄';
                 menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
