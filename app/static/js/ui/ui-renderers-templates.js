@@ -218,8 +218,13 @@ class UIRenderersTemplates {
      * Generate the battlefield layout with its subzones
      */
     static generateBattlefieldLayout(cards, isOpponent, playerId = null) {
+        const layoutClasses = ['battlefield-layout'];
+        if (isOpponent) {
+            layoutClasses.push('battlefield-layout-opponent');
+        }
+
         return `
-            <div class="battlefield-layout">
+            <div class="${layoutClasses.join(' ')}">
                 ${this.generateBattlefieldZone(cards, 'lands', isOpponent, playerId)}
                 ${this.generateBattlefieldZone(cards, 'creatures', isOpponent, playerId)}
                 ${this.generateBattlefieldZone(cards, 'support', isOpponent, playerId)}
