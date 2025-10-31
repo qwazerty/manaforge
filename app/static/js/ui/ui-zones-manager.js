@@ -386,9 +386,64 @@ class UIZonesManager {
         }
         try {
             const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+            let container = null;
+            if (event.currentTarget && event.currentTarget.classList.contains('zone-content')) {
+                container = event.currentTarget;
+            } else if (event.target && typeof event.target.closest === 'function') {
+                container = event.target.closest('.zone-content');
+            }
+
+            let positionIndex = null;
+            if (container) {
+                const draggedElement = window.GameCards ? GameCards.draggedCardElement : null;
+                const allCards = Array.from(container.querySelectorAll('[data-card-unique-id]'));
+                const filteredCards = draggedElement ? allCards.filter(card => card !== draggedElement) : allCards;
+                const pointerAxis = event.clientX;
+                const pointerAxisY = event.clientY;
+                const isHorizontal = container.scrollWidth >= container.scrollHeight;
+
+                if (filteredCards.length === 0) {
+                    positionIndex = 0;
+                } else {
+                    let insertIndex = filteredCards.length;
+                    filteredCards.some((cardEl, index) => {
+                        const rect = cardEl.getBoundingClientRect();
+                        const cardCenter = isHorizontal
+                            ? rect.left + rect.width / 2
+                            : rect.top + rect.height / 2;
+                        const pointerValue = isHorizontal ? pointerAxis : pointerAxisY;
+                        if (pointerValue < cardCenter) {
+                            insertIndex = index;
+                            return true;
+                        }
+                        return false;
+                    });
+                    insertIndex = Math.max(0, Math.min(insertIndex, filteredCards.length));
+                    positionIndex = insertIndex;
+                }
+
+                if (
+                    draggedElement &&
+                    data.cardZone === targetZone &&
+                    container.contains(draggedElement) &&
+                    positionIndex !== null
+                ) {
+                    const referenceCard = filteredCards[positionIndex] || null;
+                    container.insertBefore(draggedElement, referenceCard);
+                }
+            }
+
             // Appeler une action pour déplacer la carte (à adapter selon la logique backend)
             if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
-                window.GameActions.moveCard(data.cardId, data.cardZone, targetZone, data.uniqueCardId);
+                window.GameActions.moveCard(
+                    data.cardId,
+                    data.cardZone,
+                    targetZone,
+                    data.uniqueCardId,
+                    null,
+                    null,
+                    positionIndex
+                );
             } else {
                 UINotifications.showNotification('Déplacement de carte non implémenté côté backend.', 'warning');
             }

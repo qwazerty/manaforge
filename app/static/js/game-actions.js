@@ -697,7 +697,7 @@ window.GameActions = {
  * Déplacement générique d'une carte entre zones via drag and drop.
  * Utilise les API existantes selon la zone cible.
  */
-function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null) {
+function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null, positionIndex = null) {
     const actionData = {
         card_id: cardId,
         source_zone: sourceZone,
@@ -708,6 +708,9 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
     if (deckPosition) {
         actionData.deck_position = deckPosition;
     }
+    if (positionIndex !== null && positionIndex !== undefined) {
+        actionData.position_index = positionIndex;
+    }
 
     performGameAction('move_card', actionData);
 
@@ -715,8 +718,17 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
     if (uniqueCardId) {
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
-            cardElement.style.opacity = '0.5';
-            cardElement.style.pointerEvents = 'none';
+            const isSameZoneMove = sourceZone === targetZone && positionIndex !== null && positionIndex !== undefined;
+            if (!isSameZoneMove) {
+                cardElement.style.opacity = '0.5';
+                cardElement.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    if (cardElement) {
+                        cardElement.style.removeProperty('opacity');
+                        cardElement.style.removeProperty('pointer-events');
+                    }
+                }, 800);
+            }
         }
     }
 

@@ -3,6 +3,7 @@
  * Functions for card rendering and management
  */
 const GameCards = {
+    draggedCardElement: null,
     getSafeImageUrl: function(card) {
         if (!card || !card.image_url) return null;
         
@@ -74,6 +75,7 @@ const GameCards = {
                 draggable="true"
                 ondragstart="GameCards.handleDragStart(event, this)"
                 ${onClickAction}
+                ondragend="GameCards.handleDragEnd(event, this)"
                 oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
                 ${imageUrl ? `
                     <div class="relative">
@@ -446,6 +448,19 @@ const GameCards = {
         }));
         // Optionally: add visual feedback
         cardElement.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        GameCards.draggedCardElement = cardElement;
+    },
+
+    handleDragEnd: function(event, cardElement) {
+        if (!cardElement) return;
+        
+        cardElement.classList.remove('dragging');
+        cardElement.style.removeProperty('opacity');
+        cardElement.style.removeProperty('pointer-events');
+        if (GameCards.draggedCardElement === cardElement) {
+            GameCards.draggedCardElement = null;
+        }
     },
 
     showCounterModal: function(uniqueCardId, cardId) {

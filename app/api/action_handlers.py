@@ -344,19 +344,33 @@ async def handle_move_card(
     target_zone = request.get("target_zone")
     unique_id = request.get("unique_id")
 
+    deck_position = request.get("deck_position")
+    position_index = request.get("position_index")
+
+    additional_data = {
+        "source_zone": source_zone,
+        "target_zone": target_zone,
+        "unique_id": unique_id,
+    }
+    broadcast_data = {
+        "card": card_id,
+        "source_zone": source_zone,
+        "target_zone": target_zone,
+        "unique_id": unique_id,
+    }
+
+    if deck_position is not None:
+        additional_data["deck_position"] = deck_position
+        broadcast_data["deck_position"] = deck_position
+
+    if position_index is not None:
+        additional_data["position_index"] = position_index
+        broadcast_data["position_index"] = position_index
+
     return {
         "card_id": card_id,
-        "additional_data": {
-            "source_zone": source_zone,
-            "target_zone": target_zone,
-            "unique_id": unique_id,
-        },
-        "broadcast_data": {
-            "card": card_id,
-            "source_zone": source_zone,
-            "target_zone": target_zone,
-            "unique_id": unique_id,
-        },
+        "additional_data": additional_data,
+        "broadcast_data": broadcast_data,
     }
 
 

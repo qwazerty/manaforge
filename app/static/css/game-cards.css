@@ -29,7 +29,7 @@
 }
 
 .card-mini:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
     z-index: 10;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .card-battlefield:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
     z-index: 10;
 }
 
@@ -80,7 +80,7 @@
 
 .card-mini.tapped:hover,
 .card-battlefield.tapped:hover {
-    transform: rotate(90deg) scale(1.1);
+    transform: rotate(90deg) scale(1.15);
     opacity: 0.85;
 }
 
@@ -139,7 +139,7 @@
 }
 
 .card-mini-1080:hover {
-    transform: scale(1.08);
+    transform: scale(1.12);
     box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
     z-index: 10;
 }
@@ -170,7 +170,7 @@
 }
 
 .card-battlefield-1080:hover {
-    transform: scale(1.08);
+    transform: scale(1.12);
     box-shadow: 0 3px 10px rgba(201, 170, 113, 0.5);
     z-index: 10;
 }
@@ -191,7 +191,7 @@
 
 .card-mini-1080.tapped:hover,
 .card-battlefield-1080.tapped:hover {
-    transform: rotate(90deg) scale(1.08);
+    transform: rotate(90deg) scale(1.12);
     opacity: 0.85;
 }
 
