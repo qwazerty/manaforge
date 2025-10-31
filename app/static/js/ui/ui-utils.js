@@ -115,14 +115,42 @@ class UIUtils {
     static filterCardsByType(cards, zoneName) {
         if (!cards || !Array.isArray(cards)) return [];
 
+        const normalizeTypeText = (card) => {
+            if (!card) return '';
+            const faceTypes = Array.isArray(card.card_faces)
+                ? card.card_faces
+                    .map(face => face?.type_line)
+                    .filter(Boolean)
+                : [];
+            const pieces = [
+                card.card_type,
+                card.cardType,
+                card.type_line,
+                card.typeLine,
+                card.subtype,
+                ...faceTypes
+            ].filter(Boolean);
+            return pieces.join(' ').toLowerCase();
+        };
+
         if (zoneName === 'lands') {
-            return cards.filter(card =>
-                (card.card_type === 'land' || card.card_type === 'LAND') && !card.is_token
-            );
-        } else if (zoneName === 'permanents') {
-            return cards.filter(card =>
-                card.is_token || (card.card_type !== 'land' && card.card_type !== 'LAND')
-            );
+            return cards.filter(card => {
+                const typeText = normalizeTypeText(card);
+                return typeText.includes('land');
+            });
+        } else if (zoneName === 'creatures') {
+            return cards.filter(card => {
+                const typeText = normalizeTypeText(card);
+                return typeText.includes('creature');
+            });
+        } else if (zoneName === 'support') {
+            return cards.filter(card => {
+                const typeText = normalizeTypeText(card);
+                const isCreature = typeText.includes('creature');
+                const isLand = typeText.includes('land');
+                const hasSupportType = ['artifact', 'enchantment', 'planeswalker'].some(type => typeText.includes(type));
+                return hasSupportType && !isCreature && !isLand;
+            });
         }
         return cards;
     }

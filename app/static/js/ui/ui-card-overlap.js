@@ -78,7 +78,8 @@ class UICardOverlap {
     static applyOverlapToAllZones() {
         // Target all zone containers that might have cards
         const selectors = [
-            '.permanents-zone-content',
+            '.creatures-zone-content',
+            '.support-zone-content',
             '.lands-zone-content', 
             '.hand-zone-content',
             '.opponent-hand-zone',

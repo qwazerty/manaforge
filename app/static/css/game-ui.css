@@ -549,7 +549,8 @@
 }
 
 /* Enhanced scrollbar styling for horizontal zones */
-.permanents-zone-content,
+.creatures-zone-content,
+.support-zone-content,
 .lands-zone-content,
 .hand-zone-content,
 .zone-content,
@@ -561,7 +562,8 @@
 }
 
 /* Webkit scrollbar styling */
-.permanents-zone-content::-webkit-scrollbar,
+.creatures-zone-content::-webkit-scrollbar,
+.support-zone-content::-webkit-scrollbar,
 .lands-zone-content::-webkit-scrollbar,
 .hand-zone-content::-webkit-scrollbar,
 .zone-content::-webkit-scrollbar,
@@ -571,7 +573,8 @@
     height: 8px;
 }
 
-.permanents-zone-content::-webkit-scrollbar-track,
+.creatures-zone-content::-webkit-scrollbar-track,
+.support-zone-content::-webkit-scrollbar-track,
 .lands-zone-content::-webkit-scrollbar-track,
 .hand-zone-content::-webkit-scrollbar-track,
 .zone-content::-webkit-scrollbar-track,
@@ -582,7 +585,8 @@
     border-radius: 4px;
 }
 
-.permanents-zone-content::-webkit-scrollbar-thumb,
+.creatures-zone-content::-webkit-scrollbar-thumb,
+.support-zone-content::-webkit-scrollbar-thumb,
 .lands-zone-content::-webkit-scrollbar-thumb,
 .hand-zone-content::-webkit-scrollbar-thumb,
 .zone-content::-webkit-scrollbar-thumb,
@@ -594,7 +598,8 @@
     transition: background-color 0.2s ease;
 }
 
-.permanents-zone-content::-webkit-scrollbar-thumb:hover,
+.creatures-zone-content::-webkit-scrollbar-thumb:hover,
+.support-zone-content::-webkit-scrollbar-thumb:hover,
 .lands-zone-content::-webkit-scrollbar-thumb:hover,
 .hand-zone-content::-webkit-scrollbar-thumb:hover,
 .zone-content::-webkit-scrollbar-thumb:hover,
