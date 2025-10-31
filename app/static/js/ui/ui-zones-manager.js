@@ -374,15 +374,45 @@ class UIZonesManager {
     static handleZoneDragOver(event) {
         event.preventDefault();
         // Optionally: add visual feedback
-        if (event.currentTarget) {
-            event.currentTarget.classList.add('zone-drag-over');
+        const current = event.currentTarget;
+        if (current && current.classList) {
+            current.classList.add('zone-drag-over');
+            const parentZone =
+                current.classList.contains('battlefield-zone')
+                    ? current
+                    : current.closest && current.closest('.battlefield-zone');
+            if (parentZone && parentZone !== current) {
+                parentZone.classList.add('zone-drag-over');
+            }
+        }
+    }
+
+    static handleZoneDragLeave(event) {
+        const current = event.currentTarget;
+        if (current && current.classList) {
+            current.classList.remove('zone-drag-over');
+            const parentZone =
+                current.classList.contains('battlefield-zone')
+                    ? current
+                    : current.closest && current.closest('.battlefield-zone');
+            if (parentZone && parentZone !== current) {
+                parentZone.classList.remove('zone-drag-over');
+            }
         }
     }
 
     static handleZoneDrop(event, targetZone) {
         event.preventDefault();
-        if (event.currentTarget) {
-            event.currentTarget.classList.remove('zone-drag-over');
+        const current = event.currentTarget;
+        if (current && current.classList) {
+            current.classList.remove('zone-drag-over');
+            const parentZone =
+                current.classList.contains('battlefield-zone')
+                    ? current
+                    : current.closest && current.closest('.battlefield-zone');
+            if (parentZone && parentZone !== current) {
+                parentZone.classList.remove('zone-drag-over');
+            }
         }
         try {
             const data = JSON.parse(event.dataTransfer.getData('text/plain'));
@@ -391,6 +421,12 @@ class UIZonesManager {
                 container = event.currentTarget;
             } else if (event.target && typeof event.target.closest === 'function') {
                 container = event.target.closest('.zone-content');
+            }
+            if (!container && event.currentTarget && event.currentTarget.classList.contains('battlefield-zone')) {
+                container = event.currentTarget.querySelector('.zone-content');
+            }
+            if (container && container.classList) {
+                container.classList.remove('zone-drag-over');
             }
 
             let positionIndex = null;

@@ -58,6 +58,17 @@ const GameCards = {
             onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
         }
 
+        const escapedZone = GameUtils.escapeJavaScript(zone || '');
+        const enableDrop =
+            zone === 'battlefield' ||
+            zone === 'lands' ||
+            zone === 'creatures' ||
+            zone === 'support' ||
+            zone === 'permanents';
+        const dropAttributes = enableDrop
+            ? `ondragover="UIZonesManager.handleZoneDragOver(event)" ondragleave="UIZonesManager.handleZoneDragLeave(event)" ondrop="UIZonesManager.handleZoneDrop(event, '${escapedZone}')"`
+            : '';
+
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
 
@@ -74,6 +85,7 @@ const GameCards = {
                 data-is-opponent="${isOpponent}"
                 draggable="true"
                 ondragstart="GameCards.handleDragStart(event, this)"
+                ${dropAttributes}
                 ${onClickAction}
                 ondragend="GameCards.handleDragEnd(event, this)"
                 oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
