@@ -470,6 +470,13 @@ class SimpleGameEngine:
 
         source_zone_name = self._normalize_zone_name(source_zone_name)
         destination_zone_name = self._normalize_zone_name(destination_zone_name)
+        raw_position_index = action.additional_data.get("position_index")
+        position_index = None
+        if raw_position_index is not None:
+            try:
+                position_index = int(raw_position_index)
+            except (ValueError, TypeError):
+                position_index = None
 
         card_found = None
         
@@ -509,6 +516,12 @@ class SimpleGameEngine:
                     destination_zone_list.append(card_found)
                 else:
                     destination_zone_list.insert(0, card_found)
+            elif (
+                position_index is not None and
+                isinstance(position_index, int) and
+                0 <= position_index <= len(destination_zone_list)
+            ):
+                destination_zone_list.insert(position_index, card_found)
             else:
                 destination_zone_list.append(card_found)
         
