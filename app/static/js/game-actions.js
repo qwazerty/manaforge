@@ -730,6 +730,8 @@ window.GameActions = {
     playCardFromHand,
     changePlayer,
     changePhase,
+    clearTappedState,
+    clearTargetedState,
     tapCard,
     untapAll,
     sendToGraveyard,
