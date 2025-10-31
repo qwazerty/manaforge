@@ -18,6 +18,26 @@ async def handle_pass_phase(
         "broadcast_data": {}
     }
 
+@action_registry.register("change_phase", required_fields=["phase"])
+async def handle_change_phase(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle direct phase change."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for change_phase"
+        )
+
+    new_phase = request.get("phase")
+    if not new_phase:
+        raise HTTPException(
+            status_code=400, detail="phase is required for change_phase"
+        )
+    return {
+        "additional_data": {"phase": new_phase},
+        "broadcast_data": {"phase": new_phase},
+    }
+
 
 @action_registry.register("shuffle_library")
 async def handle_shuffle_library(
