@@ -37,6 +37,16 @@
     overflow-y: hidden;
 }
 
+.battlefield-zone.zone-drag-over {
+    border-color: rgba(201, 170, 113, 0.6);
+    box-shadow: 0 0 10px rgba(201, 170, 113, 0.3);
+}
+
+.battlefield-zone .zone-content.zone-drag-over {
+    outline: 2px dashed rgba(201, 170, 113, 0.4);
+    outline-offset: 4px;
+}
+
 .lands-zone {
     grid-area: lands;
     border-color: rgba(34, 197, 94, 0.5);

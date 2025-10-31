@@ -200,14 +200,16 @@ class UIRenderersTemplates {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
         const cardCount = filteredCards.length;
         const cardsHtml = filteredCards.map(card => {
-            return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, 'battlefield', isOpponent, null, playerId);
+            return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, null, playerId);
         }).join('');
 
         return `
-            <div class="battlefield-zone ${zoneName}-zone compact-zones">
-                <div class="${zoneName}-zone-content zone-content" data-card-count="${cardCount}"
-                    ondragover="UIZonesManager.handleZoneDragOver(event)"
-                    ondrop="UIZonesManager.handleZoneDrop(event, '${zoneName}')">
+            <div class="battlefield-zone ${zoneName}-zone compact-zones"
+                data-battlefield-zone="${zoneName}"
+                ondragover="UIZonesManager.handleZoneDragOver(event)"
+                ondragleave="UIZonesManager.handleZoneDragLeave(event)"
+                ondrop="UIZonesManager.handleZoneDrop(event, '${zoneName}')">
+                <div class="${zoneName}-zone-content zone-content" data-card-count="${cardCount}">
                     ${cardsHtml}
                 </div>
             </div>
