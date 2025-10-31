@@ -319,8 +319,8 @@ const GameCards = {
 
             menuHTML += `
                 <div class="card-context-menu-divider"></div>
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${cardId}', '${cardZone}', 'graveyard', '${uniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${cardId}', '${cardZone}', 'exile', '${uniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${escapedCardId}', '${cardZone}', '${escapedUniqueId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${escapedCardId}', '${cardZone}', '${escapedUniqueId}')"><span class="icon">✨</span> Send to Exile</div>`;
 
             if (cardZone !== 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${cardId}', '${cardZone}', 'hand', '${uniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
