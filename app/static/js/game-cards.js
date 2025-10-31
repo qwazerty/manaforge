@@ -4,6 +4,92 @@
  */
 const GameCards = {
     draggedCardElement: null,
+    keywordDescriptions: {
+        'flying': {
+            name: 'Flying',
+            description: 'Creatures with flying can only be blocked by creatures with flying or reach.'
+        },
+        'first strike': {
+            name: 'First strike',
+            description: 'This creature deals combat damage before creatures without first strike.'
+        },
+        'double strike': {
+            name: 'Double strike',
+            description: 'This creature deals both first-strike and regular combat damage.'
+        },
+        'deathtouch': {
+            name: 'Deathtouch',
+            description: 'Any amount of damage this creature deals to a creature is enough to destroy it.'
+        },
+        'lifelink': {
+            name: 'Lifelink',
+            description: 'Damage dealt by this creature also causes you to gain that much life.'
+        },
+        'vigilance': {
+            name: 'Vigilance',
+            description: 'Attacking doesn’t cause this creature to tap.'
+        },
+        'menace': {
+            name: 'Menace',
+            description: 'This creature can’t be blocked except by two or more creatures.'
+        },
+        'reach': {
+            name: 'Reach',
+            description: 'This creature can block creatures with flying.'
+        },
+        'trample': {
+            name: 'Trample',
+            description: 'Excess combat damage this creature deals to a blocker is dealt to the defending player or planeswalker.'
+        },
+        'haste': {
+            name: 'Haste',
+            description: 'This creature can attack and tap as soon as it comes under your control.'
+        },
+        'hexproof': {
+            name: 'Hexproof',
+            description: 'This permanent can’t be the target of spells or abilities your opponents control.'
+        },
+        'indestructible': {
+            name: 'Indestructible',
+            description: 'Effects that say “destroy” don’t destroy this permanent. It also can’t be destroyed by lethal damage.'
+        },
+        'ward': {
+            name: 'Ward',
+            description: 'Whenever this permanent becomes the target of a spell or ability an opponent controls, counter it unless that player pays the ward cost.',
+        },
+        'prowess': {
+            name: 'Prowess',
+            description: 'Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.'
+        },
+        'flash': {
+            name: 'Flash',
+            description: 'You may cast this spell any time you could cast an instant.',
+        },
+        'defender': {
+            name: 'Defender',
+            description: 'This creature can’t attack.'
+        },
+        'scry': {
+            name: 'Scry',
+            description: 'Look at the top card(s) of your library. You may put any number of them on the bottom of your library and the rest back on top in any order.',
+        },
+        'surveil': {
+            name: 'Surveil',
+            description: 'Look at the top card(s) of your library. You may put any number of them into your graveyard and the rest back on top in any order.'
+        },
+        'cascade': {
+            name: 'Cascade',
+            description: 'When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost.'
+        },
+        'cycling': {
+            name: 'Cycling',
+            description: 'Pay the cycling cost, discard this card: Draw a card.'
+        },
+        'equip': {
+            name: 'Equip',
+            description: 'Equip only as a sorcery. Attach this Equipment to target creature you control.',
+        }
+    },
     getSafeImageUrl: function(card) {
         if (!card || !card.image_url) return null;
         
@@ -187,7 +273,159 @@ const GameCards = {
         return classes[counterType] || 'counter-generic';
     },
 
-    showCardPreview: function(cardId, cardName, imageUrl, event = null) {
+    findCardData: function(cardId, cardName) {
+        const nodes = Array.from(document.querySelectorAll('[data-card-data]'));
+        const parse = (raw) => {
+            if (!raw) return null;
+            try {
+                return JSON.parse(
+                    raw
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                );
+            } catch (error) {
+                console.warn('Failed to parse card data attribute', error);
+                return null;
+            }
+        };
+
+        if (cardId) {
+            const byId = nodes.find(el => el.getAttribute('data-card-id') === cardId);
+            if (byId) {
+                const data = parse(byId.getAttribute('data-card-data'));
+                if (data) return data;
+            }
+        }
+
+        if (cardName) {
+            const byName = nodes.find(el => el.getAttribute('data-card-name') === cardName);
+            if (byName) {
+                const data = parse(byName.getAttribute('data-card-data'));
+                if (data) return data;
+            }
+        }
+
+        return null;
+    },
+
+    renderKeywordDetails: function(cardData) {
+        const keywords = this.extractKeywordsFromCard(cardData);
+        if (!keywords.length) {
+            return ``;
+        }
+
+        const list = keywords.map(info => `
+            <div class="card-keyword-entry">
+                <div class="card-keyword-name">${info.name}</div>
+                <div class="card-keyword-description">${info.description}</div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="card-keyword-section">
+                <div class="card-keyword-list">
+                    ${list}
+                </div>
+            </div>
+        `;
+    },
+
+    extractKeywordsFromCard: function(cardData) {
+        if (!cardData) {
+            return [];
+        }
+
+        const keywordSet = new Set();
+        const gatherKeywords = (collection) => {
+            if (!Array.isArray(collection)) return;
+            collection.forEach(keyword => {
+                if (keyword) {
+                    keywordSet.add(String(keyword).toLowerCase());
+                }
+            });
+        };
+
+        gatherKeywords(cardData.keywords);
+
+        const textFragments = [];
+        const pushText = (value) => {
+            if (value) {
+                textFragments.push(String(value));
+            }
+        };
+
+        pushText(cardData.oracle_text || cardData.text);
+        pushText(cardData.type_line || cardData.typeLine);
+
+        if (Array.isArray(cardData.card_faces)) {
+            cardData.card_faces.forEach(face => {
+                gatherKeywords(face?.keywords);
+                pushText(face?.oracle_text || face?.text);
+            });
+        }
+
+        const fullText = textFragments.join('\n');
+        const normalizedText = fullText.toLowerCase();
+        const found = [];
+        const seen = new Set();
+
+        const buildRegex = (keyword) => {
+            const escaped = String(keyword)
+                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                .replace(/\s+/g, '\\s+');
+            return new RegExp(`\\b${escaped}\\b`, 'i');
+        };
+
+        Object.entries(this.keywordDescriptions).forEach(([key, info]) => {
+            if (seen.has(key)) {
+                return;
+            }
+
+            const names = [info.name, key].concat(info.aliases || []);
+            let matched = names.some(name => keywordSet.has(String(name).toLowerCase()));
+
+            if (!matched && normalizedText) {
+                if (info.patterns && info.patterns.length) {
+                    matched = info.patterns.some(pattern => {
+                        try {
+                            return new RegExp(pattern, 'i').test(fullText);
+                        } catch (error) {
+                            return false;
+                        }
+                    });
+                } else {
+                    matched = names.some(name => buildRegex(name).test(fullText));
+                }
+            }
+
+            if (matched) {
+                const keywordInfo = { ...info };
+
+                if (key === 'ward') {
+                    const match = fullText.match(/Ward\s*(?:—|-)?\s*({[^}]+}|[^\n]+)/i);
+                    if (match) {
+                        const rawCost = (match[1] || match[0] || '').replace(/Ward/i, '').replace(/—|-/g, '').trim();
+                        const wardCost = rawCost.length ? rawCost : 'cost';
+                        keywordInfo.description = `Ward — ${wardCost} (Whenever this permanent becomes the target of a spell or ability an opponent controls, counter it unless that player pays the ward cost.)`;
+                    }
+                }
+
+                if (key === 'equip') {
+                    const match = fullText.match(/Equip\s*({[^}]+})/i);
+                    if (match) {
+                        keywordInfo.description = `Equip ${match[1]} — Attach this Equipment to target creature you control. Activate only as a sorcery.`;
+                    }
+                }
+
+                found.push(keywordInfo);
+                seen.add(key);
+            }
+        });
+
+        return found;
+    },
+
+    showCardPreview: function(cardId, cardName, imageUrl, event = null, cardData = null) {
         console.log(`📋 Card Preview: ${cardName} (ID: ${cardId})`);
         if (imageUrl) {
             console.log(`🖼️ Image: ${imageUrl}`);
@@ -203,6 +441,9 @@ const GameCards = {
         preview.id = 'card-preview-modal';
         preview.className = 'card-preview-modal show';
 
+        const resolvedCardData = cardData || this.findCardData(cardId, cardName);
+        const keywordDetails = this.renderKeywordDetails(resolvedCardData);
+
         preview.innerHTML = `
             <div class="card-preview-content">
                 ${imageUrl ? `
@@ -214,6 +455,7 @@ const GameCards = {
                 `}
                 <div class="card-preview-details">
                     <h3>${cardName}</h3>
+                    ${keywordDetails}
                 </div>
             </div>
         `;
@@ -256,6 +498,11 @@ const GameCards = {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
         const isTargeted = cardElement.classList.contains('targeted');
+        const escapedCardId = GameUtils.escapeJavaScript(cardId || '');
+        const escapedCardName = GameUtils.escapeJavaScript(cardName || '');
+        const escapedCardImage = GameUtils.escapeJavaScript(cardImage || '');
+        const escapedCardZone = GameUtils.escapeJavaScript(cardZone || '');
+        const escapedUniqueCardId = GameUtils.escapeJavaScript(uniqueCardId || '');
 
         console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId}, Opponent: ${isOpponent})`);
 
@@ -273,18 +520,18 @@ const GameCards = {
 
         let menuHTML = '';
         if (cardImage) {
-            menuHTML += `<div class="card-context-image"><img src="${cardImage}" alt="${cardName}" /></div>`;
+            menuHTML += `<div class="card-context-image"><img src="${escapedCardImage}" alt="${escapedCardName}" /></div>`;
         }
 
         menuHTML += `<div class="card-context-actions">
-            <div class="card-context-header"><h3>${cardName}</h3></div>
+            <div class="card-context-header"><h3>${escapedCardName}</h3></div>
             <div class="card-context-menu-divider"></div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${cardId}', '${cardName}', '${cardImage}')"><span class="icon">🔍</span> View Full Size</div>
+            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${escapedCardId}', '${escapedCardName}', '${escapedCardImage}')"><span class="icon">🔍</span> View Full Size</div>
             <div class="card-context-menu-divider"></div>`;
         
         const targetAction = isTargeted ? 'Untarget' : 'Target';
         const targetIcon = isTargeted ? '❌' : '🎯';
-        menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.toggleCardTarget('${uniqueCardId}')"><span class="icon">${targetIcon}</span> ${targetAction}</div>`;
+        menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.toggleCardTarget('${escapedUniqueCardId}')"><span class="icon">${targetIcon}</span> ${targetAction}</div>`;
 
         // Check if this is a double-faced card by looking at the card data
         const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
@@ -293,37 +540,37 @@ const GameCards = {
         if (isDoubleFaced && !isOpponent) {
             const currentFace = cardData.current_face || 0;
             const faceText = currentFace === 0 ? 'Back' : 'Front';
-            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.flipCard('${cardId}', '${uniqueCardId}')"><span class="icon">🔄</span> Flip to ${faceText}</div>`;
+            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.flipCard('${escapedCardId}', '${escapedUniqueCardId}')"><span class="icon">🔄</span> Flip to ${faceText}</div>`;
         }
 
         if (!isOpponent) {
             if (cardZone === 'hand') {
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${cardId}')"><span class="icon">▶️</span> Play Card</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${escapedCardId}')"><span class="icon">▶️</span> Play Card</div>`;
             } else if (cardZone === 'deck') {
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.performGameAction('play_card_from_library', { unique_id: '${uniqueCardId}' }); UIZonesManager.closeZoneModal('deck');"><span class="icon">⚔️</span> Put on Battlefield</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.performGameAction('play_card_from_library', { unique_id: '${escapedUniqueCardId}' }); UIZonesManager.closeZoneModal('deck');"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
 
             if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands' || cardZone === 'creatures' || cardZone === 'support') {
                 const tapAction = isTapped ? 'Untap' : 'Tap';
                 const tapIcon = isTapped ? '⤴️' : '🔄';
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${cardId}', '${uniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${escapedCardId}', '${escapedUniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
                 
                 // Add counter management options
                 if (cardData.counters && Object.keys(cardData.counters).length > 0) {
                     menuHTML += `<div class="card-context-menu-divider"></div>`;
-                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCounterModal('${uniqueCardId}', '${cardId}')"><span class="icon">🔢</span> Manage Counters</div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCounterModal('${escapedUniqueCardId}', '${escapedCardId}')"><span class="icon">🔢</span> Manage Counters</div>`;
                 } else {
-                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showAddCounterModal('${uniqueCardId}', '${cardId}')"><span class="icon">➕</span> Add Counter</div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showAddCounterModal('${escapedUniqueCardId}', '${escapedCardId}')"><span class="icon">➕</span> Add Counter</div>`;
                 }
             }
 
             menuHTML += `
                 <div class="card-context-menu-divider"></div>
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${escapedCardId}', '${cardZone}', '${escapedUniqueId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${escapedCardId}', '${cardZone}', '${escapedUniqueId}')"><span class="icon">✨</span> Send to Exile</div>`;
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${escapedCardId}', '${escapedCardZone}', '${escapedUniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
+                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${escapedCardId}', '${escapedCardZone}', '${escapedUniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
 
             if (cardZone !== 'hand') {
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${cardId}', '${cardZone}', 'hand', '${uniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${escapedCardId}', '${escapedCardZone}', 'hand', '${escapedUniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
             }
         }
 
@@ -357,6 +604,7 @@ const GameCards = {
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
             const isTargeted = cardElement.classList.toggle('targeted');
+            cardElement.setAttribute('data-card-targeted', isTargeted.toString());
             const cardId = cardElement.getAttribute('data-card-id');
             
             GameActions.performGameAction('target_card', {

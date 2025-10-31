@@ -215,7 +215,7 @@ class UIActionHistory {
                             detail.value;
                         const cardName = info.name || detail.value;
 
-                        GameCards.showCardPreview(cardId, cardName, previewImage, event);
+                        GameCards.showCardPreview(cardId, cardName, previewImage, event, info);
                     });
                     detailRow.appendChild(button);
                 } else {

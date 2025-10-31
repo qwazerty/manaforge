@@ -111,9 +111,9 @@
 
 .card-preview-content {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
 }
 
 .card-preview-image {
@@ -139,13 +139,67 @@
 
 .card-preview-details {
     color: #f9fafb;
-    text-align: center;
+    text-align: left;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .card-preview-details h3 {
     font-size: 20px;
     margin: 0;
     color: #f59e0b;
+}
+
+.card-keyword-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.card-keyword-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #fcd34d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card-keyword-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.card-keyword-entry {
+    background: rgba(31, 41, 55, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.card-keyword-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: #fbbf24;
+    margin-bottom: 4px;
+}
+
+.card-keyword-description {
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e5e7eb;
+}
+
+.card-keyword-empty {
+    font-size: 13px;
+    color: #9ca3af;
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px dashed rgba(148, 163, 184, 0.4);
+    border-radius: 8px;
+    padding: 12px;
 }
 
 /* Responsive adjustments */
@@ -165,10 +219,21 @@
     .card-preview-modal {
         padding: 16px;
     }
-    
+
     .card-preview-image {
         max-width: 280px;
         max-height: 390px;
+    }
+
+    .card-preview-content {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .card-preview-details {
+        max-width: 100%;
+        text-align: center;
     }
 }
 
