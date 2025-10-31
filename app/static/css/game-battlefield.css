@@ -8,8 +8,8 @@
     grid-template-areas:
         "creatures creatures"
         "lands support";
-    column-gap: 0;
-    row-gap: 12px;
+    column-gap: 4px;
+    row-gap: 4px;
     align-items: stretch;
     justify-items: stretch;
     margin: 8px 0;
