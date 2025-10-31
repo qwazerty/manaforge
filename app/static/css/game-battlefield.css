@@ -15,6 +15,12 @@
     margin: 8px 0;
 }
 
+.battlefield-layout-opponent {
+    grid-template-areas:
+        "lands support"
+        "creatures creatures";
+}
+
 .battlefield-zone {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(201, 170, 113, 0.3);

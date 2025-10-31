@@ -352,6 +352,50 @@ class UIActionHistory {
         }
 
         const normalized = String(action).toLowerCase();
+
+        if (normalized === 'move_card') {
+            const payload = entry?.context?.payload || {};
+            const sourceZoneFromPayload =
+                payload.source_zone ??
+                payload?.additional_data?.source_zone ??
+                null;
+            const targetZoneFromPayload =
+                payload.target_zone ??
+                payload?.additional_data?.target_zone ??
+                null;
+
+            const findDetailValue = (label) => {
+                if (!entry?.details) {
+                    return null;
+                }
+                const match = entry.details.find((detail) => {
+                    if (!detail?.label) {
+                        return false;
+                    }
+                    return detail.label.toLowerCase() === label.toLowerCase();
+                });
+                return match ? match.value : null;
+            };
+
+            const sourceZone =
+                sourceZoneFromPayload ??
+                findDetailValue('Source Zone') ??
+                findDetailValue('Source zone');
+            const targetZone =
+                targetZoneFromPayload ??
+                findDetailValue('Target Zone') ??
+                findDetailValue('Target zone');
+
+            if (
+                sourceZone &&
+                targetZone &&
+                String(sourceZone).toLowerCase() ===
+                    String(targetZone).toLowerCase()
+            ) {
+                return true;
+            }
+        }
+
         if (normalized !== 'tap_card') {
             return false;
         }
