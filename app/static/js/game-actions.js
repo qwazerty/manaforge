@@ -468,6 +468,14 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'target_card':
                 endpoint = `/api/v1/games/${gameId}/target-card`;
                 break;
+            case 'change_phase':
+                endpoint = `/api/v1/games/${gameId}/actions`;
+                requestData = {
+                    action_type: 'change_phase',
+                    player_id: currentSelectedPlayer,
+                    ...actionData
+                };
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }
@@ -538,6 +546,16 @@ function changePlayer(playerType) {
     
     GameSocket.initWebSocket();
     GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
+}
+
+function changePhase(phaseId) {
+    if (!phaseId) return;
+    performGameAction('change_phase', { phase: phaseId });
+    
+    const phaseName = (typeof UIConfig !== 'undefined' && UIConfig.getPhaseDisplayName)
+        ? UIConfig.getPhaseDisplayName(phaseId)
+        : phaseId;
+    GameUI.showNotification(`Phase set to ${phaseName}`, 'info');
 }
 
 function tapCard(cardId, uniqueCardId) {
@@ -679,6 +697,7 @@ window.GameActions = {
     performHttpGameAction,
     playCardFromHand,
     changePlayer,
+    changePhase,
     tapCard,
     untapAll,
     sendToGraveyard,

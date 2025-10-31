@@ -118,6 +118,7 @@ class SimpleGameEngine:
             "pass_priority": self._pass_priority,
             "modify_life": self._modify_life,
             "tap_card": self._tap_card,
+            "change_phase": self._change_phase,
             "shuffle_library": self._shuffle_library,
             "untap_all": self._untap_all,
             "mulligan": self._mulligan,
@@ -320,6 +321,22 @@ class SimpleGameEngine:
             game_state.active_player = 1 - game_state.active_player
             game_state.phase = GamePhase.BEGIN
     
+    def _change_phase(self, game_state: GameState, action: GameAction) -> None:
+        """Directly change the current game phase."""
+        desired_phase = action.additional_data.get("phase")
+        if not desired_phase:
+            raise ValueError("phase is required for change_phase action")
+        
+        try:
+            target_phase = GamePhase(desired_phase)
+        except ValueError as exc:
+            raise ValueError(f"Invalid phase value: {desired_phase}") from exc
+
+        game_state.phase = target_phase
+        print(
+            f"Player {action.player_id} manually set phase to {target_phase.value}"
+        )
+
     def _draw_card_action(self, game_state: GameState, action: GameAction) -> None:
         """Handle drawing a card."""
         player = self._get_player(game_state, action.player_id)

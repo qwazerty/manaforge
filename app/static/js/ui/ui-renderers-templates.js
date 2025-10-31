@@ -365,16 +365,21 @@ class UIRenderersTemplates {
         return `
             <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
                 <div class="grid grid-cols-5 gap-1">
-                    ${UIConfig.GAME_PHASES.map(phase => `
-                        <div class="text-center py-2 px-1 rounded transition-all duration-200 ${
-                            currentPhase === phase.id ? 
-                            'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' : 
-                            'text-arena-text-dim hover:text-arena-text'
-                        }" title="${phase.name} Phase">
-                            <div class="text-lg mb-1 leading-none">${phase.icon}</div>
-                            <div class="text-xs font-medium leading-tight">${phase.name}</div>
-                        </div>
-                    `).join('')}
+                    ${UIConfig.GAME_PHASES.map(phase => {
+                        const isCurrent = currentPhase === phase.id;
+                        const stateClasses = isCurrent
+                            ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300'
+                            : 'text-arena-text-dim hover:text-arena-text hover:border-yellow-500/30 cursor-pointer';
+                        const onClickAttr = isCurrent ? '' : `onclick="GameActions.changePhase('${phase.id}')"`; 
+                        return `
+                            <div class="text-center py-2 px-1 rounded transition-all duration-200 border border-transparent ${stateClasses}"
+                                title="${phase.name} Phase"
+                                ${onClickAttr}>
+                                <div class="text-lg mb-1 leading-none">${phase.icon}</div>
+                                <div class="text-xs font-medium leading-tight">${phase.name}</div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
