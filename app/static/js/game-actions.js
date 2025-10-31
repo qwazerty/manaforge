@@ -548,6 +548,30 @@ function changePlayer(playerType) {
     GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
+function clearTappedState(uniqueCardId) {
+    if (!uniqueCardId) {
+        return;
+    }
+    const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+    if (!cardElement) {
+        return;
+    }
+    cardElement.classList.remove('tapped');
+    cardElement.setAttribute('data-card-tapped', 'false');
+}
+
+function clearTargetedState(uniqueCardId) {
+    if (!uniqueCardId) {
+        return;
+    }
+    const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+    if (!cardElement) {
+        return;
+    }
+    cardElement.classList.remove('targeted');
+    cardElement.setAttribute('data-card-targeted', 'false');
+}
+
 function changePhase(phaseId) {
     if (!phaseId) return;
     performGameAction('change_phase', { phase: phaseId });
@@ -589,10 +613,18 @@ function tapCard(cardId, uniqueCardId) {
 }
 
 function sendToGraveyard(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    if (uniqueCardId) {
+        clearTappedState(uniqueCardId);
+        clearTargetedState(uniqueCardId);
+    }
     moveCard(cardId, sourceZone, 'graveyard', uniqueCardId, null, callback);
 }
 
 function sendToExile(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    if (uniqueCardId) {
+        clearTappedState(uniqueCardId);
+        clearTargetedState(uniqueCardId);
+    }
     moveCard(cardId, sourceZone, 'exile', uniqueCardId, null, callback);
 }
 
@@ -729,6 +761,17 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
     }
     if (positionIndex !== null && positionIndex !== undefined) {
         actionData.position_index = positionIndex;
+    }
+
+    const normalizedTarget = typeof targetZone === 'string'
+        ? targetZone.toLowerCase()
+        : '';
+    if (
+        uniqueCardId &&
+        ['graveyard', 'exile', 'library', 'deck'].includes(normalizedTarget)
+    ) {
+        clearTappedState(uniqueCardId);
+        clearTargetedState(uniqueCardId);
     }
 
     performGameAction('move_card', actionData);

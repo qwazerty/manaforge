@@ -525,6 +525,10 @@ class SimpleGameEngine:
                 game_state, player, destination_zone_name
             )
             
+            if destination_zone_name in ["graveyard", "exile", "library"]:
+                card_found.tapped = False
+                card_found.targeted = False
+            
             if (
                 destination_zone_name == "library" and
                 "deck_position" in action.additional_data
