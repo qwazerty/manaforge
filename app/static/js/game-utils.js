@@ -22,9 +22,20 @@ function escapeJavaScript(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Export utils module functionality
 window.GameUtils = {
     getPlayerFromUrl,
     setPlayerInUrl,
-    escapeJavaScript
+    escapeJavaScript,
+    escapeHtml
 };

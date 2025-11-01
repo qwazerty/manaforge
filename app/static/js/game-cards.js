@@ -268,19 +268,22 @@ const GameCards = {
         const tappedClass = isTapped ? ' tapped' : '';
         const targetedClass = isTargeted ? ' targeted' : '';
         const uniqueCardId = card.unique_id;
-        const escapedCardId = GameUtils.escapeJavaScript(cardId);
-        const escapedCardName = GameUtils.escapeJavaScript(cardName);
-        const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
-        const escapedUniqueId = GameUtils.escapeJavaScript(uniqueCardId);
+        const dataCardId = GameUtils.escapeHtml(cardId || '');
+        const dataCardName = GameUtils.escapeHtml(cardName || '');
+        const dataImageUrl = GameUtils.escapeHtml(imageUrl || '');
+        const dataUniqueId = GameUtils.escapeHtml(uniqueCardId || '');
+        const dataZone = GameUtils.escapeHtml(zone || '');
+        const jsCardId = JSON.stringify(cardId || '');
+        const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
+        const zoneAttr = (zone || '').replace(/'/g, "\\'");
 
         let onClickAction = '';
         if (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield') {
-            onClickAction = `onclick="GameActions.tapCard('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
+            onClickAction = `onclick='GameActions.tapCard(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
         } else if (zone === 'hand') {
-            onClickAction = `onclick="GameActions.playCardFromHand('${escapedCardId}', '${escapedUniqueId}'); event.stopPropagation();"`;
+            onClickAction = `onclick='GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
         }
 
-        const escapedZone = GameUtils.escapeJavaScript(zone || '');
         const enableDrop =
             zone === 'battlefield' ||
             zone === 'lands' ||
@@ -288,7 +291,7 @@ const GameCards = {
             zone === 'support' ||
             zone === 'permanents';
         const dropAttributes = enableDrop
-            ? `ondragover="UIZonesManager.handleZoneDragOver(event)" ondragleave="UIZonesManager.handleZoneDragLeave(event)" ondrop="UIZonesManager.handleZoneDrop(event, '${escapedZone}')"`
+            ? `ondragover="UIZonesManager.handleZoneDragOver(event)" ondragleave="UIZonesManager.handleZoneDragLeave(event)" ondrop="UIZonesManager.handleZoneDrop(event, '${zoneAttr}')"`
             : '';
 
         // Generate counters display
@@ -296,11 +299,11 @@ const GameCards = {
 
         return `
             <div class="${cardClass}${tappedClass}${targetedClass}" 
-                data-card-id="${escapedCardId}"
-                data-card-unique-id="${escapedUniqueId}"
-                data-card-name="${escapedCardName}"
-                data-card-image="${escapedImageUrl}"
-                data-card-zone="${zone}"
+                data-card-id="${dataCardId}"
+                data-card-unique-id="${dataUniqueId}"
+                data-card-name="${dataCardName}"
+                data-card-image="${dataImageUrl}"
+                data-card-zone="${dataZone}"
                 data-card-tapped="${isTapped}"
                 data-card-targeted="${isTargeted}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
@@ -554,8 +557,28 @@ const GameCards = {
                 }
 
                 found.push(keywordInfo);
+                const normalizedNames = names.map(name => String(name).toLowerCase());
+                normalizedNames.forEach(name => seen.add(name));
                 seen.add(key);
             }
+        });
+
+        keywordSet.forEach(keyword => {
+            const normalized = String(keyword).toLowerCase();
+            if (seen.has(normalized)) {
+                return;
+            }
+
+            const displayName = String(keyword)
+                .split(/\s+/)
+                .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ');
+
+            found.push({
+                name: displayName,
+                description: `Description for ${displayName} is not yet available.`
+            });
+            seen.add(normalized);
         });
 
         return found;
@@ -579,18 +602,20 @@ const GameCards = {
 
         const resolvedCardData = cardData || this.findCardData(cardId, cardName);
         const keywordDetails = this.renderKeywordDetails(resolvedCardData);
+        const safeCardName = GameUtils.escapeHtml(cardName || 'Unknown');
+        const safeImageUrl = GameUtils.escapeHtml(imageUrl || '');
 
         preview.innerHTML = `
             <div class="card-preview-content">
                 ${imageUrl ? `
-                    <img src="${imageUrl}" alt="${cardName}" class="card-preview-image" />
+                    <img src="${safeImageUrl}" alt="${safeCardName}" class="card-preview-image" />
                 ` : `
                     <div class="card-preview-fallback">
-                        <div class="card-name">${cardName}</div>
+                        <div class="card-name">${safeCardName}</div>
                     </div>
                 `}
                 <div class="card-preview-details">
-                    <h3>${cardName}</h3>
+                    <h3>${safeCardName}</h3>
                     ${keywordDetails}
                 </div>
             </div>
@@ -634,11 +659,14 @@ const GameCards = {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
         const isTargeted = cardElement.classList.contains('targeted');
-        const escapedCardId = GameUtils.escapeJavaScript(cardId || '');
-        const escapedCardName = GameUtils.escapeJavaScript(cardName || '');
-        const escapedCardImage = GameUtils.escapeJavaScript(cardImage || '');
-        const escapedCardZone = GameUtils.escapeJavaScript(cardZone || '');
-        const escapedUniqueCardId = GameUtils.escapeJavaScript(uniqueCardId || '');
+
+        const safeCardName = GameUtils.escapeHtml(cardName || 'Unknown');
+        const safeCardImage = GameUtils.escapeHtml(cardImage || '');
+        const jsCardId = JSON.stringify(cardId || '');
+        const jsCardName = JSON.stringify(cardName || '');
+        const jsCardImage = JSON.stringify(cardImage || '');
+        const jsCardZone = JSON.stringify(cardZone || 'unknown');
+        const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
 
         console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId}, Opponent: ${isOpponent})`);
 
@@ -654,59 +682,59 @@ const GameCards = {
         menu.style.position = 'fixed';
         document.body.appendChild(menu);
 
+        const makeHandler = (code) => GameUtils.escapeHtml(code);
+
         let menuHTML = '';
         if (cardImage) {
-            menuHTML += `<div class="card-context-image"><img src="${escapedCardImage}" alt="${escapedCardName}" /></div>`;
+            menuHTML += `<div class="card-context-image"><img src="${safeCardImage}" alt="${safeCardName}" /></div>`;
         }
 
         menuHTML += `<div class="card-context-actions">
-            <div class="card-context-header"><h3>${escapedCardName}</h3></div>
+            <div class="card-context-header"><h3>${safeCardName}</h3></div>
             <div class="card-context-menu-divider"></div>
-            <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCardPreview('${escapedCardId}', '${escapedCardName}', '${escapedCardImage}')"><span class="icon">🔍</span> View Full Size</div>
+            <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCardPreview(${jsCardId}, ${jsCardName}, ${jsCardImage})`)}"><span class="icon">🔍</span> View Full Size</div>
             <div class="card-context-menu-divider"></div>`;
-        
+
         const targetAction = isTargeted ? 'Untarget' : 'Target';
         const targetIcon = isTargeted ? '❌' : '🎯';
-        menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.toggleCardTarget('${escapedUniqueCardId}')"><span class="icon">${targetIcon}</span> ${targetAction}</div>`;
+        menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.toggleCardTarget(${jsUniqueCardId})`)}"><span class="icon">${targetIcon}</span> ${targetAction}</div>`;
 
-        // Check if this is a double-faced card by looking at the card data
         const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
         const isDoubleFaced = cardData.is_double_faced && cardData.card_faces && cardData.card_faces.length > 1;
-        
+
         if (isDoubleFaced && !isOpponent) {
             const currentFace = cardData.current_face || 0;
             const faceText = currentFace === 0 ? 'Back' : 'Front';
-            menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.flipCard('${escapedCardId}', '${escapedUniqueCardId}')"><span class="icon">🔄</span> Flip to ${faceText}</div>`;
+            menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.flipCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">🔄</span> Flip to ${faceText}</div>`;
         }
 
         if (!isOpponent) {
             if (cardZone === 'hand') {
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.playCardFromHand('${escapedCardId}')"><span class="icon">▶️</span> Play Card</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
             } else if (cardZone === 'deck') {
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.performGameAction('play_card_from_library', { unique_id: '${escapedUniqueCardId}' }); UIZonesManager.closeZoneModal('deck');"><span class="icon">⚔️</span> Put on Battlefield</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.performGameAction("play_card_from_library", { unique_id: ${jsUniqueCardId} }); UIZonesManager.closeZoneModal("deck");`)}"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
 
             if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands' || cardZone === 'creatures' || cardZone === 'support') {
                 const tapAction = isTapped ? 'Untap' : 'Tap';
                 const tapIcon = isTapped ? '⤴️' : '🔄';
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.tapCard('${escapedCardId}', '${escapedUniqueCardId}')"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
-                
-                // Add counter management options
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.tapCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
+
                 if (cardData.counters && Object.keys(cardData.counters).length > 0) {
                     menuHTML += `<div class="card-context-menu-divider"></div>`;
-                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showCounterModal('${escapedUniqueCardId}', '${escapedCardId}')"><span class="icon">🔢</span> Manage Counters</div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">🔢</span> Manage Counters</div>`;
                 } else {
-                    menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameCards.showAddCounterModal('${escapedUniqueCardId}', '${escapedCardId}')"><span class="icon">➕</span> Add Counter</div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showAddCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">➕</span> Add Counter</div>`;
                 }
             }
 
             menuHTML += `
                 <div class="card-context-menu-divider"></div>
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToGraveyard('${escapedCardId}', '${escapedCardZone}', '${escapedUniqueCardId}')"><span class="icon">⚰️</span> Send to Graveyard</div>
-                <div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.sendToExile('${escapedCardId}', '${escapedCardZone}', '${escapedUniqueCardId}')"><span class="icon">✨</span> Send to Exile</div>`;
+                <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToGraveyard(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⚰️</span> Send to Graveyard</div>
+                <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToExile(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">✨</span> Send to Exile</div>`;
 
             if (cardZone !== 'hand') {
-                menuHTML += `<div class="card-context-menu-item" onclick="GameCards.closeContextMenu(); GameActions.moveCard('${escapedCardId}', '${escapedCardZone}', 'hand', '${escapedUniqueCardId}')"><span class="icon">👋</span> Return to Hand</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.moveCard(${jsCardId}, ${jsCardZone}, "hand", ${jsUniqueCardId})`)}"><span class="icon">👋</span> Return to Hand</div>`;
             }
         }
 
