@@ -37,10 +37,6 @@
     overflow-y: visible;
 }
 
-.battlefield-zone .zone-content:hover {
-    overflow-x: visible;
-}
-
 .battlefield-zone.zone-drag-over {
     border-color: rgba(201, 170, 113, 0.6);
     box-shadow: 0 0 10px rgba(201, 170, 113, 0.3);
