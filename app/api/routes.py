@@ -166,7 +166,10 @@ async def get_game_ui_data(game_id: str) -> dict:
                 'graveyard': [
                     safe_model_dump(card) for card in player.graveyard
                 ],
-                'exile': [safe_model_dump(card) for card in player.exile]
+                'exile': [safe_model_dump(card) for card in player.exile],
+                'reveal_zone': [
+                    safe_model_dump(card) for card in getattr(player, 'reveal_zone', [])
+                ]
             }
             for player in game_state.players
         ],

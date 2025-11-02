@@ -225,3 +225,76 @@
 .stack-spell-instant {
     border-left: 4px solid #3b82f6;
 }
+
+/* ===== REVEAL POPUP STYLES ===== */
+
+.reveal-popup {
+    width: auto;
+    max-width: 90vw;
+}
+
+.reveal-popup-header {
+    background: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.reveal-popup-title {
+    color: #38bdf8;
+}
+
+.reveal-popup-icon {
+    font-size: 1.25rem;
+}
+
+.reveal-popup-count {
+    background: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+}
+
+.reveal-popup-body {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.reveal-card-container {
+    width: 100%;
+}
+
+.reveal-card-list {
+    display: flex;
+    align-items: flex-start;
+    gap: 0px;
+    overflow-x: auto;
+    padding: 8px 4px 20px 4px;
+}
+
+.reveal-card-list .card-battlefield,
+.reveal-card-list .card-battlefield-1080,
+.reveal-card-list .card-mini {
+    margin-left: 0;
+}
+
+.reveal-card-list::-webkit-scrollbar {
+    height: 8px;
+}
+
+.reveal-card-list::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 9999px;
+}
+
+.reveal-card-list::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.35);
+    border-radius: 9999px;
+}
+
+.reveal-card-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.55);
+}
+
+.reveal-empty {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    padding: 12px 0;
+}

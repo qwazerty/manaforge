@@ -5,6 +5,7 @@
  */
 
 class UIRenderersTemplates {
+    static _revealPopupElements = new Map();
     // ===== MAIN RENDERING METHODS =====
     
     /**
@@ -96,8 +97,11 @@ class UIRenderersTemplates {
                     window.UICardOverlap.applyOverlapToAllZones();
                 });
             }
+
+            this._updateRevealOverlay(gameState);
         } catch (error) {
             this._renderError(gameBoardContainer, 'Error Loading Game Board', error.message);
+            this._updateRevealOverlay(null);
         }
     }
 
@@ -124,9 +128,11 @@ class UIRenderersTemplates {
             `;
 
             this._updateStackOverlay(stack);
+            this._updateRevealOverlay(gameState);
         } catch (error) {
             this._renderError(actionPanelContainer, 'Error', error.message);
             this._updateStackOverlay([]);
+            this._updateRevealOverlay(null);
         }
     }
 
@@ -723,6 +729,176 @@ class UIRenderersTemplates {
                 </div>
             </div>
         `;
+    }
+
+    static _updateRevealOverlay(gameState) {
+        if (!this._revealPopupElements) {
+            this._revealPopupElements = new Map();
+        }
+
+        const players = Array.isArray(gameState?.players) ? gameState.players : [];
+        const seen = new Set();
+        const selectedPlayer = GameCore.getSelectedPlayer();
+
+        players.forEach((player, index) => {
+            const playerId = player?.id || `player${index + 1}`;
+            const playerName = player?.name || `Player ${index + 1}`;
+            const revealCards = Array.isArray(player?.reveal_zone) ? player.reveal_zone : [];
+            const elements = this._getRevealPopupElements(playerId, playerName);
+            if (!elements) {
+                return;
+            }
+
+            seen.add(playerId);
+
+            if (!revealCards.length) {
+                elements.panel.classList.add('hidden');
+                elements.panel.setAttribute('aria-hidden', 'true');
+                delete elements.panel.dataset.userMoved;
+                return;
+            }
+
+            const isOpponent = selectedPlayer === 'spectator'
+                ? false
+                : (selectedPlayer !== playerId);
+            const isControlled = selectedPlayer !== 'spectator' && !isOpponent;
+
+            elements.body.innerHTML = this._generateRevealContent(revealCards, isOpponent, playerId);
+            elements.countLabel.textContent = String(revealCards.length);
+            elements.titleLabel.textContent = `Reveal - ${playerName}`;
+            elements.panel.classList.remove('hidden');
+            elements.panel.setAttribute('aria-hidden', 'false');
+
+            const visibleCount = Math.min(revealCards.length, 8);
+            const baseCardWidth = 160;
+            const gap = 12;
+            const padding = 64;
+            const computedWidth = Math.max(
+                280,
+                Math.min(
+                    window.innerWidth * 0.9,
+                    padding + (visibleCount * baseCardWidth) + Math.max(0, visibleCount - 1) * gap
+                )
+            );
+            elements.panel.style.width = `${computedWidth}px`;
+
+            if (elements.panel.dataset.userMoved !== 'true') {
+                this._positionRevealPopup(elements.panel, index, isControlled);
+            }
+        });
+
+        this._revealPopupElements.forEach((elements, playerId) => {
+            if (!seen.has(playerId)) {
+                elements.panel.classList.add('hidden');
+                elements.panel.setAttribute('aria-hidden', 'true');
+                delete elements.panel.dataset.userMoved;
+            }
+        });
+    }
+
+    static _getRevealPopupElements(playerId, playerName) {
+        if (!playerId) {
+            return null;
+        }
+
+        if (!this._revealPopupElements) {
+            this._revealPopupElements = new Map();
+        }
+
+        if (this._revealPopupElements.has(playerId)) {
+            const existing = this._revealPopupElements.get(playerId);
+            if (existing?.titleLabel) {
+                existing.titleLabel.textContent = `Reveal - ${playerName}`;
+            }
+            return existing;
+        }
+
+        const safeName = GameUtils.escapeHtml(playerName || 'Player');
+        const panel = document.createElement('div');
+        panel.id = `reveal-popup-${playerId}`;
+        panel.className = 'stack-popup reveal-popup hidden';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', `Reveal - ${playerName}`);
+        panel.setAttribute('aria-hidden', 'true');
+        panel.dataset.playerId = playerId;
+        panel.innerHTML = `
+            <div class="stack-popup-header reveal-popup-header" data-draggable-handle>
+                <div class="stack-popup-title reveal-popup-title">
+                    <span class="stack-popup-icon reveal-popup-icon">👁️</span>
+                    <span class="stack-popup-label reveal-popup-label">Reveal - ${safeName}</span>
+                    <span class="stack-popup-count reveal-popup-count" id="reveal-popup-count-${playerId}">0</span>
+                </div>
+            </div>
+            <div class="stack-popup-body reveal-popup-body" id="reveal-popup-body-${playerId}"></div>
+        `;
+        document.body.appendChild(panel);
+
+        const handle = panel.querySelector('[data-draggable-handle]');
+        const body = panel.querySelector(`#reveal-popup-body-${playerId}`);
+        const countLabel = panel.querySelector(`#reveal-popup-count-${playerId}`);
+        const titleLabel = panel.querySelector('.reveal-popup-label');
+
+        this._makeStackPopupDraggable(panel, handle);
+
+        const elements = { panel, body, countLabel, titleLabel };
+        this._revealPopupElements.set(playerId, elements);
+        return elements;
+    }
+
+    static _generateRevealContent(cards, isOpponent, playerId) {
+        if (!Array.isArray(cards) || cards.length === 0) {
+            return `<div class="reveal-empty">No cards revealed</div>`;
+        }
+
+        const cardsHtml = cards.map((card, index) =>
+            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, 'reveal', isOpponent, index, playerId)
+        ).join('');
+
+        return `
+            <div class="reveal-card-container">
+                <div class="reveal-card-list" data-card-count="${cards.length}">
+                    ${cardsHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    static _positionRevealPopup(panel, index, isControlled) {
+        if (!panel) {
+            return;
+        }
+
+        const board = document.getElementById('game-board');
+        if (!board) {
+            return;
+        }
+
+        const padding = 16;
+        const offset = 24;
+        const boardRect = board.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        const panelHeight = panelRect.height || panel.offsetHeight || 0;
+        const panelWidth = panelRect.width || panel.offsetWidth || 0;
+
+        let top;
+        let left;
+
+        if (isControlled) {
+            top = boardRect.bottom - panelHeight - padding;
+            left = boardRect.right + padding;
+        } else {
+            top = boardRect.top + padding + (index * (panelHeight + offset));
+            left = boardRect.right + padding;
+        }
+
+        top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
+        left = Math.max(padding, Math.min(left, window.innerWidth - panelWidth - padding));
+
+        panel.style.top = `${top}px`;
+        panel.style.left = `${left}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
     }
 
     /**
