@@ -977,18 +977,14 @@ const GameCards = {
         if (cardElement) {
             const cardName = cardElement.getAttribute('data-card-name');
             GameUI.showNotification(`${cardName} flipped`, 'info');
-            
-            // Attendre un peu pour que le serveur traite l'action, puis rafraîchir l'affichage
-            setTimeout(() => {
-                // Déclencher un rafraîchissement des données de jeu pour mettre à jour l'interface
-                if (window.gameWebSocket && window.gameWebSocket.readyState === WebSocket.OPEN) {
-                    // Le WebSocket se chargera automatiquement de rafraîchir l'interface
-                    console.log('Card flip processed, interface will update via WebSocket');
-                } else {
-                    // Fallback: rafraîchir manuellement si pas de WebSocket
-                    window.location.reload();
-                }
-            }, 500);
+
+            const socket = window.websocket;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // Les mises à jour arrivent automatiquement via le WebSocket actif
+                console.log('Card flip processed, interface will update via WebSocket');
+            } else {
+                console.warn('Card flip processed without active WebSocket; UI may require manual sync.');
+            }
         }
     },
 
