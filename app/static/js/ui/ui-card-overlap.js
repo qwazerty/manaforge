@@ -83,7 +83,6 @@ class UICardOverlap {
             '.lands-zone-content', 
             '.hand-zone-content',
             '.opponent-hand-zone',
-            '.reveal-card-list',
         ];
 
         selectors.forEach(selector => {

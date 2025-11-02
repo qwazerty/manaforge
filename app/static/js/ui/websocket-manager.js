@@ -292,6 +292,7 @@ class WebSocketManager {
         
         // Update zone counts and previews
         UIZonesManager.updateZoneCounts();
+        UIZonesManager.refreshOpenZonePopups(GameCore.getGameState());
     }
 
     static _recordActionResult(actionResult) {
