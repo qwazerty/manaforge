@@ -769,18 +769,12 @@ class UIRenderersTemplates {
             elements.panel.classList.remove('hidden');
             elements.panel.setAttribute('aria-hidden', 'false');
 
-            const visibleCount = Math.min(revealCards.length, 8);
-            const baseCardWidth = 160;
-            const gap = 12;
-            const padding = 64;
-            const computedWidth = Math.max(
-                280,
-                Math.min(
-                    window.innerWidth * 0.9,
-                    padding + (visibleCount * baseCardWidth) + Math.max(0, visibleCount - 1) * gap
-                )
-            );
-            elements.panel.style.width = `${computedWidth}px`;
+            const computedWidth = this._calculateRevealPopupWidth(revealCards.length);
+            if (computedWidth) {
+                elements.panel.style.width = `${computedWidth}px`;
+            }
+
+            this._applyPopupSearch(elements.panel);
 
             if (elements.panel.dataset.userMoved !== 'true') {
                 this._positionRevealPopup(elements.panel, index, isControlled);
@@ -794,6 +788,126 @@ class UIRenderersTemplates {
                 delete elements.panel.dataset.userMoved;
             }
         });
+    }
+
+    static _calculateRevealPopupWidth(cardCount) {
+        const totalCards = Number(cardCount) || 0;
+        if (totalCards <= 0) {
+            return 320;
+        }
+
+        const visibleCount = Math.min(totalCards, 8);
+        const baseCardWidth = 160;
+        const gap = 12;
+        const padding = 64;
+
+        return Math.max(
+            280,
+            Math.min(
+                window.innerWidth * 0.9,
+                padding + (visibleCount * baseCardWidth) + Math.max(0, visibleCount - 1) * gap
+            )
+        );
+    }
+
+    static _ensurePopupSearchElements(panel) {
+        if (!panel) {
+            return;
+        }
+
+        const body = panel.querySelector('.stack-popup-body');
+        if (!body) {
+            return;
+        }
+
+        if (!panel.querySelector('.popup-search-container')) {
+            const searchContainer = document.createElement('div');
+            searchContainer.className = 'popup-search-container';
+            searchContainer.innerHTML = `
+                <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search cards">
+            `;
+            panel.insertBefore(searchContainer, body);
+        }
+
+        if (!panel.querySelector('.popup-search-empty')) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'popup-search-empty hidden';
+            emptyState.textContent = 'No cards match your search';
+            panel.appendChild(emptyState);
+        }
+    }
+
+    static _initializePopupSearch(panel) {
+        if (!panel || panel.dataset.popupSearchInit === 'true') {
+            return;
+        }
+
+        this._ensurePopupSearchElements(panel);
+
+        const input = panel.querySelector('.popup-card-search-input');
+        if (!input) {
+            return;
+        }
+
+        input.addEventListener('input', (event) => {
+            const query = event.target.value || '';
+            panel.dataset.currentSearchQuery = query;
+            UIRenderersTemplates._filterPopupCards(panel, query);
+        });
+
+        panel.dataset.popupSearchInit = 'true';
+    }
+
+    static _applyPopupSearch(panel) {
+        if (!panel) {
+            return;
+        }
+
+        const query = panel.dataset.currentSearchQuery || '';
+        const input = panel.querySelector('.popup-card-search-input');
+        if (input && input.value !== query) {
+            input.value = query;
+        }
+
+        this._filterPopupCards(panel, query);
+    }
+
+    static _filterPopupCards(panel, query) {
+        if (!panel) {
+            return;
+        }
+
+        const normalized = (query || '').trim().toLowerCase();
+        const list = panel.querySelector('.reveal-card-list');
+        const emptyState = panel.querySelector('.popup-search-empty');
+
+        if (!list) {
+            if (emptyState) {
+                emptyState.classList.add('hidden');
+            }
+            return;
+        }
+
+        let visibleCount = 0;
+        const cards = list.querySelectorAll('[data-card-id]');
+        cards.forEach((card) => {
+            const searchData = (card.dataset.cardSearch || `${card.dataset.cardName || ''} ${card.dataset.cardZone || ''}`).toLowerCase();
+            const isMatch = !normalized || searchData.includes(normalized);
+            if (isMatch) {
+                card.classList.remove('popup-card-hidden');
+                visibleCount += 1;
+            } else {
+                card.classList.add('popup-card-hidden');
+            }
+        });
+
+        if (emptyState) {
+            if (normalized && visibleCount === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        }
     }
 
     static _getRevealPopupElements(playerId, playerName) {
@@ -810,6 +924,8 @@ class UIRenderersTemplates {
             if (existing?.titleLabel) {
                 existing.titleLabel.textContent = `Reveal - ${playerName}`;
             }
+            this._ensurePopupSearchElements(existing?.panel);
+            this._initializePopupSearch(existing?.panel);
             return existing;
         }
 
@@ -829,7 +945,11 @@ class UIRenderersTemplates {
                     <span class="stack-popup-count reveal-popup-count" id="reveal-popup-count-${playerId}">0</span>
                 </div>
             </div>
+            <div class="popup-search-container">
+                <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search revealed cards">
+            </div>
             <div class="stack-popup-body reveal-popup-body" id="reveal-popup-body-${playerId}"></div>
+            <div class="popup-search-empty hidden">No cards match your search</div>
         `;
         document.body.appendChild(panel);
 
@@ -839,6 +959,7 @@ class UIRenderersTemplates {
         const titleLabel = panel.querySelector('.reveal-popup-label');
 
         this._makeStackPopupDraggable(panel, handle);
+        this._initializePopupSearch(panel);
 
         const elements = { panel, body, countLabel, titleLabel };
         this._revealPopupElements.set(playerId, elements);

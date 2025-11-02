@@ -5,6 +5,7 @@
  */
 
 class UIZonesManager {
+    static _zonePopupElements = new Map();
     // ===== CONSTANTS =====
     static CARD_TYPE_ICONS = {
         'creature': '🦎',
@@ -247,20 +248,10 @@ class UIZonesManager {
 
         const { playerData, zone } = this._getPlayerZoneData(gameState, zoneName, false);
         if (!playerData) return;
-        
         const zoneInfo = this.getZoneInfo(zoneName);
-        this.closeZoneModal(zoneName);
-        
-        const modalHTML = this._generateZoneModalHTML(zoneName, zone, zoneInfo);
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        setTimeout(() => {
-            const modal = document.getElementById(`zone-modal-${zoneName}`);
-            if (modal) {
-                modal.classList.add('active');
-                this._attachModalEventListeners(modal, zoneName);
-            }
-        }, 10);
+        const ownerId = playerData.id || 'player1';
+
+        this._openZonePopup(zoneName, zone, zoneInfo, false, ownerId);
     }
 
     /**
@@ -275,24 +266,25 @@ class UIZonesManager {
         
         const pureZoneName = zoneName.replace('opponent_', '');
         const zoneInfo = this.getZoneInfo(pureZoneName);
-        this.closeZoneModal(`opponent_${pureZoneName}`);
-        
-        const modalHTML = this._generateZoneModalHTML(`opponent_${pureZoneName}`, zone, zoneInfo);
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        setTimeout(() => {
-            const modal = document.getElementById(`zone-modal-opponent_${pureZoneName}`);
-            if (modal) {
-                modal.classList.add('active');
-                this._attachModalEventListeners(modal, `opponent_${pureZoneName}`);
-            }
-        }, 10);
+        const ownerId = playerData.id || 'player2';
+
+        this._openZonePopup(`opponent_${pureZoneName}`, zone, zoneInfo, true, ownerId);
     }
 
     /**
      * Close zone modal
      */
     static closeZoneModal(zoneName) {
+        if (this._zonePopupElements && this._zonePopupElements.has(zoneName)) {
+            const elements = this._zonePopupElements.get(zoneName);
+            if (elements?.panel) {
+                elements.panel.classList.add('hidden');
+                elements.panel.setAttribute('aria-hidden', 'true');
+                delete elements.panel.dataset.userMoved;
+            }
+            return;
+        }
+
         const modal = document.getElementById(`zone-modal-${zoneName}`);
         if (modal) {
             modal.classList.remove('active');
@@ -304,20 +296,18 @@ class UIZonesManager {
      * Refresh zone modal content by closing and reopening it
      */
     static refreshZoneModal(zoneName) {
-        this.closeZoneModal(zoneName);
+        const gameState = GameCore.getGameState();
+        if (!gameState) return;
 
-        // Determine if it's an opponent's zone
         const isOpponent = zoneName.startsWith('opponent_');
         const baseZoneName = zoneName.replace('opponent_', '');
+        const { playerData, zone } = this._getPlayerZoneData(gameState, baseZoneName, isOpponent);
+        if (!playerData) return;
 
-        // Re-open the modal after a short delay to allow for closing animation
-        setTimeout(() => {
-            if (isOpponent) {
-                this.showOpponentZoneModal(baseZoneName);
-            } else {
-                this.showZoneModal(baseZoneName);
-            }
-        }, 350);
+        const zoneInfo = this.getZoneInfo(baseZoneName);
+        const ownerId = playerData.id || (isOpponent ? 'player2' : 'player1');
+
+        this._openZonePopup(isOpponent ? `opponent_${baseZoneName}` : baseZoneName, zone, zoneInfo, isOpponent, ownerId);
     }
 
     /**
@@ -534,71 +524,201 @@ class UIZonesManager {
     /**
      * Generate zone modal HTML
      */
-    static _generateZoneModalHTML(zoneName, zone, zoneInfo) {
-        const info = zoneInfo || this.getZoneInfo(zoneName);
+    static _openZonePopup(popupKey, cards, zoneInfo, isOpponent, ownerId) {
+        if (!this._zonePopupElements) {
+            this._zonePopupElements = new Map();
+        }
+
+        const elements = this._ensureZonePopupElements(popupKey, zoneInfo, isOpponent);
+        const cardsArray = Array.isArray(cards) ? cards : [];
+        const baseZone = popupKey.replace('opponent_', '');
+
+        if (!cardsArray.length) {
+            elements.panel.classList.add('hidden');
+            elements.panel.setAttribute('aria-hidden', 'true');
+            delete elements.panel.dataset.userMoved;
+            return;
+        }
+
+        const popupTitle = `${isOpponent ? 'Opponent ' : ''}${zoneInfo.title}`;
+        elements.titleLabel.textContent = popupTitle;
+        elements.countLabel.textContent = String(cardsArray.length);
+        elements.body.innerHTML = this._generateZonePopupContent(cardsArray, popupKey, isOpponent, ownerId);
+        elements.panel.classList.remove('hidden');
+        elements.panel.setAttribute('aria-hidden', 'false');
+
+        if (typeof UIRenderersTemplates !== 'undefined' &&
+            typeof UIRenderersTemplates._calculateRevealPopupWidth === 'function') {
+            const computedWidth = UIRenderersTemplates._calculateRevealPopupWidth(cardsArray.length);
+            if (computedWidth) {
+                elements.panel.style.width = `${computedWidth}px`;
+            }
+        }
+
+        const listElement = elements.body.querySelector('.reveal-card-list');
+        if (listElement && typeof UIHorizontalScroll !== 'undefined') {
+            UIHorizontalScroll.attachWheelListener(listElement);
+        }
+
+        if (typeof UIRenderersTemplates !== 'undefined') {
+            UIRenderersTemplates._applyPopupSearch(elements.panel);
+        }
+
+        const positionIndex = this._getZonePopupIndex(popupKey, isOpponent);
+        if (elements.panel.dataset.userMoved !== 'true' && typeof UIRenderersTemplates !== 'undefined') {
+            UIRenderersTemplates._positionRevealPopup(elements.panel, positionIndex, !isOpponent);
+        }
+
+        if (elements.panel.dataset.userMoved !== 'true' && ['graveyard', 'exile', 'deck'].includes(baseZone)) {
+            requestAnimationFrame(() => this._positionZonePopupLeft(elements.panel, isOpponent));
+        }
+    }
+
+    static _ensureZonePopupElements(popupKey, zoneInfo, isOpponent) {
+        if (!this._zonePopupElements) {
+            this._zonePopupElements = new Map();
+        }
+
+        if (this._zonePopupElements.has(popupKey)) {
+            const existing = this._zonePopupElements.get(popupKey);
+            if (typeof UIRenderersTemplates !== 'undefined') {
+                UIRenderersTemplates._ensurePopupSearchElements(existing?.panel);
+                UIRenderersTemplates._initializePopupSearch(existing?.panel);
+            }
+            return existing;
+        }
+
+        const safeTitle = GameUtils.escapeHtml(zoneInfo.title || 'Zone');
+        const panel = document.createElement('div');
+        panel.id = `zone-popup-${popupKey}`;
+        panel.className = 'stack-popup reveal-popup zone-popup hidden';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', `${safeTitle} Zone`);
+        panel.setAttribute('aria-hidden', 'true');
+        panel.dataset.zonePopupKey = popupKey;
+        panel.dataset.zoneOwner = isOpponent ? 'opponent' : 'player';
+        panel.innerHTML = `
+            <div class="stack-popup-header reveal-popup-header zone-popup-header" data-draggable-handle>
+                <div class="stack-popup-title reveal-popup-title zone-popup-title">
+                    <span class="stack-popup-icon reveal-popup-icon zone-popup-icon">${zoneInfo.icon || '🗂️'}</span>
+                    <span class="stack-popup-label reveal-popup-label zone-popup-label">${safeTitle}</span>
+                    <span class="stack-popup-count reveal-popup-count zone-popup-count" id="zone-popup-count-${popupKey}">0</span>
+                </div>
+                <button class="zone-popup-close" onclick="UIZonesManager.closeZoneModal('${popupKey}')">✕</button>
+            </div>
+            <div class="popup-search-container">
+                <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search ${safeTitle}">
+            </div>
+            <div class="stack-popup-body reveal-popup-body zone-popup-body" id="zone-popup-body-${popupKey}"></div>
+            <div class="popup-search-empty hidden">No cards match your search</div>
+        `;
+        document.body.appendChild(panel);
+
+        const handle = panel.querySelector('[data-draggable-handle]');
+        const body = panel.querySelector(`#zone-popup-body-${popupKey}`);
+        const countLabel = panel.querySelector(`#zone-popup-count-${popupKey}`);
+        const titleLabel = panel.querySelector('.zone-popup-label');
+
+        if (typeof UIRenderersTemplates !== 'undefined') {
+            UIRenderersTemplates._makeStackPopupDraggable(panel, handle);
+            UIRenderersTemplates._initializePopupSearch(panel);
+        }
+
+        const elements = { panel, body, countLabel, titleLabel };
+        this._zonePopupElements.set(popupKey, elements);
+        return elements;
+    }
+
+    static _generateZonePopupContent(cards, popupKey, isOpponent, ownerId) {
+        if (!cards.length) {
+            return `<div class="reveal-empty">No cards in this zone</div>`;
+        }
+
+        const baseZone = popupKey.replace('opponent_', '');
+        const cardsHtml = cards.map((card, index) =>
+            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
+        ).join('');
+
         return `
-            <div class="zone-modal" id="zone-modal-${zoneName}">
-                <div class="zone-modal-content">
-                    <div class="zone-modal-header">
-                        <div class="zone-modal-title">
-                            <span>${info.icon}</span>
-                            ${info.title}
-                        </div>
-                        <button class="zone-modal-close" onclick="UIZonesManager.closeZoneModal('${zoneName}')">
-                            ✕
-                        </button>
-                    </div>
-                    <div class="zone-cards-container">
-                        ${this._generateZoneCardsGrid(zone, zoneName)}
-                    </div>
+            <div class="reveal-card-container">
+                <div class="reveal-card-list zone-card-list" data-card-count="${cards.length}">
+                    ${cardsHtml}
                 </div>
             </div>
         `;
     }
 
-    /**
-     * Generate zone cards grid
-     */
-    static _generateZoneCardsGrid(cards, zoneName) {
-        if (!cards || cards.length === 0) {
-            const zoneInfo = this.getZoneInfo(zoneName);
-            return `
-                <div class="zone-empty-message">
-                    <div class="zone-empty-icon">${zoneInfo.icon}</div>
-                    <div class="zone-empty-text">No cards in ${zoneInfo.title.toLowerCase()}</div>
-                    <div class="zone-empty-description">${zoneInfo.description}</div>
-                </div>
-            `;
-        }
-        
-        const baseZoneName = zoneName.replace('opponent_', '');
-        const cardsHTML = cards.map((card, index) => {
-            // The onclick is removed from the div wrapper because renderCardWithLoadingState now handles it.
-            return `
-                <div class="zone-card-slider-item">
-                    ${GameCards.renderCardWithLoadingState(card, 'card-mini', true, baseZoneName)}
-                </div>
-            `;
-        }).join('');
-        
-        return `<div class="zone-cards-slider">${cardsHTML}</div>`;
+    static _getZonePopupIndex(popupKey, isOpponent) {
+        const baseName = popupKey.replace('opponent_', '');
+        const order = ['graveyard', 'exile', 'library', 'hand'];
+        const baseIndex = order.includes(baseName) ? order.indexOf(baseName) : order.length;
+        return isOpponent ? baseIndex + 2 : baseIndex;
     }
 
-    /**
-     * Attach modal event listeners
-     */
-    static _attachModalEventListeners(modal, zoneName) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.closeZoneModal(zoneName);
-        });
+    static _positionZonePopupLeft(panel, isOpponent) {
+        if (!panel) {
+            return;
+        }
 
-        const escapeHandler = (e) => {
-            if (e.key === 'Escape') {
-                this.closeZoneModal(zoneName);
-                document.removeEventListener('keydown', escapeHandler);
+        const board = document.getElementById('game-board');
+        if (!board) {
+            return;
+        }
+
+        const padding = 16;
+        const boardRect = board.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        const panelWidth = panelRect.width || panel.offsetWidth || 0;
+        const panelHeight = panelRect.height || panel.offsetHeight || 0;
+
+        let left = boardRect.left - panelWidth - padding;
+        let top = isOpponent
+            ? boardRect.top + padding
+            : boardRect.bottom - panelHeight - padding;
+
+        top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
+        left = Math.max(padding, Math.min(left, window.innerWidth - panelWidth - padding));
+
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
+    }
+
+    static refreshOpenZonePopups(gameState = null) {
+        if (!this._zonePopupElements || this._zonePopupElements.size === 0) {
+            return;
+        }
+
+        const state = gameState || GameCore.getGameState();
+        if (!state) {
+            return;
+        }
+
+        this._zonePopupElements.forEach((elements, popupKey) => {
+            const panel = elements?.panel;
+            if (!panel || panel.classList.contains('hidden')) {
+                return;
             }
-        };
-        document.addEventListener('keydown', escapeHandler);
+
+            const isOpponent = popupKey.startsWith('opponent_');
+            const baseZone = popupKey.replace('opponent_', '');
+            const { playerData, zone } = this._getPlayerZoneData(state, baseZone, isOpponent);
+            if (!playerData) {
+                return;
+            }
+
+            const zoneInfo = this.getZoneInfo(baseZone);
+            const ownerId = playerData.id || (isOpponent ? 'player2' : 'player1');
+            this._openZonePopup(
+                isOpponent ? `opponent_${baseZone}` : baseZone,
+                zone,
+                zoneInfo,
+                isOpponent,
+                ownerId
+            );
+        });
     }
 }
 

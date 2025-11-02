@@ -259,6 +259,48 @@ const GameCards = {
         });
     },
 
+    buildSearchIndex: function(card) {
+        if (!card) {
+            return '';
+        }
+
+        const fragments = [];
+        const push = (value) => {
+            if (value) {
+                fragments.push(String(value).toLowerCase());
+            }
+        };
+
+        push(card.name);
+        push(card.type_line || card.typeLine);
+        push(card.oracle_text || card.text);
+
+        if (Array.isArray(card.keywords) && card.keywords.length) {
+            push(card.keywords.join(' '));
+        }
+
+        if (Array.isArray(card.subtypes) && card.subtypes.length) {
+            push(card.subtypes.join(' '));
+        }
+
+        if (Array.isArray(card.card_faces)) {
+            card.card_faces.forEach((face) => {
+                if (!face) {
+                    return;
+                }
+                push(face.name);
+                push(face.type_line || face.typeLine);
+                push(face.oracle_text || face.text);
+                if (Array.isArray(face.keywords)) {
+                    push(face.keywords.join(' '));
+                }
+            });
+        }
+
+        const combined = fragments.join(' ').replace(/\s+/g, ' ').trim();
+        return combined;
+    },
+
     renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null) {
         const cardId = card.id || card.name;
         const cardName = card.name || 'Unknown';
@@ -273,6 +315,7 @@ const GameCards = {
         const dataImageUrl = GameUtils.escapeHtml(imageUrl || '');
         const dataUniqueId = GameUtils.escapeHtml(uniqueCardId || '');
         const dataZone = GameUtils.escapeHtml(zone || '');
+        const searchIndex = GameUtils.escapeHtml(this.buildSearchIndex(card));
         const jsCardId = JSON.stringify(cardId || '');
         const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
         const zoneAttr = (zone || '').replace(/'/g, "\\'");
@@ -306,6 +349,7 @@ const GameCards = {
                 data-card-zone="${dataZone}"
                 data-card-tapped="${isTapped}"
                 data-card-targeted="${isTargeted}"
+                data-card-search="${searchIndex}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
                 draggable="true"
