@@ -353,6 +353,10 @@ class UIActionHistory {
 
         const normalized = String(action).toLowerCase();
 
+        if (normalized === 'flip_card') {
+            return true;
+        }
+
         if (normalized === 'move_card') {
             const payload = entry?.context?.payload || {};
             const sourceZoneFromPayload =
