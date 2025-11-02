@@ -106,6 +106,17 @@ class DeckCard(BaseModel):
     card: Card = Field(..., description="The card")
     quantity: int = Field(..., description="Number of copies in the deck")
 
+class GameFormat(str, Enum):
+    """Supported game formats for deck construction."""
+    STANDARD = "standard"
+    MODERN = "modern"
+    PIONEER = "pioneer"
+    PAUPER = "pauper"
+    LEGACY = "legacy"
+    VINTAGE = "vintage"
+    DUEL_COMMANDER = "duel_commander"
+    COMMANDER_MULTI = "commander_multi"
+
 
 class Deck(BaseModel):
     """A Magic deck."""
@@ -115,7 +126,10 @@ class Deck(BaseModel):
         default_factory=list,
         description="List of cards in the deck with quantities"
     )
-    format: str = Field(default="standard", description="Deck format")
+    format: GameFormat = Field(
+        default=GameFormat.STANDARD,
+        description="Deck format"
+    )
 
 
 class GameZone(str, Enum):
@@ -137,10 +151,19 @@ class GamePhase(str, Enum):
     END = "end"
 
 
+class PhaseMode(str, Enum):
+    """Phase handling configuration for the game."""
+    CASUAL = "casual"
+    STRICT = "strict"
+
+
 class Player(BaseModel):
     """A player in a game."""
     id: str = Field(..., description="Player ID")
     name: str = Field(..., description="Player name")
+    deck_name: Optional[str] = Field(
+        default=None, description="Name of the deck the player is using"
+    )
     life: int = Field(default=20, description="Life total")
     hand: List[Card] = Field(default_factory=list, description="Cards in hand")
     battlefield: List[Card] = Field(
@@ -167,6 +190,42 @@ class Player(BaseModel):
     )
 
 
+class PlayerDeckStatus(BaseModel):
+    """Status information about a player's deck submission."""
+    submitted: bool = Field(
+        default=False, description="Whether the player has submitted a deck"
+    )
+    validated: bool = Field(
+        default=False, description="Whether the submitted deck passed validation"
+    )
+    seat_claimed: bool = Field(
+        default=False, description="Whether the player seat is occupied in the room"
+    )
+    deck_name: Optional[str] = Field(
+        default=None, description="Name of the submitted deck"
+    )
+    card_count: int = Field(
+        default=0, description="Number of cards in the submitted deck"
+    )
+    message: Optional[str] = Field(
+        default=None, description="Optional status message for the submission"
+    )
+
+class GameSetupStatus(BaseModel):
+    """Overview of the game setup process before the match starts."""
+    game_id: str = Field(..., description="Game identifier")
+    game_format: GameFormat = Field(..., description="Selected game format")
+    phase_mode: PhaseMode = Field(..., description="Selected phase progression mode")
+    status: str = Field(..., description="Human readable setup status")
+    ready: bool = Field(
+        default=False,
+        description="True when both decks are validated and the game is initialized"
+    )
+    player_status: Dict[str, PlayerDeckStatus] = Field(
+        default_factory=dict,
+        description="Per-player deck submission statuses"
+    )
+
 class GameState(BaseModel):
     """Current state of a Magic game."""
     id: str = Field(..., description="Game ID")
@@ -189,6 +248,20 @@ class GameState(BaseModel):
         default_factory=list, description="Spells on the stack"
     )
     priority_player: int = Field(default=0, description="Player with priority")
+    game_format: GameFormat = Field(
+        default=GameFormat.STANDARD, description="Game format selection for this match"
+    )
+    phase_mode: PhaseMode = Field(
+        default=PhaseMode.CASUAL, description="Phase progression mode configuration"
+    )
+    setup_complete: bool = Field(
+        default=True,
+        description="Indicates whether the pre-game deck validation step has finished"
+    )
+    deck_status: Dict[str, PlayerDeckStatus] = Field(
+        default_factory=dict,
+        description="Summary of the deck submissions used to start the game"
+    )
     pending_action: Optional[Dict[str, Any]] = Field(
         default=None,
         description="A pending action requiring player input, e.g., for scry/surveil"

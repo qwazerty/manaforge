@@ -49,20 +49,43 @@
                         </button>
                     </div>
 
-                    <!-- Deck Import -->
-                    <div class="space-y-4">
-                        <div class="text-center">
-                            <h3 class="font-magic text-xl font-bold text-arena-accent mb-2">📚 Import Your Deck</h3>
-                            <p class="text-arena-text-dim text-sm">Paste your decklist to battle with your custom arsenal</p>
+                    <!-- Game Configuration -->
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="text-left space-y-2">
+                            <label for="gameFormat" class="text-sm font-semibold text-arena-accent uppercase tracking-wide">
+                                Game Format
+                            </label>
+                            <select
+                                id="gameFormat"
+                                class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                            >
+                                <option value="standard" selected>Standard</option>
+                                <option value="modern">Modern</option>
+                                <option value="pioneer">Pioneer</option>
+                                <option value="pauper">Pauper</option>
+                                <option value="legacy">Legacy</option>
+                                <option value="vintage">Vintage</option>
+                                <option value="duel_commander">Duel Commander (preview)</option>
+                                <option value="commander_multi">Commander Multi (preview)</option>
+                            </select>
+                            <p class="text-xs text-arena-text-muted">
+                                Commander variants are in preview and may have limited gameplay support.
+                            </p>
                         </div>
-
-                        <div class="relative">
-                            <textarea
-                                id="decklistText"
-                                placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
-                                rows="6"
-                                class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 font-mono text-sm"
-                            ></textarea>
+                        <div class="text-left space-y-2">
+                            <label for="phaseMode" class="text-sm font-semibold text-arena-accent uppercase tracking-wide">
+                                Phase Mode
+                            </label>
+                            <select
+                                id="phaseMode"
+                                class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                            >
+                                <option value="casual" selected>Casual (default)</option>
+                                <option value="strict">Strict</option>
+                            </select>
+                            <p class="text-xs text-arena-text-muted">
+                                Casual lets you skip detailed phase confirmations, while Strict follows full turn structure.
+                            </p>
                         </div>
                     </div>
 
@@ -72,17 +95,11 @@
                         class="arena-button w-full py-6 px-8 rounded-lg font-semibold text-xl transition-all duration-300 group"
                     >
                         <span class="mr-3 group-hover:animate-pulse">⚡</span>
-                        Enter Battlefield
+                        Create Room
                         <span class="ml-3 group-hover:animate-pulse">⚔️</span>
                     </button>
 
                     <div id="battle-status" class="text-center"></div>
-
-                    <!-- Deck Preview -->
-                    <div id="deck-preview" class="hidden mt-6 p-4 bg-arena-surface/50 rounded-lg border border-arena-accent/20">
-                        <h3 class="font-semibold text-arena-accent mb-2">Deck Preview:</h3>
-                        <div id="deck-cards" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm max-h-40 overflow-y-auto"></div>
-                    </div>
                 </div>
             </div>
         </div>

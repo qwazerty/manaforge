@@ -1,7 +1,77 @@
-/* Game Lobby JavaScript - Deck import, battle creation, and game listing */
+/* Game Lobby JavaScript - game listing and room creation */
 
-// Global variables
-let parsedDeck = null;
+const GAME_FORMAT_LABELS = {
+    standard: 'Standard',
+    modern: 'Modern',
+    pioneer: 'Pioneer',
+    pauper: 'Pauper',
+    legacy: 'Legacy',
+    vintage: 'Vintage',
+    duel_commander: 'Duel Commander',
+    commander_multi: 'Commander Multi'
+};
+
+const PHASE_MODE_LABELS = {
+    casual: 'Casual',
+    strict: 'Strict'
+};
+
+const GAME_LIST_REFRESH_MS = 4000;
+let gameListPollId = null;
+let isFetchingGameList = false;
+let lastGameListSnapshot = '';
+
+function normalizeChoice(value) {
+    if (value === undefined || value === null) return '';
+    return String(value).trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function formatChoiceLabel(labelMap, value) {
+    const normalized = normalizeChoice(value);
+    if (!normalized) return '';
+    if (labelMap[normalized]) return labelMap[normalized];
+    return normalized.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function ensureSelectValue(selectElement, value, labelMap) {
+    if (!selectElement) return;
+    const normalized = normalizeChoice(value);
+    if (!normalized) return;
+
+    const options = Array.from(selectElement.options);
+    const existingOption = options.find(
+        (option) => normalizeChoice(option.value) === normalized
+    );
+
+    if (existingOption) {
+        existingOption.selected = true;
+        return;
+    }
+
+    const newOption = document.createElement('option');
+    newOption.value = normalized;
+    newOption.textContent = formatChoiceLabel(labelMap, normalized);
+    selectElement.appendChild(newOption);
+    newOption.selected = true;
+}
+
+function syncSelectionsWithSetup(setupStatus) {
+    if (!setupStatus) return;
+    const formatSelect = document.getElementById('gameFormat');
+    const phaseSelect = document.getElementById('phaseMode');
+
+    ensureSelectValue(formatSelect, setupStatus.game_format, GAME_FORMAT_LABELS);
+    ensureSelectValue(phaseSelect, setupStatus.phase_mode, PHASE_MODE_LABELS);
+}
+
+function determineSeatFromStatus(playerStatus = {}) {
+    const player1 = playerStatus.player1 || {};
+    const player2 = playerStatus.player2 || {};
+
+    if (!player1.seat_claimed) return 'player1';
+    if (!player2.seat_claimed) return 'player2';
+    return 'spectator';
+}
 
 // Generate random game name
 function generateRandomGameName() {
@@ -26,10 +96,21 @@ function generateRandomGameName() {
 }
 
 // Fetch and display the list of ongoing and waiting games
-async function fetchGameList() {
+async function fetchGameList(force = false) {
+    if (isFetchingGameList) return;
+    isFetchingGameList = true;
+
     try {
-        const response = await fetch('/api/v1/games/list');
+        const response = await fetch('/api/v1/games/list', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load games');
         const games = await response.json();
+
+        const snapshot = JSON.stringify(games);
+        if (!force && snapshot === lastGameListSnapshot) {
+            isFetchingGameList = false;
+            return;
+        }
+        lastGameListSnapshot = snapshot;
 
         const gameListDiv = document.getElementById('game-list');
         gameListDiv.innerHTML = '';
@@ -39,54 +120,112 @@ async function fetchGameList() {
             return;
         }
 
-        games.forEach((game, index) => {
+        const sortedGames = [...games].sort((a, b) => {
+            if ((a.ready && b.ready) || (!a.ready && !b.ready)) return 0;
+            return a.ready ? 1 : -1;
+        });
+
+        sortedGames.forEach((game, index) => {
+            const formatLabel = formatChoiceLabel(GAME_FORMAT_LABELS, game.game_format);
+            const phaseLabel = formatChoiceLabel(PHASE_MODE_LABELS, game.phase_mode);
+            const submittedCount = typeof game.submitted_count === 'number' ? game.submitted_count : 0;
+            const validatedCount = typeof game.validated_count === 'number' ? game.validated_count : 0;
+            const seatClaimedCount = typeof game.seat_claimed_count === 'number' ? game.seat_claimed_count : 0;
+            const playerStatus = game.player_status || {};
+            const encodedId = encodeURIComponent(game.game_id);
+            const openSeats = ['player1', 'player2'].filter((seat) => {
+                const info = playerStatus[seat];
+                return !info || !info.seat_claimed;
+            });
+
             const gameCard = document.createElement('div');
             gameCard.className = 'arena-card rounded-lg p-4 mb-3 hover:scale-[1.02] transition-all duration-200 animate-fade-in';
             gameCard.style.animationDelay = `${index * 100}ms`;
 
-            const gameTitle = document.createElement('div');
-            gameTitle.className = 'flex items-center justify-between mb-2';
-            gameTitle.innerHTML = `
-                <h3 class="font-magic text-lg font-bold text-arena-accent">${game.game_id}</h3>
-                <span class="text-sm text-arena-text-dim">${game.status}</span>
+            const titleBlock = document.createElement('div');
+            titleBlock.className = 'flex items-center justify-between mb-2';
+            titleBlock.innerHTML = `
+                <div>
+                    <h3 class="font-magic text-lg font-bold text-arena-accent">${game.game_id}</h3>
+                    <p class="text-xs text-arena-text-muted">${formatLabel} • ${phaseLabel}</p>
+                </div>
+                <span class="text-sm text-arena-text-dim">${game.ready ? 'Ongoing' : 'Setup'}</span>
             `;
+
+            const statusLine = document.createElement('div');
+            statusLine.className = 'text-sm text-arena-text-muted mb-3';
+            if (game.ready) {
+                statusLine.textContent = `Battle in progress • Turn ${game.turn ?? 1}`;
+            } else {
+                const seatSummary = `${seatClaimedCount}/2 seats filled`;
+                const deckSummary = `${submittedCount}/2 decks submitted`;
+                const seatHint = openSeats.length
+                    ? `Waiting on ${openSeats.map((seat) => seat.replace('player', 'Player ')).join(' & ')}`
+                    : `${validatedCount}/2 decks validated`;
+                statusLine.textContent = `${seatSummary} • ${deckSummary} • ${seatHint}`;
+            }
 
             const joinButton = document.createElement('button');
             joinButton.className = 'arena-button mt-2 w-full py-2 px-4 rounded text-sm';
-            if (game.status === 'waiting for players') {
-                joinButton.innerHTML = 'Join Game';
-joinButton.onclick = () => {
-    const gameIdInput = document.getElementById('gameId');
-    gameIdInput.value = game.game_id;
-    gameIdInput.classList.add('animate-pulse-green');
-    setTimeout(() => {
-        gameIdInput.classList.remove('animate-pulse-green');
-    }, 1000);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-            } else {
-                joinButton.innerHTML = 'Spectate Game';
+
+            if (game.ready) {
+                joinButton.textContent = 'Spectate Game';
                 joinButton.onclick = () => {
-                    window.location.href = `/game-interface/${game.game_id}?spectator=true`;
+                    window.location.href = `/game-interface/${encodedId}?spectator=true`;
+                };
+            } else {
+                const seatToJoin = determineSeatFromStatus(playerStatus);
+                const buttonLabel = seatToJoin === 'spectator'
+                    ? 'View Room'
+                    : `Join as ${seatToJoin === 'player1' ? 'Player 1' : 'Player 2'}`;
+                joinButton.textContent = buttonLabel;
+                joinButton.onclick = () => {
+                    window.location.href = `/game-room/${encodedId}?player=${seatToJoin}`;
                 };
             }
 
-            gameCard.appendChild(gameTitle);
+            gameCard.appendChild(titleBlock);
+            gameCard.appendChild(statusLine);
             gameCard.appendChild(joinButton);
-
             gameListDiv.appendChild(gameCard);
         });
     } catch (error) {
         console.error('Error fetching game list:', error);
         const gameListDiv = document.getElementById('game-list');
         gameListDiv.innerHTML = '<div class="text-center text-red-400 py-4">Error loading games</div>';
+    } finally {
+        isFetchingGameList = false;
     }
+}
+
+function startGameListPolling() {
+    if (gameListPollId) clearInterval(gameListPollId);
+    gameListPollId = setInterval(() => fetchGameList(), GAME_LIST_REFRESH_MS);
 }
 
 // Initialize page with random game name and fetch game list on load
 document.addEventListener('DOMContentLoaded', function() {
     generateRandomGameName();
-    fetchGameList();
+    fetchGameList(true);
+    startGameListPolling();
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        if (gameListPollId) {
+            clearInterval(gameListPollId);
+            gameListPollId = null;
+        }
+    } else {
+        fetchGameList(true);
+        startGameListPolling();
+    }
+});
+
+window.addEventListener('beforeunload', () => {
+    if (gameListPollId) {
+        clearInterval(gameListPollId);
+    }
 });
 
 // ===== HELPER FUNCTIONS =====
@@ -139,154 +278,132 @@ function showStatus(message, type = 'info') {
     `;
 }
 
-// ===== CORE BATTLE LOGIC =====
+async function ensureGameRoomExists(gameId, gameFormat, phaseMode) {
+    const encodedId = encodeURIComponent(gameId);
+    const setupUrl = `/api/v1/games/${encodedId}/setup`;
+    const normalizedFormat = normalizeChoice(gameFormat) || 'standard';
+    const normalizedPhase = normalizeChoice(phaseMode) || 'casual';
 
-// Step 1: Parse decklist
-async function parseDeck(decklistText) {
-    showStatus('Parsing your deck...');
-    const response = await fetch('/api/v1/decks/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decklist_text: decklistText })
-    });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Failed to parse deck: ${error.detail || 'Unknown error'}`);
+    let response = await fetch(setupUrl);
+    if (response.ok) {
+        const setup = await response.json();
+        return setup;
     }
 
-    parsedDeck = await response.json();
-    showDeckPreview(parsedDeck);
-    return parsedDeck;
+    if (response.status === 404) {
+        response = await fetch(`/api/v1/games?game_id=${encodedId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                game_format: normalizedFormat,
+                phase_mode: normalizedPhase
+            })
+        });
+
+        if (!response.ok) {
+            const errorPayload = await response.json().catch(() => ({}));
+            throw new Error(errorPayload.detail || 'Unable to create battlefield');
+        }
+
+        const newSetup = await response.json();
+        return newSetup;
+    }
+
+    throw new Error('Unable to fetch battlefield setup');
 }
 
-// Step 2: Check game and join or create
-async function checkAndJoinGame(gameId, decklistText) {
-    showStatus('Checking battlefield status...');
-    const gameCheckResponse = await fetch(`/api/v1/games/${gameId}/state`);
-    let playerRole = 'player1';
-    let actionText = 'Creating battlefield as Player 1';
-    let apiUrl = `/api/v1/games?game_id=${gameId}`;
-    let method = 'POST';
+function determinePlayerRoleFromSetup(setupStatus) {
+    const playerInfo = setupStatus.player_status || {};
+    const player1 = playerInfo.player1 || { submitted: false, validated: false };
+    const player2 = playerInfo.player2 || { submitted: false, validated: false };
 
-    if (gameCheckResponse.ok) {
-        const gameData = await gameCheckResponse.json();
-        if (gameData.players && gameData.players.length >= 2) {
-            throw new Error('Battlefield is full (2 players already)');
+    const player1NeedsDeck = !player1.validated;
+    const player2NeedsDeck = !player2.validated;
+
+    if (player1NeedsDeck) return 'player1';
+    if (player2NeedsDeck) return 'player2';
+    return 'spectator';
+}
+
+function redirectToGameRoom(gameId, playerRole, setupStatus) {
+    const encodedId = encodeURIComponent(gameId);
+
+    if (setupStatus.ready) {
+        const interfaceUrl = `/game-interface/${encodedId}`;
+        if (playerRole === 'player1' || playerRole === 'player2') {
+            window.location.href = `${interfaceUrl}?player=${playerRole}`;
+        } else {
+            window.location.href = `${interfaceUrl}?spectator=true`;
         }
-        playerRole = 'player2';
-        actionText = 'Joining battlefield as Player 2';
-        apiUrl = `/api/v1/games/${gameId}/join`;
+        return;
     }
 
-    showStatus(actionText + '...');
-    const gameResponse = await fetch(apiUrl, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decklist_text: decklistText })
-    });
-
-    if (!gameResponse.ok) {
-        const error = await gameResponse.json();
-        throw new Error(error.detail || 'Failed to join battlefield');
-    }
-
-    const gameData = await gameResponse.json();
-    if (gameData.players && gameData.players.length < 2) {
-        showStatus('Waiting for opponent to join...', 'warning');
-        waitForOpponent(gameId, playerRole);
-    } else {
-        showStatus('Both players ready! Starting the duel...', 'success');
-        setTimeout(() => {
-            window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
-        }, 1500);
-    }
+    const roleParam = playerRole || 'spectator';
+    window.location.href = `/game-room/${encodedId}?player=${roleParam}`;
 }
 
 // Main function for joining or creating battle
 async function joinOrCreateBattle() {
-    const gameId = document.getElementById('gameId').value.trim();
-    const decklistText = document.getElementById('decklistText').value.trim();
+    const rawGameId = document.getElementById('gameId').value;
+    const gameId = rawGameId.trim();
+    const formatSelect = document.getElementById('gameFormat');
+    const phaseModeSelect = document.getElementById('phaseMode');
+    const selectedFormat = normalizeChoice(formatSelect ? formatSelect.value : 'standard') || 'standard';
+    const selectedPhaseMode = normalizeChoice(phaseModeSelect ? phaseModeSelect.value : 'casual') || 'casual';
 
     if (!gameId) {
         showStatus('Please enter a battlefield name', 'error');
         return;
     }
-    if (!decklistText) {
-        showStatus('Please paste your decklist', 'error');
-        return;
-    }
 
     setButtonState(true);
+    showStatus('Preparing battlefield...', 'warning');
 
     try {
-        await parseDeck(decklistText);
-        await checkAndJoinGame(gameId, decklistText);
+        const setupStatus = await ensureGameRoomExists(gameId, selectedFormat, selectedPhaseMode);
+        syncSelectionsWithSetup(setupStatus);
+
+        const actualFormat = normalizeChoice(setupStatus.game_format);
+        const actualPhaseMode = normalizeChoice(setupStatus.phase_mode);
+        const mismatchMessages = [];
+
+        if (actualFormat && actualFormat !== selectedFormat) {
+            mismatchMessages.push(
+                `Battlefield already configured for ${formatChoiceLabel(GAME_FORMAT_LABELS, actualFormat)}.`
+            );
+        }
+        if (actualPhaseMode && actualPhaseMode !== selectedPhaseMode) {
+            mismatchMessages.push(
+                `Phase mode locked to ${formatChoiceLabel(PHASE_MODE_LABELS, actualPhaseMode)}.`
+            );
+        }
+
+        if (mismatchMessages.length) {
+            showStatus(mismatchMessages.join(' '), 'warning');
+        }
+
+        const playerRole = determinePlayerRoleFromSetup(setupStatus);
+
+        if (playerRole === 'spectator' && !setupStatus.ready) {
+            showStatus('Both seats already reserved for validation. Try another battlefield name.', 'error');
+            setButtonState(false);
+            return;
+        }
+
+        if (playerRole === 'player1' || playerRole === 'player2') {
+            showStatus(`Battlefield ready! Redirecting as ${playerRole.toUpperCase()}...`, 'success');
+        } else if (setupStatus.ready) {
+            showStatus('Battlefield already active. Joining as spectator...', 'success');
+        }
+
+        setTimeout(() => {
+            redirectToGameRoom(gameId, playerRole, setupStatus);
+        }, 600);
     } catch (error) {
-        showStatus(error.message, 'error');
+        console.error('Error during battlefield preparation:', error);
+        showStatus(error.message || 'Failed to prepare battlefield', 'error');
         setButtonState(false);
     }
-}
-
-// Show deck preview
-function showDeckPreview(deck) {
-    const previewDiv = document.getElementById('deck-preview');
-    const cardsDiv = document.getElementById('deck-cards');
-
-    cardsDiv.innerHTML = deck.cards.map(deckCard => `
-        <div class="flex justify-between items-center p-2 bg-arena-surface/30 rounded">
-            <span class="text-arena-text">${deckCard.quantity}x ${deckCard.card.name}</span>
-            <span class="text-arena-text-muted text-xs">${deckCard.card.mana_cost || 'No cost'}</span>
-        </div>
-    `).join('');
-
-    previewDiv.classList.remove('hidden');
-}
-
-// Wait for opponent to join
-async function waitForOpponent(gameId, playerRole) {
-    const statusDiv = document.getElementById('battle-status');
-    let attempts = 0;
-    const maxAttempts = 60; // 60 seconds timeout
-
-    const checkInterval = setInterval(async () => {
-        attempts++;
-
-        try {
-            const response = await fetch(`/api/v1/games/${gameId}/state`);
-            if (response.ok) {
-                const gameData = await response.json();
-
-                if (gameData.players && gameData.players.length >= 2) {
-                    clearInterval(checkInterval);
-
-                    statusDiv.innerHTML = `
-                        <div class="arena-surface border border-green-500/50 text-green-400 px-4 py-2 rounded-lg mt-2">
-                            ⚔️ Opponent joined! Starting the duel...
-                        </div>
-                    `;
-
-                    setTimeout(() => {
-                        window.location.href = `/game-interface/${gameId}?player=${playerRole}`;
-                    }, 1500);
-                }
-            }
-        } catch (error) {
-            console.error('Error checking game status:', error);
-        }
-
-        if (attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            statusDiv.innerHTML = `
-                <div class="arena-surface border border-yellow-500/50 text-yellow-400 px-4 py-2 rounded-lg mt-2">
-                    ⏰ Timeout waiting for opponent. You can still join manually.
-                    <br><a href="/game-interface/${gameId}?player=${playerRole}" class="text-arena-accent underline">Enter battlefield anyway</a>
-                </div>
-            `;
-            // Re-enable the main button when timeout occurs
-            setButtonState(false);
-        }
-    }, 1000);
 }
 
 async function searchCards() {

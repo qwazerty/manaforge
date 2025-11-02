@@ -6,7 +6,10 @@ Consolidated and optimized version with unified game action endpoint.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Optional, Any
 
-from app.models.game import Card, Deck, DeckCard, GameState, GameAction
+from app.models.game import (
+    Card, Deck, DeckCard, GameState, GameAction,
+    GameSetupStatus, PlayerDeckStatus, GameFormat, PhaseMode
+)
 from app.services.card_service import CardService
 from app.services.game_engine import SimpleGameEngine
 from app.api.decorators import broadcast_game_update, action_registry
@@ -54,78 +57,179 @@ async def get_card(
 @router.post("/games")
 async def create_game(
     request: Optional[Dict[str, Any]] = None,
-    game_id: Optional[str] = Query(None),
-    card_service: CardService = Depends(get_card_service)
-) -> GameState:
-    """Create a new game with custom or sample decks."""
+    game_id: Optional[str] = Query(None)
+) -> GameSetupStatus:
+    """
+    Create a new game setup (without decks yet).
+    Players will submit their decks in a separate step.
+    """
     if game_id is None:
         import uuid
         game_id = f"game-{str(uuid.uuid4())[:8]}"
     
-    if request and "decklist_text" in request:
-        deck1 = await card_service.parse_decklist(request.get("decklist_text", ""))
-        game_state = game_engine.create_game_player1(game_id, deck1)
+    request_payload = request or {}
+
+    raw_format = request_payload.get("game_format")
+    raw_phase_mode = request_payload.get("phase_mode")
+
+    if raw_format is None:
+        game_format = GameFormat.STANDARD
     else:
+        normalized_format = str(raw_format).strip().lower().replace(" ", "_")
         try:
-            deck1_cards = []
-            for card_name, quantity in [
-                ("Lightning Bolt", 4),
-                ("Grizzly Bears", 4),
-                ("Mountain", 12),
-                ("Forest", 12)
-            ]:
-                card = await card_service.get_card_by_name(card_name)
-                if card:
-                    deck1_cards.append(DeckCard(card=card, quantity=quantity))
-            
-            deck2_cards = []
-            for card_name, quantity in [
-                ("Lightning Bolt", 4),
-                ("Counterspell", 4),
-                ("Serra Angel", 3),
-                ("Island", 10),
-                ("Mountain", 10),
-                ("Plains", 9)
-            ]:
-                card = await card_service.get_card_by_name(card_name)
-                if card:
-                    deck2_cards.append(DeckCard(card=card, quantity=quantity))
-            
-            deck1 = Deck(name="Red-Green Deck", cards=deck1_cards)
-            deck2 = Deck(name="Blue-White-Red Deck", cards=deck2_cards)
-            
-            game_state = game_engine.create_game(game_id, deck1, deck2)
-            
-        except Exception as e:
-            print(f"Error creating sample decks: {e}")
-            deck1 = Deck(name="Basic Red Deck", cards=[])
-            deck2 = Deck(name="Basic Blue Deck", cards=[])
-            game_state = game_engine.create_game(game_id, deck1, deck2)
+            game_format = GameFormat(normalized_format)
+        except ValueError:
+            allowed_formats = ", ".join(fmt.value for fmt in GameFormat)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid game_format '{raw_format}'. Allowed values: {allowed_formats}"
+            )
+
+    if raw_phase_mode is None:
+        phase_mode = PhaseMode.CASUAL
+    else:
+        normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
+        try:
+            phase_mode = PhaseMode(normalized_phase)
+        except ValueError:
+            allowed_modes = ", ".join(mode.value for mode in PhaseMode)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}"
+            )
+
+    setup_status = game_engine.create_game_setup(
+        game_id=game_id,
+        game_format=game_format,
+        phase_mode=phase_mode
+    )
     
-    return game_state
+    return setup_status
 
 
 @router.get("/games/list")
 async def list_games() -> List[Dict[str, Any]]:
-    """List all ongoing and waiting games."""
-    print("Fetching games from game engine...")
-    games_list = []
+    """List all game rooms and active games with their current status."""
+    games_list: List[Dict[str, Any]] = []
+    processed_games = set()
+
+    for game_id, setup in game_engine.game_setups.items():
+        player_status_dump = {
+            player_id: status.model_dump()
+            for player_id, status in setup.player_status.items()
+        }
+        submitted_count = sum(1 for status in player_status_dump.values() if status.get("submitted"))
+        validated_count = sum(1 for status in player_status_dump.values() if status.get("validated"))
+        seat_claimed_count = sum(1 for status in player_status_dump.values() if status.get("seat_claimed"))
+
+        entry: Dict[str, Any] = {
+            "game_id": game_id,
+            "status": setup.status,
+            "ready": setup.ready,
+            "game_format": setup.game_format.value if hasattr(setup.game_format, "value") else str(setup.game_format),
+            "phase_mode": setup.phase_mode.value if hasattr(setup.phase_mode, "value") else str(setup.phase_mode),
+            "submitted_count": submitted_count,
+            "validated_count": validated_count,
+            "seat_claimed_count": seat_claimed_count,
+            "player_status": player_status_dump,
+            "players": [
+                player_id
+                for player_id, status in player_status_dump.items()
+                if status.get("submitted")
+            ],
+            "max_players": 2
+        }
+
+        if setup.ready and game_id in game_engine.games:
+            game_state = game_engine.games[game_id]
+            entry["status"] = "ongoing"
+            entry["players"] = [player.id for player in game_state.players]
+            entry["active_player"] = game_state.active_player
+            entry["turn"] = game_state.turn
+            processed_games.add(game_id)
+
+        games_list.append(entry)
+
     for game_id, game_state in game_engine.games.items():
-        print(f"Processing game {game_id} with state: {game_state}")
-        players = game_state.players
-        status = "waiting for players" if len(players) < 2 else "ongoing"
+        if game_id in processed_games:
+            continue
         games_list.append({
             "game_id": game_id,
-            "status": status,
-            "players": [player.id for player in players]
+            "status": "ongoing",
+            "ready": True,
+            "game_format": getattr(game_state.game_format, "value", str(game_state.game_format)),
+            "phase_mode": getattr(game_state.phase_mode, "value", str(game_state.phase_mode)),
+            "submitted_count": len(game_state.players),
+            "validated_count": len(game_state.players),
+            "seat_claimed_count": len(game_state.players),
+            "player_status": {},
+            "players": [player.id for player in game_state.players],
+            "active_player": game_state.active_player,
+            "turn": game_state.turn,
+            "max_players": len(game_state.players)
         })
-    print(f"Returning games list: {games_list}")
+
     return games_list
 
 
+@router.get("/games/{game_id}/setup")
+async def get_game_setup_status(game_id: str) -> GameSetupStatus:
+    """Get game setup status (for deck import phase)."""
+    setup = game_engine.get_game_setup_status(game_id)
+    if not setup:
+        raise HTTPException(status_code=404, detail="Game setup not found")
+    return setup
+
+@router.post("/games/{game_id}/submit-deck")
+async def submit_player_deck(
+    game_id: str,
+    request: dict,
+    card_service: CardService = Depends(get_card_service)
+) -> GameSetupStatus:
+    """
+    Submit a deck for a specific player in the game setup phase.
+    Once both players have submitted valid decks, the game will initialize.
+    """
+    player_id = request.get("player_id")
+    decklist_text = request.get("decklist_text", "")
+    
+    if not player_id:
+        raise HTTPException(status_code=400, detail="player_id is required")
+    if not decklist_text:
+        raise HTTPException(status_code=400, detail="decklist_text is required")
+    
+    try:
+        deck = await card_service.parse_decklist(decklist_text)
+        
+        setup_status = game_engine.submit_player_deck(
+            game_id=game_id,
+            player_id=player_id,
+            deck=deck
+        )
+        
+        return setup_status
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Error submitting deck: {str(e)}"
+        )
+
+@router.post("/games/{game_id}/claim-seat")
+async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
+    """Mark a seat as occupied when a player joins the room."""
+    player_id = request.get("player_id")
+    if player_id not in {"player1", "player2"}:
+        raise HTTPException(status_code=400, detail="player_id must be player1 or player2")
+
+    try:
+        setup_status = game_engine.claim_player_seat(game_id=game_id, player_id=player_id)
+        return setup_status
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
 @router.get("/games/{game_id}/state")
 async def get_game_state(game_id: str) -> GameState:
-    """Get current game state."""
+    """Get current game state (only available after setup is complete)."""
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
     return game_engine.games[game_id]
@@ -177,42 +281,6 @@ async def get_game_ui_data(game_id: str) -> dict:
     }
 
 
-@router.post("/games/{game_id}/join")
-async def join_game(
-    game_id: str,
-    request: dict,
-    card_service: CardService = Depends(get_card_service)
-) -> GameState:
-    """Join an existing game as player 2 with a deck."""
-    if game_id not in game_engine.games:
-        raise HTTPException(status_code=404, detail="Game not found")
-    
-    current_state = game_engine.games[game_id]
-    
-    if len(current_state.players) >= 2:
-        raise HTTPException(status_code=400, detail="Game is already full")
-    
-    decklist_text = request.get("decklist_text", "")
-    if not decklist_text:
-        raise HTTPException(status_code=400, detail="Decklist text is required")
-    
-    try:
-        deck = await card_service.parse_decklist(decklist_text)
-        
-        game_state = game_engine.join_game(game_id, deck)
-        
-        await broadcast_game_update(game_id, game_state, {
-            "action": "player_joined",
-            "player": "2",
-            "success": True
-        })
-        
-        return game_state
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Error joining game: {str(e)}"
-        )
 
 
 @router.post("/games/{game_id}/action")
