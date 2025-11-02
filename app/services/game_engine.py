@@ -5,18 +5,198 @@ This will be replaced by XMage integration later.
 
 import random
 import asyncio
-from typing import List
+from typing import List, Optional, Dict
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
-    GamePhase, CardType
+    GamePhase, CardType, GameSetupStatus, PlayerDeckStatus,
+    GameFormat, PhaseMode
 )
-
 
 class SimpleGameEngine:
     """Simplified MTG game engine for POC."""
     
     def __init__(self):
         self.games: dict[str, GameState] = {}
+        self.game_setups: dict[str, GameSetupStatus] = {}
+        self._pending_decks: dict[str, dict[str, Deck]] = {}
+    
+    def create_game_setup(
+        self,
+        game_id: str,
+        game_format: GameFormat = GameFormat.STANDARD,
+        phase_mode: PhaseMode = PhaseMode.CASUAL
+    ) -> GameSetupStatus:
+        """
+        Create a new game setup (pre-game state before decks are submitted).
+        """
+        if game_id in self.game_setups:
+            existing_setup = self.game_setups[game_id]
+            print(f"Game setup {game_id} already exists, returning current status")
+            return existing_setup
+
+        setup = GameSetupStatus(
+            game_id=game_id,
+            game_format=game_format,
+            phase_mode=phase_mode,
+            status="Waiting for players to join (0/2 seats filled)",
+            ready=False,
+            player_status={
+                "player1": PlayerDeckStatus(submitted=False, validated=False),
+                "player2": PlayerDeckStatus(submitted=False, validated=False)
+            }
+        )
+        
+        self.game_setups[game_id] = setup
+        self._pending_decks[game_id] = {}
+        print(
+            f"Created game setup for {game_id} with "
+            f"format={game_format.value}, phase_mode={phase_mode.value}"
+        )
+        return setup
+    
+    def get_game_setup_status(self, game_id: str) -> Optional[GameSetupStatus]:
+        """Get the setup status for a game."""
+        return self.game_setups.get(game_id)
+    
+    def submit_player_deck(
+        self, game_id: str, player_id: str, deck: Deck
+    ) -> GameSetupStatus:
+        """
+        Submit a deck for a player during the setup phase.
+        Automatically initializes the game when both players have valid decks.
+        """
+        if game_id not in self.game_setups:
+            raise ValueError(f"Game setup {game_id} not found")
+        
+        setup = self.game_setups[game_id]
+        deck.format = setup.game_format
+        
+        # Validate deck
+        card_count = sum(dc.quantity for dc in deck.cards)
+        if card_count < 40:
+            setup.player_status[player_id] = PlayerDeckStatus(
+                submitted=True,
+                validated=False,
+                seat_claimed=True,
+                deck_name=deck.name,
+                card_count=card_count,
+                message=f"Deck must contain at least 40 cards (has {card_count})"
+            )
+            setup.status = f"{player_id} submitted invalid deck"
+            return setup
+        
+        # Mark deck as submitted and validated
+        setup.player_status[player_id] = PlayerDeckStatus(
+            submitted=True,
+            validated=True,
+            seat_claimed=True,
+            deck_name=deck.name,
+            card_count=card_count,
+            message="Deck validated successfully"
+        )
+        
+        # Store the deck temporarily
+        if game_id not in self._pending_decks:
+            self._pending_decks[game_id] = {}
+        self._pending_decks[game_id][player_id] = deck
+        
+        # Check if both players have submitted valid decks
+        all_validated = all(
+            status.validated 
+            for status in setup.player_status.values()
+        )
+        
+        if all_validated:
+            # Initialize the actual game
+            player1_deck = self._pending_decks.get(game_id, {}).get("player1")
+            player2_deck = self._pending_decks.get(game_id, {}).get("player2")
+            
+            if player1_deck and player2_deck:
+                game_state = self._initialize_game_from_setup(
+                    game_id, player1_deck, player2_deck, setup
+                )
+                setup.ready = True
+                setup.status = "Game ready - both decks validated"
+                print(f"Game {game_id} initialized with both players' decks")
+        else:
+            submitted_count = sum(
+                1 for status in setup.player_status.values() if status.submitted
+            )
+            claimed_count = sum(
+                1 for status in setup.player_status.values() if status.seat_claimed
+            )
+            setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+        
+        return setup
+
+    def claim_player_seat(self, game_id: str, player_id: str) -> GameSetupStatus:
+        """Claim a seat in the game room without submitting a deck yet."""
+        if game_id not in self.game_setups:
+            raise ValueError(f"Game setup {game_id} not found")
+
+        if player_id not in {"player1", "player2"}:
+            raise ValueError(f"Invalid player seat {player_id}")
+
+        setup = self.game_setups[game_id]
+        player_status = setup.player_status.get(player_id)
+        if not player_status:
+            player_status = PlayerDeckStatus()
+
+        if not player_status.seat_claimed:
+            player_status.seat_claimed = True
+            player_status.message = player_status.message or "Seat claimed. Awaiting deck submission."
+            setup.player_status[player_id] = player_status
+
+            claimed_count = sum(1 for status in setup.player_status.values() if status.seat_claimed)
+            submitted_count = sum(1 for status in setup.player_status.values() if status.submitted)
+            if not setup.ready:
+                setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+
+        return setup
+    
+    def _initialize_game_from_setup(
+        self, game_id: str, player1_deck: Deck, player2_deck: Deck,
+        setup: GameSetupStatus
+    ) -> GameState:
+        """Initialize the actual game state from validated decks."""
+        player1_id = "player1"
+        player2_id = "player2"
+
+        player1 = Player(
+            id=player1_id,
+            name="Player 1",
+            deck_name=player1_deck.name,
+            library=self._shuffle_deck(player1_deck.cards, player1_id)
+        )
+        player2 = Player(
+            id=player2_id,
+            name="Player 2",
+            deck_name=player2_deck.name,
+            library=self._shuffle_deck(player2_deck.cards, player2_id)
+        )
+        
+        self._draw_cards(player1, 7)
+        self._draw_cards(player2, 7)
+        
+        game_state = GameState(
+            id=game_id,
+            players=[player1, player2],
+            active_player=0,
+            phase=GamePhase.BEGIN,
+            round=1,
+            players_played_this_round=[False, False],
+            game_format=setup.game_format,
+            phase_mode=setup.phase_mode,
+            setup_complete=True,
+            deck_status={
+                "player1": setup.player_status["player1"],
+                "player2": setup.player_status["player2"]
+            }
+        )
+        
+        self.games[game_id] = game_state
+        self._pending_decks.pop(game_id, None)
+        return game_state
     
     def create_game(
         self, game_id: str, player1_deck: Deck, player2_deck: Deck

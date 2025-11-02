@@ -2,9 +2,10 @@
 Main FastAPI application.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from typing import Optional
 
 from app.core.config import settings
 from app.api.routes import router
@@ -88,6 +89,65 @@ async def game_interface(request: Request, game_id: str):
         {"request": request, "game": game_dict}
     )
 
+
+@app.get("/game-room/{game_id}")
+async def game_room(
+    request: Request,
+    game_id: str,
+    player: Optional[str] = Query(default=None)
+):
+    """Game setup status page before the duel starts."""
+    from app.api.routes import game_engine
+
+    setup_status = game_engine.get_game_setup_status(game_id)
+    if not setup_status:
+        setup_status = game_engine.create_game_setup(game_id=game_id)
+
+    player_status = setup_status.player_status
+    allowed_players = {"player1", "player2", "spectator"}
+
+    def determine_player_role(requested: Optional[str]) -> str:
+        seats = ["player1", "player2"]
+        if requested in seats:
+            return requested
+        if requested == "spectator":
+            return "spectator"
+
+        for seat in seats:
+            status = player_status.get(seat)
+            if not status or not status.seat_claimed:
+                return seat
+        return "spectator"
+
+    player_role = determine_player_role(player)
+
+    if player_role in {"player1", "player2"}:
+        setup_status = game_engine.claim_player_seat(game_id=game_id, player_id=player_role)
+        player_status = setup_status.player_status
+
+    setup_data = setup_status.model_dump()
+    game_interface_url = str(request.url_for("game_interface", game_id=game_id))
+    setup_api_url = str(request.url_for("get_game_setup_status", game_id=game_id))
+    submit_api_url = str(request.url_for("submit_player_deck", game_id=game_id))
+    game_room_url = str(request.url_for("game_room", game_id=game_id))
+    share_links = {
+        "player1": f"{game_room_url}?player=player1",
+        "player2": f"{game_room_url}?player=player2",
+        "spectator": f"{game_room_url}?player=spectator"
+    }
+    context = {
+        "request": request,
+        "setup": setup_data,
+        "game_id": game_id,
+        "player_role": player_role,
+        "title": f"Game Room - {game_id}",
+        "game_interface_url": game_interface_url,
+        "setup_api_url": setup_api_url,
+        "submit_api_url": submit_api_url,
+        "game_room_url": game_room_url,
+        "share_links": share_links
+    }
+    return templates.TemplateResponse("game_room.html", context)
 
 @app.get("/game")
 async def game_lobby(request: Request):

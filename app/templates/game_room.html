@@ -1,0 +1,222 @@
+{% extends "base_arena.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% set player_status = setup['player_status'] %}
+{% set player1 = player_status.get('player1') %}
+{% set player2 = player_status.get('player2') %}
+{% block content %}
+<div id="game-setup-root" class="py-12 px-4">
+    <div class="max-w-6xl mx-auto space-y-8">
+        <!-- Room Overview -->
+        <div class="arena-card rounded-xl p-8 space-y-6 animate-slide-up">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+                <div class="space-y-3">
+                    <h1 class="font-magic text-3xl md:text-4xl font-bold text-arena-accent">⚙️ Duel Preparation</h1>
+                    <p class="text-arena-text text-lg">
+                        Preparing battlefield <span class="text-arena-accent font-semibold">{{ game_id }}</span>
+                    </p>
+                    <p id="setup-overall-status" class="text-arena-text-dim">
+                        {{ setup['status'] }}
+                    </p>
+                    <p id="room-seat-summary" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-arena-surface-light text-sm text-arena-text-dim border border-arena-accent/20">
+                        Seats:
+                        <span class="font-semibold text-arena-accent">
+                            —
+                        </span>
+                    </p>
+                    <p id="setup-progress-pill" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-arena-surface-light text-sm text-arena-text-dim border border-arena-accent/20">
+                        Deck submissions: 
+                        <span class="font-semibold text-arena-accent">
+                            {{ (1 if player1 and player1['submitted'] else 0) + (1 if player2 and player2['submitted'] else 0) }} / 2
+                        </span>
+                    </p>
+                    <p id="setup-last-update" class="text-xs text-arena-text-muted">
+                        Last update: just now
+                    </p>
+                </div>
+
+                <div class="w-full md:w-80 space-y-4">
+                    <div class="bg-arena-surface/80 border border-arena-accent/20 rounded-lg p-4">
+                        <p class="text-sm text-arena-text-muted uppercase tracking-wide mb-3">Share Room Links</p>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex flex-col gap-2">
+                                <label class="text-arena-text-dim font-medium">Player 1</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" readonly class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none" value="{{ share_links['player1'] }}">
+                                    <button type="button" class="arena-button px-3 py-2 text-xs" data-copy-role="player1">Copy</button>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="text-arena-text-dim font-medium">Player 2</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" readonly class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none" value="{{ share_links['player2'] }}">
+                                    <button type="button" class="arena-button px-3 py-2 text-xs" data-copy-role="player2">Copy</button>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="text-arena-text-dim font-medium">Spectator</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" readonly class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none" value="{{ share_links['spectator'] }}">
+                                    <button type="button" class="arena-button px-3 py-2 text-xs" data-copy-role="spectator">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="copy-status-message" class="text-xs text-arena-text-muted"></div>
+                </div>
+            </div>
+
+            <div class="grid gap-4 text-sm text-arena-text-dim md:grid-cols-3">
+                <div class="flex items-center gap-3 bg-arena-surface-light rounded-lg px-4 py-3 border border-arena-accent/10">
+                    <span class="text-xl">🎯</span>
+                    <div>
+                        <p class="text-arena-text font-semibold">Game Format</p>
+                        <p>{{ setup['game_format'] | replace('_', ' ') | title }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-arena-surface-light rounded-lg px-4 py-3 border border-arena-accent/10">
+                    <span class="text-xl">⏱️</span>
+                    <div>
+                        <p class="text-arena-text font-semibold">Phase Mode</p>
+                        <p>{{ setup['phase_mode'] | replace('_', ' ') | title }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-arena-surface-light rounded-lg px-4 py-3 border border-arena-accent/10">
+                    <span class="text-xl">🛡️</span>
+                    <div>
+                        <p class="text-arena-text font-semibold">Your Role</p>
+        <p>{{ player_role | replace('player', 'player ') | title }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Status Grid -->
+        <div class="grid gap-6 md:grid-cols-2">
+            <div id="player-status-player1" class="arena-card rounded-xl p-6 space-y-4 border border-arena-accent/20">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-magic text-2xl text-arena-accent mb-1">Player 1</h2>
+                        <p class="text-sm text-arena-text-muted">Primary seat</p>
+                    </div>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-yellow-500/40 text-yellow-300 bg-arena-surface/40" data-player="player1" data-field="badge">
+                        {% if player1 and player1['validated'] %}
+                            Ready
+                        {% elif player1 and player1['submitted'] %}
+                            Deck Submitted
+                        {% elif player1 and player1['seat_claimed'] %}
+                            Seated
+                        {% else %}
+                            Open Seat
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="space-y-3 text-sm text-arena-text-dim" data-player="player1" data-field="details">
+                    <p>Seat Status: <span class="text-arena-text">{{ 'Occupied' if player1 and player1['seat_claimed'] else 'Available' }}</span></p>
+                    <p>Deck Name: <span class="text-arena-text">{{ player1['deck_name'] if player1 and player1['deck_name'] else 'Pending submission' }}</span></p>
+                    <p>Card Count: <span class="text-arena-text">{{ player1['card_count'] if player1 and player1['card_count'] else '—' }}</span></p>
+                    <p>Status: <span class="text-arena-text">{{ player1['message'] if player1 and player1['message'] else 'Awaiting player action' }}</span></p>
+                </div>
+            </div>
+
+            <div id="player-status-player2" class="arena-card rounded-xl p-6 space-y-4 border border-arena-accent/20">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-magic text-2xl text-arena-accent mb-1">Player 2</h2>
+                        <p class="text-sm text-arena-text-muted">Challenger seat</p>
+                    </div>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-yellow-500/40 text-yellow-300 bg-arena-surface/40" data-player="player2" data-field="badge">
+                        {% if player2 and player2['validated'] %}
+                            Ready
+                        {% elif player2 and player2['submitted'] %}
+                            Deck Submitted
+                        {% elif player2 and player2['seat_claimed'] %}
+                            Seated
+                        {% else %}
+                            Open Seat
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="space-y-3 text-sm text-arena-text-dim" data-player="player2" data-field="details">
+                    <p>Seat Status: <span class="text-arena-text">{{ 'Occupied' if player2 and player2['seat_claimed'] else 'Available' }}</span></p>
+                    <p>Deck Name: <span class="text-arena-text">{{ player2['deck_name'] if player2 and player2['deck_name'] else 'Pending submission' }}</span></p>
+                    <p>Card Count: <span class="text-arena-text">{{ player2['card_count'] if player2 and player2['card_count'] else '—' }}</span></p>
+                    <p>Status: <span class="text-arena-text">{{ player2['message'] if player2 and player2['message'] else 'Awaiting player action' }}</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deck Submission -->
+        <div id="deck-form-section" class="arena-card rounded-xl p-8 space-y-6 border border-arena-accent/20 {% if player_role == 'spectator' %}hidden{% endif %}">
+            <div>
+                <h2 class="font-magic text-2xl text-arena-accent mb-2">📚 Submit Your Deck</h2>
+                <p class="text-arena-text-dim text-sm">
+                    Paste your decklist below. It will be validated automatically via Scryfall once submitted.
+                </p>
+            </div>
+
+            <form id="deck-submit-form" class="space-y-4">
+                <textarea
+                    id="decklistText"
+                    rows="8"
+                    class="w-full px-5 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none font-mono text-sm"
+                    placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
+                ></textarea>
+
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <p id="opponent-status-msg" class="text-sm text-arena-text-muted">
+                        Awaiting updates from both players...
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="button" id="deck-preview-button" class="arena-button px-5 py-3 text-sm">
+                            Preview Deck
+                        </button>
+                        <button type="submit" id="deck-submit-button" class="arena-button px-6 py-3 text-sm font-semibold">
+                            Submit Deck
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div id="deck-submit-status" class="text-sm text-arena-text-muted"></div>
+
+            <div id="deck-preview" class="hidden space-y-3 border border-arena-accent/20 rounded-lg bg-arena-surface/60 p-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-arena-accent">Deck Preview</h3>
+                    <span id="deck-preview-count" class="text-xs text-arena-text-muted"></span>
+                </div>
+                <div id="deck-preview-cards" class="grid gap-2 md:grid-cols-2 text-sm max-h-56 overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+
+        <!-- Spectator Guidance -->
+        <div id="spectator-message" class="arena-card rounded-xl p-6 border border-arena-accent/20 {% if player_role != 'spectator' %}hidden{% endif %}">
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">👀</span>
+                <div>
+                    <h3 class="font-magic text-xl text-arena-accent mb-1">Spectator Mode</h3>
+                    <p class="text-sm text-arena-text-dim">
+                        Both seats are already taken. Feel free to stay on this page to monitor preparation or jump directly to the battlefield once decks are validated.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.gameRoomConfig = {{ {
+    "gameId": game_id,
+    "playerRole": player_role,
+    "setupApiUrl": setup_api_url,
+    "submitApiUrl": submit_api_url,
+    "gameInterfaceUrl": game_interface_url,
+    "initialStatus": setup,
+    "shareLinks": share_links
+} | tojson }};
+</script>
+<script src="{{ url_for('static', path='js/game-room.js') }}"></script>
+{% endblock %}
