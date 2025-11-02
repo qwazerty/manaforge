@@ -57,6 +57,12 @@ class Card(BaseModel):
     toughness: Optional[str] = Field(
         default=None, description="Creature toughness"
     )
+    current_power: Optional[str] = Field(
+        default=None, description="Current overridden power"
+    )
+    current_toughness: Optional[str] = Field(
+        default=None, description="Current overridden toughness"
+    )
     colors: List[Color] = Field(default_factory=list, description="Card colors")
     rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
     image_url: Optional[str] = Field(

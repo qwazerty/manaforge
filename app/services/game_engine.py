@@ -130,6 +130,7 @@ class SimpleGameEngine:
             "add_counter": self._add_counter,
             "remove_counter": self._remove_counter,
             "set_counter": self._set_counter,
+            "set_power_toughness": self._set_power_toughness,
             "search_and_add_card": self._search_and_add_card,
             "create_token": self._create_token,
         }
@@ -798,6 +799,71 @@ class SimpleGameEngine:
 
         face_name = "back" if card_found.current_face == 1 else "front"
         print(f"Player {action.player_id} flipped {card_found.name} to {face_name} face")
+
+    def _find_card_by_unique_id(self, game_state: GameState, unique_id: str):
+        for player in game_state.players:
+            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library", "reveal_zone"]:
+                zone = getattr(player, zone_name, [])
+                for card in zone:
+                    if card.unique_id == unique_id:
+                        return card
+
+        for spell in game_state.stack:
+            if spell.unique_id == unique_id:
+                return spell
+
+        return None
+
+    def _set_power_toughness(self, game_state: GameState, action: GameAction) -> None:
+        data = action.additional_data or {}
+        unique_id = data.get("unique_id")
+        if not unique_id:
+            raise ValueError("unique_id is required for set_power_toughness action")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        def normalize_stat(name: str):
+            value = data.get(name)
+            if value is None:
+                return None
+            if isinstance(value, str):
+                value = value.strip()
+            else:
+                value = str(value)
+
+            if value == "":
+                return None
+
+            if not value.lstrip("-").isdigit():
+                raise ValueError(f"{name.capitalize()} must be an integer value")
+
+            return str(int(value))
+
+        def canonical_base(value):
+            if value is None:
+                return None
+            text = str(value).strip()
+            if not text:
+                return None
+            if text.lstrip("-").isdigit():
+                return str(int(text))
+            return text
+
+        power_value = normalize_stat("power")
+        toughness_value = normalize_stat("toughness")
+
+        base_power = canonical_base(card_found.power)
+        base_toughness = canonical_base(card_found.toughness)
+
+        if power_value is not None and power_value == base_power:
+            power_value = None
+        if toughness_value is not None and toughness_value == base_toughness:
+            toughness_value = None
+
+        card_found.current_power = power_value
+        card_found.current_toughness = toughness_value
 
     def _add_counter(self, game_state: GameState, action: GameAction) -> None:
         """Add counters to a card."""

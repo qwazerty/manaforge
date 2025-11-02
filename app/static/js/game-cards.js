@@ -301,6 +301,91 @@ const GameCards = {
         return combined;
     },
 
+    computeEffectivePowerToughness: function(card) {
+        if (!card) {
+            return null;
+        }
+
+        const normalize = (value) => {
+            if (value === undefined || value === null) {
+                return null;
+            }
+            const text = String(value).trim();
+            return text.length ? text : null;
+        };
+
+        const isNumeric = (text) => /^-?\d+$/.test(text);
+
+        const basePowerRaw = normalize(card.power);
+        const baseToughnessRaw = normalize(card.toughness);
+
+        const overridePowerRaw = normalize(
+            card.current_power ?? card.currentPower ??
+            card.power_override ?? card.powerOverride ??
+            card.effective_power ?? card.effectivePower ??
+            card.display_power ?? card.displayPower ??
+            card.modified_power ?? card.modifiedPower ?? null
+        );
+
+        const overrideToughnessRaw = normalize(
+            card.current_toughness ?? card.currentToughness ??
+            card.toughness_override ?? card.toughnessOverride ??
+            card.effective_toughness ?? card.effectiveToughness ??
+            card.display_toughness ?? card.displayToughness ??
+            card.modified_toughness ?? card.modifiedToughness ?? null
+        );
+
+        const displayPowerText = overridePowerRaw && isNumeric(overridePowerRaw)
+            ? overridePowerRaw
+            : (basePowerRaw && isNumeric(basePowerRaw) ? basePowerRaw : null);
+
+        const displayToughnessText = overrideToughnessRaw && isNumeric(overrideToughnessRaw)
+            ? overrideToughnessRaw
+            : (baseToughnessRaw && isNumeric(baseToughnessRaw) ? baseToughnessRaw : null);
+
+        if (!displayPowerText || !displayToughnessText) {
+            return null;
+        }
+
+        const hasModification = (overridePowerRaw !== null && overridePowerRaw !== basePowerRaw) ||
+            (overrideToughnessRaw !== null && overrideToughnessRaw !== baseToughnessRaw);
+
+        return {
+            basePowerText: basePowerRaw,
+            baseToughnessText: baseToughnessRaw,
+            displayPowerText,
+            displayToughnessText,
+            hasModification
+        };
+    },
+
+    generatePowerToughnessOverlay: function(card) {
+        const stats = this.computeEffectivePowerToughness(card);
+        if (!stats) {
+            return '';
+        }
+
+        const powerText = GameUtils.escapeHtml(stats.displayPowerText);
+        const toughnessText = GameUtils.escapeHtml(stats.displayToughnessText);
+        const basePowerText = stats.basePowerText ? GameUtils.escapeHtml(stats.basePowerText) : '';
+        const baseToughnessText = stats.baseToughnessText ? GameUtils.escapeHtml(stats.baseToughnessText) : '';
+        const dataBase = basePowerText || baseToughnessText
+            ? `${basePowerText}/${baseToughnessText}`
+            : '';
+        const dataValue = `${powerText}/${toughnessText}`;
+        const overlayClass = stats.hasModification
+            ? 'card-pt-overlay card-pt-overlay-modified'
+            : 'card-pt-overlay';
+
+        return `
+            <div class="${overlayClass}"
+                data-pt-base="${dataBase}"
+                data-pt-value="${dataValue}">
+                <span class="card-pt-value">${powerText}</span>/<span class="card-pt-value">${toughnessText}</span>
+            </div>
+        `;
+    },
+
     renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null) {
         const cardId = card.id || card.name;
         const cardName = card.name || 'Unknown';
@@ -339,6 +424,7 @@ const GameCards = {
 
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
+        const powerToughnessHtml = this.generatePowerToughnessOverlay(card);
 
         return `
             <div class="${cardClass}${tappedClass}${targetedClass}" 
@@ -368,10 +454,12 @@ const GameCards = {
                         <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;">
                         </div>
                         ${countersHtml}
+                        ${powerToughnessHtml}
                     </div>
                 ` : `
-                    <div class="card-fallback">
+                    <div class="card-fallback relative">
                         ${countersHtml}
+                        ${powerToughnessHtml}
                     </div>
                 `}
             </div>
@@ -753,9 +841,6 @@ const GameCards = {
         }
 
         if (!isOpponent) {
-            if (cardZone !== 'reveal') {
-                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.showInRevealZone(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">👁️</span> Show in Reveal Zone</div>`;
-            }
             if (cardZone === 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
             } else if (cardZone === 'deck') {
@@ -767,21 +852,20 @@ const GameCards = {
                 const tapIcon = isTapped ? '⤴️' : '🔄';
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.tapCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
 
-                if (cardData.counters && Object.keys(cardData.counters).length > 0) {
-                    menuHTML += `<div class="card-context-menu-divider"></div>`;
-                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">🔢</span> Manage Counters</div>`;
-                } else {
-                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showAddCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">➕</span> Add Counter</div>`;
-                }
+                const counterIcon = '🔢';
+                menuHTML += `<div class="card-context-menu-divider"></div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">${counterIcon}</span> Manage Counters</div>`;
             }
 
             menuHTML += `
                 <div class="card-context-menu-divider"></div>
                 <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToGraveyard(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⚰️</span> Send to Graveyard</div>
                 <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToExile(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">✨</span> Send to Exile</div>`;
-
             if (cardZone !== 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.moveCard(${jsCardId}, ${jsCardZone}, "hand", ${jsUniqueCardId})`)}"><span class="icon">👋</span> Return to Hand</div>`;
+            }
+            if (cardZone !== 'reveal') {
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.showInRevealZone(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">👁️</span> Show in Reveal Zone</div>`;
             }
         }
 
@@ -966,66 +1050,15 @@ const GameCards = {
         modal.style.display = 'flex';
     },
 
-    showAddCounterModal: function(uniqueCardId, cardId) {
-        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-        if (!cardElement) return;
-
-        const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
-        const cardName = cardData.name || 'Unknown Card';
-
-        // Remove any existing counter modal
-        const existingModal = document.getElementById('counter-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-
-        const modal = document.createElement('div');
-        modal.id = 'counter-modal';
-        modal.className = 'counter-modal';
-        modal.innerHTML = `
-            <div class="counter-modal-content">
-                <div class="counter-modal-header">
-                    <h3>${cardName} - Add Counter</h3>
-                    <button class="counter-modal-close" onclick="GameCards.closeCounterModal()">&times;</button>
-                </div>
-                <div class="counter-modal-body">
-                    <div class="add-counter-form">
-                        <label for="counter-type-select">Counter Type:</label>
-                        <select id="counter-type-select">
-                            <option value="+1/+1">+1/+1</option>
-                            <option value="-1/-1">-1/-1</option>
-                            <option value="loyalty">Loyalty</option>
-                            <option value="charge">Charge</option>
-                            <option value="poison">Poison</option>
-                            <option value="energy">Energy</option>
-                            <option value="experience">Experience</option>
-                            <option value="treasure">Treasure</option>
-                            <option value="food">Food</option>
-                            <option value="clue">Clue</option>
-                            <option value="blood">Blood</option>
-                            <option value="oil">Oil</option>
-                        </select>
-                        <label for="counter-amount-input">Amount:</label>
-                        <input type="number" id="counter-amount-input" value="1" min="1" max="20">
-                        <button onclick="GameCards.addCounterFromModal('${uniqueCardId}', '${cardId}')">Add Counter</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
-    },
-
     generateCounterControls: function(cardData, uniqueCardId, cardId) {
-        if (!cardData.counters || Object.keys(cardData.counters).length === 0) {
-            return '<p>No counters on this card.</p>';
-        }
+        const counters = cardData.counters || {};
+        const counterEntries = Object.entries(counters).filter(([_, count]) => Number(count) > 0);
 
-        let html = '<div class="counter-controls">';
-        
-        for (const [counterType, count] of Object.entries(cardData.counters)) {
-            if (count > 0) {
+        let html = '';
+
+        if (counterEntries.length) {
+            html += '<div class="counter-controls">';
+            counterEntries.forEach(([counterType, count]) => {
                 const counterIcon = this.getCounterIcon(counterType);
                 html += `
                     <div class="counter-control-row">
@@ -1039,19 +1072,50 @@ const GameCards = {
                         </div>
                     </div>
                 `;
-            }
+            });
+            html += '</div>';
+        } else {
+            html += '<p class="counter-empty">No counters on this card.</p>';
         }
-        
-        html += '</div>';
-        html += `<button class="add-new-counter-btn" onclick="GameCards.showAddCounterModal('${uniqueCardId}', '${cardId}')">Add New Counter Type</button>`;
-        
+
+        html += `
+            <div class="add-counter-form">
+                <label for="counter-type-select-${uniqueCardId}">Counter Type:</label>
+                <select id="counter-type-select-${uniqueCardId}">
+                    <option value="+1/+1">+1/+1</option>
+                    <option value="-1/-1">-1/-1</option>
+                    <option value="loyalty">Loyalty</option>
+                    <option value="charge">Charge</option>
+                    <option value="poison">Poison</option>
+                    <option value="energy">Energy</option>
+                    <option value="experience">Experience</option>
+                    <option value="treasure">Treasure</option>
+                    <option value="food">Food</option>
+                    <option value="clue">Clue</option>
+                    <option value="blood">Blood</option>
+                    <option value="oil">Oil</option>
+                </select>
+                <label for="counter-amount-input-${uniqueCardId}">Amount:</label>
+                <input type="number" id="counter-amount-input-${uniqueCardId}" value="1" min="1" max="20">
+                <button class="add-counter-btn" onclick="GameCards.addCounterFromModal('${uniqueCardId}', '${cardId}')">Add Counter</button>
+            </div>
+        `;
+        html += this.generatePowerToughnessManager(cardData, uniqueCardId, cardId);
+
         return html;
     },
 
     addCounterFromModal: function(uniqueCardId, cardId) {
-        const counterType = document.getElementById('counter-type-select').value;
-        const amount = parseInt(document.getElementById('counter-amount-input').value) || 1;
-        
+        const typeSelect = document.getElementById(`counter-type-select-${uniqueCardId}`);
+        const amountInput = document.getElementById(`counter-amount-input-${uniqueCardId}`);
+
+        if (!typeSelect || !amountInput) {
+            return;
+        }
+
+        const counterType = typeSelect.value;
+        const amount = parseInt(amountInput.value, 10) || 1;
+
         GameActions.performGameAction('add_counter', {
             unique_id: uniqueCardId,
             card_id: cardId,
@@ -1059,8 +1123,11 @@ const GameCards = {
             amount: amount
         });
 
-        this.closeCounterModal();
         GameUI.showNotification(`Added ${amount} ${counterType} counter(s)`, 'success');
+
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 150);
     },
 
     modifyCounter: function(uniqueCardId, cardId, counterType, change) {
@@ -1099,6 +1166,133 @@ const GameCards = {
 
         this.closeCounterModal();
         GameUI.showNotification(`Removed all ${counterType} counters`, 'info');
+    },
+
+    generatePowerToughnessManager: function(cardData, uniqueCardId, cardId) {
+        const stats = this.computeEffectivePowerToughness(cardData);
+        const basePower = cardData.power !== undefined && cardData.power !== null
+            ? String(cardData.power)
+            : '';
+        const baseToughness = cardData.toughness !== undefined && cardData.toughness !== null
+            ? String(cardData.toughness)
+            : '';
+
+        const overridePower = cardData.current_power ?? cardData.currentPower ??
+            cardData.power_override ?? cardData.powerOverride ?? '';
+        const overrideToughness = cardData.current_toughness ?? cardData.currentToughness ??
+            cardData.toughness_override ?? cardData.toughnessOverride ?? '';
+
+        const hasBaseStat = Boolean(basePower || baseToughness);
+        const hasOverride = Boolean(overridePower || overrideToughness);
+        const typeLine = String(cardData.type_line || cardData.typeLine || '').toLowerCase();
+        const isCreature = (typeof cardData.card_type === 'string' && cardData.card_type.toLowerCase().includes('creature'))
+            || typeLine.includes('creature');
+
+        if (!hasBaseStat && !hasOverride && !isCreature) {
+            return '';
+        }
+
+        const currentPowerDisplay = stats ? stats.displayPowerText : (overridePower || basePower || '—');
+        const currentToughnessDisplay = stats ? stats.displayToughnessText : (overrideToughness || baseToughness || '—');
+
+        const escape = GameUtils.escapeHtml;
+        const inputPowerValue = overridePower ? escape(String(overridePower)) : '';
+        const inputToughnessValue = overrideToughness ? escape(String(overrideToughness)) : '';
+        const baseDisplay = `${escape(basePower || '—')}/${escape(baseToughness || '—')}`;
+        const currentDisplay = `${escape(String(currentPowerDisplay))}/${escape(String(currentToughnessDisplay))}`;
+
+        return `
+            <div class="pt-manager">
+                <div class="pt-manager-header">
+                    <span class="pt-manager-title">Power / Toughness Override</span>
+                    <span class="pt-manager-base">Base: ${baseDisplay}</span>
+                </div>
+                <div class="pt-manager-inputs">
+                    <label class="pt-manager-field">
+                        <span>Power</span>
+                        <input type="number" inputmode="numeric" pattern="^-?\\d*$" id="pt-power-input-${uniqueCardId}" value="${inputPowerValue}" placeholder="${escape(basePower || '')}">
+                    </label>
+                    <label class="pt-manager-field">
+                        <span>Toughness</span>
+                        <input type="number" inputmode="numeric" pattern="^-?\\d*$" id="pt-toughness-input-${uniqueCardId}" value="${inputToughnessValue}" placeholder="${escape(baseToughness || '')}">
+                    </label>
+                </div>
+                <div class="pt-manager-footer">
+                    <div class="pt-manager-actions">
+                        <button class="pt-manager-apply" onclick="GameCards.applyPowerToughness('${uniqueCardId}', '${cardId}')">Apply</button>
+                        <button class="pt-manager-reset" onclick="GameCards.resetPowerToughness('${uniqueCardId}', '${cardId}')">Reset</button>
+                    </div>
+                    <div class="pt-manager-current">Current: ${currentDisplay}</div>
+                </div>
+                <p class="pt-manager-hint">Only integer values are allowed. Leave a field blank to keep the base value.</p>
+            </div>
+        `;
+    },
+
+    applyPowerToughness: function(uniqueCardId, cardId) {
+        const powerInput = document.getElementById(`pt-power-input-${uniqueCardId}`);
+        const toughnessInput = document.getElementById(`pt-toughness-input-${uniqueCardId}`);
+
+        if (!powerInput || !toughnessInput) {
+            return;
+        }
+
+        const normalize = (input) => {
+            if (!input) {
+                return null;
+            }
+            const value = input.value.trim();
+            if (!value) {
+                return null;
+            }
+            if (!/^-?\d+$/.test(value)) {
+                throw new Error('Power/Toughness values must be integers');
+            }
+            return parseInt(value, 10);
+        };
+
+        let payload;
+        try {
+            const normalizedPower = normalize(powerInput);
+            const normalizedToughness = normalize(toughnessInput);
+
+            payload = {
+                unique_id: uniqueCardId,
+                card_id: cardId,
+                power: normalizedPower,
+                toughness: normalizedToughness
+            };
+        } catch (error) {
+            GameUI.showNotification(error.message, 'error');
+            return;
+        }
+
+        GameActions.performGameAction('set_power_toughness', payload);
+        GameUI.showNotification('Power/Toughness updated', 'success');
+
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 200);
+    },
+
+    resetPowerToughness: function(uniqueCardId, cardId) {
+        GameActions.performGameAction('set_power_toughness', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            power: null,
+            toughness: null
+        });
+
+        const powerInput = document.getElementById(`pt-power-input-${uniqueCardId}`);
+        const toughnessInput = document.getElementById(`pt-toughness-input-${uniqueCardId}`);
+        if (powerInput) powerInput.value = '';
+        if (toughnessInput) toughnessInput.value = '';
+
+        GameUI.showNotification('Power/Toughness reset to base values', 'info');
+
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 200);
     },
 
     closeCounterModal: function() {
