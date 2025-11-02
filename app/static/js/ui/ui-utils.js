@@ -117,11 +117,14 @@ class UIUtils {
 
         const normalizeTypeText = (card) => {
             if (!card) return '';
-            const faceTypes = Array.isArray(card.card_faces)
-                ? card.card_faces
-                    .map(face => face?.type_line)
-                    .filter(Boolean)
-                : [];
+            const faceTypes = (() => {
+                if (!Array.isArray(card.card_faces) || card.card_faces.length === 0) {
+                    return [];
+                }
+                const currentFaceIndex = typeof card.current_face === 'number' ? card.current_face : 0;
+                const activeFace = card.card_faces[currentFaceIndex] || card.card_faces[0];
+                return activeFace && activeFace.type_line ? [activeFace.type_line] : [];
+            })();
             const pieces = [
                 card.card_type,
                 card.cardType,
