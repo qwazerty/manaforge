@@ -709,6 +709,9 @@ const GameCards = {
         }
 
         if (!isOpponent) {
+            if (cardZone !== 'reveal') {
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.showInRevealZone(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">👁️</span> Show in Reveal Zone</div>`;
+            }
             if (cardZone === 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
             } else if (cardZone === 'deck') {

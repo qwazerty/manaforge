@@ -149,6 +149,9 @@ class Player(BaseModel):
     library: List[Card] = Field(
         default_factory=list, description="Cards in library"
     )
+    reveal_zone: List[Card] = Field(
+        default_factory=list, description="Cards in the player's reveal zone"
+    )
     mana_pool: Dict[str, int] = Field(
         default_factory=dict, description="Available mana"
     )

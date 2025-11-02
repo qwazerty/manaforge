@@ -628,6 +628,14 @@ function sendToExile(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'exile', uniqueCardId, null, callback);
 }
 
+function showInRevealZone(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    if (uniqueCardId) {
+        clearTappedState(uniqueCardId);
+        clearTargetedState(uniqueCardId);
+    }
+    moveCard(cardId, sourceZone, 'reveal', uniqueCardId, null, callback);
+}
+
 function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'hand', uniqueCardId, null, callback);
 }
@@ -736,6 +744,7 @@ window.GameActions = {
     untapAll,
     sendToGraveyard,
     sendToExile,
+    showInRevealZone,
     sendToHand,
     updateCardTappedState,
     resolveStackSpell,
@@ -770,7 +779,7 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
         : '';
     if (
         uniqueCardId &&
-        ['graveyard', 'exile', 'library', 'deck'].includes(normalizedTarget)
+        ['graveyard', 'exile', 'library', 'deck', 'reveal'].includes(normalizedTarget)
     ) {
         clearTappedState(uniqueCardId);
         clearTargetedState(uniqueCardId);

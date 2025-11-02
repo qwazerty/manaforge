@@ -525,7 +525,7 @@ class SimpleGameEngine:
                 game_state, player, destination_zone_name
             )
             
-            if destination_zone_name in ["graveyard", "exile", "library"]:
+            if destination_zone_name in ["graveyard", "exile", "library", "reveal_zone"]:
                 card_found.tapped = False
                 card_found.targeted = False
             
@@ -557,6 +557,8 @@ class SimpleGameEngine:
             return "battlefield"
         if zone_name == "deck":
             return "library"
+        if zone_name in ["reveal", "reveal_zone"]:
+            return "reveal_zone"
         return zone_name
 
     def _get_zone_list(
@@ -565,6 +567,8 @@ class SimpleGameEngine:
         """Get the list representing a zone."""
         if zone_name == "stack":
             return game_state.stack
+        if not hasattr(player, zone_name):
+            setattr(player, zone_name, [])
         return getattr(player, zone_name)
 
     def _shuffle_library(self, game_state: GameState, action: GameAction) -> None:

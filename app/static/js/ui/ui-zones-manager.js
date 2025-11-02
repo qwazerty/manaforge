@@ -22,7 +22,8 @@ class UIZonesManager {
         'exile': { title: 'Exile', icon: '🌌', description: 'Cards that have been exiled from the game' },
         'deck': { title: 'Library', icon: '📚', description: 'Cards remaining in your library' },
         'hand': { title: 'Hand', icon: '🃏', description: 'Cards in your hand' },
-        'battlefield': { title: 'Battlefield', icon: '⚔️', description: 'Cards currently in play' }
+        'battlefield': { title: 'Battlefield', icon: '⚔️', description: 'Cards currently in play' },
+        'reveal': { title: 'Reveal Zone', icon: '👁️', description: 'Cards currently revealed to all players' }
     };
 
     // ===== ZONE GENERATION =====

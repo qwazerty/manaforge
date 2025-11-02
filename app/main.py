@@ -76,6 +76,8 @@ async def game_interface(request: Request, game_id: str):
                 ],
                 'library': len(player.library),
                 'graveyard': len(player.graveyard)
+                ,
+                'reveal_zone': [card.model_dump() for card in getattr(player, 'reveal_zone', [])]
             }
             for player in game_state.players
         ]

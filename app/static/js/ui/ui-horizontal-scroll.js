@@ -28,6 +28,7 @@ class UIHorizontalScroll {
             '.support-zone-content',
             '.lands-zone-content', 
             '.hand-zone-content',
+            '.reveal-card-list',
             '.zone-content',
             '.battlefield-zone .flex.overflow-x-auto',
             '.opponent-hand .flex.overflow-x-auto',
@@ -141,7 +142,7 @@ class UIHorizontalScroll {
                         }
                         
                         // Check for scrollable zones within the added node
-                        const scrollableZones = node.querySelectorAll && node.querySelectorAll('.creatures-zone-content, .support-zone-content, .lands-zone-content, .hand-zone-content, .zone-content, .zone-cards-slider, .zone-cards-grid, .overflow-x-auto');
+                        const scrollableZones = node.querySelectorAll && node.querySelectorAll('.creatures-zone-content, .support-zone-content, .lands-zone-content, .hand-zone-content, .reveal-card-list, .zone-content, .zone-cards-slider, .zone-cards-grid, .overflow-x-auto');
                         if (scrollableZones) {
                             scrollableZones.forEach(zone => {
                                 this.attachWheelListener(zone);
@@ -170,7 +171,8 @@ class UIHorizontalScroll {
             'support-zone-content',
             'lands-zone-content',
             'hand-zone-content', 
-            'zone-content'
+            'zone-content',
+            'reveal-card-list'
         ];
         
         return scrollableClasses.some(className => 
