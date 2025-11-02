@@ -407,6 +407,46 @@ class UIZonesManager {
         }
         try {
             const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+            const { cardId, cardZone, uniqueCardId } = data;
+
+            const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
+            if (
+                cardZone === 'hand' &&
+                battlefieldTargets.includes(targetZone) &&
+                window.GameActions &&
+                typeof window.GameActions.playCardFromHand === 'function'
+            ) {
+                let cardData = null;
+                if (uniqueCardId) {
+                    const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+                    if (cardElement) {
+                        try {
+                            cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
+                        } catch (parseError) {
+                            console.warn('Unable to parse card data for drag-drop play', parseError);
+                        }
+                    }
+                }
+
+                const typeLine = String(cardData?.type_line || cardData?.typeLine || '').toLowerCase();
+                const cardTypeField = String(cardData?.card_type || cardData?.cardType || '').toLowerCase();
+                const normalizedTypes = Array.isArray(cardData?.types)
+                    ? cardData.types.map(type => String(type).toLowerCase())
+                    : [];
+                const isInstantOrSorcery =
+                    typeLine.includes('instant') ||
+                    typeLine.includes('sorcery') ||
+                    cardTypeField.includes('instant') ||
+                    cardTypeField.includes('sorcery') ||
+                    normalizedTypes.includes('instant') ||
+                    normalizedTypes.includes('sorcery');
+
+                if (isInstantOrSorcery) {
+                    window.GameActions.playCardFromHand(cardId, uniqueCardId);
+                    return;
+                }
+            }
+
             let container = null;
             if (event.currentTarget && event.currentTarget.classList.contains('zone-content')) {
                 container = event.currentTarget;
@@ -463,10 +503,10 @@ class UIZonesManager {
             // Appeler une action pour déplacer la carte (à adapter selon la logique backend)
             if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
                 window.GameActions.moveCard(
-                    data.cardId,
-                    data.cardZone,
+                    cardId,
+                    cardZone,
                     targetZone,
-                    data.uniqueCardId,
+                    uniqueCardId,
                     null,
                     null,
                     positionIndex

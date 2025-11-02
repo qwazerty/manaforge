@@ -842,7 +842,7 @@ const GameCards = {
 
         if (!isOpponent) {
             if (cardZone === 'hand') {
-                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
             } else if (cardZone === 'deck') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.performGameAction("play_card_from_library", { unique_id: ${jsUniqueCardId} }); UIZonesManager.closeZoneModal("deck");`)}"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
