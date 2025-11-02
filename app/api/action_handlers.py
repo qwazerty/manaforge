@@ -482,6 +482,44 @@ async def handle_add_counter(
     }
 
 @action_registry.register(
+    "set_power_toughness",
+    required_fields=["unique_id"]
+)
+async def handle_set_power_toughness(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle overriding a creature's power and toughness."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for set_power_toughness"
+        )
+
+    unique_id = request.get("unique_id")
+    if not unique_id:
+        raise HTTPException(
+            status_code=400, detail="unique_id is required for set_power_toughness"
+        )
+
+    power = request.get("power")
+    toughness = request.get("toughness")
+
+    additional_data: Dict[str, Any] = {"unique_id": unique_id}
+    broadcast_data: Dict[str, Any] = {"unique_id": unique_id}
+
+    if power is not None:
+        additional_data["power"] = power
+        broadcast_data["power"] = power
+
+    if toughness is not None:
+        additional_data["toughness"] = toughness
+        broadcast_data["toughness"] = toughness
+
+    return {
+        "additional_data": additional_data,
+        "broadcast_data": broadcast_data,
+    }
+
+@action_registry.register(
     "remove_counter", required_fields=["unique_id", "card_id", "counter_type"]
 )
 async def handle_remove_counter(
