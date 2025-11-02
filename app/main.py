@@ -126,9 +126,9 @@ async def game_room(
         player_status = setup_status.player_status
 
     setup_data = setup_status.model_dump()
-    game_interface_url = str(request.url_for("game_interface", game_id=game_id))
-    setup_api_url = str(request.url_for("get_game_setup_status", game_id=game_id))
-    submit_api_url = str(request.url_for("submit_player_deck", game_id=game_id))
+    game_interface_url = request.app.url_path_for("game_interface", game_id=game_id)
+    setup_api_url = request.app.url_path_for("get_game_setup_status", game_id=game_id)
+    submit_api_url = request.app.url_path_for("submit_player_deck", game_id=game_id)
     game_room_url = str(request.url_for("game_room", game_id=game_id))
     share_links = {
         "player1": f"{game_room_url}?player=player1",
