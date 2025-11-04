@@ -231,7 +231,7 @@ async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
         raise HTTPException(status_code=404, detail=str(exc))
 
 @router.get("/games/{game_id}/state")
-async def get_game_state(game_id: str) -> GameState:
+async def get_game_state(game_id: str) -> Dict[str, Any]:
     """Get current game state (only available after setup is complete)."""
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -259,6 +259,7 @@ async def get_game_ui_data(game_id: str) -> dict:
         'id': game_state.id,
         'turn': game_state.turn,
         'phase': game_state.phase.value,
+        'phase_mode': game_state.phase_mode.value,
         'active_player': game_state.active_player,
         'priority_player': game_state.priority_player,
         'players': [
@@ -364,7 +365,7 @@ async def perform_game_action(
 
 
 @router.post("/games/{game_id}/actions")
-async def perform_action(game_id: str, action: GameAction) -> GameState:
+async def perform_action(game_id: str, action: GameAction) -> Dict[str, Any]:
     """Legacy endpoint - perform an action in the game."""
     try:
         game_state = await game_engine.process_action(game_id, action)
