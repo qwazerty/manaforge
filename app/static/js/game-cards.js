@@ -791,6 +791,8 @@ const GameCards = {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
         const isTargeted = cardElement.classList.contains('targeted');
+        const normalizedZone = (cardZone || '').toLowerCase();
+        const isBattlefieldZone = ['battlefield', 'permanents', 'lands', 'creatures', 'support'].includes(normalizedZone);
 
         const safeCardName = GameUtils.escapeHtml(cardName || 'Unknown');
         const safeCardImage = GameUtils.escapeHtml(cardImage || '');
@@ -847,10 +849,12 @@ const GameCards = {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.performGameAction("play_card_from_library", { unique_id: ${jsUniqueCardId} }); UIZonesManager.closeZoneModal("deck");`)}"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
 
-            if (cardZone === 'battlefield' || cardZone === 'permanents' || cardZone === 'lands' || cardZone === 'creatures' || cardZone === 'support') {
+            if (isBattlefieldZone) {
                 const tapAction = isTapped ? 'Untap' : 'Tap';
                 const tapIcon = isTapped ? '⤴️' : '🔄';
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.tapCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
+
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.duplicateCard(${jsCardId}, ${jsUniqueCardId}, ${jsCardZone})`)}"><span class="icon">🪄</span> Duplicate</div>`;
 
                 const counterIcon = '🔢';
                 menuHTML += `<div class="card-context-menu-divider"></div>`;

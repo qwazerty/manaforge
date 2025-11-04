@@ -5,6 +5,7 @@ This will be replaced by XMage integration later.
 
 import random
 import asyncio
+import uuid
 from typing import List, Optional, Dict
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
@@ -313,6 +314,7 @@ class SimpleGameEngine:
             "set_power_toughness": self._set_power_toughness,
             "search_and_add_card": self._search_and_add_card,
             "create_token": self._create_token,
+            "duplicate_card": self._duplicate_card,
         }
 
         if action.action_type in action_map:
@@ -741,6 +743,53 @@ class SimpleGameEngine:
         if zone_name in ["reveal", "reveal_zone"]:
             return "reveal_zone"
         return zone_name
+
+    def _duplicate_card(self, game_state: GameState, action: GameAction) -> None:
+        """Duplicate a card on the battlefield for the player who triggered the action."""
+        unique_id = action.additional_data.get("unique_id")
+        source_zone = action.additional_data.get("source_zone", "battlefield")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for duplicate_card action")
+
+        normalized_zone = self._normalize_zone_name(source_zone)
+        if normalized_zone != "battlefield":
+            raise ValueError("duplicate_card action currently supports battlefield cards only")
+
+        player = self._get_player(game_state, action.player_id)
+        zone = self._get_zone_list(game_state, player, normalized_zone)
+
+        original_card = None
+        original_index = None
+        for idx, card in enumerate(zone):
+            if card.unique_id == unique_id:
+                original_card = card
+                original_index = idx
+                break
+
+        if not original_card:
+            raise ValueError(
+                f"Card with unique_id {unique_id} not found in {normalized_zone} for player {action.player_id}"
+            )
+
+        if hasattr(original_card, "model_copy"):
+            duplicated_card = original_card.model_copy(deep=True)
+        else:
+            duplicated_card = original_card.copy(deep=True)  # type: ignore[attr-defined]
+
+        duplicated_card.unique_id = uuid.uuid4().hex
+        duplicated_card.tapped = False
+        duplicated_card.targeted = False
+
+        if duplicated_card.counters:
+            duplicated_card.counters = dict(duplicated_card.counters)
+
+        insert_at = original_index + 1 if original_index is not None else len(zone)
+        zone.insert(insert_at, duplicated_card)
+
+        print(
+            f"Player {action.player_id} duplicated {original_card.name} on the battlefield"
+        )
 
     def _get_zone_list(
         self, game_state: GameState, player: Player, zone_name: str
