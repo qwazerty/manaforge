@@ -395,6 +395,38 @@ async def handle_move_card(
 
 
 @action_registry.register(
+    "duplicate_card",
+    required_fields=["card_id", "unique_id"]
+)
+async def handle_duplicate_card(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle duplicating a battlefield card."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for duplicate_card"
+        )
+
+    card_id = request.get("card_id")
+    unique_id = request.get("unique_id")
+    source_zone = request.get("source_zone", "battlefield")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "source_zone": source_zone,
+        },
+        "broadcast_data": {
+            "card": card_id,
+            "unique_id": unique_id,
+            "source_zone": source_zone,
+            "duplicate": True
+        }
+    }
+
+
+@action_registry.register(
     "target_card", required_fields=["unique_id", "card_id", "targeted"]
 )
 async def handle_target_card(

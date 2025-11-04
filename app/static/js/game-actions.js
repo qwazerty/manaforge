@@ -459,6 +459,14 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'untap_all':
                 endpoint = `/api/v1/games/${gameId}/untap-all`;
                 break;
+            case 'duplicate_card':
+                endpoint = `/api/v1/games/${gameId}/action`;
+                requestData = {
+                    action_type: 'duplicate_card',
+                    player_id: currentSelectedPlayer,
+                    ...actionData
+                };
+                break;
             case 'move_card':
                 endpoint = `/api/v1/games/${gameId}/move-card`;
                 break;
@@ -640,6 +648,23 @@ function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'hand', uniqueCardId, null, callback);
 }
 
+function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
+    if (!uniqueCardId) {
+        console.warn('Duplicate action requires a unique card identifier');
+        return;
+    }
+
+    performGameAction('duplicate_card', {
+        card_id: cardId,
+        unique_id: uniqueCardId,
+        source_zone: sourceZone
+    });
+
+    const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+    const cardName = cardElement?.getAttribute('data-card-name') || cardId;
+    GameUI.showNotification(`${cardName} duplicated`, 'success');
+}
+
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
     const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
@@ -752,7 +777,8 @@ window.GameActions = {
     copyStackSpell,
     drawCard,
     modifyLife,
-    moveCard
+    moveCard,
+    duplicateCard
 };
 
 /**
