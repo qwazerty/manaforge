@@ -21,6 +21,21 @@ let gameListPollId = null;
 let isFetchingGameList = false;
 let lastGameListSnapshot = '';
 
+function formatLobbyTimestamp(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+    });
+}
+
 function normalizeChoice(value) {
     if (value === undefined || value === null) return '';
     return String(value).trim().toLowerCase().replace(/\s+/g, '_');
@@ -133,6 +148,7 @@ async function fetchGameList(force = false) {
             const seatClaimedCount = typeof game.seat_claimed_count === 'number' ? game.seat_claimed_count : 0;
             const playerStatus = game.player_status || {};
             const encodedId = encodeURIComponent(game.game_id);
+            const createdAtLabel = formatLobbyTimestamp(game.created_at);
             const openSeats = ['player1', 'player2'].filter((seat) => {
                 const info = playerStatus[seat];
                 return !info || !info.seat_claimed;
@@ -163,6 +179,13 @@ async function fetchGameList(force = false) {
                     ? `Waiting on ${openSeats.map((seat) => seat.replace('player', 'Player ')).join(' & ')}`
                     : `${validatedCount}/2 decks validated`;
                 statusLine.textContent = `${seatSummary} • ${deckSummary} • ${seatHint}`;
+            }
+
+            if (createdAtLabel) {
+                const creationLine = document.createElement('div');
+                creationLine.className = 'text-xs text-arena-text-muted mb-1';
+                creationLine.textContent = `Created ${createdAtLabel}`;
+                gameCard.appendChild(creationLine);
             }
 
             const joinButton = document.createElement('button');

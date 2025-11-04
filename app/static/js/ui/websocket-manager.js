@@ -43,12 +43,18 @@ class WebSocketManager {
             };
             
             this.websocket.onmessage = (event) => {
-                const message = JSON.parse(event.data);
+                let message;
+                try {
+                    message = JSON.parse(event.data);
+                } catch (parseError) {
+                    console.error('WebSocket message parse error:', parseError, 'raw:', event.data);
+                    return;
+                }
                 this.handleWebSocketMessage(message);
             };
             
             this.websocket.onclose = (event) => {
-                console.log('WebSocket disconnected');
+                console.warn('WebSocket disconnected', { code: event.code, reason: event.reason });
                 UINotifications.showAutoRefreshIndicator('🔌 Disconnected', 'warning');
                 
                 setTimeout(() => {
@@ -60,7 +66,7 @@ class WebSocketManager {
             };
             
             this.websocket.onerror = (error) => {
-                console.error('WebSocket error:', error);
+                console.error('WebSocket error:', error, 'readyState:', this.websocket?.readyState);
                 UINotifications.showAutoRefreshIndicator('❌ Connection Error', 'error');
             };
             
@@ -79,6 +85,8 @@ class WebSocketManager {
                 type: 'request_game_state',
                 timestamp: Date.now()
             }));
+        } else {
+            console.warn('Skipping game state request, WebSocket not open');
         }
     }
 
@@ -96,6 +104,11 @@ class WebSocketManager {
                 timestamp: Date.now()
             }));
         } else {
+            console.error('WebSocket not connected, cannot send game action', {
+                actionType,
+                actionData,
+                readyState: this.websocket ? this.websocket.readyState : 'no-connection'
+            });
             UINotifications.showNotification('WebSocket not connected', 'error');
         }
     }
@@ -137,12 +150,14 @@ class WebSocketManager {
                 break;
                 
             case 'game_action_failed':
+                console.error('WebSocket action failed', message);
                 UINotifications.showNotification(`Action failed: ${message.error}`, 'error');
                 
                 WebSocketManager._recordActionFailure(message.action, message.error, message.player);
                 break;
                 
             case 'action_error':
+                console.error('WebSocket reported action error', message);
                 UINotifications.showNotification(`Error: ${message.message}`, 'error');
                 
                 WebSocketManager._recordActionFailure(message.action, message.message, message.player);
@@ -185,13 +200,14 @@ class WebSocketManager {
                 break;
                 
             case 'error':
+                console.error('WebSocket server error message received', message);
                 UINotifications.showNotification(`Server error: ${message.message}`, 'error');
                 
                 WebSocketManager._recordActionFailure('server_error', message.message);
                 break;
                 
             default:
-                console.log('Unknown WebSocket message:', message);
+                console.warn('Unknown WebSocket message type received:', message);
         }
     }
 

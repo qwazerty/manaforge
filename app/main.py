@@ -125,7 +125,7 @@ async def game_room(
         setup_status = game_engine.claim_player_seat(game_id=game_id, player_id=player_role)
         player_status = setup_status.player_status
 
-    setup_data = setup_status.model_dump()
+    setup_data = setup_status.model_dump(mode="json")
     game_interface_url = request.app.url_path_for("game_interface", game_id=game_id)
     setup_api_url = request.app.url_path_for("get_game_setup_status", game_id=game_id)
     submit_api_url = request.app.url_path_for("submit_player_deck", game_id=game_id)
