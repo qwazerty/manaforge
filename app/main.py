@@ -65,6 +65,7 @@ async def game_interface(request: Request, game_id: str):
         'id': game_state.id,
         'turn': game_state.turn,
         'phase': game_state.phase.value,
+        'phase_mode': game_state.phase_mode.value,
         'active_player': game_state.active_player,
         'priority_player': game_state.priority_player,
         'players': [

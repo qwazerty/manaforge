@@ -164,6 +164,12 @@ class UIRenderersTemplates {
         const currentPhase = gameState?.phase || 'begin';
         const currentTurn = gameState?.turn || 1;
         const activePlayer = gameState?.active_player || 0;
+        const priorityPlayer = typeof gameState?.priority_player === 'number'
+            ? gameState.priority_player
+            : activePlayer;
+        const stack = Array.isArray(gameState?.stack) ? gameState.stack : [];
+        const phaseMode = String(gameState?.phase_mode || 'casual').toLowerCase();
+        const phaseModeLabel = phaseMode === 'strict' ? 'Strict' : 'Casual';
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
         let controlledPlayerIndex = null;
 
@@ -173,15 +179,47 @@ class UIRenderersTemplates {
             controlledPlayerIndex = 1;
         }
 
-        const passDisabled = controlledPlayerIndex === null
-            ? true
-            : controlledPlayerIndex !== activePlayer;
+        const passConfig = {
+            passDisabled: true,
+            passLabel: '⏭️ Pass Phase',
+            passAction: 'pass_phase',
+            passTitle: 'Pass current phase'
+        };
+
+        if (controlledPlayerIndex === null) {
+            passConfig.passTitle = 'Select a player to perform actions';
+        } else {
+            const isStrictMode = phaseMode === 'strict';
+            const hasStack = stack.length > 0;
+            const isActivePlayer = controlledPlayerIndex === activePlayer;
+            const isPriorityPlayer = controlledPlayerIndex === priorityPlayer;
+
+            if (isStrictMode && hasStack) {
+                if (isPriorityPlayer) {
+                    passConfig.passDisabled = false;
+                    passConfig.passAction = 'resolve_stack';
+                    passConfig.passLabel = 'Resolve';
+                    passConfig.passTitle = 'Resolve the top spell on the stack';
+                } else {
+                    passConfig.passDisabled = true;
+                    passConfig.passTitle = 'Waiting for opponent to resolve the stack';
+                }
+            } else {
+                passConfig.passDisabled = !isActivePlayer;
+                passConfig.passTitle = passConfig.passDisabled
+                    ? 'Only the active player can pass the phase'
+                    : 'Pass current phase';
+            }
+        }
         
         return `
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer)}
                 ${this._generateGamePhases(currentPhase)}
-                ${this._generateActionButtonsSection(passDisabled)}
+                <div class="text-center text-xs text-arena-text-muted mb-3">
+                    Phase Mode: ${phaseModeLabel}
+                </div>
+                ${this._generateActionButtonsSection(passConfig)}
             </div>
         `;
     }
@@ -413,12 +451,22 @@ class UIRenderersTemplates {
     /**
      * Generate action buttons section
      */
-    static _generateActionButtonsSection(passDisabled = false) {
+    static _generateActionButtonsSection(config = {}) {
+        const {
+            passDisabled = false,
+            passLabel = '⏭️ Pass Phase',
+            passAction = 'pass_phase',
+            passTitle = 'Pass current phase'
+        } = config;
+
+        const passButtonClasses = UIConfig.CSS_CLASSES.button.passPhase
+            || UIConfig.CSS_CLASSES.button.primary;
+
         const passPhaseBtn = UIUtils.generateButton(
-            "GameActions.performGameAction('pass_phase')",
-            UIConfig.CSS_CLASSES.button.primary,
-            "Pass current phase",
-            "⏭️ Pass Phase",
+            `GameActions.performGameAction('${passAction}')`,
+            passButtonClasses,
+            passTitle,
+            passLabel,
             passDisabled
         );
 

@@ -418,9 +418,12 @@ class SimpleGameEngine:
             )
             return
 
-        if card_to_play.card_type == CardType.LAND:
-            destination_zone = "battlefield"
-        elif card_to_play.card_type in [CardType.INSTANT, CardType.SORCERY]:
+        is_land = card_to_play.card_type == CardType.LAND
+        is_spell = card_to_play.card_type in [CardType.INSTANT, CardType.SORCERY]
+
+        if game_state.phase_mode == PhaseMode.STRICT and not is_land:
+            destination_zone = "stack"
+        elif is_spell:
             destination_zone = "stack"
         else:
             destination_zone = "battlefield"
@@ -567,6 +570,42 @@ class SimpleGameEngine:
         
         print("Combat damage resolved")
     
+    def _resolve_spell_destination(self, owner: Player, spell: Card) -> str:
+        """Move a resolved spell to its appropriate zone and return the zone name."""
+        spell.targeted = False
+
+        if spell.card_type in (CardType.INSTANT, CardType.SORCERY):
+            owner.graveyard.append(spell)
+            return "graveyard"
+
+        spell.tapped = False
+        owner.battlefield.append(spell)
+        return "battlefield"
+
+    def _get_player_index(self, game_state: GameState, player_id: str) -> Optional[int]:
+        """Return the index of the player with the given ID, or None if not found."""
+        for idx, player in enumerate(game_state.players):
+            if player.id == player_id:
+                return idx
+        return None
+
+    def _update_priority_from_stack(self, game_state: GameState) -> None:
+        """Update priority based on the top card of the stack."""
+        if not game_state.stack:
+            game_state.priority_player = game_state.active_player
+            return
+
+        top_spell = game_state.stack[-1]
+        owner_id = getattr(top_spell, "owner_id", None)
+
+        owner_index = self._get_player_index(game_state, owner_id) if owner_id else None
+        if owner_index is None or not game_state.players:
+            game_state.priority_player = game_state.active_player
+            return
+
+        opponent_index = (owner_index + 1) % len(game_state.players)
+        game_state.priority_player = opponent_index
+
     def _resolve_stack(self, game_state: GameState, action: GameAction) -> None:
         """Resolve the top spell on the stack."""
         if not game_state.stack:
@@ -580,9 +619,16 @@ class SimpleGameEngine:
             )
 
         owner = self._get_player(game_state, spell.owner_id)
-        owner.graveyard.append(spell)
+        destination_zone = self._resolve_spell_destination(owner, spell)
 
-        game_state.priority_player = game_state.active_player
+        print(
+            f"Resolved {spell.name}, moved to {owner.id}'s {destination_zone}"
+        )
+
+        if game_state.stack:
+            self._update_priority_from_stack(game_state)
+        else:
+            game_state.priority_player = game_state.active_player
     
     def _pass_priority(self, game_state: GameState, action: GameAction) -> None:
         """Pass priority to the other player."""
@@ -680,6 +726,10 @@ class SimpleGameEngine:
 
         card_found = None
         
+        player_index = self._get_player_index(game_state, player_id)
+        if player_index is None:
+            raise ValueError(f"Player index for {player_id} not found")
+
         if source_zone_name == "stack":
             for i, spell in enumerate(game_state.stack):
                 if spell.unique_id == unique_id:
@@ -702,7 +752,7 @@ class SimpleGameEngine:
 
         if destination_zone_name == "stack":
             game_state.stack.append(card_found)
-            game_state.priority_player = 1 - int(player_id.replace('player', ''))
+            self._update_priority_from_stack(game_state)
         else:
             destination_zone_list = self._get_zone_list(
                 game_state, player, destination_zone_name
@@ -936,10 +986,12 @@ class SimpleGameEngine:
                 )
 
             owner = self._get_player(game_state, spell.owner_id)
-            owner.graveyard.append(spell)
-            print(f"Resolved {spell.name}, moved to {spell.owner_id}'s graveyard")
+            destination_zone = self._resolve_spell_destination(owner, spell)
+            print(
+                f"Resolved {spell.name}, moved to {owner.id}'s {destination_zone}"
+            )
 
-        game_state.priority_player = game_state.active_player
+        self._update_priority_from_stack(game_state)
         print(f"All {resolved_count} spells resolved, priority returned to active player")
 
     def _flip_card(self, game_state: GameState, action: GameAction) -> None:

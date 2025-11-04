@@ -22,6 +22,7 @@ class UIConfig {
     static CSS_CLASSES = {
         button: {
             primary: 'flex-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-500 text-blue-300 hover:text-blue-200 py-3 px-4 rounded-lg font-semibold transition-all duration-200',
+            passPhase: 'flex-1 bg-amber-500/30 hover:bg-amber-500/50 border border-amber-400/80 hover:border-amber-300 text-amber-100 hover:text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md shadow-amber-500/20',
             secondary: 'bg-arena-surface hover:bg-arena-surface-light border border-arena-accent/30 hover:border-arena-accent/50 text-arena-text py-2 rounded',
             life: {
                 red: 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-red-200 py-1 px-2 rounded text-xs font-semibold transition-all duration-200',

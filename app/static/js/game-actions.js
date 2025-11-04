@@ -438,6 +438,14 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'play_card':
                 endpoint = `/api/v1/games/${gameId}/play-card`;
                 break;
+            case 'resolve_stack':
+                endpoint = `/api/v1/games/${gameId}/resolve-stack`;
+                delete requestData.player_id;
+                break;
+            case 'resolve_all_stack':
+                endpoint = `/api/v1/games/${gameId}/action`;
+                requestData.action_type = 'resolve_all_stack';
+                break;
             case 'tap_card':
                 endpoint = `/api/v1/games/${gameId}/tap-card`;
                 break;
