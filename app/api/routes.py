@@ -132,6 +132,7 @@ async def list_games() -> List[Dict[str, Any]]:
             "validated_count": validated_count,
             "seat_claimed_count": seat_claimed_count,
             "player_status": player_status_dump,
+            "created_at": setup.created_at.isoformat(),
             "players": [
                 player_id
                 for player_id, status in player_status_dump.items()
@@ -146,6 +147,7 @@ async def list_games() -> List[Dict[str, Any]]:
             entry["players"] = [player.id for player in game_state.players]
             entry["active_player"] = game_state.active_player
             entry["turn"] = game_state.turn
+            entry["created_at"] = game_state.created_at.isoformat()
             processed_games.add(game_id)
 
         games_list.append(entry)
@@ -166,7 +168,8 @@ async def list_games() -> List[Dict[str, Any]]:
             "players": [player.id for player in game_state.players],
             "active_player": game_state.active_player,
             "turn": game_state.turn,
-            "max_players": len(game_state.players)
+            "max_players": len(game_state.players),
+            "created_at": game_state.created_at.isoformat()
         })
 
     return games_list
@@ -232,7 +235,7 @@ async def get_game_state(game_id: str) -> GameState:
     """Get current game state (only available after setup is complete)."""
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
-    return game_engine.games[game_id]
+    return game_engine.games[game_id].model_dump(mode="json")
 
 
 @router.get("/games/{game_id}/ui-data")
@@ -266,7 +269,9 @@ async def get_game_ui_data(game_id: str) -> dict:
                 'battlefield': [
                     safe_model_dump(card) for card in player.battlefield
                 ],
-                'library': len(player.library),
+                'library': [
+                    safe_model_dump(card) for card in player.library
+                ],
                 'graveyard': [
                     safe_model_dump(card) for card in player.graveyard
                 ],
@@ -314,9 +319,11 @@ async def perform_game_action(
         player_id = request["player_id"]
     else:
         if action_type in ["pass_priority", "resolve_stack"]:
-            player_id = f"player{current_state.priority_player}"
+            priority_index = current_state.priority_player
+            player_id = current_state.players[priority_index].id if 0 <= priority_index < len(current_state.players) else f"player{priority_index + 1}"
         else:
-            player_id = str(current_state.active_player)
+            active_index = current_state.active_player
+            player_id = current_state.players[active_index].id if 0 <= active_index < len(current_state.players) else f"player{active_index + 1}"
     
     try:
         handler = handler_info["handler"]
@@ -345,7 +352,10 @@ async def perform_game_action(
         
         await broadcast_game_update(game_id, game_state, broadcast_info)
         
-        return {"success": True, "game_state": game_state}
+        return {
+            "success": True,
+            "game_state": game_state.model_dump(mode="json")
+        }
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -358,7 +368,7 @@ async def perform_action(game_id: str, action: GameAction) -> GameState:
     """Legacy endpoint - perform an action in the game."""
     try:
         game_state = await game_engine.process_action(game_id, action)
-        return game_state
+        return game_state.model_dump(mode="json")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

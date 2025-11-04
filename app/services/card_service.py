@@ -1,6 +1,7 @@
 """Card service for managing Magic cards via Scryfall API."""
 
 import re
+from urllib.parse import quote_plus
 import aiohttp
 from typing import List, Optional, Dict, Any
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
@@ -66,6 +67,16 @@ class CardService:
         
         return []
     
+    async def _fetch_card_json(self, session: aiohttp.ClientSession, url: str) -> Optional[Dict[str, Any]]:
+        """Helper to fetch JSON payload from Scryfall and handle errors gracefully."""
+        try:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    return await response.json()
+        except Exception as exc:
+            print(f"Error fetching data from Scryfall ({url}): {exc}")
+        return None
+
     async def get_card_data_from_scryfall(
         self, identifier: str, by_id: bool = False
     ) -> Optional[Dict[str, Any]]:
@@ -73,16 +84,21 @@ class CardService:
         if by_id:
             url = f"https://api.scryfall.com/cards/{identifier}"
         else:
-            formatted_name = identifier.lower().replace(
-                " ", "+"
-            ).replace("'", "").replace(",", "")
+            sanitized_identifier = identifier.strip()
+            formatted_name = quote_plus(sanitized_identifier)
             url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        data = await response.json()
+                data = await self._fetch_card_json(session, url)
+                if data:
+                    return self._parse_scryfall_card(data)
+
+                if not by_id:
+                    # Fallback to fuzzy search for cards with alternate punctuation or formatting.
+                    fuzzy_url = f"https://api.scryfall.com/cards/named?fuzzy={quote_plus(identifier)}"
+                    data = await self._fetch_card_json(session, fuzzy_url)
+                    if data:
                         return self._parse_scryfall_card(data)
         except Exception as e:
             print(f"Error fetching card data for {identifier}: {e}")

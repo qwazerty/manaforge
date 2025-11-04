@@ -19,7 +19,7 @@ async def broadcast_game_update(
         
         message = {
             "type": "game_state_update",
-            "game_state": game_state.model_dump(),
+            "game_state": game_state.model_dump(mode="json"),
             "timestamp": game_state.turn if hasattr(game_state, 'turn') else None
         }
         

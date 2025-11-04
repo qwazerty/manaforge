@@ -164,12 +164,24 @@ class UIRenderersTemplates {
         const currentPhase = gameState?.phase || 'begin';
         const currentTurn = gameState?.turn || 1;
         const activePlayer = gameState?.active_player || 0;
+        const currentSelectedPlayer = GameCore.getSelectedPlayer();
+        let controlledPlayerIndex = null;
+
+        if (currentSelectedPlayer === 'player1') {
+            controlledPlayerIndex = 0;
+        } else if (currentSelectedPlayer === 'player2') {
+            controlledPlayerIndex = 1;
+        }
+
+        const passDisabled = controlledPlayerIndex === null
+            ? true
+            : controlledPlayerIndex !== activePlayer;
         
         return `
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer)}
                 ${this._generateGamePhases(currentPhase)}
-                ${this._generateActionButtonsSection()}
+                ${this._generateActionButtonsSection(passDisabled)}
             </div>
         `;
     }
@@ -401,12 +413,13 @@ class UIRenderersTemplates {
     /**
      * Generate action buttons section
      */
-    static _generateActionButtonsSection() {
+    static _generateActionButtonsSection(passDisabled = false) {
         const passPhaseBtn = UIUtils.generateButton(
             "GameActions.performGameAction('pass_phase')",
             UIConfig.CSS_CLASSES.button.primary,
             "Pass current phase",
-            "⏭️ Pass Phase"
+            "⏭️ Pass Phase",
+            passDisabled
         );
 
         const untapBtn = UIUtils.generateButton(

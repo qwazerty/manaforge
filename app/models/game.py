@@ -2,9 +2,15 @@
 Core models for the Magic The Gathering game.
 """
 
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
+
+
+def current_utc_datetime() -> datetime:
+    """Return current time with UTC timezone info."""
+    return datetime.now(timezone.utc)
 
 
 class CardType(str, Enum):
@@ -221,6 +227,10 @@ class GameSetupStatus(BaseModel):
         default=False,
         description="True when both decks are validated and the game is initialized"
     )
+    created_at: datetime = Field(
+        default_factory=current_utc_datetime,
+        description="Timestamp for when the lobby was created (UTC)"
+    )
     player_status: Dict[str, PlayerDeckStatus] = Field(
         default_factory=dict,
         description="Per-player deck submission statuses"
@@ -265,6 +275,10 @@ class GameState(BaseModel):
     pending_action: Optional[Dict[str, Any]] = Field(
         default=None,
         description="A pending action requiring player input, e.g., for scry/surveil"
+    )
+    created_at: datetime = Field(
+        default_factory=current_utc_datetime,
+        description="Timestamp for when the game started (UTC)"
     )
 
 

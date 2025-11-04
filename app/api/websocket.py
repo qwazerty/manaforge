@@ -171,7 +171,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
         if room:
             await manager.broadcast_to_game(game_id, {
                 "type": "draft_state_update",
-                "room_state": room.model_dump()
+                "room_state": room.model_dump(mode="json")
             })
     
     try:
@@ -193,7 +193,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     
                     await websocket.send_text(json.dumps({
                         "type": "game_state_update",
-                        "game_state": game_state.model_dump(),
+                        "game_state": game_state.model_dump(mode="json"),
                         "timestamp": time.time()
                     }))
                     
@@ -257,7 +257,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     
                     broadcast_info = {
                         "type": "game_state_update",
-                        "game_state": updated_game_state.model_dump(),
+                        "game_state": updated_game_state.model_dump(mode="json"),
                         "action_result": {
                             "success": True,
                             "action": action_type,
@@ -325,7 +325,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
 
                     await manager.broadcast_to_game(game_id, {
                         "type": "draft_state_update",
-                        "room_state": room.model_dump()
+                        "room_state": room.model_dump(mode="json")
                     })
     
     except WebSocketDisconnect:

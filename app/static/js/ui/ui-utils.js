@@ -22,11 +22,15 @@ class UIUtils {
      * Generate HTML button element
      */
     static generateButton(onclick, classes, title, content, disabled = false) {
+        const disabledClasses = disabled ? ' opacity-40 cursor-not-allowed' : '';
+        const disabledAttr = disabled ? 'disabled' : '';
+        const styleAttr = disabled ? 'style="opacity: 0.4;"' : '';
         return `
             <button onclick="${onclick}" 
-                    class="${classes}"
+                    class="${classes}${disabledClasses}"
                     title="${title}"
-                    ${disabled ? 'disabled' : ''}>
+                    ${disabledAttr}
+                    ${styleAttr}>
                 ${content}
             </button>
         `;
