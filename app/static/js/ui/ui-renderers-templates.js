@@ -293,13 +293,30 @@ class UIRenderersTemplates {
     /**
      * Generate player's hand
      */
-    static generatePlayerHand(hand = [], playerId = null) {
-        if (hand.length === 0) {
+    static generatePlayerHand(hand = [], playerId = null, options = {}) {
+        const cards = Array.isArray(hand) ? hand : [];
+        if (!cards.length) {
             return '<div class="text-arena-text-dim text-center py-4">No cards in hand</div>';
         }
 
-        return hand.map((card, index) => 
-            GameCards.renderCardWithLoadingState(card, UIConfig.CSS_CLASSES.card.mini, false, 'hand', false, index, playerId)
+        const { isOpponent = false, readOnly = null } = options;
+        const isSpectator =
+            typeof GameCore !== 'undefined' &&
+            typeof GameCore.getSelectedPlayer === 'function' &&
+            GameCore.getSelectedPlayer() === 'spectator';
+        const forceReadOnly = readOnly === null ? isSpectator : readOnly;
+
+        return cards.map((card, index) =>
+            GameCards.renderCardWithLoadingState(
+                card,
+                UIConfig.CSS_CLASSES.card.mini,
+                false,
+                'hand',
+                isOpponent,
+                index,
+                playerId,
+                { readOnly: forceReadOnly }
+            )
         ).join('');
     }
 
@@ -1101,14 +1118,26 @@ class UIRenderersTemplates {
      * Render opponent area
      */
     static _renderOpponentArea(opponent, opponentIdx, activePlayer) {
-        const handSize = opponent?.hand?.length || 7;
+        const actualHandSize = Array.isArray(opponent?.hand) ? opponent.hand.length : 0;
+        const placeholderHandSize = actualHandSize || 7;
         const isOpponentActiveTurn = activePlayer === opponentIdx;
         const activeTurnClass = isOpponentActiveTurn ? 'opponent-zone-active-turn' : '';
+        const isSpectatorView =
+            typeof GameCore !== 'undefined' &&
+            typeof GameCore.getSelectedPlayer === 'function' &&
+            GameCore.getSelectedPlayer() === 'spectator';
+        const opponentHandHtml = isSpectatorView
+            ? this.generatePlayerHand(opponent?.hand || [], opponentIdx, {
+                isOpponent: true,
+                readOnly: true
+            })
+            : this.generateOpponentHand(placeholderHandSize);
+        const handDataCount = isSpectatorView ? actualHandSize : placeholderHandSize;
         
         return `
             <div class="arena-card rounded-lg mb-3 p-3 compact-zones ${activeTurnClass}">
-                <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1" data-card-count="${handSize}">
-                    ${this.generateOpponentHand(handSize)}
+                <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1" data-card-count="${handDataCount}">
+                    ${opponentHandHtml}
                 </div>
 
                 ${this.generateBattlefieldLayout(opponent?.battlefield, true, opponentIdx)}

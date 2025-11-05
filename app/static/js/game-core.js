@@ -10,6 +10,23 @@ let autoRefreshInterval = null;
 let isPageVisible = true;
 let gameId = null; // Will be initialized from template
 
+function updateSpectatorModeClass() {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    const isSpectator = currentSelectedPlayer === 'spectator';
+    const body = document.body;
+
+    if (body) {
+        body.classList.toggle('spectator-mode', isSpectator);
+    }
+
+    document.querySelectorAll('.game-container-1080').forEach((container) => {
+        container.classList.toggle('spectator-mode', isSpectator);
+    });
+}
+
 // ===== INITIALIZATION FUNCTION =====
 async function initializeGame() {
     console.log('ManaForge Game Interface initializing...');
@@ -35,6 +52,7 @@ async function initializeGame() {
     // Get player from URL or default to player1
     const playerFromUrl = GameUtils.getPlayerFromUrl();
     currentSelectedPlayer = playerFromUrl;
+    updateSpectatorModeClass();
     
     // Initialize UI components safely
     // await GameUI.initializeGameUI();
@@ -144,13 +162,17 @@ window.GameCore = {
     refreshGameData,
     startAutoRefresh,
     stopAutoRefresh,
+    updateSpectatorModeClass,
     // Expose getters for state variables
     getGameState: () => gameState,
     getGameId: () => gameId,
     getSelectedPlayer: () => currentSelectedPlayer,
     setGameState: (state) => { gameState = state; },
     setGameId: (id) => { gameId = id; },
-    setSelectedPlayer: (player) => { currentSelectedPlayer = player; },
+    setSelectedPlayer: (player) => {
+        currentSelectedPlayer = player;
+        updateSpectatorModeClass();
+    },
     isPageVisible: () => isPageVisible
 };
 

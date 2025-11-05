@@ -72,9 +72,13 @@ class ZoneContextMenu {
 
         // Extract base zone name (remove opponent_ prefix if present)
         const baseZoneName = zoneName.replace('opponent_', '');
+        const currentPlayer = (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+            ? GameCore.getSelectedPlayer()
+            : null;
+        const isSpectator = currentPlayer === 'spectator';
 
         // Do not show context menu for opponent's deck
-        if (isOpponent && baseZoneName === 'deck') {
+        if (!isSpectator && isOpponent && baseZoneName === 'deck') {
             return;
         }
         
@@ -85,9 +89,24 @@ class ZoneContextMenu {
             return;
         }
 
+        const filteredActions = (menuConfig.actions || []).filter((action) => {
+            if (isSpectator) {
+                return action.action === 'searchZone';
+            }
+            if (isOpponent) {
+                return action.action === 'searchZone';
+            }
+            return true;
+        });
+
+        if (!filteredActions.length) {
+            return;
+        }
+
         // Create enhanced menu config with context
         const enhancedConfig = {
             ...menuConfig,
+            actions: filteredActions,
             title: isOpponent ? `Opponent's ${menuConfig.title}` : menuConfig.title,
             isOpponent: isOpponent,
             baseZoneName: baseZoneName
@@ -185,6 +204,14 @@ class ZoneContextMenu {
 
         // Extract base zone name
         const baseZoneName = zoneName.replace('opponent_', '');
+        const currentPlayer = (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+            ? GameCore.getSelectedPlayer()
+            : null;
+        const isSpectator = currentPlayer === 'spectator';
+        if ((isOpponent || isSpectator) && actionType !== 'searchZone') {
+            console.warn('Action is restricted for this context');
+            return;
+        }
 
         switch (actionType) {
             case 'drawCard':
@@ -322,22 +349,10 @@ class ZoneContextMenu {
         const isOpponent = zoneName.startsWith('opponent_');
 
         zoneElement.addEventListener('contextmenu', (e) => {
-            const currentPlayer = GameCore.getSelectedPlayer();
-            if (currentPlayer === 'spectator') {
-                return; // No context menu for spectators
-            }
-
             this.showMenu(zoneName, e, isOpponent);
         });
 
-        // Add visual indicator for right-click availability, unless it's the opponent's deck
-        const cleanZoneName = zoneName.replace('opponent_', '');
-        if (!isOpponent || cleanZoneName !== 'deck') {
-            const actionType = isOpponent ? 'interact with opponent' : 'interact with';
-            zoneElement.title = `Right-click to ${actionType} ${cleanZoneName}`;
-        } else {
-            zoneElement.title = `Opponent's library`; // Or simply remove the title
-        }
+        zoneElement.title = 'Right-click for zone options';
     }
 }
 
