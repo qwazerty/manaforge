@@ -867,17 +867,17 @@ class UIRenderersTemplates {
 
             seen.add(playerId);
 
+            const isOpponent = selectedPlayer === 'spectator'
+                ? false
+                : (selectedPlayer !== playerId);
+            const isControlled = selectedPlayer !== 'spectator' && !isOpponent;
+
             if (!revealCards.length) {
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
                 delete elements.panel.dataset.userMoved;
                 return;
             }
-
-            const isOpponent = selectedPlayer === 'spectator'
-                ? false
-                : (selectedPlayer !== playerId);
-            const isControlled = selectedPlayer !== 'spectator' && !isOpponent;
 
             elements.body.innerHTML = this._generateRevealContent(revealCards, isOpponent, playerId);
             elements.countLabel.textContent = String(revealCards.length);
@@ -1083,8 +1083,23 @@ class UIRenderersTemplates {
     }
 
     static _generateRevealContent(cards, isOpponent, playerId) {
+        const allowDrop = !isOpponent;
+        const listAttributes = allowDrop
+            ? `data-zone-context="reveal" data-zone-owner="${playerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, 'reveal')"`
+            : `data-zone-context="reveal" data-zone-owner="${playerId}"`;
+
         if (!Array.isArray(cards) || cards.length === 0) {
-            return `<div class="reveal-empty">No cards revealed</div>`;
+            const emptyState = '<div class="reveal-empty">No cards revealed</div>';
+            if (!allowDrop) {
+                return emptyState;
+            }
+            return `
+                <div class="reveal-card-container">
+                    <div class="reveal-card-list zone-card-list zone-card-list-empty" ${listAttributes} data-card-count="0">
+                        ${emptyState}
+                    </div>
+                </div>
+            `;
         }
 
         const cardsHtml = cards.map((card, index) =>
@@ -1093,7 +1108,7 @@ class UIRenderersTemplates {
 
         return `
             <div class="reveal-card-container">
-                <div class="reveal-card-list" data-card-count="${cards.length}">
+                <div class="reveal-card-list zone-card-list" ${listAttributes} data-card-count="${cards.length}">
                     ${cardsHtml}
                 </div>
             </div>
