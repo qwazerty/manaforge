@@ -268,11 +268,31 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     broadcast_info["action_result"].update(
                         handler_result.get("broadcast_data", {})
                     )
+                    broadcast_info["action_result"].setdefault("origin", "server")
+                    broadcast_info["action_result"].setdefault(
+                        "timestamp", broadcast_info["timestamp"]
+                    )
+
+                    game_engine.record_action_history(
+                        game_id,
+                        broadcast_info["action_result"]
+                    )
 
                     await manager.broadcast_to_game(game_id, broadcast_info)
                     
                 except Exception as e:
                     print(f"Error processing game action via WebSocket: {e}")
+                    game_engine.record_action_history(
+                        game_id,
+                        {
+                            "success": False,
+                            "action": action_type,
+                            "player": player_id,
+                            "error": str(e),
+                            "origin": "server",
+                            "timestamp": time.time()
+                        }
+                    )
                     await websocket.send_text(json.dumps({
                         "type": "action_error",
                         "message": str(e),
@@ -280,11 +300,16 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     }))
             
             elif message.get("type") == "chat":
-                await manager.broadcast_to_game(game_id, {
+                from app.api.routes import game_engine
+                payload = {
                     "type": "chat",
                     "player": message.get("player", player_id),
                     "message": message.get("message", ""),
                     "timestamp": time.time()
+                }
+                game_engine.add_chat_message(game_id, payload)
+                await manager.broadcast_to_game(game_id, {
+                    **payload
                 })
             
             elif message.get("type") == "player_joined":

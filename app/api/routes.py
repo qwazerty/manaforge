@@ -310,7 +310,15 @@ async def get_game_ui_data(game_id: str) -> dict:
             }
             for player in game_state.players
         ],
-        'stack': [safe_model_dump(spell) for spell in game_state.stack]
+        'stack': [safe_model_dump(spell) for spell in game_state.stack],
+        'action_history': [
+            safe_model_dump(entry)
+            for entry in getattr(game_state, 'action_history', [])
+        ],
+        'chat_log': [
+            safe_model_dump(entry)
+            for entry in getattr(game_state, 'chat_log', [])
+        ]
     }
 
 

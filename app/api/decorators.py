@@ -4,6 +4,7 @@ Decorators and utilities for API routes.
 
 from functools import wraps
 from typing import Callable, Optional, Dict
+import time
 from fastapi import HTTPException
 
 from app.models.game import GameAction, GameState
@@ -16,6 +17,7 @@ async def broadcast_game_update(
     """Broadcast game state update to all connected clients."""
     try:
         from app.api.websocket import manager
+        from app.api.routes import game_engine
         
         message = {
             "type": "game_state_update",
@@ -24,7 +26,11 @@ async def broadcast_game_update(
         }
         
         if action_info:
-            message["action_result"] = action_info
+            action_entry = dict(action_info)
+            action_entry.setdefault("timestamp", time.time())
+            action_entry.setdefault("origin", "server")
+            game_engine.record_action_history(game_id, action_entry)
+            message["action_result"] = action_entry
         
         await manager.broadcast_to_game(game_id, message)
         print(f"Broadcasted game state update for game {game_id}")

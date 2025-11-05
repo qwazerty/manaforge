@@ -69,9 +69,38 @@ class UINotifications {
         
         const chatArea = document.getElementById('chat-messages');
         if (!chatArea) return;
+
+        this._removeChatPlaceholder(chatArea);
         
         const messageElement = this.createChatMessageElement(sender, message);        
         chatArea.appendChild(messageElement);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    /**
+     * Load chat messages from persisted state.
+     */
+    static loadChatLog(logEntries = []) {
+        const chatArea = document.getElementById('chat-messages');
+        if (!chatArea) {
+            return;
+        }
+
+        chatArea.innerHTML = '';
+
+        if (!Array.isArray(logEntries) || logEntries.length === 0) {
+            chatArea.appendChild(this.createChatPlaceholder());
+            return;
+        }
+
+        for (const entry of logEntries) {
+            const sender = entry.player || entry.sender || 'Unknown';
+            const text = entry.message || '';
+            const messageElement = this.createChatMessageElement(sender, text);
+            messageElement.dataset.timestamp = entry.timestamp ? String(entry.timestamp) : '';
+            chatArea.appendChild(messageElement);
+        }
+
         chatArea.scrollTop = chatArea.scrollHeight;
     }
 
@@ -157,6 +186,17 @@ class UINotifications {
             <span class="chat-text">${this.escapeHtml(message)}</span>
         `;
         return messageElement;
+    }
+
+    static createChatPlaceholder() {
+        const placeholder = document.createElement('div');
+        placeholder.dataset.chatPlaceholder = 'true';
+        placeholder.className = 'text-arena-text-dim text-center py-4';
+        placeholder.innerHTML = `
+            <span class="text-2xl block mb-2">⚔️</span>
+            <p>Battle chat ready</p>
+        `;
+        return placeholder;
     }
 
     /**
@@ -251,6 +291,19 @@ class UINotifications {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    static _removeChatPlaceholder(container) {
+        const placeholder = container.querySelector('[data-chat-placeholder]');
+        if (placeholder) {
+            placeholder.remove();
+            return;
+        }
+
+        const legacyPlaceholder = container.querySelector('.text-arena-text-dim');
+        if (legacyPlaceholder && legacyPlaceholder.parentElement === container) {
+            legacyPlaceholder.remove();
+        }
     }
 }
 

@@ -284,6 +284,14 @@ class GameState(BaseModel):
         default_factory=dict,
         description="Summary of the deck submissions used to start the game"
     )
+    action_history: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Ordered history of in-game actions for UI rendering"
+    )
+    chat_log: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Chat messages exchanged during the game session"
+    )
     pending_action: Optional[Dict[str, Any]] = Field(
         default=None,
         description="A pending action requiring player input, e.g., for scry/surveil"
