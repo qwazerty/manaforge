@@ -73,26 +73,42 @@ class SimpleGameEngine:
         deck.format = setup.game_format
         
         # Validate deck
-        card_count = sum(dc.quantity for dc in deck.cards)
-        if card_count < 40:
+        main_card_count = sum(dc.quantity for dc in deck.cards)
+        commander_count = len(getattr(deck, "commanders", []))
+        total_card_count = main_card_count + commander_count
+
+        def _reject_submission(message: str) -> GameSetupStatus:
             setup.player_status[player_id] = PlayerDeckStatus(
                 submitted=True,
                 validated=False,
                 seat_claimed=True,
                 deck_name=deck.name,
-                card_count=card_count,
-                message=f"Deck must contain at least 40 cards (has {card_count})"
+                card_count=total_card_count,
+                message=message
             )
             setup.status = f"{player_id} submitted invalid deck"
             return setup
-        
+
+        if setup.game_format == GameFormat.DUEL_COMMANDER:
+            if commander_count == 0:
+                return _reject_submission("Commander missing: Duel Commander decks must include exactly one commander.")
+            if commander_count > 1:
+                return _reject_submission(
+                    f"Too many commanders ({commander_count}). Duel Commander decks must include exactly one commander."
+                )
+
+        if main_card_count < 40:
+            return _reject_submission(
+                f"Deck must contain at least 40 main cards (has {main_card_count})."
+            )
+
         # Mark deck as submitted and validated
         setup.player_status[player_id] = PlayerDeckStatus(
             submitted=True,
             validated=True,
             seat_claimed=True,
             deck_name=deck.name,
-            card_count=card_count,
+            card_count=total_card_count,
             message="Deck validated successfully"
         )
         
@@ -175,6 +191,9 @@ class SimpleGameEngine:
             deck_name=player2_deck.name,
             library=self._shuffle_deck(player2_deck.cards, player2_id)
         )
+
+        self._initialize_commander_zone(player1, player1_deck)
+        self._initialize_commander_zone(player2, player2_deck)
         
         self._draw_cards(player1, 7)
         self._draw_cards(player2, 7)
@@ -298,6 +317,7 @@ class SimpleGameEngine:
             "resolve_all_stack": self._resolve_all_stack,
             "pass_priority": self._pass_priority,
             "modify_life": self._modify_life,
+            "adjust_commander_tax": self._adjust_commander_tax,
             "tap_card": self._tap_card,
             "change_phase": self._change_phase,
             "shuffle_library": self._shuffle_library,
@@ -399,6 +419,31 @@ class SimpleGameEngine:
             if player.library:
                 card = player.library.pop(0)
                 player.hand.append(card)
+
+    def _initialize_commander_zone(self, player: Player, deck: Deck) -> None:
+        """Populate the command zone with designated commanders."""
+        commanders = getattr(deck, "commanders", []) or []
+        player.commander_zone = []
+        player.commander_tax = 0
+
+        if not commanders:
+            return
+
+        for commander in commanders:
+            if hasattr(commander, "model_copy"):
+                commander_copy = commander.model_copy(deep=True)
+            else:
+                commander_copy = commander.copy(deep=True)  # type: ignore[attr-defined]
+
+            commander_copy.unique_id = uuid.uuid4().hex
+            commander_copy.owner_id = player.id
+            commander_copy.tapped = False
+            commander_copy.targeted = False
+            player.commander_zone.append(commander_copy)
+
+        if player.commander_zone:
+            names = ", ".join(card.name for card in player.commander_zone)
+            print(f"Player {player.id} commander zone initialized with {names}")
     
     def _play_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle playing a card from hand."""
@@ -664,6 +709,26 @@ class SimpleGameEngine:
             f"{target_player.life} (amount: {amount})"
         )
     
+    def _adjust_commander_tax(self, game_state: GameState, action: GameAction) -> None:
+        """Adjust the commander tax for a specific player."""
+        target_player_id = action.additional_data.get("target_player") or action.player_id
+        amount = action.additional_data.get("amount")
+
+        if not target_player_id:
+            raise ValueError("target_player is required for adjust_commander_tax action")
+        if amount is None:
+            raise ValueError("amount is required for adjust_commander_tax action")
+
+        target_player = self._get_player(game_state, target_player_id)
+        old_tax = getattr(target_player, "commander_tax", 0)
+        new_tax = max(0, old_tax + amount)
+
+        target_player.commander_tax = new_tax
+        print(
+            f"Player {target_player_id} commander tax changed from {old_tax} to "
+            f"{new_tax} (amount: {amount})"
+        )
+    
     def _tap_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle tapping or untapping a card."""
         player = self._get_player(game_state, action.player_id)
@@ -758,7 +823,7 @@ class SimpleGameEngine:
                 game_state, player, destination_zone_name
             )
             
-            if destination_zone_name in ["graveyard", "exile", "library", "reveal_zone"]:
+            if destination_zone_name in ["graveyard", "exile", "library", "reveal_zone", "commander_zone"]:
                 card_found.tapped = False
                 card_found.targeted = False
             
@@ -792,6 +857,8 @@ class SimpleGameEngine:
             return "library"
         if zone_name in ["reveal", "reveal_zone"]:
             return "reveal_zone"
+        if zone_name in ["commander", "commander_zone", "command_zone"]:
+            return "commander_zone"
         return zone_name
 
     def _duplicate_card(self, game_state: GameState, action: GameAction) -> None:

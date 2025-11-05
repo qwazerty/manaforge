@@ -352,23 +352,44 @@ class CardService:
     
     async def _build_deck_from_entries(
         self,
-        entries: List[Tuple[int, str]],
+        entries: List[Tuple[int, str, Optional[str]]],
         deck_name: Optional[str] = None
     ) -> Deck:
-        """Build a deck object from parsed (quantity, card_name) entries."""
+        """Build a deck object from parsed entries, keeping commanders separate."""
         deck_cards: List[DeckCard] = []
-        for quantity, card_name in entries:
-            card_data = await self.get_card_data_from_scryfall(card_name)
-            if card_data:
-                card = Card(**card_data)
-                deck_card = DeckCard(card=card, quantity=quantity)
-                deck_cards.append(deck_card)
-                print(f"✅ Added {quantity}x {card_name}")
+        commanders: List[Card] = []
+
+        for entry in entries:
+            if len(entry) == 3:
+                quantity, card_name, section = entry  # type: ignore[misc]
             else:
+                quantity, card_name = entry
+                section = None
+
+            card_data = await self.get_card_data_from_scryfall(card_name)
+            if not card_data:
                 print(f"❌ Card not found: {card_name}")
+                continue
+
+            card = Card(**card_data)
+            if section == "commander":
+                commanders.extend(
+                    card.model_copy(deep=True) for _ in range(max(1, quantity))
+                )
+                print(f"⭐ Identified commander: {card_name}")
+                continue
+
+            deck_card = DeckCard(card=card, quantity=quantity)
+            deck_cards.append(deck_card)
+            print(f"✅ Added {quantity}x {card_name}")
 
         deck_id, resolved_name = self._generate_deck_identity(deck_name)
-        return Deck(id=deck_id, name=resolved_name, cards=deck_cards)
+        return Deck(
+            id=deck_id,
+            name=resolved_name,
+            cards=deck_cards,
+            commanders=commanders
+        )
 
     async def parse_decklist(
         self,
@@ -382,7 +403,22 @@ class CardService:
             r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$"
         )
 
-        entries: List[Tuple[int, str]] = []
+        section_aliases = {
+            "commander": "commander",
+            "commanders": "commander",
+            "commandeur": "commander",
+            "commandeurs": "commander",
+            "deck": "main",
+            "main": "main",
+            "maindeck": "main",
+            "mainboard": "main",
+            "main deck": "main",
+            "compagnon": "companion",
+            "companion": "companion"
+        }
+
+        current_section: Optional[str] = None
+        entries: List[Tuple[int, str, Optional[str]]] = []
         for raw_line in lines:
             line = raw_line.strip()
             if not line or line.startswith("#"):
@@ -392,7 +428,15 @@ class CardService:
             if match:
                 quantity = int(match.group(1))
                 card_name = match.group(2).strip()
-                entries.append((quantity, card_name))
+                section = current_section if current_section and current_section != "main" else None
+                entries.append((quantity, card_name, section))
+                continue
+
+            normalized_heading = re.sub(r'[^a-zA-Z\s]', ' ', line).lower()
+            normalized_heading = re.sub(r'\s+', ' ', normalized_heading).strip()
+            if normalized_heading in section_aliases:
+                current_section = section_aliases[normalized_heading]
+                continue
 
         return await self._build_deck_from_entries(entries, deck_name=deck_name)
 
@@ -598,23 +642,30 @@ class CardService:
                         return name
             return entry.get("name")
 
-        aggregated: Dict[str, int] = {}
+        entries_by_section: Dict[str, Dict[str, int]] = {
+            "commander": {},
+            "companion": {},
+            "main": {}
+        }
 
         zone_configs = [
-            (("commanders", "commander"), 1),
-            (("companions", "companion"), 1),
-            (("mainboard", "mainBoard", "main"), None),
+            (("commanders", "commander"), 1, "commander"),
+            (("companions", "companion"), 1, "companion"),
+            (("mainboard", "mainBoard", "main"), None, "main"),
         ]
 
-        for zone_keys, default_quantity in zone_configs:
+        for zone_keys, default_quantity, section_name in zone_configs:
             zone = resolve_zone(*zone_keys)
             for entry in iter_zone_entries(zone):
                 quantity = resolve_quantity(entry, default_quantity)
                 card_name = resolve_card_name(entry)
                 if quantity and card_name:
-                    aggregated[card_name] = aggregated.get(card_name, 0) + int(quantity)
+                    section_bucket = entries_by_section.setdefault(section_name, {})
+                    section_bucket[card_name] = section_bucket.get(card_name, 0) + int(quantity)
 
-        if not aggregated:
+        total_entries = sum(len(bucket) for bucket in entries_by_section.values())
+
+        if total_entries == 0:
             # Attempt plain-text export as fallback
             download_variants = [
                 f"https://www.moxfield.com/decks/all/{deck_id}?format=txt",
@@ -630,8 +681,21 @@ class CardService:
                     continue
             raise ValueError("Deck appears to be empty or unsupported on Moxfield.")
 
-        lines = [f"{qty} {name}" for name, qty in aggregated.items()]
-        deck_text = "\n".join(lines)
+        def emit_section(title: str, bucket_key: str) -> List[str]:
+            bucket = entries_by_section.get(bucket_key, {})
+            if not bucket:
+                return []
+            section_lines = [title]
+            section_lines.extend(f"{qty} {name}" for name, qty in bucket.items())
+            section_lines.append("")  # Blank line after section for readability
+            return section_lines
+
+        lines: List[str] = []
+        lines.extend(emit_section("Commander", "commander"))
+        lines.extend(emit_section("Companion", "companion"))
+        lines.extend(emit_section("Deck", "main"))
+
+        deck_text = "\n".join(lines).strip()
         return deck_text, deck_name
 
     def _extract_mtggoldfish_deck_ids(self, page_html: str) -> List[str]:
@@ -661,7 +725,11 @@ class CardService:
         segments = [segment for segment in parsed_url.path.split("/") if segment]
         deck_id: Optional[str] = None
 
-        if "download" in segments:
+        if "arena_download" in segments:
+            idx = segments.index("arena_download")
+            if idx + 1 < len(segments):
+                deck_id = segments[idx + 1]
+        elif "download" in segments:
             idx = segments.index("download")
             if idx + 1 < len(segments):
                 deck_id = segments[idx + 1]
@@ -682,8 +750,25 @@ class CardService:
                 deck_id = deck_ids[0]
 
         if deck_id:
-            download_url = f"https://www.mtggoldfish.com/deck/download/{deck_id}?format=txt"
-            deck_text = (await self._http_get_text(download_url)).strip()
+            deck_text = ""
+            deck_name = f"MTGGoldfish Deck {deck_id}"
+
+            arena_url = f"https://www.mtggoldfish.com/deck/arena_download/{deck_id}"
+            try:
+                arena_html = await self._http_get_text(arena_url)
+                textarea_match = re.search(
+                    r"<textarea[^>]*>(.*?)</textarea>",
+                    arena_html,
+                    re.IGNORECASE | re.DOTALL
+                )
+                if textarea_match:
+                    deck_text = unescape(textarea_match.group(1)).strip()
+            except ValueError:
+                arena_html = ""
+
+            if not deck_text:
+                download_url = f"https://www.mtggoldfish.com/deck/download/{deck_id}?format=txt"
+                deck_text = (await self._http_get_text(download_url)).strip()
 
             if not deck_text:
                 raise ValueError("Deck download from MTGGoldfish returned empty content.")
@@ -694,7 +779,6 @@ class CardService:
                 except ValueError:
                     page_html = None
 
-            deck_name = f"MTGGoldfish Deck {deck_id}"
             if page_html:
                 title_match = re.search(r"<title>(.*?)</title>", page_html, re.IGNORECASE | re.DOTALL)
                 if title_match:

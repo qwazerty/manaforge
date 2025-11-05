@@ -132,6 +132,10 @@ class Deck(BaseModel):
         default_factory=list,
         description="List of cards in the deck with quantities"
     )
+    commanders: List[Card] = Field(
+        default_factory=list,
+        description="Commander cards assigned to this deck"
+    )
     format: GameFormat = Field(
         default=GameFormat.STANDARD,
         description="Deck format"
@@ -183,6 +187,14 @@ class Player(BaseModel):
     )
     library: List[Card] = Field(
         default_factory=list, description="Cards in library"
+    )
+    commander_zone: List[Card] = Field(
+        default_factory=list,
+        description="Cards available in the commander zone"
+    )
+    commander_tax: int = Field(
+        default=0,
+        description="Current commander tax (paid additional colorless mana)"
     )
     reveal_zone: List[Card] = Field(
         default_factory=list, description="Cards in the player's reveal zone"

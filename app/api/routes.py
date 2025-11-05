@@ -282,6 +282,7 @@ async def get_game_ui_data(game_id: str) -> dict:
         'turn': game_state.turn,
         'phase': game_state.phase.value,
         'phase_mode': game_state.phase_mode.value,
+        'game_format': getattr(game_state.game_format, 'value', str(game_state.game_format)),
         'active_player': game_state.active_player,
         'priority_player': game_state.priority_player,
         'players': [
@@ -301,7 +302,11 @@ async def get_game_ui_data(game_id: str) -> dict:
                 'exile': [safe_model_dump(card) for card in player.exile],
                 'reveal_zone': [
                     safe_model_dump(card) for card in getattr(player, 'reveal_zone', [])
-                ]
+                ],
+                'commander_zone': [
+                    safe_model_dump(card) for card in getattr(player, 'commander_zone', [])
+                ],
+                'commander_tax': getattr(player, 'commander_tax', 0)
             }
             for player in game_state.players
         ],
