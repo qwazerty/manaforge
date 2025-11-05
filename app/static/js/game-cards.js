@@ -4,6 +4,13 @@
  */
 const GameCards = {
     draggedCardElement: null,
+    _hoverPreviewInitialized: false,
+    _hoveredCardElement: null,
+    _hoverPreviewPointerEvent: null,
+    _hoverPreviewOpened: false,
+    _boundHoverMouseOver: null,
+    _boundHoverMouseOut: null,
+    _boundHoverMouseMove: null,
     keywordDescriptions: {
         "flying":{"name":"Flying","description":"Creatures with flying can only be blocked by creatures with flying or reach."},
         "reach":{"name":"Reach","description":"This creature can block creatures with flying."},
@@ -768,28 +775,37 @@ const GameCards = {
         document.body.appendChild(preview);
         this.addCardPreviewListeners();
 
-        if (event && event.clientX && event.clientY) {
-            const previewRect = preview.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            let x = event.clientX + 20;
-            let y = event.clientY + 20;
-
-            if (x + previewRect.width > viewportWidth) {
-                x = event.clientX - previewRect.width - 20;
-            }
-            if (y + previewRect.height > viewportHeight) {
-                y = event.clientY - previewRect.height - 20;
-            }
-
-            x = Math.max(10, Math.min(x, viewportWidth - previewRect.width - 10));
-            y = Math.max(10, Math.min(y, viewportHeight - previewRect.height - 10));
-
-            preview.style.position = 'fixed';
-            preview.style.left = `${x}px`;
-            preview.style.top = `${y}px`;
-            preview.style.transform = 'none';
+        if (event && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+            this.positionCardPreview(preview, event);
         }
+    },
+
+    positionCardPreview: function(previewElement, event) {
+        if (!previewElement || !event) {
+            return;
+        }
+
+        const previewRect = previewElement.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        let x = event.clientX + 20;
+        let y = event.clientY + 20;
+
+        if (x + previewRect.width > viewportWidth) {
+            x = event.clientX - previewRect.width - 20;
+        }
+        if (y + previewRect.height > viewportHeight) {
+            y = event.clientY - previewRect.height - 20;
+        }
+
+        x = Math.max(10, Math.min(x, viewportWidth - previewRect.width - 10));
+        y = Math.max(10, Math.min(y, viewportHeight - previewRect.height - 10));
+
+        previewElement.style.position = 'fixed';
+        previewElement.style.left = `${x}px`;
+        previewElement.style.top = `${y}px`;
+        previewElement.style.transform = 'none';
     },
 
     showCardContextMenu: function(event, cardElement) {
@@ -943,6 +959,8 @@ const GameCards = {
         if (preview) {
             preview.remove();
             this.removeCardPreviewListeners();
+            this._hoverPreviewOpened = false;
+            this._hoverPreviewPointerEvent = null;
         }
     },
 
@@ -952,6 +970,8 @@ const GameCards = {
             if (preview) {
                 preview.remove();
                 this.removeCardPreviewListeners();
+                this._hoverPreviewOpened = false;
+                this._hoverPreviewPointerEvent = null;
             }
         }
     },
@@ -981,6 +1001,136 @@ const GameCards = {
         if (this._boundHandleCardPreviewKeydown) {
             document.removeEventListener('keydown', this._boundHandleCardPreviewKeydown);
         }
+    },
+
+    initializeHoverPreview: function() {
+        if (this._hoverPreviewInitialized) {
+            return;
+        }
+
+        this._boundHoverMouseOver = this.handleHoverMouseOver.bind(this);
+        this._boundHoverMouseOut = this.handleHoverMouseOut.bind(this);
+        this._boundHoverMouseMove = this.handleHoverMouseMove.bind(this);
+
+        document.addEventListener('mouseover', this._boundHoverMouseOver, true);
+        document.addEventListener('mouseout', this._boundHoverMouseOut, true);
+        document.addEventListener('mousemove', this._boundHoverMouseMove, true);
+
+        this._hoverPreviewInitialized = true;
+    },
+
+    handleHoverMouseOver: function(event) {
+        const cardElement = event.target.closest('[data-card-id]');
+        if (!cardElement) {
+            return;
+        }
+
+        const related = event.relatedTarget;
+        if (related && cardElement.contains(related)) {
+            return;
+        }
+
+        this._hoveredCardElement = cardElement;
+        this._hoverPreviewPointerEvent = event;
+
+        this.openHoverPreview(cardElement, event);
+    },
+
+    handleHoverMouseOut: function(event) {
+        const cardElement = event.target.closest('[data-card-id]');
+        if (!cardElement) {
+            return;
+        }
+
+        const related = event.relatedTarget;
+        if (related && cardElement.contains(related)) {
+            return;
+        }
+
+        if (this._hoveredCardElement === cardElement) {
+            this._hoveredCardElement = null;
+            this._hoverPreviewPointerEvent = null;
+        }
+
+        if (this._hoverPreviewOpened) {
+            this.closeHoverPreview();
+        }
+    },
+
+    handleHoverMouseMove: function(event) {
+        const cardElement = event.target.closest('[data-card-id]');
+        if (cardElement) {
+            this._hoverPreviewPointerEvent = event;
+        }
+
+        const preview = document.getElementById('card-preview-modal');
+        if (this._hoverPreviewOpened && preview && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+            this.positionCardPreview(preview, event);
+        } else if (!this._hoverPreviewOpened && cardElement && cardElement === this._hoveredCardElement) {
+            this.openHoverPreview(cardElement, event);
+        }
+    },
+
+    openHoverPreview: function(cardElement, pointerEvent) {
+        if (!cardElement) {
+            return;
+        }
+
+        if (this._hoverPreviewOpened && this._hoveredCardElement === cardElement) {
+            return;
+        }
+
+        const cardId = cardElement.getAttribute('data-card-id');
+        const cardName = cardElement.getAttribute('data-card-name');
+        const cardImage = cardElement.getAttribute('data-card-image');
+        const rawData = cardElement.getAttribute('data-card-data') || null;
+        let cardData = null;
+
+        if (rawData) {
+            try {
+                cardData = JSON.parse(
+                    rawData
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                );
+            } catch (error) {
+                console.warn('Unable to parse card data attribute for preview', error);
+            }
+        }
+
+        const positionEvent = pointerEvent && typeof pointerEvent.clientX === 'number' && typeof pointerEvent.clientY === 'number'
+            ? pointerEvent
+            : this.buildCardCenterEvent(cardElement);
+
+        this.showCardPreview(cardId, cardName, cardImage, positionEvent, cardData);
+        this._hoverPreviewOpened = true;
+        this._hoverPreviewPointerEvent = positionEvent;
+    },
+
+    closeHoverPreview: function() {
+        if (!this._hoverPreviewOpened) {
+            return;
+        }
+
+        const preview = document.getElementById('card-preview-modal');
+        if (preview) {
+            preview.remove();
+        }
+        this.removeCardPreviewListeners();
+        this._hoverPreviewOpened = false;
+        this._hoverPreviewPointerEvent = null;
+    },
+
+    buildCardCenterEvent: function(cardElement) {
+        if (!cardElement) {
+            return { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
+        }
+
+        const rect = cardElement.getBoundingClientRect();
+        return {
+            clientX: rect.left + rect.width / 2,
+            clientY: rect.top + rect.height / 2
+        };
     },
 
     flipCard: function(cardId, uniqueCardId) {
@@ -1315,4 +1465,5 @@ const GameCards = {
     }
 };
 
+GameCards.initializeHoverPreview();
 window.GameCards = GameCards;
