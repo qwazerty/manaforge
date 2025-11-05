@@ -28,6 +28,42 @@ class UIZonesManager {
         'reveal': { title: 'Reveal Zone', icon: '👁️', description: 'Cards currently revealed to all players' }
     };
 
+    static _getSelectedPlayer() {
+        return typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
+            ? GameCore.getSelectedPlayer()
+            : 'player1';
+    }
+
+    static _determinePlayerOwnerId(playerData, playerIndex, isOpponent) {
+        if (playerData?.id && typeof playerData.id === 'string') {
+            return playerData.id;
+        }
+        if (typeof playerIndex === 'number' && !Number.isNaN(playerIndex)) {
+            return `player${playerIndex + 1}`;
+        }
+        return isOpponent ? 'player2' : 'player1';
+    }
+
+    static _buildCommanderPopupTitle(playerData, isOpponent) {
+        const defaultTitle = isOpponent ? 'Opponent Commander' : 'Commander';
+        const playerName = typeof playerData?.name === 'string' ? playerData.name.trim() : '';
+        return playerName ? `Commander — ${playerName}` : defaultTitle;
+    }
+
+    static _createCommanderPopupConfig(playerData, playerIndex, isOpponent) {
+        if (!playerData) {
+            return null;
+        }
+
+        return {
+            popupKey: isOpponent ? 'opponent_commander' : 'commander',
+            playerData,
+            isOpponent,
+            ownerId: this._determinePlayerOwnerId(playerData, playerIndex, isOpponent),
+            title: this._buildCommanderPopupTitle(playerData, isOpponent)
+        };
+    }
+
     // ===== ZONE GENERATION =====
     
     /**
@@ -276,9 +312,7 @@ class UIZonesManager {
             return;
         }
 
-        const selectedPlayer = typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
-            ? GameCore.getSelectedPlayer()
-            : 'player1';
+        const selectedPlayer = this._getSelectedPlayer();
 
         let controlledIndex = 0;
         if (selectedPlayer === 'player2') {
@@ -290,29 +324,17 @@ class UIZonesManager {
         this.hideCommanderPopups();
 
         const controlledPlayer = players[controlledIndex];
-        if (controlledPlayer) {
-            this._openCommanderPopup({
-                popupKey: 'commander',
-                playerData: controlledPlayer,
-                isOpponent: false,
-                ownerId: `player${controlledIndex + 1}`,
-                title: controlledPlayer.name
-                    ? `Commander — ${controlledPlayer.name}`
-                    : 'Commander'
-            }, selectedPlayer);
+        const controlledConfig = this._createCommanderPopupConfig(controlledPlayer, controlledIndex, false);
+        if (controlledConfig) {
+            this._openCommanderPopup(controlledConfig, selectedPlayer);
         }
 
         const opponentPlayer = players[opponentIndex];
-        if (players.length > 1 && opponentPlayer) {
-            this._openCommanderPopup({
-                popupKey: 'opponent_commander',
-                playerData: opponentPlayer,
-                isOpponent: true,
-                ownerId: `player${opponentIndex + 1}`,
-                title: opponentPlayer.name
-                    ? `Commander — ${opponentPlayer.name}`
-                    : 'Opponent Commander'
-            }, selectedPlayer);
+        const opponentConfig = players.length > 1
+            ? this._createCommanderPopupConfig(opponentPlayer, opponentIndex, true)
+            : null;
+        if (opponentConfig) {
+            this._openCommanderPopup(opponentConfig, selectedPlayer);
         }
     }
 
@@ -710,9 +732,20 @@ class UIZonesManager {
             const pointerAxisY = event.clientY;
             const isHorizontal = container.scrollWidth >= container.scrollHeight;
 
+            const removePlaceholders = () => {
+                const placeholders = container.querySelectorAll('.reveal-empty, .commander-popup-empty');
+                placeholders.forEach(placeholder => {
+                    if (placeholder && placeholder.parentElement === container) {
+                        placeholder.remove();
+                    }
+                });
+                container.classList.remove('zone-card-list-empty', 'commander-popup-card-list-empty');
+            };
+
             if (filteredCards.length === 0) {
                 positionIndex = 0;
                 if (draggedElement) {
+                    removePlaceholders();
                     container.appendChild(draggedElement);
                     draggedElement.setAttribute('data-card-zone', targetZone);
                 }
@@ -733,11 +766,17 @@ class UIZonesManager {
                 insertIndex = Math.max(0, Math.min(insertIndex, filteredCards.length));
                 positionIndex = insertIndex;
 
-                if (draggedElement && container.contains(draggedElement)) {
+                if (draggedElement) {
+                    removePlaceholders();
                     const referenceCard = filteredCards[insertIndex] || null;
                     container.insertBefore(draggedElement, referenceCard);
                     draggedElement.setAttribute('data-card-zone', targetZone);
                 }
+            }
+
+            if (container.dataset) {
+                const cardCount = container.querySelectorAll('[data-card-unique-id]').length;
+                container.dataset.cardCount = String(cardCount);
             }
         }
 
@@ -760,12 +799,12 @@ class UIZonesManager {
      * Get player zone data (unified for both player and opponent)
      */
     static _getPlayerZoneData(gameState, zoneName, isOpponent) {
-        const currentPlayer = GameCore.getSelectedPlayer();
+        const currentPlayer = this._getSelectedPlayer();
         let playerIndex = currentPlayer === 'player2' ? 1 : 0;
         if (isOpponent) playerIndex = playerIndex === 0 ? 1 : 0;
         
         const playerData = gameState.players?.[playerIndex];
-        if (!playerData) return { playerData: null, zone: [] };
+        if (!playerData) return { playerData: null, zone: [], playerIndex: null };
 
         const pureZoneName = zoneName.replace('opponent_', '');
         const normalizedZoneName = pureZoneName === 'commander' ? 'commander_zone' : pureZoneName;
@@ -777,7 +816,7 @@ class UIZonesManager {
             zone = playerData[normalizedZoneName] || [];
         }
         
-        return { playerData, zone };
+        return { playerData, zone, playerIndex };
     }
 
     /**
@@ -810,8 +849,9 @@ class UIZonesManager {
         const cardsArray = Array.isArray(cards) ? cards : [];
         const baseZone = popupKey.replace('opponent_', '');
         const isCommanderPopup = baseZone === 'commander';
+        const allowEmptyDisplay = baseZone === 'reveal';
 
-        if (!cardsArray.length && !isCommanderPopup) {
+        if (!cardsArray.length && !isCommanderPopup && !allowEmptyDisplay) {
             elements.panel.classList.add('hidden');
             elements.panel.setAttribute('aria-hidden', 'true');
             delete elements.panel.dataset.userMoved;
@@ -964,6 +1004,13 @@ class UIZonesManager {
                 </div>
             `;
 
+            const emptyCommanderState = `
+                <div class="commander-popup-empty">
+                    <span class="commander-popup-empty-icon">🧙</span>
+                    <div>No commander assigned</div>
+                </div>
+            `;
+
             let cardsSection;
             if (commanderCards.length) {
                 const cardsHtml = commanderCards.map((card, index) =>
@@ -976,13 +1023,16 @@ class UIZonesManager {
                         </div>
                     </div>
                 `;
-            } else {
+            } else if (allowDrop) {
                 cardsSection = `
-                    <div class="commander-popup-empty">
-                        <span class="commander-popup-empty-icon">🧙</span>
-                        <div>No commander assigned</div>
+                    <div class="reveal-card-container commander-popup-card-container">
+                        <div class="reveal-card-list commander-popup-card-list commander-popup-card-list-empty" ${listAttributes} data-card-count="0">
+                            ${emptyCommanderState}
+                        </div>
                     </div>
                 `;
+            } else {
+                cardsSection = emptyCommanderState;
             }
 
             return `
@@ -999,7 +1049,17 @@ class UIZonesManager {
             : `data-zone-context="${baseZone}" data-zone-owner="${ownerId}"`;
 
         if (!cards.length) {
-            return `<div class="reveal-empty">No cards in this zone</div>`;
+            const emptyState = '<div class="reveal-empty">No cards in this zone</div>';
+            if (!allowDrop) {
+                return emptyState;
+            }
+            return `
+                <div class="reveal-card-container">
+                    <div class="reveal-card-list zone-card-list zone-card-list-empty" ${listAttributes} data-card-count="0">
+                        ${emptyState}
+                    </div>
+                </div>
+            `;
         }
 
         const cardsHtml = cards.map((card, index) =>
@@ -1114,13 +1174,22 @@ class UIZonesManager {
 
             const isOpponent = popupKey.startsWith('opponent_');
             const baseZone = popupKey.replace('opponent_', '');
-            const { playerData, zone } = this._getPlayerZoneData(state, baseZone, isOpponent);
+            const { playerData, zone, playerIndex } = this._getPlayerZoneData(state, baseZone, isOpponent);
             if (!playerData) {
                 return;
             }
 
+            if (baseZone === 'commander') {
+                const selectedPlayer = this._getSelectedPlayer();
+                const commanderConfig = this._createCommanderPopupConfig(playerData, playerIndex, isOpponent);
+                if (commanderConfig) {
+                    this._openCommanderPopup(commanderConfig, selectedPlayer);
+                }
+                return;
+            }
+
             const zoneInfo = this.getZoneInfo(baseZone);
-            const ownerId = playerData.id || (isOpponent ? 'player2' : 'player1');
+            const ownerId = this._determinePlayerOwnerId(playerData, playerIndex, isOpponent);
             this._openZonePopup(
                 isOpponent ? `opponent_${baseZone}` : baseZone,
                 zone,
