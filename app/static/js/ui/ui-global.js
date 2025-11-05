@@ -13,10 +13,16 @@ Object.assign(window.GameUI, {
      */
     toggleFullscreen: function() {
         const container = document.querySelector('.game-container-1080');
-        const header = document.querySelector('nav'); 
+        const header = document.querySelector('nav');
+        const footer = document.querySelector('footer');
         if (container) {
             container.classList.toggle('fullscreen-mode');
-            header.classList.toggle('hidden');
+            if (header) {
+                header.classList.toggle('hidden');
+            }
+            if (footer) {
+                footer.classList.toggle('hidden');
+            }
         }
     },
 
