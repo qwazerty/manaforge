@@ -194,15 +194,37 @@ async def submit_player_deck(
     Once both players have submitted valid decks, the game will initialize.
     """
     player_id = request.get("player_id")
-    decklist_text = request.get("decklist_text", "")
-    
+    decklist_text = str(request.get("decklist_text", "") or "").strip()
+    decklist_url = str(
+        request.get("decklist_url")
+        or request.get("deck_url")
+        or ""
+    ).strip()
+
     if not player_id:
         raise HTTPException(status_code=400, detail="player_id is required")
-    if not decklist_text:
+
+    deck = None
+
+    if decklist_url and not decklist_text:
+        try:
+            import_result = await card_service.import_deck_from_url(decklist_url)
+            deck = import_result["deck"]
+            decklist_text = import_result["deck_text"]
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error importing deck from URL: {exc}"
+            )
+
+    if not decklist_text and deck is None:
         raise HTTPException(status_code=400, detail="decklist_text is required")
     
     try:
-        deck = await card_service.parse_decklist(decklist_text)
+        if deck is None:
+            deck = await card_service.parse_decklist(decklist_text)
         
         setup_status = game_engine.submit_player_deck(
             game_id=game_id,
@@ -472,16 +494,65 @@ async def parse_decklist(
     card_service: CardService = Depends(get_card_service)
 ) -> Deck:
     """Parse a decklist from text format and create a Deck object."""
-    decklist_text = request.get("decklist_text", "")
+    decklist_text = str(request.get("decklist_text", "") or "").strip()
+    decklist_url = str(
+        request.get("decklist_url")
+        or request.get("deck_url")
+        or ""
+    ).strip()
+
+    if decklist_url and not decklist_text:
+        try:
+            result = await card_service.import_deck_from_url(decklist_url)
+            return result["deck"]
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400, detail=f"Error importing deck from URL: {exc}"
+            )
+
     if not decklist_text:
         raise HTTPException(status_code=400, detail="Decklist text is required")
     
     try:
-        deck = await card_service.parse_decklist(decklist_text)
-        return deck
+        return await card_service.parse_decklist(decklist_text)
     except Exception as e:
         raise HTTPException(
             status_code=400, detail=f"Error parsing decklist: {str(e)}"
+        )
+
+
+@router.post("/decks/import-url")
+async def import_deck_from_url(
+    request: dict,
+    card_service: CardService = Depends(get_card_service)
+) -> Dict[str, Any]:
+    """Import a deck from a supported provider URL."""
+    deck_url = str(
+        request.get("deck_url")
+        or request.get("decklist_url")
+        or request.get("source_url")
+        or ""
+    ).strip()
+
+    if not deck_url:
+        raise HTTPException(status_code=400, detail="deck_url is required")
+
+    try:
+        result = await card_service.import_deck_from_url(deck_url)
+        deck = result["deck"]
+        return {
+            "deck": deck.model_dump(mode="json"),
+            "deck_text": result["deck_text"],
+            "deck_name": deck.name
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error importing deck from URL: {exc}"
         )
 
 

@@ -33,7 +33,9 @@
     const deckFormSection = document.getElementById('deck-form-section');
     const deckForm = document.getElementById('deck-submit-form');
     const deckTextArea = document.getElementById('decklistText');
+    const deckUrlInput = document.getElementById('decklistUrl');
     const deckPreviewButton = document.getElementById('deck-preview-button');
+    const deckImportButton = document.getElementById('deck-import-button');
     const deckSubmitButton = document.getElementById('deck-submit-button');
     const deckPreviewContainer = document.getElementById('deck-preview');
     const deckPreviewCards = document.getElementById('deck-preview-cards');
@@ -46,6 +48,31 @@
     let pollingDisabled = false;
     let lastStatus = initialStatus;
     let isSubmitting = false;
+    let isImportingDeck = false;
+
+    function setImportButtonLoadingState(isLoading) {
+        if (!deckImportButton) return;
+
+        if (isLoading) {
+            if (!deckImportButton.dataset.originalLabel) {
+                deckImportButton.dataset.originalLabel = deckImportButton.textContent;
+            }
+            deckImportButton.textContent = 'Importing...';
+            deckImportButton.setAttribute('aria-busy', 'true');
+        } else {
+            const originalLabel = deckImportButton.dataset.originalLabel;
+            if (originalLabel) {
+                deckImportButton.textContent = originalLabel;
+            }
+            deckImportButton.removeAttribute('aria-busy');
+            delete deckImportButton.dataset.originalLabel;
+        }
+
+        deckImportButton.disabled = isLoading;
+        deckImportButton.style.opacity = isLoading ? '0.5' : '';
+        deckImportButton.classList.toggle('cursor-not-allowed', isLoading);
+        isImportingDeck = isLoading;
+    }
 
     function updateShareButtons() {
         shareButtons.forEach((btn) => {
@@ -250,6 +277,14 @@
                 deckTextArea.disabled = true;
                 deckTextArea.classList.add('opacity-70', 'cursor-not-allowed');
             }
+            if (deckUrlInput) {
+                deckUrlInput.disabled = true;
+                deckUrlInput.classList.add('opacity-70', 'cursor-not-allowed');
+            }
+            if (deckImportButton) {
+                deckImportButton.disabled = true;
+                deckImportButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
         } else {
             deckSubmitButton.disabled = false;
             deckSubmitButton.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -257,6 +292,14 @@
             if (deckTextArea) {
                 deckTextArea.disabled = false;
                 deckTextArea.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+            if (deckUrlInput) {
+                deckUrlInput.disabled = false;
+                deckUrlInput.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+            if (deckImportButton) {
+                deckImportButton.disabled = false;
+                deckImportButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
     }
@@ -282,18 +325,90 @@
         deckPreviewContainer.classList.remove('hidden');
     }
 
+    async function importDeckFromUrl() {
+        if (!statusElements.deckStatus) return null;
+        if (isImportingDeck) return null;
+
+        const deckUrl = deckUrlInput ? deckUrlInput.value.trim() : '';
+
+        if (!deckUrl) {
+            statusElements.deckStatus.textContent = 'Please enter a deck URL to import.';
+            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-text-muted');
+            statusElements.deckStatus.classList.add('text-red-300');
+            return null;
+        }
+
+        statusElements.deckStatus.textContent = 'Importing deck from URL...';
+        statusElements.deckStatus.classList.remove('text-arena-accent', 'text-red-300');
+        statusElements.deckStatus.classList.add('text-arena-text-muted');
+
+        setImportButtonLoadingState(true);
+
+        try {
+            const response = await fetch('/api/v1/decks/import-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deck_url: deckUrl })
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.detail || 'Deck import failed');
+            }
+
+            const payload = await response.json();
+            const deckText = (payload.deck_text || '').trim();
+
+            if (deckTextArea && deckText) {
+                deckTextArea.value = deckText;
+            }
+
+            if (payload.deck) {
+                renderDeckPreview(payload.deck);
+            } else {
+                renderDeckPreview(null);
+            }
+
+            statusElements.deckStatus.textContent = 'Deck imported successfully. Review and submit when ready.';
+            statusElements.deckStatus.classList.remove('text-arena-text-muted', 'text-red-300');
+            statusElements.deckStatus.classList.add('text-arena-accent');
+
+            if ((playerRole === 'player1' || playerRole === 'player2') && deckText) {
+                storeDecklistForRole(gameId, playerRole, deckText);
+            }
+
+            return payload;
+        } catch (error) {
+            console.error('Deck import error:', error);
+            statusElements.deckStatus.textContent = error.message || 'Unable to import deck.';
+            statusElements.deckStatus.classList.remove('text-arena-text-muted', 'text-arena-accent');
+            statusElements.deckStatus.classList.add('text-red-300');
+            return null;
+        } finally {
+            setImportButtonLoadingState(false);
+        }
+    }
+
     async function previewDecklist() {
         if (!deckTextArea) return;
 
         const deckText = deckTextArea.value.trim();
+        const deckUrl = deckUrlInput ? deckUrlInput.value.trim() : '';
+
+        if (!deckText && deckUrl) {
+            await importDeckFromUrl();
+            return;
+        }
+
         if (!deckText) {
-            statusElements.deckStatus.textContent = 'Please paste a decklist first.';
+            statusElements.deckStatus.textContent = 'Please paste a decklist or provide a deck URL first.';
+            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-text-muted');
             statusElements.deckStatus.classList.add('text-red-300');
             return;
         }
 
         statusElements.deckStatus.textContent = 'Parsing deck for preview...';
-        statusElements.deckStatus.classList.remove('text-red-300');
+        statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-accent');
         statusElements.deckStatus.classList.add('text-arena-text-muted');
 
         try {
@@ -312,6 +427,7 @@
             renderDeckPreview(parsedDeck);
 
             statusElements.deckStatus.textContent = 'Deck parsed successfully.';
+            statusElements.deckStatus.classList.remove('text-arena-text-muted');
             statusElements.deckStatus.classList.add('text-arena-accent');
         } catch (error) {
             console.error('Deck preview error:', error);
@@ -324,9 +440,20 @@
         event.preventDefault();
         if (isSubmitting || !deckTextArea) return;
 
-        const deckText = deckTextArea.value.trim();
+        let deckText = deckTextArea.value.trim();
+        const deckUrl = deckUrlInput ? deckUrlInput.value.trim() : '';
+
+        if (!deckText && deckUrl) {
+            const importResult = await importDeckFromUrl();
+            if (!importResult) {
+                return;
+            }
+            deckText = deckTextArea.value.trim();
+        }
+
         if (!deckText) {
-            statusElements.deckStatus.textContent = 'Please paste a decklist before submitting.';
+            statusElements.deckStatus.textContent = 'Please paste a decklist or import from a URL before submitting.';
+            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-text-muted');
             statusElements.deckStatus.classList.add('text-red-300');
             return;
         }
@@ -341,17 +468,24 @@
         deckSubmitButton.disabled = true;
         deckSubmitButton.classList.add('opacity-50', 'cursor-not-allowed');
         statusElements.deckStatus.textContent = 'Validating and submitting deck...';
-        statusElements.deckStatus.classList.remove('text-red-300');
+        statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-accent');
         statusElements.deckStatus.classList.add('text-arena-text-muted');
 
         try {
+            const payload = {
+                player_id: playerRole
+            };
+
+            if (deckText) {
+                payload.decklist_text = deckText;
+            } else if (deckUrl) {
+                payload.decklist_url = deckUrl;
+            }
+
             const response = await fetch(submitApiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    player_id: playerRole,
-                    decklist_text: deckText
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -364,7 +498,9 @@
             updateFormAvailability(updatedStatus);
             renderDeckPreview(null);
 
-            storeDecklistForRole(gameId, playerRole, deckText);
+            if (deckText) {
+                storeDecklistForRole(gameId, playerRole, deckText);
+            }
 
             statusElements.deckStatus.textContent = 'Deck submitted successfully!';
             statusElements.deckStatus.classList.add('text-arena-accent');
@@ -473,8 +609,19 @@
         if (deckPreviewButton) {
             deckPreviewButton.addEventListener('click', previewDecklist);
         }
+        if (deckImportButton) {
+            deckImportButton.addEventListener('click', importDeckFromUrl);
+        }
         if (deckForm) {
             deckForm.addEventListener('submit', submitDeck);
+        }
+        if (deckUrlInput) {
+            deckUrlInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    importDeckFromUrl();
+                }
+            });
         }
 
         if (shouldRedirectToGame(initialStatus)) {
