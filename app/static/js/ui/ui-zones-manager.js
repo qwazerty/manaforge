@@ -23,6 +23,7 @@ class UIZonesManager {
         'exile': { title: 'Exile', icon: '🌌', description: 'Cards that have been exiled from the game' },
         'deck': { title: 'Library', icon: '📚', description: 'Cards remaining in your library' },
         'hand': { title: 'Hand', icon: '🃏', description: 'Cards in your hand' },
+        'commander': { title: 'Commander', icon: '👑', description: 'Command zone with your commander and tax' },
         'battlefield': { title: 'Battlefield', icon: '⚔️', description: 'Cards currently in play' },
         'reveal': { title: 'Reveal Zone', icon: '👁️', description: 'Cards currently revealed to all players' }
     };
@@ -253,12 +254,133 @@ class UIZonesManager {
         `, 'life');
     }
 
+    /**
+     * Display commander popups for applicable formats (Commander/Duel Commander).
+     */
+    static showCommanderPopups(gameState) {
+        if (!gameState) {
+            this.hideCommanderPopups();
+            return;
+        }
+
+        const format = String(gameState.game_format || '').toLowerCase();
+        const commanderFormats = ['duel_commander', 'commander_multi'];
+        if (!commanderFormats.includes(format)) {
+            this.hideCommanderPopups();
+            return;
+        }
+
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        if (!players.length) {
+            this.hideCommanderPopups();
+            return;
+        }
+
+        const selectedPlayer = typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
+            ? GameCore.getSelectedPlayer()
+            : 'player1';
+
+        let controlledIndex = 0;
+        if (selectedPlayer === 'player2') {
+            controlledIndex = 1;
+        }
+
+        const opponentIndex = controlledIndex === 0 ? 1 : 0;
+
+        this.hideCommanderPopups();
+
+        const controlledPlayer = players[controlledIndex];
+        if (controlledPlayer) {
+            this._openCommanderPopup({
+                popupKey: 'commander',
+                playerData: controlledPlayer,
+                isOpponent: false,
+                ownerId: `player${controlledIndex + 1}`,
+                title: controlledPlayer.name
+                    ? `Commander — ${controlledPlayer.name}`
+                    : 'Commander'
+            }, selectedPlayer);
+        }
+
+        const opponentPlayer = players[opponentIndex];
+        if (players.length > 1 && opponentPlayer) {
+            this._openCommanderPopup({
+                popupKey: 'opponent_commander',
+                playerData: opponentPlayer,
+                isOpponent: true,
+                ownerId: `player${opponentIndex + 1}`,
+                title: opponentPlayer.name
+                    ? `Commander — ${opponentPlayer.name}`
+                    : 'Opponent Commander'
+            }, selectedPlayer);
+        }
+    }
+
+    /**
+     * Hide commander popups if they are currently rendered.
+     */
+    static hideCommanderPopups() {
+        if (!this._zonePopupElements) {
+            return;
+        }
+
+        ['commander', 'opponent_commander'].forEach((key) => {
+            const elements = this._zonePopupElements.get(key);
+            if (elements?.panel) {
+                elements.panel.classList.add('hidden');
+                elements.panel.setAttribute('aria-hidden', 'true');
+            }
+        });
+    }
+
+    /**
+     * Internal helper to open or refresh the commander popup.
+     */
+    static _openCommanderPopup(config, selectedPlayer) {
+        const { popupKey, playerData, isOpponent, ownerId, title } = config;
+        if (!playerData) {
+            return;
+        }
+
+        const commanderCards = Array.isArray(playerData.commander_zone)
+            ? playerData.commander_zone
+            : [];
+        const commanderTax = Number.isFinite(Number(playerData.commander_tax))
+            ? Number(playerData.commander_tax)
+            : 0;
+
+        const zoneInfo = {
+            title: title || (isOpponent ? 'Opponent Commander' : 'Commander'),
+            icon: '👑',
+            description: 'Commander zone',
+            persistent: true,
+            commanderTax,
+            allowTaxControls: this._shouldAllowCommanderControls(selectedPlayer, ownerId, isOpponent)
+        };
+
+        this._openZonePopup(popupKey, commanderCards, zoneInfo, isOpponent, ownerId);
+    }
+
+    static _shouldAllowCommanderControls(selectedPlayer, ownerId, isOpponent) {
+        if (isOpponent) {
+            return false;
+        }
+        if (!selectedPlayer || selectedPlayer === 'spectator') {
+            return false;
+        }
+        return selectedPlayer === ownerId;
+    }
+
     // ===== ZONE MODAL MANAGEMENT =====
     
     /**
      * Show zone modal for current player
      */
     static showZoneModal(zoneName) {
+        if (zoneName === 'commander') {
+            this.showCommanderPopups(GameCore.getGameState());
+            return;
+        }
         const gameState = GameCore.getGameState();
         if (!gameState) return;
 
@@ -274,6 +396,10 @@ class UIZonesManager {
      * Show opponent zone modal
      */
     static showOpponentZoneModal(zoneName) {
+        if (zoneName === 'opponent_commander') {
+            this.showCommanderPopups(GameCore.getGameState());
+            return;
+        }
         const gameState = GameCore.getGameState();
         if (!gameState) return;
 
@@ -294,6 +420,9 @@ class UIZonesManager {
         if (this._zonePopupElements && this._zonePopupElements.has(zoneName)) {
             const elements = this._zonePopupElements.get(zoneName);
             if (elements?.panel) {
+                if (elements.panel.dataset.persistent === 'true') {
+                    return;
+                }
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
                 delete elements.panel.dataset.userMoved;
@@ -535,6 +664,96 @@ class UIZonesManager {
         }
     }
 
+    static handlePopupDragOver(event) {
+        event.preventDefault();
+        const current = event.currentTarget;
+        if (current && current.classList) {
+            current.classList.add('zone-drag-over');
+        }
+    }
+
+    static handlePopupDragLeave(event) {
+        const current = event.currentTarget;
+        if (current && current.classList) {
+            current.classList.remove('zone-drag-over');
+        }
+    }
+
+    static handlePopupDrop(event, targetZone) {
+        event.preventDefault();
+        event.stopPropagation();
+        const container = event.currentTarget;
+        if (container && container.classList) {
+            container.classList.remove('zone-drag-over');
+        }
+
+        let dragData = null;
+        try {
+            const rawData = event.dataTransfer ? event.dataTransfer.getData('text/plain') : '';
+            dragData = rawData ? JSON.parse(rawData) : null;
+        } catch (error) {
+            console.warn('Failed to parse drag data for popup drop:', error);
+        }
+
+        if (!dragData || !dragData.uniqueCardId) {
+            return;
+        }
+
+        const { cardId, cardZone, uniqueCardId } = dragData;
+        const draggedElement = (typeof GameCards !== 'undefined' ? GameCards.draggedCardElement : null) || document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+
+        let positionIndex = null;
+        if (container) {
+            const allCards = Array.from(container.querySelectorAll('[data-card-unique-id]'));
+            const filteredCards = draggedElement ? allCards.filter(card => card !== draggedElement) : allCards;
+            const pointerAxisX = event.clientX;
+            const pointerAxisY = event.clientY;
+            const isHorizontal = container.scrollWidth >= container.scrollHeight;
+
+            if (filteredCards.length === 0) {
+                positionIndex = 0;
+                if (draggedElement) {
+                    container.appendChild(draggedElement);
+                    draggedElement.setAttribute('data-card-zone', targetZone);
+                }
+            } else {
+                let insertIndex = filteredCards.length;
+                filteredCards.some((cardEl, index) => {
+                    const rect = cardEl.getBoundingClientRect();
+                    const cardCenter = isHorizontal
+                        ? rect.left + rect.width / 2
+                        : rect.top + rect.height / 2;
+                    const pointerValue = isHorizontal ? pointerAxisX : pointerAxisY;
+                    if (pointerValue < cardCenter) {
+                        insertIndex = index;
+                        return true;
+                    }
+                    return false;
+                });
+                insertIndex = Math.max(0, Math.min(insertIndex, filteredCards.length));
+                positionIndex = insertIndex;
+
+                if (draggedElement && container.contains(draggedElement)) {
+                    const referenceCard = filteredCards[insertIndex] || null;
+                    container.insertBefore(draggedElement, referenceCard);
+                    draggedElement.setAttribute('data-card-zone', targetZone);
+                }
+            }
+        }
+
+        if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
+            window.GameActions.moveCard(
+                cardId,
+                cardZone,
+                targetZone,
+                uniqueCardId,
+                null,
+                null,
+                positionIndex
+            );
+        }
+    }
+
     // ===== PRIVATE HELPER METHODS =====
     
     /**
@@ -549,11 +768,13 @@ class UIZonesManager {
         if (!playerData) return { playerData: null, zone: [] };
 
         const pureZoneName = zoneName.replace('opponent_', '');
+        const normalizedZoneName = pureZoneName === 'commander' ? 'commander_zone' : pureZoneName;
+
         let zone = [];
-        if (pureZoneName === 'deck') {
+        if (normalizedZoneName === 'deck') {
             zone = playerData.library || playerData.deck || [];
         } else {
-            zone = playerData[pureZoneName] || [];
+            zone = playerData[normalizedZoneName] || [];
         }
         
         return { playerData, zone };
@@ -588,8 +809,9 @@ class UIZonesManager {
         const elements = this._ensureZonePopupElements(popupKey, zoneInfo, isOpponent);
         const cardsArray = Array.isArray(cards) ? cards : [];
         const baseZone = popupKey.replace('opponent_', '');
+        const isCommanderPopup = baseZone === 'commander';
 
-        if (!cardsArray.length) {
+        if (!cardsArray.length && !isCommanderPopup) {
             elements.panel.classList.add('hidden');
             elements.panel.setAttribute('aria-hidden', 'true');
             delete elements.panel.dataset.userMoved;
@@ -599,21 +821,26 @@ class UIZonesManager {
         const popupTitle = `${isOpponent ? 'Opponent ' : ''}${zoneInfo.title}`;
         elements.titleLabel.textContent = popupTitle;
         elements.countLabel.textContent = String(cardsArray.length);
-        elements.body.innerHTML = this._generateZonePopupContent(cardsArray, popupKey, isOpponent, ownerId);
+        elements.body.innerHTML = this._generateZonePopupContent(cardsArray, popupKey, isOpponent, ownerId, zoneInfo);
         elements.panel.classList.remove('hidden');
         elements.panel.setAttribute('aria-hidden', 'false');
 
         if (typeof UIRenderersTemplates !== 'undefined' &&
             typeof UIRenderersTemplates._calculateRevealPopupWidth === 'function') {
-            const computedWidth = UIRenderersTemplates._calculateRevealPopupWidth(cardsArray.length);
+            let computedWidth = UIRenderersTemplates._calculateRevealPopupWidth(cardsArray.length);
+            if ((!computedWidth || Number.isNaN(computedWidth)) && isCommanderPopup) {
+                computedWidth = 340;
+            }
             if (computedWidth) {
                 elements.panel.style.width = `${computedWidth}px`;
             }
         }
 
-        const listElement = elements.body.querySelector('.reveal-card-list');
-        if (listElement && typeof UIHorizontalScroll !== 'undefined') {
-            UIHorizontalScroll.attachWheelListener(listElement);
+        if (!isCommanderPopup) {
+            const listElement = elements.body.querySelector('.reveal-card-list');
+            if (listElement && typeof UIHorizontalScroll !== 'undefined') {
+                UIHorizontalScroll.attachWheelListener(listElement);
+            }
         }
 
         if (typeof UIRenderersTemplates !== 'undefined') {
@@ -621,12 +848,15 @@ class UIZonesManager {
         }
 
         const positionIndex = this._getZonePopupIndex(popupKey, isOpponent);
-        if (elements.panel.dataset.userMoved !== 'true' && typeof UIRenderersTemplates !== 'undefined') {
-            UIRenderersTemplates._positionRevealPopup(elements.panel, positionIndex, !isOpponent);
-        }
-
-        if (elements.panel.dataset.userMoved !== 'true' && ['graveyard', 'exile', 'deck'].includes(baseZone)) {
-            requestAnimationFrame(() => this._positionZonePopupLeft(elements.panel, isOpponent));
+        if (elements.panel.dataset.userMoved !== 'true') {
+            if (isCommanderPopup) {
+                this._positionCommanderPopup(elements.panel, isOpponent);
+            } else if (typeof UIRenderersTemplates !== 'undefined') {
+                UIRenderersTemplates._positionRevealPopup(elements.panel, positionIndex, !isOpponent);
+                if (['graveyard', 'exile', 'deck'].includes(baseZone)) {
+                    requestAnimationFrame(() => this._positionZonePopupLeft(elements.panel, isOpponent));
+                }
+            }
         }
     }
 
@@ -641,6 +871,15 @@ class UIZonesManager {
                 UIRenderersTemplates._ensurePopupSearchElements(existing?.panel);
                 UIRenderersTemplates._initializePopupSearch(existing?.panel);
             }
+            if (existing?.panel) {
+                existing.panel.dataset.persistent = zoneInfo && zoneInfo.persistent ? 'true' : 'false';
+                if (zoneInfo && zoneInfo.persistent) {
+                    const closeButton = existing.panel.querySelector('.zone-popup-close');
+                    if (closeButton) {
+                        closeButton.remove();
+                    }
+                }
+            }
             return existing;
         }
 
@@ -653,6 +892,12 @@ class UIZonesManager {
         panel.setAttribute('aria-hidden', 'true');
         panel.dataset.zonePopupKey = popupKey;
         panel.dataset.zoneOwner = isOpponent ? 'opponent' : 'player';
+        panel.dataset.persistent = zoneInfo && zoneInfo.persistent ? 'true' : 'false';
+
+        const closeButtonHtml = zoneInfo && zoneInfo.persistent
+            ? ''
+            : `<button class="zone-popup-close" onclick="UIZonesManager.closeZoneModal('${popupKey}')">✕</button>`;
+
         panel.innerHTML = `
             <div class="stack-popup-header reveal-popup-header zone-popup-header" data-draggable-handle>
                 <div class="stack-popup-title reveal-popup-title zone-popup-title">
@@ -660,7 +905,7 @@ class UIZonesManager {
                     <span class="stack-popup-label reveal-popup-label zone-popup-label">${safeTitle}</span>
                     <span class="stack-popup-count reveal-popup-count zone-popup-count" id="zone-popup-count-${popupKey}">0</span>
                 </div>
-                <button class="zone-popup-close" onclick="UIZonesManager.closeZoneModal('${popupKey}')">✕</button>
+                ${closeButtonHtml}
             </div>
             <div class="popup-search-container">
                 <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search ${safeTitle}">
@@ -685,19 +930,85 @@ class UIZonesManager {
         return elements;
     }
 
-    static _generateZonePopupContent(cards, popupKey, isOpponent, ownerId) {
+    static _generateZonePopupContent(cards, popupKey, isOpponent, ownerId, zoneInfo = {}) {
+        const baseZone = popupKey.replace('opponent_', '');
+
+        if (baseZone === 'commander') {
+            const commanderCards = Array.isArray(cards) ? cards : [];
+            const commanderTax = Number.isFinite(Number(zoneInfo.commanderTax))
+                ? Number(zoneInfo.commanderTax)
+                : 0;
+            const allowControls = zoneInfo.allowTaxControls === true;
+            const allowDrop = allowControls;
+            const listAttributes = allowDrop
+                ? `data-zone-context="${baseZone}" data-zone-owner="${ownerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, '${baseZone}')"`
+                : `data-zone-context="${baseZone}" data-zone-owner="${ownerId}"`;
+
+            const decreaseDisabledAttr = commanderTax <= 0 ? 'disabled' : '';
+            const decreaseDisabledClass = commanderTax <= 0 ? ' commander-tax-adjust-btn-disabled' : '';
+
+            const taxControls = allowControls
+                ? `
+                    <button class="commander-tax-adjust-btn${decreaseDisabledClass}" ${decreaseDisabledAttr} onclick="event.stopPropagation(); GameActions.adjustCommanderTax('${ownerId}', -2);">-2</button>
+                    <span class="commander-tax-value">${commanderTax}</span>
+                    <button class="commander-tax-adjust-btn" onclick="event.stopPropagation(); GameActions.adjustCommanderTax('${ownerId}', 2);">+2</button>
+                `
+                : `<span class="commander-tax-value">${commanderTax}</span>`;
+
+            const taxSection = `
+                <div class="commander-popup-tax">
+                    <span class="commander-tax-label">Commander Tax</span>
+                    <div class="commander-tax-value-group">
+                        ${taxControls}
+                    </div>
+                </div>
+            `;
+
+            let cardsSection;
+            if (commanderCards.length) {
+                const cardsHtml = commanderCards.map((card, index) =>
+                    GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
+                ).join('');
+                cardsSection = `
+                    <div class="reveal-card-container commander-popup-card-container">
+                        <div class="reveal-card-list commander-popup-card-list" ${listAttributes} data-card-count="${commanderCards.length}">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            } else {
+                cardsSection = `
+                    <div class="commander-popup-empty">
+                        <span class="commander-popup-empty-icon">🧙</span>
+                        <div>No commander assigned</div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="commander-popup-content">
+                    ${taxSection}
+                    ${cardsSection}
+                </div>
+            `;
+        }
+
+        const allowDrop = !isOpponent;
+        const listAttributes = allowDrop
+            ? `data-zone-context="${baseZone}" data-zone-owner="${ownerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, '${baseZone}')"`
+            : `data-zone-context="${baseZone}" data-zone-owner="${ownerId}"`;
+
         if (!cards.length) {
             return `<div class="reveal-empty">No cards in this zone</div>`;
         }
 
-        const baseZone = popupKey.replace('opponent_', '');
         const cardsHtml = cards.map((card, index) =>
             GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
         ).join('');
 
         return `
             <div class="reveal-card-container">
-                <div class="reveal-card-list zone-card-list" data-card-count="${cards.length}">
+                <div class="reveal-card-list zone-card-list" ${listAttributes} data-card-count="${cards.length}">
                     ${cardsHtml}
                 </div>
             </div>
@@ -706,7 +1017,7 @@ class UIZonesManager {
 
     static _getZonePopupIndex(popupKey, isOpponent) {
         const baseName = popupKey.replace('opponent_', '');
-        const order = ['graveyard', 'exile', 'library', 'hand'];
+        const order = ['commander', 'graveyard', 'exile', 'library', 'hand'];
         const baseIndex = order.includes(baseName) ? order.indexOf(baseName) : order.length;
         return isOpponent ? baseIndex + 2 : baseIndex;
     }
@@ -733,6 +1044,59 @@ class UIZonesManager {
             : boardRect.bottom - panelHeight - padding;
 
         top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
+        left = Math.max(padding, Math.min(left, window.innerWidth - panelWidth - padding));
+
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
+    }
+
+    static _positionCommanderPopup(panel, isOpponent) {
+        if (!panel) {
+            return;
+        }
+
+        const padding = 16;
+        const board = document.getElementById('game-board');
+        const rightSidebar = document.getElementById('right-sidebar');
+        const panelRect = panel.getBoundingClientRect();
+        const panelWidth = panelRect.width || panel.offsetWidth || 0;
+        const panelHeight = panelRect.height || panel.offsetHeight || 0;
+
+        let top = padding;
+        let left = window.innerWidth - panelWidth - padding;
+
+        if (board) {
+            const boardRect = board.getBoundingClientRect();
+
+            if (isOpponent) {
+                top = Math.max(padding, boardRect.top + padding);
+            } else {
+                top = Math.max(
+                    padding,
+                    Math.min(boardRect.bottom - panelHeight - padding, window.innerHeight - panelHeight - padding)
+                );
+            }
+        } else if (!isOpponent) {
+            top = Math.max(
+                padding,
+                Math.min(window.innerHeight - panelHeight - padding, window.innerHeight - panelHeight - padding)
+            );
+        }
+
+        if (rightSidebar) {
+            const sidebarRect = rightSidebar.getBoundingClientRect();
+            const sidebarLeft = sidebarRect.left;
+            if (!Number.isNaN(sidebarLeft)) {
+                left = Math.min(left, sidebarLeft - panelWidth - padding);
+            }
+        } else if (board) {
+            const boardRect = board.getBoundingClientRect();
+            left = Math.min(left, boardRect.right - panelWidth - padding);
+        }
+
         left = Math.max(padding, Math.min(left, window.innerWidth - panelWidth - padding));
 
         panel.style.left = `${left}px`;
