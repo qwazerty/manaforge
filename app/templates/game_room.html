@@ -152,11 +152,30 @@
             <div>
                 <h2 class="font-magic text-2xl text-arena-accent mb-2">📚 Submit Your Deck</h2>
                 <p class="text-arena-text-dim text-sm">
-                    Paste your decklist below. It will be validated automatically via Scryfall once submitted.
+                    Paste your decklist below or import it from a public URL. It will be validated automatically via Scryfall once submitted.
                 </p>
             </div>
 
             <form id="deck-submit-form" class="space-y-4">
+                <div class="space-y-2">
+                    <label for="decklistUrl" class="block text-sm font-semibold text-arena-text">Import from URL</label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input
+                            type="url"
+                            id="decklistUrl"
+                            class="flex-1 px-4 py-3 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none text-sm"
+                            placeholder="https://www.moxfield.com/decks/..."
+                            autocomplete="off"
+                        />
+                        <button type="button" id="deck-import-button" class="arena-button px-4 py-3 text-sm">
+                            Import Deck
+                        </button>
+                    </div>
+                    <p class="text-xs text-arena-text-muted">
+                        Paste a public deck URL from Moxfield, Scryfall, MTGGoldfish, etc. We'll fetch the list automatically.
+                    </p>
+                </div>
+
                 <textarea
                     id="decklistText"
                     rows="8"
