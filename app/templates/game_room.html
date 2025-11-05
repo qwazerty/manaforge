@@ -44,21 +44,21 @@
                                 <label class="text-arena-text-dim font-medium">Player 1</label>
                                 <div class="flex items-center gap-2">
                                     <input type="text" readonly class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none" value="{{ share_links['player1'] }}">
-                                    <button type="button" class="arena-button px-3 py-2 text-xs" data-copy-role="player1">Copy</button>
+                                    <button type="button" class="arena-button rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200" data-copy-role="player1">Copy</button>
                                 </div>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <label class="text-arena-text-dim font-medium">Player 2</label>
                                 <div class="flex items-center gap-2">
                                     <input type="text" readonly class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none" value="{{ share_links['player2'] }}">
-                                    <button type="button" class="arena-button px-3 py-2 text-xs" data-copy-role="player2">Copy</button>
+                                    <button type="button" class="arena-button rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200" data-copy-role="player2">Copy</button>
                                 </div>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <label class="text-arena-text-dim font-medium">Spectator</label>
                                 <div class="flex items-center gap-2">
                                     <input type="text" readonly class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none" value="{{ share_links['spectator'] }}">
-                                    <button type="button" class="arena-button px-3 py-2 text-xs" data-copy-role="spectator">Copy</button>
+                                    <button type="button" class="arena-button rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200" data-copy-role="spectator">Copy</button>
                                 </div>
                             </div>
                         </div>
@@ -167,7 +167,7 @@
                             placeholder="https://www.moxfield.com/decks/..."
                             autocomplete="off"
                         />
-                        <button type="button" id="deck-import-button" class="arena-button px-4 py-3 text-sm">
+                        <button type="button" id="deck-import-button" class="arena-button rounded-lg px-5 py-3 text-sm font-semibold transition-all duration-200">
                             Import Deck
                         </button>
                     </div>
@@ -188,10 +188,10 @@
                         Awaiting updates from both players...
                     </p>
                     <div class="flex flex-col sm:flex-row gap-3">
-                        <button type="button" id="deck-preview-button" class="arena-button px-5 py-3 text-sm">
+                        <button type="button" id="deck-preview-button" class="arena-button rounded-lg px-6 py-3 text-sm font-semibold transition-all duration-200">
                             Preview Deck
                         </button>
-                        <button type="submit" id="deck-submit-button" class="arena-button px-6 py-3 text-sm font-semibold">
+                        <button type="submit" id="deck-submit-button" class="arena-button rounded-lg px-6 py-3 text-sm font-semibold transition-all duration-200">
                             Submit Deck
                         </button>
                     </div>
