@@ -202,29 +202,42 @@ class CardService:
         self, scryfall_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Parse Scryfall card data into our Card model format."""
-        type_line = scryfall_data.get("type_line", "").lower()
-        card_type = CardType.CREATURE
-        
-        if "land" in type_line:
-            card_type = CardType.LAND
-        elif "creature" in type_line:
-            card_type = CardType.CREATURE
-        elif "instant" in type_line:
-            card_type = CardType.INSTANT
-        elif "sorcery" in type_line:
-            card_type = CardType.SORCERY
-        elif "enchantment" in type_line:
-            card_type = CardType.ENCHANTMENT
-        elif "artifact" in type_line:
-            card_type = CardType.ARTIFACT
-        elif "planeswalker" in type_line:
-            card_type = CardType.PLANESWALKER
-        
+        card_faces_data = scryfall_data.get("card_faces", []) or []
+        front_face = card_faces_data[0] if card_faces_data else None
+
+        def _resolve_front_face_value(key: str, default: Any = None) -> Any:
+            if front_face is not None:
+                value = front_face.get(key)
+                if value not in (None, ""):
+                    return value
+            return scryfall_data.get(key, default)
+
+        def _infer_card_type(type_line_text: str) -> CardType:
+            lowered = (type_line_text or "").lower()
+            if "land" in lowered:
+                return CardType.LAND
+            if "creature" in lowered:
+                return CardType.CREATURE
+            if "instant" in lowered:
+                return CardType.INSTANT
+            if "sorcery" in lowered:
+                return CardType.SORCERY
+            if "enchantment" in lowered:
+                return CardType.ENCHANTMENT
+            if "artifact" in lowered:
+                return CardType.ARTIFACT
+            if "planeswalker" in lowered:
+                return CardType.PLANESWALKER
+            return CardType.CREATURE
+
+        primary_type_line = _resolve_front_face_value("type_line", scryfall_data.get("type_line", "")) or ""
+        card_type = _infer_card_type(primary_type_line)
+
         subtype = ""
-        if "—" in scryfall_data.get("type_line", ""):
-            subtype = scryfall_data["type_line"].split("—")[1].strip()
-        elif " — " in scryfall_data.get("type_line", ""):
-            subtype = scryfall_data["type_line"].split(" — ")[1].strip()
+        if "—" in primary_type_line:
+            subtype = primary_type_line.split("—")[1].strip()
+        elif " — " in primary_type_line:
+            subtype = primary_type_line.split(" — ")[1].strip()
 
         colors = []
         scryfall_colors = scryfall_data.get("colors", [])
@@ -286,7 +299,9 @@ class CardService:
                     "oracle_text": face.get("oracle_text", ""),
                     "power": face.get("power"),
                     "toughness": face.get("toughness"),
-                    "image_url": face_image_url
+                    "image_url": face_image_url,
+                    "is_front_face": i == 0,
+                    "face_index": i
                 }
                 card_faces.append(face_data)
 
@@ -318,13 +333,13 @@ class CardService:
             "scryfall_id": scryfall_data.get("id"),
             "unique_id": unique_id,
             "name": scryfall_data["name"],
-            "mana_cost": scryfall_data.get("mana_cost", ""),
+            "mana_cost": _resolve_front_face_value("mana_cost", scryfall_data.get("mana_cost", "")),
             "cmc": scryfall_data.get("cmc", 0),
             "card_type": card_type,
             "subtype": subtype,
-            "text": scryfall_data.get("oracle_text", ""),
-            "power": scryfall_data.get("power"),
-            "toughness": scryfall_data.get("toughness"),
+            "text": _resolve_front_face_value("oracle_text", scryfall_data.get("oracle_text", "")),
+            "power": _resolve_front_face_value("power", scryfall_data.get("power")),
+            "toughness": _resolve_front_face_value("toughness", scryfall_data.get("toughness")),
             "colors": colors,
             "rarity": rarity,
             "image_url": image_url,
