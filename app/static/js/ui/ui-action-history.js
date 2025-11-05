@@ -54,6 +54,22 @@ class UIActionHistory {
     }
 
     /**
+     * Replace the current entries with a serialized list from the server.
+     */
+    static loadFromState(entries = []) {
+        this.entries = [];
+
+        if (!Array.isArray(entries) || entries.length === 0) {
+            this._render();
+            return;
+        }
+
+        for (const entry of entries) {
+            this.addFromActionResult(entry);
+        }
+    }
+
+    /**
      * Add an entry directly from a WebSocket action_result payload.
      */
     static addFromActionResult(actionResult) {
@@ -957,7 +973,8 @@ class UIActionHistory {
             normalized.includes('uniqueid') ||
             normalized === 'broadcastdata' ||
             normalized === 'success' ||
-            normalized === 'timestamp'
+            normalized === 'timestamp' ||
+            normalized === 'origin'
         );
     }
 
@@ -971,7 +988,8 @@ class UIActionHistory {
             'success',
             'action',
             'player',
-            'timestamp'
+            'timestamp',
+            'origin'
         ]);
 
         const cleaned = {};

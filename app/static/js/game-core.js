@@ -9,6 +9,7 @@ let gameState = null; // Will be initialized from template
 let autoRefreshInterval = null;
 let isPageVisible = true;
 let gameId = null; // Will be initialized from template
+let persistentUiLoaded = false;
 
 function updateSpectatorModeClass() {
     if (typeof document === 'undefined') {
@@ -25,6 +26,42 @@ function updateSpectatorModeClass() {
     document.querySelectorAll('.game-container-1080').forEach((container) => {
         container.classList.toggle('spectator-mode', isSpectator);
     });
+}
+
+function syncPersistentUi(state, { force = false } = {}) {
+    if (!state) {
+        return;
+    }
+
+    if (persistentUiLoaded && !force) {
+        return;
+    }
+
+    if (
+        typeof UIActionHistory !== 'undefined' &&
+        typeof UIActionHistory.loadFromState === 'function'
+    ) {
+        if (Object.prototype.hasOwnProperty.call(state, 'action_history')) {
+            const historyEntries = Array.isArray(state.action_history)
+                ? state.action_history
+                : [];
+            UIActionHistory.loadFromState(historyEntries);
+        }
+    }
+
+    if (
+        typeof UINotifications !== 'undefined' &&
+        typeof UINotifications.loadChatLog === 'function'
+    ) {
+        if (Object.prototype.hasOwnProperty.call(state, 'chat_log')) {
+            const chatEntries = Array.isArray(state.chat_log)
+                ? state.chat_log
+                : [];
+            UINotifications.loadChatLog(chatEntries);
+        }
+    }
+
+    persistentUiLoaded = true;
 }
 
 // ===== INITIALIZATION FUNCTION =====
@@ -102,6 +139,8 @@ async function loadGameState() {
         
         gameState = await response.json();
         console.log('Initial game state loaded:', gameState);
+
+        syncPersistentUi(gameState, { force: true });
         
         // Initialize UI with loaded state
         if (window.GameUI) {
@@ -173,7 +212,8 @@ window.GameCore = {
         currentSelectedPlayer = player;
         updateSpectatorModeClass();
     },
-    isPageVisible: () => isPageVisible
+    isPageVisible: () => isPageVisible,
+    syncPersistentUi
 };
 
 // ===== MAIN ENTRY POINT =====

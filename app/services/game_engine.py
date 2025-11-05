@@ -6,7 +6,8 @@ This will be replaced by XMage integration later.
 import random
 import asyncio
 import uuid
-from typing import List, Optional, Dict
+import time
+from typing import List, Optional, Dict, Any
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
     GamePhase, CardType, GameSetupStatus, PlayerDeckStatus,
@@ -15,6 +16,9 @@ from app.models.game import (
 
 class SimpleGameEngine:
     """Simplified MTG game engine for POC."""
+
+    MAX_ACTION_HISTORY = 10000
+    MAX_CHAT_MESSAGES = 1000
     
     def __init__(self):
         self.games: dict[str, GameState] = {}
@@ -360,6 +364,37 @@ class SimpleGameEngine:
             raise ValueError(f"Unknown action_type: {action.action_type}")
 
         return game_state
+    
+    def record_action_history(self, game_id: str, entry: Dict[str, Any]) -> None:
+        """Persist a single action history entry onto the game state."""
+        game_state = self.games.get(game_id)
+        if not game_state:
+            return
+
+        history_entry = dict(entry)
+        history_entry.setdefault("timestamp", time.time())
+
+        history = game_state.action_history
+        history.append(history_entry)
+        if len(history) > self.MAX_ACTION_HISTORY:
+            history.pop(0)
+    
+    def add_chat_message(self, game_id: str, message: Dict[str, Any]) -> None:
+        """Persist a chat message to the game state's chat log."""
+        game_state = self.games.get(game_id)
+        if not game_state:
+            return
+
+        chat_entry = {
+            "player": message.get("player"),
+            "message": message.get("message"),
+            "timestamp": message.get("timestamp", time.time())
+        }
+
+        chat_log = game_state.chat_log
+        chat_log.append(chat_entry)
+        if len(chat_log) > self.MAX_CHAT_MESSAGES:
+            chat_log.pop(0)
     
     def _target_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle targeting or untargeting a card using its persistent unique_id."""
