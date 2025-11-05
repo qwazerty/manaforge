@@ -35,8 +35,24 @@ class UIZonesManager {
     static generateDeckZone(deck = [], isOpponent = false) {
         const deckArray = Array.isArray(deck) ? deck : [];
         const cardsRemaining = deckArray.length;
-        const clickHandler = isOpponent ? '' : 'onclick="GameActions.drawCard()"';
-        const overlayText = isOpponent ? '' : 'Draw';
+        const selectedPlayer =
+            (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+                ? GameCore.getSelectedPlayer()
+                : null;
+        const isSpectatorView = selectedPlayer === 'spectator';
+        let clickHandler = '';
+        let overlayText = '';
+
+        if (isSpectatorView) {
+            clickHandler = isOpponent
+                ? "onclick=\"UIZonesManager.showOpponentZoneModal('deck')\""
+                : "onclick=\"UIZonesManager.showZoneModal('deck')\"";
+            overlayText = 'View';
+        } else if (!isOpponent) {
+            clickHandler = 'onclick="GameActions.drawCard()"';
+            overlayText = 'Draw';
+        }
+
         const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
         const zoneIdentifier = isOpponent ? 'opponent_deck' : 'deck';
 

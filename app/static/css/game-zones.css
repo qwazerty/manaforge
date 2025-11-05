@@ -1002,6 +1002,20 @@
     overflow: hidden;
 }
 
+.spectator-mode .opponent-hand-zone {
+    max-height: none;
+    min-height: 172px;
+    padding: 4px;
+    margin: 4px;
+    gap: 2px;
+    border-radius: 8px;
+    border: 1px solid rgba(201, 170, 113, 0.3);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
+}
+
 /* Ensure opponent hand cards maintain their properties when centered */
 .opponent-hand-zone .card-back,
 .opponent-hand-zone .card-mini,

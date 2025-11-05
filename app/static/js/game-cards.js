@@ -386,7 +386,7 @@ const GameCards = {
         `;
     },
 
-    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null) {
+    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null, options = {}) {
         const cardId = card.id || card.name;
         const cardName = card.name || 'Unknown';
         const imageUrl = this.getSafeImageUrl(card);
@@ -404,11 +404,18 @@ const GameCards = {
         const jsCardId = JSON.stringify(cardId || '');
         const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
         const zoneAttr = (zone || '').replace(/'/g, "\\'");
+        const selectedPlayer = (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+            ? GameCore.getSelectedPlayer()
+            : null;
+        const spectatorView = selectedPlayer === 'spectator';
+        const hasReadOnlyOption = options && Object.prototype.hasOwnProperty.call(options, 'readOnly');
+        const readOnly = hasReadOnlyOption ? Boolean(options.readOnly) : spectatorView;
+        const allowInteractions = !readOnly;
 
         let onClickAction = '';
-        if (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield') {
+        if (allowInteractions && (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield')) {
             onClickAction = `onclick='GameActions.tapCard(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
-        } else if (zone === 'hand') {
+        } else if (allowInteractions && zone === 'hand') {
             onClickAction = `onclick='GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
         }
 
@@ -421,6 +428,10 @@ const GameCards = {
         const dropAttributes = enableDrop
             ? `ondragover="UIZonesManager.handleZoneDragOver(event)" ondragleave="UIZonesManager.handleZoneDragLeave(event)" ondrop="UIZonesManager.handleZoneDrop(event, '${zoneAttr}')"`
             : '';
+        const dropAttr = allowInteractions ? dropAttributes : '';
+        const dragStartAttr = allowInteractions ? 'ondragstart="GameCards.handleDragStart(event, this)"' : '';
+        const dragEndAttr = allowInteractions ? 'ondragend="GameCards.handleDragEnd(event, this)"' : '';
+        const contextMenuAttr = allowInteractions ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
 
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
@@ -438,12 +449,13 @@ const GameCards = {
                 data-card-search="${searchIndex}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
-                draggable="true"
-                ondragstart="GameCards.handleDragStart(event, this)"
-                ${dropAttributes}
+                data-readonly="${readOnly}"
+                draggable="${allowInteractions ? 'true' : 'false'}"
+                ${dragStartAttr}
+                ${dropAttr}
                 ${onClickAction}
-                ondragend="GameCards.handleDragEnd(event, this)"
-                oncontextmenu="GameCards.showCardContextMenu(event, this); return false;">
+                ${dragEndAttr}
+                ${contextMenuAttr}>
                 ${imageUrl ? `
                     <div class="relative">
                         <img src="${imageUrl}" 
