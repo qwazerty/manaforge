@@ -29,7 +29,7 @@
 }
 
 .card-mini:hover {
-    transform: scale(1.25);
+    transform: scale(1.2);
     z-index: 10;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .card-battlefield:hover {
-    transform: scale(1.25);
+    transform: scale(1.2);
     z-index: 10;
 }
 
@@ -80,7 +80,7 @@
 
 .card-mini.tapped:hover,
 .card-battlefield.tapped:hover {
-    transform: rotate(90deg) scale(1.25);
+    transform: rotate(90deg) scale(1.2);
     opacity: 0.85;
 }
 
