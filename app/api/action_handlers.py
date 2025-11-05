@@ -165,6 +165,33 @@ async def handle_modify_life(
         "broadcast_data": {"target": target_player, "amount": amount}
     }
 
+@action_registry.register("adjust_commander_tax", required_fields=["amount"])
+async def handle_adjust_commander_tax(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle commander tax adjustments."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for adjust_commander_tax"
+        )
+
+    amount = request.get("amount")
+    target_player = request.get("target_player")
+
+    if amount is None:
+        raise HTTPException(status_code=400, detail="amount is required")
+
+    return {
+        "additional_data": {
+            "amount": amount,
+            "target_player": target_player
+        },
+        "broadcast_data": {
+            "target": target_player,
+            "amount": amount
+        }
+    }
+
 
 @action_registry.register("resolve_stack")
 async def handle_resolve_stack(

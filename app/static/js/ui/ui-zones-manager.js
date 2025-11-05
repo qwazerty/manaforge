@@ -1058,48 +1058,38 @@ class UIZonesManager {
             return;
         }
 
-        const padding = 16;
+        if (typeof UIRenderersTemplates !== 'undefined' &&
+            typeof UIRenderersTemplates._positionRevealPopup === 'function') {
+            const index = 0;
+            const isControlled = !isOpponent;
+            UIRenderersTemplates._positionRevealPopup(panel, index, isControlled);
+            return;
+        }
+
         const board = document.getElementById('game-board');
-        const rightSidebar = document.getElementById('right-sidebar');
+        if (!board) {
+            return;
+        }
+
+        const padding = 16;
+        const boardRect = board.getBoundingClientRect();
         const panelRect = panel.getBoundingClientRect();
-        const panelWidth = panelRect.width || panel.offsetWidth || 0;
         const panelHeight = panelRect.height || panel.offsetHeight || 0;
+        const panelWidth = panelRect.width || panel.offsetWidth || 0;
 
-        let top = padding;
-        let left = window.innerWidth - panelWidth - padding;
+        let top;
+        const left = boardRect.right + padding;
 
-        if (board) {
-            const boardRect = board.getBoundingClientRect();
-
-            if (isOpponent) {
-                top = Math.max(padding, boardRect.top + padding);
-            } else {
-                top = Math.max(
-                    padding,
-                    Math.min(boardRect.bottom - panelHeight - padding, window.innerHeight - panelHeight - padding)
-                );
-            }
-        } else if (!isOpponent) {
-            top = Math.max(
-                padding,
-                Math.min(window.innerHeight - panelHeight - padding, window.innerHeight - panelHeight - padding)
-            );
+        if (!isOpponent) {
+            top = boardRect.bottom - panelHeight - padding;
+        } else {
+            top = boardRect.top + padding;
         }
 
-        if (rightSidebar) {
-            const sidebarRect = rightSidebar.getBoundingClientRect();
-            const sidebarLeft = sidebarRect.left;
-            if (!Number.isNaN(sidebarLeft)) {
-                left = Math.min(left, sidebarLeft - panelWidth - padding);
-            }
-        } else if (board) {
-            const boardRect = board.getBoundingClientRect();
-            left = Math.min(left, boardRect.right - panelWidth - padding);
-        }
+        top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
+        const clampedLeft = Math.max(padding, Math.min(left, window.innerWidth - panelWidth - padding));
 
-        left = Math.max(padding, Math.min(left, window.innerWidth - panelWidth - padding));
-
-        panel.style.left = `${left}px`;
+        panel.style.left = `${clampedLeft}px`;
         panel.style.top = `${top}px`;
         panel.style.right = 'auto';
         panel.style.bottom = 'auto';

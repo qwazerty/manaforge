@@ -764,6 +764,18 @@ function modifyLife(playerId, amount) {
     GameUI.showNotification(`${playerId}: ${actionText}`, amount > 0 ? 'success' : 'warning');
 }
 
+function adjustCommanderTax(playerId, amount) {
+    performGameAction('adjust_commander_tax', {
+        player_id: playerId,
+        target_player: playerId,
+        amount: amount
+    });
+
+    const signedAmount = amount > 0 ? `+${amount}` : `${amount}`;
+    const tone = amount > 0 ? 'info' : 'warning';
+    GameUI.showNotification(`${playerId}: Commander tax ${signedAmount}`, tone);
+}
+
 // Export actions module functionality
 window.GameActions = {
     performGameAction,
@@ -785,6 +797,7 @@ window.GameActions = {
     copyStackSpell,
     drawCard,
     modifyLife,
+    adjustCommanderTax,
     moveCard,
     duplicateCard
 };
@@ -813,7 +826,7 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
         : '';
     if (
         uniqueCardId &&
-        ['graveyard', 'exile', 'library', 'deck', 'reveal'].includes(normalizedTarget)
+        ['graveyard', 'exile', 'library', 'deck', 'reveal', 'commander'].includes(normalizedTarget)
     ) {
         clearTappedState(uniqueCardId);
         clearTargetedState(uniqueCardId);

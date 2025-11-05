@@ -99,9 +99,11 @@ class UIRenderersTemplates {
             }
 
             this._updateRevealOverlay(gameState);
+            this._ensureCommanderPopups(gameState);
         } catch (error) {
             this._renderError(gameBoardContainer, 'Error Loading Game Board', error.message);
             this._updateRevealOverlay(null);
+            this._ensureCommanderPopups(null);
         }
     }
 
@@ -129,10 +131,12 @@ class UIRenderersTemplates {
 
             this._updateStackOverlay(stack);
             this._updateRevealOverlay(gameState);
+            this._ensureCommanderPopups(gameState);
         } catch (error) {
             this._renderError(actionPanelContainer, 'Error', error.message);
             this._updateStackOverlay([]);
             this._updateRevealOverlay(null);
+            this._ensureCommanderPopups(null);
         }
     }
 
@@ -228,11 +232,22 @@ class UIRenderersTemplates {
      * Generate spectator view
      */
     static generateSpectatorView() {
+        const gameState = GameCore.getGameState() || {};
+        const currentPhase = gameState.phase || 'begin';
+        const currentTurn = typeof gameState.turn === 'number' ? gameState.turn : 1;
+        const activePlayer = typeof gameState.active_player === 'number'
+            ? gameState.active_player
+            : 0;
+
         return `
-            <div class="text-center py-8">
-                <div class="text-4xl mb-4">👁️</div>
-                <h5 class="text-arena-accent font-semibold mb-2">Spectator Mode</h5>
-                <p class="text-arena-text-dim text-sm">You are watching the battle unfold</p>
+            <div>
+                ${this._generateGameInfoSection(currentTurn, activePlayer)}
+                ${this._generateGamePhases(currentPhase, { readOnly: true })}
+                <div class="text-center py-6 border-t border-arena-accent/10">
+                    <div class="text-3xl mb-2 leading-none">👁️</div>
+                    <div class="text-arena-accent font-semibold mb-1">Spectator Mode</div>
+                    <p class="text-arena-text-dim text-sm">Game controls are disabled while you are watching.</p>
+                </div>
             </div>
         `;
     }
@@ -391,7 +406,14 @@ class UIRenderersTemplates {
      */
     static _generateZoneTemplates(playerData, config, isOpponent) {
         const { prefix, titlePrefix, zoneIds, playerId } = config;
-        const { library = [], deck = [], graveyard = [], exile = [], life = 20 } = playerData;
+        const safePlayerData = playerData || {};
+        const {
+            library = [],
+            deck = [],
+            graveyard = [],
+            exile = [],
+            life = 20
+        } = safePlayerData;
         
         const deckData = library.length > 0 ? library : deck;
 
@@ -401,6 +423,17 @@ class UIRenderersTemplates {
             graveyard: this.generateGraveyardZone(graveyard, isOpponent),
             exile: this.generateExileZone(exile, isOpponent)
         };
+    }
+
+    static _ensureCommanderPopups(gameState) {
+        if (typeof UIZonesManager === 'undefined' || !UIZonesManager) {
+            return;
+        }
+        try {
+            UIZonesManager.showCommanderPopups(gameState);
+        } catch (error) {
+            console.error('Failed to update commander popups:', error);
+        }
     }
 
     /**
@@ -441,7 +474,8 @@ class UIRenderersTemplates {
     /**
      * Generate game phases indicator
      */
-    static _generateGamePhases(currentPhase) {
+    static _generateGamePhases(currentPhase, options = {}) {
+        const { readOnly = false } = options;
         return `
             <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
                 <div class="grid grid-cols-5 gap-1">
@@ -449,8 +483,12 @@ class UIRenderersTemplates {
                         const isCurrent = currentPhase === phase.id;
                         const stateClasses = isCurrent
                             ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300'
-                            : 'text-arena-text-dim hover:text-arena-text hover:border-yellow-500/30 cursor-pointer';
-                        const onClickAttr = isCurrent ? '' : `onclick="GameActions.changePhase('${phase.id}')"`; 
+                            : readOnly
+                                ? 'text-arena-text-dim'
+                                : 'text-arena-text-dim hover:text-arena-text hover:border-yellow-500/30 cursor-pointer';
+                        const onClickAttr = isCurrent || readOnly
+                            ? ''
+                            : `onclick="GameActions.changePhase('${phase.id}')"`; 
                         return `
                             <div class="text-center py-2 px-1 rounded transition-all duration-200 border border-transparent ${stateClasses}"
                                 title="${phase.name} Phase"
