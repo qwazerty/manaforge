@@ -14,6 +14,7 @@ from app.services.card_service import CardService
 from app.services.game_engine import SimpleGameEngine
 from app.api.decorators import broadcast_game_update, action_registry
 from app.api.action_handlers import *
+from app.services.format_stats_service import get_cards_for_format
 
 
 router = APIRouter(prefix="/api/v1")
@@ -182,6 +183,24 @@ async def get_game_setup_status(game_id: str) -> GameSetupStatus:
     if not setup:
         raise HTTPException(status_code=404, detail="Game setup not found")
     return setup
+
+
+@router.get("/formats/{format_code}/cards")
+async def list_format_cards(
+    format_code: str,
+    page: int = 1,
+    page_size: int = 25,
+    search: Optional[str] = None,
+    availability: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return paginated cards for the requested format."""
+    return get_cards_for_format(
+        format_code=format_code,
+        page=page,
+        page_size=page_size,
+        search=search,
+        availability=availability,
+    )
 
 @router.post("/games/{game_id}/submit-deck")
 async def submit_player_deck(

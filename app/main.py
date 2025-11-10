@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.api.routes import router
 from app.api.websocket import websocket_router
 from app.api.draft_routes import router as draft_router
+from app.services.format_stats_service import get_format_statistics
 
 
 async def lifespan(app: FastAPI):
@@ -180,4 +181,18 @@ async def draft_room(request: Request, room_id: str):
     return templates.TemplateResponse(
         "draft_room.html",
         {"request": request, "room": room}
+    )
+
+
+@app.get("/formats")
+async def format_stats(request: Request):
+    """Format statistics dashboard."""
+    stats = get_format_statistics()
+    return templates.TemplateResponse(
+        "format_stats.html",
+        {
+            "request": request,
+            "title": "Formats & Arena Coverage",
+            "stats": stats,
+        }
     )
