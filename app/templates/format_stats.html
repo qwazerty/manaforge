@@ -1,0 +1,204 @@
+{% extends "base_arena.html" %}
+
+{% block content %}
+<div class="py-12 px-4">
+    <div class="max-w-6xl mx-auto space-y-10">
+        <section class="arena-card rounded-2xl p-8">
+            <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-sm uppercase tracking-widest text-arena-text-dim">ManaForge Insights</p>
+                    <h1 class="font-magic text-3xl md:text-4xl text-arena-accent mt-2">Card counts & Arena coverage</h1>
+                    <p class="text-arena-text-dim mt-3">
+                        Data extracted from <span class="font-semibold text-arena-accent">{{ stats.dataset_name }}</span>,
+                        updated {{ stats.dataset_updated_at_display }}.
+                        Compare each format at a glance and spot which paper cards are still missing on Magic Arena.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 gap-4 w-full md:w-auto">
+                    <div class="arena-surface rounded-xl p-4 border border-arena-accent/20">
+                        <p class="text-xs uppercase tracking-widest text-arena-text-dim">Formats tracked</p>
+                        <p class="text-3xl font-semibold text-arena-accent mt-1">{{ stats.formats_count }}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="arena-card rounded-2xl p-6">
+                    <p class="text-sm text-arena-text-dim">Paper formats</p>
+                    <p class="text-4xl font-bold text-arena-accent mt-2">{{ stats.paper_formats_count }}</p>
+                    <p class="text-sm text-arena-text-dim mt-3">Formats with at least one legal physical printing.</p>
+                </div>
+                <div class="arena-card rounded-2xl p-6">
+                    <p class="text-sm text-arena-text-dim">Total cards</p>
+                    <p class="text-4xl font-bold text-arena-accent mt-2">{{ "{:,}".format(stats.total_cards) }}</p>
+                    <p class="text-sm text-arena-text-dim mt-3">Total number of cards contained in this Scryfall snapshot.</p>
+                </div>
+                <div class="arena-card rounded-2xl p-6">
+                    <p class="text-sm text-arena-text-dim">Average Arena coverage</p>
+                    <p class="text-4xl font-bold text-arena-accent mt-2">
+                        {% if stats.paper_average_coverage is not none %}
+                        {{ stats.paper_average_coverage }}%
+                        {% else %}
+                        —
+                        {% endif %}
+                    </p>
+                    <p class="text-sm text-arena-text-dim mt-3">Average share of paper cards already playable on Magic Arena.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="formats-overview" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="font-magic text-2xl text-arena-accent">Format overview</h2>
+                <p class="text-sm text-arena-text-dim">Sorted by number of legal cards.</p>
+            </div>
+            <div class="arena-card rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-arena-accent/10" data-format-table>
+                        <thead class="bg-arena-surface/40 text-xs uppercase tracking-widest text-arena-text-dim">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Format</th>
+                                <th class="px-4 py-3 text-right">Legal cards</th>
+                                <th class="px-4 py-3 text-right">Paper cards</th>
+                                <th class="px-4 py-3 text-right">Arena cards</th>
+                                <th class="px-4 py-3 text-right">Paper coverage</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-arena-accent/10 text-sm" id="formats-table-body">
+                            {% for fmt in stats.all_formats %}
+                            <tr class="hover:bg-arena-surface/30 transition cursor-pointer" data-format-code="{{ fmt.code }}">
+                                <td class="px-4 py-3">
+                                    <div class="font-semibold text-arena-text">{{ fmt.label }}</div>
+                                    {% if fmt.is_paper_format %}
+                                    <p class="text-xs text-emerald-300/80 mt-0.5">Paper format</p>
+                                    {% else %}
+                                    <p class="text-xs text-sky-300/80 mt-0.5">Digital format</p>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-right font-mono">{{ "{:,}".format(fmt.total_cards) }}</td>
+                                <td class="px-4 py-3 text-right font-mono">{{ "{:,}".format(fmt.paper_cards) }}</td>
+                                <td class="px-4 py-3 text-right font-mono">{{ "{:,}".format(fmt.arena_cards) }}</td>
+                                <td class="px-4 py-3 text-right font-mono">
+                                    {% if fmt.paper_coverage_percent is not none %}
+                                        {{ fmt.paper_coverage_percent }}%
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="font-magic text-2xl text-arena-accent">Visualizations</h2>
+                <p class="text-sm text-arena-text-dim">
+                    {{ "{:,}".format(stats.paper_missing_total) }} paper cards are still missing from Magic Arena.
+                </p>
+            </div>
+            <div class="grid gap-6 md:grid-cols-2">
+                <div class="arena-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm uppercase tracking-widest text-arena-text-dim">Global coverage</p>
+                            <h3 class="font-magic text-xl text-arena-accent">Paper cards on Arena</h3>
+                        </div>
+                        <p class="text-sm text-arena-text-dim">
+                            {{ "{:,}".format(stats.paper_available_total) }} of {{ "{:,}".format(stats.paper_cards_total) }}
+                        </p>
+                    </div>
+                    <canvas id="coverage-chart" height="220"></canvas>
+                </div>
+                <div class="arena-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm uppercase tracking-widest text-arena-text-dim">Behind schedule</p>
+                            <h3 class="font-magic text-xl text-arena-accent">Top missing cards by format</h3>
+                        </div>
+                        <p class="text-sm text-arena-text-dim">Top 8 paper formats</p>
+                    </div>
+                    <canvas id="missing-chart" height="220"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <div id="card-explorer" class="arena-card rounded-2xl p-6">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p class="text-sm uppercase tracking-widest text-arena-text-dim">Card explorer</p>
+                        <h2 class="font-magic text-2xl text-arena-accent mt-2" id="cards-panel-title">
+                            Select a format to explore cards
+                        </h2>
+                        <p class="text-sm text-arena-text-dim mt-1" id="cards-panel-subtitle">
+                            Pick a format above, then use the filter to focus on missing cards, Arena-ready cards, or the entire legal list.
+                        </p>
+                    </div>
+                    <form id="cards-search-form" class="flex gap-3 w-full md:w-auto">
+                        <select
+                            id="cards-filter"
+                            class="rounded-lg bg-arena-surface border border-arena-accent/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-arena-accent/40"
+                            disabled
+                        >
+                            <option value="missing" selected>Missing on Arena</option>
+                            <option value="arena">Available on Arena</option>
+                            <option value="paper">Paper legal cards</option>
+                            <option value="all">All legal cards</option>
+                        </select>
+                        <input
+                            id="cards-search"
+                            type="text"
+                            class="flex-1 md:w-64 rounded-lg bg-arena-surface border border-arena-accent/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-arena-accent/40"
+                            placeholder="Search a card..."
+                            disabled
+                        >
+                        <button
+                            type="submit"
+                            class="arena-button px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                            disabled
+                        >
+                            🔍 Search
+                        </button>
+                    </form>
+                </div>
+                <div id="cards-list" class="mt-6 space-y-3 text-sm"></div>
+                <div class="mt-6 flex items-center justify-between" id="cards-pagination">
+                    <button
+                        id="cards-prev"
+                        class="arena-button px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                        disabled
+                    >
+                        ← Previous
+                    </button>
+                    <p class="text-sm text-arena-text-dim" id="cards-page-indicator">Page 0 / 0</p>
+                    <button
+                        id="cards-next"
+                        class="arena-button px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                        disabled
+                    >
+                        Next →
+                    </button>
+                </div>
+                <p class="text-xs text-arena-text-dim mt-4">
+                    Use the filter to switch between missing, Arena-ready, paper-legal, or all legal cards for the selected format.
+                </p>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" integrity="sha384-Sse/HDqcypGpyTDpvZOJNnG0TT3feGQUkF9H+mnRvic+LjR+K1NhTt8f51KIQ3v3" crossorigin="anonymous"></script>
+<script id="format-stats-data" type="application/json">
+{{ stats | tojson }}
+</script>
+<script src="{{ url_for('static', path='js/format-stats.js') }}"></script>
+{% endblock %}
