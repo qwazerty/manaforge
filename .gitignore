@@ -8,6 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+node_modules/
 build/
 develop-eggs/
 dist/
@@ -183,6 +184,8 @@ player_data/
 # Static file builds
 app/static/dist/
 app/static/build/
+!app/static/css/dist/
+!app/static/css/dist/manaforge.css
 
 # Testing
 .coverage

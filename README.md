@@ -29,12 +29,24 @@ docker compose up --build -d
 # Install dependencies
 pip install -r requirements.txt
 
+# Install frontend tooling (Tailwind CSS)
+npm install
+
 # Start MongoDB (required)
 # Install MongoDB locally or use Docker:
 # docker run -d -p 27017:27017 mongo:7.0
 
 # Run the application
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Building Frontend Styles
+
+Tailwind CSS is now bundled locally (no CDN). Run the build once before launching the app or whenever you change `app/static/css/tailwind.css`:
+
+```bash
+npm run build:css            # single build (minified)
+npm run dev:css              # watch mode during development
 ```
 
 ## Features
