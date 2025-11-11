@@ -401,6 +401,49 @@ async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
+
+@router.post("/games/{game_id}/update-settings")
+async def update_game_settings(game_id: str, request: dict) -> GameSetupStatus:
+    """Update game settings (format, phase mode) before the game starts."""
+    raw_format = request.get("game_format")
+    raw_phase_mode = request.get("phase_mode")
+    
+    game_format = None
+    phase_mode = None
+    
+    if raw_format is not None:
+        normalized_format = str(raw_format).strip().lower().replace(" ", "_")
+        try:
+            game_format = GameFormat(normalized_format)
+        except ValueError:
+            allowed_formats = ", ".join(fmt.value for fmt in GameFormat)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid game_format '{raw_format}'. Allowed values: {allowed_formats}"
+            )
+    
+    if raw_phase_mode is not None:
+        normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
+        try:
+            phase_mode = PhaseMode(normalized_phase)
+        except ValueError:
+            allowed_modes = ", ".join(mode.value for mode in PhaseMode)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}"
+            )
+    
+    try:
+        setup_status = game_engine.update_game_settings(
+            game_id=game_id,
+            game_format=game_format,
+            phase_mode=phase_mode
+        )
+        return setup_status
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.get("/games/{game_id}/state")
 async def get_game_state(game_id: str) -> Dict[str, Any]:
     """Get current game state (only available after setup is complete)."""
