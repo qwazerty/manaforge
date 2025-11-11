@@ -12,7 +12,6 @@ node_modules/
 build/
 develop-eggs/
 dist/
-app/static/css/dist/
 downloads/
 eggs/
 .eggs/
@@ -185,8 +184,6 @@ player_data/
 # Static file builds
 app/static/dist/
 app/static/build/
-!app/static/css/dist/
-!app/static/css/dist/manaforge.css
 
 # Testing
 .coverage
