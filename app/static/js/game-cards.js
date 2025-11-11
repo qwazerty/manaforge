@@ -858,8 +858,6 @@ const GameCards = {
 
         menuHTML += `<div class="card-context-actions">
             <div class="card-context-header"><h3>${safeCardName}</h3></div>
-            <div class="card-context-menu-divider"></div>
-            <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCardPreview(${jsCardId}, ${jsCardName}, ${jsCardImage})`)}"><span class="icon">🔍</span> View Full Size</div>
             <div class="card-context-menu-divider"></div>`;
 
         const targetAction = isTargeted ? 'Untarget' : 'Target';
