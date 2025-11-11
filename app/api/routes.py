@@ -150,13 +150,16 @@ async def create_modern_example_game(
                 status_code=400,
                 detail="This battlefield already has deck submissions."
             )
+        # Update the format to Modern if it's different and no decks have been submitted
         if existing_setup.game_format != GameFormat.MODERN:
-            raise HTTPException(
-                status_code=400,
-                detail="The existing battlefield uses another format. Please choose a new game name."
+            setup_status = game_engine.update_game_settings(
+                game_id=game_id_clean,
+                game_format=GameFormat.MODERN,
+                phase_mode=phase_mode
             )
-        phase_mode = existing_setup.phase_mode
-        setup_status = existing_setup
+        else:
+            phase_mode = existing_setup.phase_mode
+            setup_status = existing_setup
     else:
         setup_status = game_engine.create_game_setup(
             game_id=game_id_clean,
