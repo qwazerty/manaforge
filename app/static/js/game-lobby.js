@@ -181,6 +181,23 @@ async function fetchGameList(force = false) {
                 statusLine.textContent = `${seatSummary} • ${deckSummary} • ${seatHint}`;
             }
 
+            const playerLine = document.createElement('div');
+            playerLine.className = 'flex flex-wrap gap-2 text-xs text-arena-text mb-2';
+            ['player1', 'player2'].forEach((seat) => {
+                const pill = document.createElement('span');
+                pill.className = 'inline-flex items-center gap-1 px-3 py-1 rounded-full bg-arena-surface-light border border-arena-accent/10';
+                const icon = seat === 'player1' ? '🛡️' : '🎯';
+                const info = playerStatus[seat];
+                if (!info || !info.seat_claimed) {
+                    pill.textContent = `${icon} Seat Open`;
+                } else {
+                    const displayName = info.player_name || seat.replace('player', 'Player ');
+                    const stateIcon = info.validated ? '✅' : info.submitted ? '✍️' : '⏳';
+                    pill.textContent = `${icon} ${displayName} ${stateIcon}`;
+                }
+                playerLine.appendChild(pill);
+            });
+
             if (createdAtLabel) {
                 const creationLine = document.createElement('div');
                 creationLine.className = 'text-xs text-arena-muted mb-1';
@@ -203,12 +220,19 @@ async function fetchGameList(force = false) {
                     : `Join as ${seatToJoin === 'player1' ? 'Player 1' : 'Player 2'}`;
                 joinButton.textContent = buttonLabel;
                 joinButton.onclick = () => {
-                    window.location.href = `/game-room/${encodedId}?player=${seatToJoin}`;
+                    if (seatToJoin === 'spectator') {
+                        window.location.href = `/game-room/${encodedId}?player=spectator`;
+                        return;
+                    }
+                    const url = new URL(`/game-room/${encodedId}`, window.location.origin);
+                    url.searchParams.set('player', seatToJoin);
+                    window.location.href = url.toString();
                 };
             }
 
             gameCard.appendChild(titleBlock);
             gameCard.appendChild(statusLine);
+            gameCard.appendChild(playerLine);
             gameCard.appendChild(joinButton);
             gameListDiv.appendChild(gameCard);
         });
@@ -271,7 +295,7 @@ function setButtonState(isLoading) {
         battleButton.classList.remove('opacity-50', 'cursor-not-allowed');
         battleButton.innerHTML = `
             <span class="mr-3 group-hover:animate-pulse">⚡</span>
-            Enter Battlefield
+            Create Room
             <span class="ml-3 group-hover:animate-pulse">⚔️</span>
         `;
     }
@@ -362,7 +386,9 @@ function redirectToGameRoom(gameId, playerRole, setupStatus) {
     }
 
     const roleParam = playerRole || 'spectator';
-    window.location.href = `/game-room/${encodedId}?player=${roleParam}`;
+    const url = new URL(`/game-room/${encodedId}`, window.location.origin);
+    url.searchParams.set('player', roleParam);
+    window.location.href = url.toString();
 }
 
 // Main function for joining or creating battle

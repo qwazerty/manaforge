@@ -262,11 +262,16 @@ async def submit_player_deck(
 async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
     """Mark a seat as occupied when a player joins the room."""
     player_id = request.get("player_id")
+    player_name = request.get("player_name")
     if player_id not in {"player1", "player2"}:
         raise HTTPException(status_code=400, detail="player_id must be player1 or player2")
 
     try:
-        setup_status = game_engine.claim_player_seat(game_id=game_id, player_id=player_id)
+        setup_status = game_engine.claim_player_seat(
+            game_id=game_id,
+            player_id=player_id,
+            player_name=player_name
+        )
         return setup_status
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

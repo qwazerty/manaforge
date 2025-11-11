@@ -23,8 +23,10 @@
     const playerSections = {
         player1: document.querySelector('[data-player="player1"][data-field="details"]'),
         player1Badge: document.querySelector('[data-player="player1"][data-field="badge"]'),
+        player1Name: document.querySelector('[data-player="player1"][data-field="name"]'),
         player2: document.querySelector('[data-player="player2"][data-field="details"]'),
-        player2Badge: document.querySelector('[data-player="player2"][data-field="badge"]')
+        player2Badge: document.querySelector('[data-player="player2"][data-field="badge"]'),
+        player2Name: document.querySelector('[data-player="player2"][data-field="name"]')
     };
 
     const shareButtons = document.querySelectorAll('[data-copy-role]');
@@ -42,6 +44,10 @@
     const deckPreviewCount = document.getElementById('deck-preview-count');
 
     const STATUS_POLL_INTERVAL = 2500;
+    const PLAYER_NAME_STORAGE_KEY = 'manaforge:player-name';
+    let aliasSyncInProgress = false;
+    let aliasSyncedFromServer = false;
+    let nameEditInProgress = false;
     let pollTimeoutId = null;
     let isFetchingStatus = false;
     let pendingImmediatePoll = false;
@@ -49,6 +55,215 @@
     let lastStatus = initialStatus;
     let isSubmitting = false;
     let isImportingDeck = false;
+
+    function getStoredPlayerAlias() {
+        try {
+            return localStorage.getItem(PLAYER_NAME_STORAGE_KEY) || '';
+        } catch (error) {
+            console.warn('Unable to read stored player alias', error);
+            return '';
+        }
+    }
+
+    function persistPlayerAlias(name) {
+        if (!name) return;
+        try {
+            localStorage.setItem(PLAYER_NAME_STORAGE_KEY, name);
+        } catch (error) {
+            console.warn('Unable to store player alias', error);
+        }
+    }
+
+    function maybeSyncPlayerAlias(status) {
+        if (aliasSyncedFromServer || aliasSyncInProgress) return;
+        if (!gameId) return;
+        if (playerRole !== 'player1' && playerRole !== 'player2') return;
+
+        const currentSeatStatus = status?.player_status?.[playerRole];
+        const currentAlias = currentSeatStatus?.player_name;
+        const storedAlias = getStoredPlayerAlias();
+
+        if (!storedAlias) {
+            if (currentAlias) {
+                persistPlayerAlias(currentAlias);
+                aliasSyncedFromServer = true;
+            }
+            return;
+        }
+
+        if (currentAlias && currentAlias === storedAlias) {
+            aliasSyncedFromServer = true;
+            return;
+        }
+
+        aliasSyncInProgress = true;
+        fetch(`/api/v1/games/${encodeURIComponent(gameId)}/claim-seat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                player_id: playerRole,
+                player_name: storedAlias
+            })
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Unable to sync alias with server');
+                }
+                aliasSyncedFromServer = true;
+            })
+            .catch((error) => {
+                console.warn('Failed to synchronize player alias', error);
+            })
+            .finally(() => {
+                aliasSyncInProgress = false;
+            });
+    }
+    function pausePollingForNameEdit() {
+        nameEditInProgress = true;
+        stopPolling();
+    }
+
+    function resumePollingAfterNameEdit() {
+        nameEditInProgress = false;
+        pollingDisabled = false;
+        pollSetupStatus(true);
+    }
+
+    function selectElementText(element) {
+        if (!element) return;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    async function submitNameChange(playerKey, newName, originalName) {
+        if (!gameId) return null;
+        const trimmed = newName.trim();
+        if (!trimmed) {
+            throw new Error('Le nom ne peut pas être vide.');
+        }
+
+        const response = await fetch(`/api/v1/games/${encodeURIComponent(gameId)}/claim-seat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                player_id: playerKey,
+                player_name: trimmed
+            })
+        });
+
+        const updatedStatus = await response.json().catch(() => null);
+        if (!response.ok) {
+            const detail = updatedStatus?.detail || 'Impossible de mettre à jour le nom.';
+            throw new Error(detail);
+        }
+
+        if (updatedStatus) {
+            updateStatus(updatedStatus);
+            const sanitized = updatedStatus.player_status?.[playerKey]?.player_name;
+            if (playerKey === playerRole && sanitized) {
+                persistPlayerAlias(sanitized);
+            }
+            return sanitized || trimmed;
+        }
+
+        return trimmed;
+    }
+
+    function finishInlineEdit(nameElement, playerKey, originalName, { commit = true } = {}) {
+        if (!nameElement) return;
+
+        const cleanup = () => {
+            nameElement.removeAttribute('contenteditable');
+            nameElement.classList.remove('ring-2', 'ring-arena-accent/50', 'px-1', 'rounded');
+            nameElement.dataset.editing = 'false';
+            nameElement.classList.remove('player-name-editing');
+        };
+
+        const finishAndResume = () => {
+            cleanup();
+            resumePollingAfterNameEdit();
+        };
+
+        if (!commit) {
+            nameElement.textContent = originalName;
+            finishAndResume();
+            return;
+        }
+
+        const newValue = nameElement.textContent.trim();
+        if (!newValue || newValue === originalName) {
+            nameElement.textContent = originalName;
+            finishAndResume();
+            return;
+        }
+
+        nameElement.dataset.saving = 'true';
+
+        submitNameChange(playerKey, newValue, originalName)
+            .then((sanitized) => {
+                nameElement.textContent = sanitized || newValue;
+                if (statusElements.deckStatus) {
+                    statusElements.deckStatus.textContent = 'Nom mis à jour.';
+                    statusElements.deckStatus.classList.remove('text-red-300');
+                    statusElements.deckStatus.classList.add('text-arena-accent');
+                }
+            })
+            .catch((error) => {
+                console.error('Alias update failed:', error);
+                nameElement.textContent = originalName;
+                if (statusElements.deckStatus) {
+                    statusElements.deckStatus.textContent = error.message || 'Impossible de mettre à jour le nom.';
+                    statusElements.deckStatus.classList.add('text-red-300');
+                }
+            })
+            .finally(() => {
+                delete nameElement.dataset.saving;
+                finishAndResume();
+            });
+    }
+
+    function startInlineNameEdit(playerKey) {
+        if (playerRole !== playerKey) return;
+        const nameElement = playerSections[`${playerKey}Name`];
+        if (!nameElement) return;
+        if (nameElement.dataset.editing === 'true') return;
+
+        nameElement.dataset.editing = 'true';
+        nameElement.contentEditable = 'true';
+        nameElement.spellcheck = false;
+        nameElement.classList.add('ring-2', 'ring-arena-accent/50', 'px-1', 'rounded');
+        nameElement.classList.add('player-name-editing');
+        pausePollingForNameEdit();
+
+        const originalName = nameElement.textContent.trim();
+        setTimeout(() => selectElementText(nameElement), 0);
+
+        const handleKeydown = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                nameElement.removeEventListener('keydown', handleKeydown);
+                nameElement.removeEventListener('blur', handleBlur);
+                finishInlineEdit(nameElement, playerKey, originalName, { commit: true });
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                nameElement.removeEventListener('keydown', handleKeydown);
+                nameElement.removeEventListener('blur', handleBlur);
+                finishInlineEdit(nameElement, playerKey, originalName, { commit: false });
+            }
+        };
+
+        const handleBlur = () => {
+            nameElement.removeEventListener('keydown', handleKeydown);
+            nameElement.removeEventListener('blur', handleBlur);
+            finishInlineEdit(nameElement, playerKey, originalName, { commit: true });
+        };
+
+        nameElement.addEventListener('keydown', handleKeydown);
+        nameElement.addEventListener('blur', handleBlur);
+    }
 
     function setImportButtonLoadingState(isLoading) {
         if (!deckImportButton) return;
@@ -99,6 +314,27 @@
         });
     }
 
+    function bindNameEditing() {
+        ['player1', 'player2'].forEach((playerKey) => {
+            const nameElement = playerSections[`${playerKey}Name`];
+            if (!nameElement) return;
+            nameElement.addEventListener('click', () => {
+                const editable = nameElement.getAttribute('data-name-editable');
+                if (editable !== 'true') return;
+                startInlineNameEdit(playerKey);
+            });
+        });
+
+        document.querySelectorAll('[data-name-edit-trigger]').forEach((button) => {
+            const target = button.getAttribute('data-name-edit-trigger');
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (!target) return;
+                startInlineNameEdit(target);
+            });
+        });
+    }
+
     function loadDeckFromCache() {
         if (!deckTextArea || (playerRole !== 'player1' && playerRole !== 'player2')) return;
         if (!gameId) return;
@@ -143,11 +379,16 @@
     function updatePlayerSection(playerKey, data) {
         const detailsElement = playerSections[playerKey];
         const badgeElement = playerSections[`${playerKey}Badge`];
+        const nameElement = playerSections[`${playerKey}Name`];
         if (!detailsElement || !badgeElement) return;
 
         const isValidated = data?.validated;
         const isSubmitted = data?.submitted;
         const seatClaimed = data?.seat_claimed;
+        const fallbackName = playerKey === 'player1' ? 'Player 1' : 'Player 2';
+        const displayName = data?.player_name || fallbackName;
+        const isEditing = nameElement?.dataset?.editing === 'true';
+        const aliasDisplay = isEditing && nameElement ? nameElement.textContent.trim() : displayName;
 
         badgeElement.classList.remove(
             'border-yellow-500/40', 'text-yellow-300',
@@ -170,6 +411,10 @@
             badgeElement.classList.add('border-blue-500/40', 'text-blue-300');
         }
 
+        if (nameElement && !isEditing) {
+            nameElement.textContent = displayName;
+        }
+
         detailsElement.innerHTML = `
             <p>Seat Status: <span class="text-arena-text">${seatClaimed ? 'Occupied' : 'Available'}</span></p>
             <p>Deck Name: <span class="text-arena-text">${data?.deck_name || 'Pending submission'}</span></p>
@@ -180,6 +425,10 @@
 
     function updateStatus(status) {
         lastStatus = status;
+        if (nameEditInProgress) {
+            return;
+        }
+        maybeSyncPlayerAlias(status);
 
         if (statusElements.overall) {
             statusElements.overall.textContent = status.status || 'Setting up battlefield...';
@@ -605,6 +854,7 @@
         updateFormAvailability(initialStatus);
         loadDeckFromCache();
         updateShareButtons();
+        bindNameEditing();
 
         if (deckPreviewButton) {
             deckPreviewButton.addEventListener('click', previewDecklist);

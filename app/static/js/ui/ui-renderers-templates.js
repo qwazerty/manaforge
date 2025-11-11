@@ -15,6 +15,8 @@ class UIRenderersTemplates {
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
         const roleDisplay = document.getElementById('current-role-display');
         const roleDescription = document.getElementById('role-description');
+        const gameState = GameCore.getGameState() || {};
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
         
         if (!roleDisplay || !roleDescription) {
             console.warn('Role display elements not found');
@@ -23,9 +25,18 @@ class UIRenderersTemplates {
         
         const roleData = this._getRoleData();
         const role = roleData[currentSelectedPlayer] || roleData['player1'];
-        
+        let titleText = role.title;
+
+        if (currentSelectedPlayer === 'player1' || currentSelectedPlayer === 'player2') {
+            const playerIndex = currentSelectedPlayer === 'player1' ? 0 : 1;
+            const fallback = this._getSeatFallbackName(playerIndex);
+            const playerName = this._getPlayerDisplayName(players[playerIndex], fallback);
+            const icon = currentSelectedPlayer === 'player1' ? '🛡️' : '🎯';
+            titleText = `${icon} ${playerName}`;
+        }
+
         roleDisplay.className = `px-4 py-3 rounded-lg border-2 mb-3 ${role.class}`;
-        roleDisplay.textContent = role.title;
+        roleDisplay.textContent = titleText;
         roleDescription.textContent = role.description;
     }
 
@@ -43,12 +54,14 @@ class UIRenderersTemplates {
             const { controlledIdx, opponentIdx, players } = this._getPlayerIndices(gameState);
             const opponent = players[opponentIdx] || {};
             const player = players[controlledIdx] || {};
+            const opponentName = this._getPlayerDisplayName(opponent, this._getSeatFallbackName(opponentIdx));
+            const playerName = this._getPlayerDisplayName(player, this._getSeatFallbackName(controlledIdx));
             
             stackContainer.innerHTML = `
                 <!-- Opponent Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>Opponent
+                        <span class="mr-1">📚</span>${opponentName}
                     </h4>
                     ${this.generateCardZones(opponent, true, opponentIdx)}
                 </div>
@@ -59,7 +72,7 @@ class UIRenderersTemplates {
                 <!-- Player's Card Zones -->
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>Player
+                        <span class="mr-1">📚</span>${playerName}
                     </h4>
                     ${this.generateCardZones(player, false, controlledIdx)}
                 </div>
@@ -126,7 +139,7 @@ class UIRenderersTemplates {
                 <h4 class="font-magic font-semibold mb-2 text-arena-accent flex items-center">
                     <span class="mr-2">⚡</span>Game Actions
                 </h4>
-                ${isActivePlayer ? this.generateActionButtons() : this.generateSpectatorView()}
+                ${isActivePlayer ? this.generateActionButtons(gameState) : this.generateSpectatorView(gameState)}
             `;
 
             this._updateStackOverlay(stack);
@@ -146,7 +159,8 @@ class UIRenderersTemplates {
      * Generate combined card zones display
      */
     static generateCardZones(playerData, isOpponent = false, playerIndex = null) {
-        const config = UIUtils.getZoneConfiguration(isOpponent, playerIndex);
+        const playerName = this._getPlayerDisplayName(playerData, isOpponent ? 'Opponent' : 'Player');
+        const config = UIUtils.getZoneConfiguration(isOpponent, playerIndex, playerName);
         const zoneTemplates = this._generateZoneTemplates(playerData, config, isOpponent);
 
         const zoneOrder = ['exile', 'graveyard', 'deck', 'life'];
@@ -163,11 +177,12 @@ class UIRenderersTemplates {
     /**
      * Generate action buttons for active player
      */
-    static generateActionButtons() {
-        const gameState = GameCore.getGameState();
+    static generateActionButtons(gameStateParam = null) {
+        const gameState = gameStateParam || GameCore.getGameState();
         const currentPhase = gameState?.phase || 'begin';
         const currentTurn = gameState?.turn || 1;
         const activePlayer = gameState?.active_player || 0;
+        const players = Array.isArray(gameState?.players) ? gameState.players : [];
         const priorityPlayer = typeof gameState?.priority_player === 'number'
             ? gameState.priority_player
             : activePlayer;
@@ -189,6 +204,10 @@ class UIRenderersTemplates {
             passAction: 'pass_phase',
             passTitle: 'Pass current phase'
         };
+        const activePlayerName = this._getPlayerDisplayName(
+            players[activePlayer],
+            this._getSeatFallbackName(activePlayer)
+        );
 
         if (controlledPlayerIndex === null) {
             passConfig.passTitle = 'Select a player to perform actions';
@@ -197,6 +216,11 @@ class UIRenderersTemplates {
             const hasStack = stack.length > 0;
             const isActivePlayer = controlledPlayerIndex === activePlayer;
             const isPriorityPlayer = controlledPlayerIndex === priorityPlayer;
+            const opponentSeatIndex = controlledPlayerIndex === 0 ? 1 : 0;
+            const opponentName = this._getPlayerDisplayName(
+                players[opponentSeatIndex],
+                this._getSeatFallbackName(opponentSeatIndex)
+            );
 
             if (isStrictMode && hasStack) {
                 if (isPriorityPlayer) {
@@ -206,19 +230,19 @@ class UIRenderersTemplates {
                     passConfig.passTitle = 'Resolve the top spell on the stack';
                 } else {
                     passConfig.passDisabled = true;
-                    passConfig.passTitle = 'Waiting for opponent to resolve the stack';
+                    passConfig.passTitle = `Waiting for ${opponentName} to resolve the stack`;
                 }
             } else {
                 passConfig.passDisabled = !isActivePlayer;
                 passConfig.passTitle = passConfig.passDisabled
-                    ? 'Only the active player can pass the phase'
+                    ? `Waiting for ${activePlayerName} to pass the phase`
                     : 'Pass current phase';
             }
         }
         
         return `
             <div>
-                ${this._generateGameInfoSection(currentTurn, activePlayer)}
+                ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
                 ${this._generateGamePhases(currentPhase)}
                 <div class="text-center text-xs text-arena-muted mb-3">
                     Phase Mode: ${phaseModeLabel}
@@ -231,17 +255,21 @@ class UIRenderersTemplates {
     /**
      * Generate spectator view
      */
-    static generateSpectatorView() {
-        const gameState = GameCore.getGameState() || {};
+    static generateSpectatorView(gameStateParam = null) {
+        const gameState = gameStateParam || GameCore.getGameState() || {};
         const currentPhase = gameState.phase || 'begin';
         const currentTurn = typeof gameState.turn === 'number' ? gameState.turn : 1;
         const activePlayer = typeof gameState.active_player === 'number'
             ? gameState.active_player
             : 0;
+        const priorityPlayer = typeof gameState.priority_player === 'number'
+            ? gameState.priority_player
+            : activePlayer;
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
 
         return `
             <div>
-                ${this._generateGameInfoSection(currentTurn, activePlayer)}
+                ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
                 ${this._generateGamePhases(currentPhase, { readOnly: true })}
                 <div class="text-center py-6 border-t border-arena-accent/10">
                     <div class="text-3xl mb-2 leading-none">👁️</div>
@@ -353,8 +381,10 @@ class UIRenderersTemplates {
     static generateGameInfo(gameState) {
         const currentTurn = gameState.turn || 1;
         const currentPhase = gameState.phase || 'begin';
-        const priorityPlayer = (gameState.priority_player || 0) + 1;
         const phaseDisplay = UIConfig.getPhaseDisplayName(currentPhase);
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        const priorityIndex = typeof gameState.priority_player === 'number' ? gameState.priority_player : 0;
+        const priorityName = this._getPlayerDisplayName(players[priorityIndex], this._getSeatFallbackName(priorityIndex));
 
         return `
             <div class="grid grid-cols-3 gap-4 text-center">
@@ -368,7 +398,7 @@ class UIRenderersTemplates {
                 </div>
                 <div class="bg-purple-500/20 rounded-lg p-3">
                     <div class="text-purple-300 font-semibold">Priority</div>
-                    <div class="text-lg font-bold">Player ${priorityPlayer}</div>
+                    <div class="text-lg font-bold">${priorityName}</div>
                 </div>
             </div>
         `;
@@ -391,7 +421,7 @@ class UIRenderersTemplates {
     static generateEmptyZone(icon, name) { return UIUtils.generateEmptyZone(icon, name); }
     static generateZoneClickHandler(isOpponent, prefix, zoneType, title) { return UIUtils.generateZoneClickHandler(isOpponent, prefix, zoneType, title); }
     static filterCardsByType(cards, zoneName) { return UIUtils.filterCardsByType(cards, zoneName); }
-    static getZoneConfiguration(isOpponent, playerIndex) { return UIUtils.getZoneConfiguration(isOpponent, playerIndex); }
+    static getZoneConfiguration(isOpponent, playerIndex, playerName = null) { return UIUtils.getZoneConfiguration(isOpponent, playerIndex, playerName); }
 
     // Zone generation delegation to UIZonesManager
     static generateDeckZone(deck, isOpponent) { return UIZonesManager.generateDeckZone(deck, isOpponent); }
@@ -441,8 +471,8 @@ class UIRenderersTemplates {
      */
     static _getRoleData() {
         return {
-            'player1': { class: 'bg-green-500/20 border-green-500/50 text-green-400', title: '🛡️ Player 1', description: 'You control the first player position' },
-            'player2': { class: 'bg-red-500/20 border-red-500/50 text-red-400', title: '🎯 Player 2', description: 'You control the second player position' },
+            'player1': { class: 'bg-green-500/20 border-green-500/50 text-green-400', title: 'Player 1', description: 'You control the first player position' },
+            'player2': { class: 'bg-red-500/20 border-red-500/50 text-red-400', title: 'Player 2', description: 'You control the second player position' },
             'spectator': { class: 'bg-purple-500/20 border-purple-500/50 text-purple-400', title: '👁️ Spectator', description: 'You are watching the battle unfold' }
         };
     }
@@ -450,11 +480,19 @@ class UIRenderersTemplates {
     /**
      * Generate game info section
      */
-    static _generateGameInfoSection(currentTurn, activePlayer) {
-        const activePlayerName = activePlayer === 0 ? 'Player 1' : 'Player 2';
+    static _generateGameInfoSection(currentTurn, activePlayer, players = [], priorityIndex = null) {
+        const activePlayerName = this._getPlayerDisplayName(
+            players[activePlayer],
+            this._getSeatFallbackName(activePlayer)
+        );
+        const resolvedPriorityIndex = priorityIndex === null ? activePlayer : priorityIndex;
+        const priorityName = this._getPlayerDisplayName(
+            players[resolvedPriorityIndex],
+            this._getSeatFallbackName(resolvedPriorityIndex)
+        );
         
         return `
-            <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="grid grid-cols-3 gap-2 mb-4">
                 <div class="text-center">
                     <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
                         <div class="text-blue-300 font-semibold text-sm">Turn</div>
@@ -465,6 +503,12 @@ class UIRenderersTemplates {
                     <div class="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
                         <div class="text-yellow-300 font-semibold text-sm">Active</div>
                         <div class="text-lg font-bold text-arena-accent">${activePlayerName}</div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="bg-purple-500/20 rounded-lg p-3 border border-purple-500/30">
+                        <div class="text-purple-300 font-semibold text-sm">Priority</div>
+                        <div class="text-lg font-bold text-arena-accent">${priorityName}</div>
                     </div>
                 </div>
             </div>
@@ -1166,6 +1210,18 @@ class UIRenderersTemplates {
         
         return { controlledIdx, opponentIdx, players, activePlayer };
     }
+
+    static _getSeatFallbackName(index) {
+        if (index === 0) return 'Player 1';
+        if (index === 1) return 'Player 2';
+        return 'Player';
+    }
+
+    static _getPlayerDisplayName(playerData, fallback = 'Player') {
+        const rawName = typeof playerData?.name === 'string' ? playerData.name.trim() : '';
+        return rawName || fallback;
+    }
+
 
     /**
      * Render opponent area

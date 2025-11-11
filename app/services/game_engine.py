@@ -19,11 +19,39 @@ class SimpleGameEngine:
 
     MAX_ACTION_HISTORY = 10000
     MAX_CHAT_MESSAGES = 1000
+    MAX_PLAYER_NAME_LENGTH = 32
     
     def __init__(self):
         self.games: dict[str, GameState] = {}
         self.game_setups: dict[str, GameSetupStatus] = {}
         self._pending_decks: dict[str, dict[str, Deck]] = {}
+
+    def _default_player_name(self, player_id: str) -> str:
+        if player_id == "player1":
+            return "Player 1"
+        if player_id == "player2":
+            return "Player 2"
+        return "Player"
+
+    def _sanitize_player_name(
+        self,
+        player_id: str,
+        provided_name: Optional[str] = None,
+        fallback_name: Optional[str] = None
+    ) -> str:
+        candidate = provided_name if provided_name is not None else fallback_name
+        if candidate is None:
+            candidate = self._default_player_name(player_id)
+        candidate = str(candidate)
+        candidate = "".join(ch for ch in candidate if ch.isprintable())
+        candidate = candidate.strip()
+        if not candidate:
+            candidate = self._default_player_name(player_id)
+        if len(candidate) > self.MAX_PLAYER_NAME_LENGTH:
+            candidate = candidate[: self.MAX_PLAYER_NAME_LENGTH].rstrip()
+        if not candidate:
+            candidate = self._default_player_name(player_id)
+        return candidate
     
     def create_game_setup(
         self,
@@ -75,6 +103,11 @@ class SimpleGameEngine:
         
         setup = self.game_setups[game_id]
         deck.format = setup.game_format
+        existing_status = setup.player_status.get(player_id)
+        player_alias = self._sanitize_player_name(
+            player_id,
+            getattr(existing_status, "player_name", None) if existing_status else None
+        )
         
         # Validate deck
         main_card_count = sum(dc.quantity for dc in deck.cards)
@@ -87,6 +120,7 @@ class SimpleGameEngine:
                 validated=False,
                 seat_claimed=True,
                 deck_name=deck.name,
+                player_name=player_alias,
                 card_count=total_card_count,
                 message=message
             )
@@ -112,6 +146,7 @@ class SimpleGameEngine:
             validated=True,
             seat_claimed=True,
             deck_name=deck.name,
+            player_name=player_alias,
             card_count=total_card_count,
             message="Deck validated successfully"
         )
@@ -150,7 +185,12 @@ class SimpleGameEngine:
         
         return setup
 
-    def claim_player_seat(self, game_id: str, player_id: str) -> GameSetupStatus:
+    def claim_player_seat(
+        self,
+        game_id: str,
+        player_id: str,
+        player_name: Optional[str] = None
+    ) -> GameSetupStatus:
         """Claim a seat in the game room without submitting a deck yet."""
         if game_id not in self.game_setups:
             raise ValueError(f"Game setup {game_id} not found")
@@ -163,16 +203,29 @@ class SimpleGameEngine:
         if not player_status:
             player_status = PlayerDeckStatus()
 
+        sanitized_name = self._sanitize_player_name(
+            player_id,
+            player_name,
+            getattr(player_status, "player_name", None)
+        )
+        player_status.player_name = sanitized_name
+
         if not player_status.seat_claimed:
             player_status.seat_claimed = True
             player_status.message = player_status.message or "Seat claimed. Awaiting deck submission."
-            setup.player_status[player_id] = player_status
-
             claimed_count = sum(1 for status in setup.player_status.values() if status.seat_claimed)
             submitted_count = sum(1 for status in setup.player_status.values() if status.submitted)
             if not setup.ready:
                 setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
 
+        game_state = self.games.get(game_id)
+        if game_state:
+            for player in game_state.players:
+                if player.id == player_id:
+                    player.name = sanitized_name
+                    break
+
+        setup.player_status[player_id] = player_status
         return setup
     
     def _initialize_game_from_setup(
@@ -182,16 +235,26 @@ class SimpleGameEngine:
         """Initialize the actual game state from validated decks."""
         player1_id = "player1"
         player2_id = "player2"
+        player1_status = setup.player_status.get(player1_id)
+        player2_status = setup.player_status.get(player2_id)
+        player1_name = self._sanitize_player_name(
+            player1_id,
+            getattr(player1_status, "player_name", None) if player1_status else None
+        )
+        player2_name = self._sanitize_player_name(
+            player2_id,
+            getattr(player2_status, "player_name", None) if player2_status else None
+        )
 
         player1 = Player(
             id=player1_id,
-            name="Player 1",
+            name=player1_name,
             deck_name=player1_deck.name,
             library=self._shuffle_deck(player1_deck.cards, player1_id)
         )
         player2 = Player(
             id=player2_id,
-            name="Player 2",
+            name=player2_name,
             deck_name=player2_deck.name,
             library=self._shuffle_deck(player2_deck.cards, player2_id)
         )

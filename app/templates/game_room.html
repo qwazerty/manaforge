@@ -5,6 +5,8 @@
 {% set player_status = setup['player_status'] %}
 {% set player1 = player_status.get('player1') %}
 {% set player2 = player_status.get('player2') %}
+{% set player1_name = player1['player_name'] if player1 and player1['player_name'] else 'Player 1' %}
+{% set player2_name = player2['player_name'] if player2 and player2['player_name'] else 'Player 2' %}
 {% block content %}
 <div id="game-setup-root" class="py-12 px-4">
     <div class="max-w-6xl mx-auto space-y-8">
@@ -97,7 +99,26 @@
             <div id="player-status-player1" class="arena-card rounded-xl p-6 space-y-4 border border-arena-accent/20">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="font-magic text-2xl text-arena-accent mb-1">Player 1</h2>
+                        <div class="flex items-center gap-2">
+                            <h2
+                                class="font-magic text-2xl text-arena-accent mb-1 {% if player_role == 'player1' %}cursor-text hover:text-arena-accent-light transition-colors{% endif %}"
+                                data-player="player1"
+                                data-field="name"
+                                data-name-editable="{{ 'true' if player_role == 'player1' else 'false' }}"
+                            >
+                                {{ player1_name }}
+                            </h2>
+                            {% if player_role == 'player1' %}
+                            <button
+                                type="button"
+                                class="text-arena-muted text-sm hover:text-arena-accent transition-colors"
+                                title="Cliquez pour renommer"
+                                data-name-edit-trigger="player1"
+                            >
+                                ✏️
+                            </button>
+                            {% endif %}
+                        </div>
                         <p class="text-sm text-arena-muted">Primary seat</p>
                     </div>
                     <span class="accent-pill border-yellow-500/40 text-yellow-300" data-player="player1" data-field="badge">
@@ -123,7 +144,26 @@
             <div id="player-status-player2" class="arena-card rounded-xl p-6 space-y-4 border border-arena-accent/20">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="font-magic text-2xl text-arena-accent mb-1">Player 2</h2>
+                        <div class="flex items-center gap-2">
+                            <h2
+                                class="font-magic text-2xl text-arena-accent mb-1 {% if player_role == 'player2' %}cursor-text hover:text-arena-accent-light transition-colors{% endif %}"
+                                data-player="player2"
+                                data-field="name"
+                                data-name-editable="{{ 'true' if player_role == 'player2' else 'false' }}"
+                            >
+                                {{ player2_name }}
+                            </h2>
+                            {% if player_role == 'player2' %}
+                            <button
+                                type="button"
+                                class="text-arena-muted text-sm hover:text-arena-accent transition-colors"
+                                title="Cliquez pour renommer"
+                                data-name-edit-trigger="player2"
+                            >
+                                ✏️
+                            </button>
+                            {% endif %}
+                        </div>
                         <p class="text-sm text-arena-muted">Challenger seat</p>
                     </div>
                     <span class="accent-pill border-yellow-500/40 text-yellow-300" data-player="player2" data-field="badge">

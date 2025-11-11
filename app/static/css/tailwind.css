@@ -2710,7 +2710,7 @@
             margin-bottom: 6px !important;
         }
 
-        .game-container-1080 h3 {
+.game-container-1080 h3 {
             font-size: 1rem !important;
         }
 
@@ -2719,4 +2719,9 @@
             width: 260px !important;
         }
     }
+}
+
+.player-name-editing {
+    background: rgba(201, 170, 113, 0.2);
+    border-radius: 0.5rem;
 }
