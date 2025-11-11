@@ -40,6 +40,8 @@ npm install
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+> ℹ️ The Docker build uses a Node-based stage to run `npm ci` and `npm run build:css`, so every container image ships with the freshly generated Tailwind bundle. For local development outside of Docker, keep running `npm run dev:css` as needed.
+
 ### Building Frontend Styles
 
 Tailwind CSS is now bundled locally (no CDN). Run the build once before launching the app or whenever you change `app/static/css/tailwind.css`:

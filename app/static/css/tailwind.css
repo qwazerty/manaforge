@@ -38,6 +38,33 @@
     }
 }
 
+@keyframes notification-slide-in {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes notification-slide-out {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+@keyframes flash-indicator {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 @theme {
     --font-body: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -134,6 +161,88 @@
 
     .accent-pill {
         @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-arena-accent/30 text-arena-accent bg-arena-surface/60 backdrop-blur;
+    }
+
+    .notifications-area {
+        @apply pointer-events-none flex flex-col gap-3 max-w-sm;
+    }
+
+    .notification {
+        @apply bg-[rgba(15,15,23,0.95)] border rounded-lg px-6 py-4 shadow-2xl backdrop-blur-xl text-arena-text transition-all duration-300;
+        pointer-events: auto;
+        transform: translateX(-100%);
+        opacity: 0;
+        animation: notification-slide-in 0.3s ease-out forwards;
+    }
+
+    .notification:hover {
+        transform: translateX(0) scale(1.02);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .notification-info {
+        border-color: var(--color-arena-accent);
+        color: var(--color-arena-accent);
+    }
+
+    .notification-success {
+        border-color: var(--color-arena-success);
+        color: var(--color-arena-success);
+    }
+
+    .notification-warning {
+        border-color: var(--color-arena-warning);
+        color: var(--color-arena-warning);
+    }
+
+    .notification-error {
+        border-color: var(--color-arena-danger);
+        color: var(--color-arena-danger);
+    }
+
+    .notification-content {
+        @apply flex items-center gap-3;
+    }
+
+    .notification-icon {
+        @apply text-xl shrink-0;
+    }
+
+    .notification-message {
+        @apply font-medium leading-relaxed flex-1;
+    }
+
+    .notification-hide {
+        animation: notification-slide-out 0.3s ease-in forwards;
+    }
+
+    .auto-refresh-indicator {
+        @apply fixed top-20 right-4 border rounded-md px-4 py-2 text-sm font-medium backdrop-blur-lg transition-all duration-300;
+        background: rgba(15, 15, 23, 0.9);
+    }
+
+    .auto-refresh-info {
+        border-color: var(--color-arena-accent);
+        color: var(--color-arena-accent);
+    }
+
+    .auto-refresh-success {
+        border-color: var(--color-arena-success);
+        color: var(--color-arena-success);
+    }
+
+    .auto-refresh-warning {
+        border-color: var(--color-arena-warning);
+        color: var(--color-arena-warning);
+    }
+
+    .auto-refresh-error {
+        border-color: var(--color-arena-danger);
+        color: var(--color-arena-danger);
+    }
+
+    .auto-refresh-flash {
+        animation: flash-indicator 1s ease-in-out;
     }
 }
 

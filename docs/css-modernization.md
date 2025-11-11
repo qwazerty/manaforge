@@ -115,6 +115,8 @@ app/static/css/
 
 Legacy files shrink as responsibilities move into Tailwind layers or direct utilities. Once a file reaches < ~200 LOC and is utility-driven, merge it into `tailwind.css` or delete it.
 
+Docker images now have a Node-based build stage that runs `npm ci && npm run build:css` before the Python runtime is assembled, so every container ships with up-to-date utilities without requiring Node in production.
+
 ## 4. Migration Roadmap
 
 | Phase | Scope | Notes |
@@ -127,9 +129,9 @@ Legacy files shrink as responsibilities move into Tailwind layers or direct util
 ## 5. Action Items Checklist
 
 - [x] Land Tailwind CLI toolchain + npm scripts (`dev:css`, `build:css`).
-- [ ] Update Docker build pipeline to run `npm run build:css` (README already documents the step).
+- [x] Update Docker build pipeline to run `npm run build:css` (multi-stage Node builder + README note).
 - [x] Replace CDN `<script src="https://cdn.tailwindcss.com">` with local build artifact.
-- [x] Start moving `arena.css` helpers into `@layer components` (`arena-card`, `arena-border`, `arena-button`, `mana-symbol`, nav links, pills, gradients, animations, etc.).
+- [x] Start moving `arena.css` helpers into `@layer components` (`arena-card`, `arena-border`, `arena-button`, `mana-symbol`, nav links, pills, notifications, gradients, animations, etc.).
 - [ ] Identify two pilot templates (e.g., `index.html`, `game_lobby.html`) to showcase utility-based layout and remove redundant CSS.
 - [ ] Track CSS deletion metrics per PR to ensure progress.
 
