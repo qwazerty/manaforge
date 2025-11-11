@@ -3,6 +3,9 @@ Refactored API routes for the ManaForge application.
 Consolidated and optimized version with unified game action endpoint.
 """
 
+import uuid
+from urllib.parse import quote_plus
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Optional, Any
 
@@ -65,7 +68,6 @@ async def create_game(
     Players will submit their decks in a separate step.
     """
     if game_id is None:
-        import uuid
         game_id = f"game-{str(uuid.uuid4())[:8]}"
     
     request_payload = request or {}
@@ -106,6 +108,129 @@ async def create_game(
     )
     
     return setup_status
+
+@router.post("/games/import-modern-example")
+async def create_modern_example_game(
+    request: Optional[Dict[str, Any]] = None,
+    game_id: Optional[str] = Query(None),
+    card_service: CardService = Depends(get_card_service)
+) -> Dict[str, Any]:
+    """
+    Create a Modern game preloaded with the top paper decks from MTGGoldfish.
+    """
+    payload = request or {}
+    raw_game_id = (
+        payload.get("game_id")
+        or payload.get("gameId")
+        or game_id
+        or f"modern-demo-{uuid.uuid4().hex[:8]}"
+    )
+    game_id_clean = str(raw_game_id).strip()
+    if not game_id_clean:
+        raise HTTPException(status_code=400, detail="game_id cannot be empty.")
+
+    raw_phase_mode = payload.get("phase_mode") or payload.get("phaseMode") or PhaseMode.CASUAL.value
+    normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
+    try:
+        phase_mode = PhaseMode(normalized_phase)
+    except ValueError:
+        allowed_modes = ", ".join(mode.value for mode in PhaseMode)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}"
+        )
+
+    existing_setup = game_engine.get_game_setup_status(game_id_clean)
+    if existing_setup:
+        submitted_any = any(
+            status.submitted for status in existing_setup.player_status.values()
+        )
+        if existing_setup.ready or submitted_any:
+            raise HTTPException(
+                status_code=400,
+                detail="This battlefield already has deck submissions."
+            )
+        if existing_setup.game_format != GameFormat.MODERN:
+            raise HTTPException(
+                status_code=400,
+                detail="The existing battlefield uses another format. Please choose a new game name."
+            )
+        phase_mode = existing_setup.phase_mode
+        setup_status = existing_setup
+    else:
+        setup_status = game_engine.create_game_setup(
+            game_id=game_id_clean,
+            game_format=GameFormat.MODERN,
+            phase_mode=phase_mode
+        )
+
+    try:
+        deck_sources = await card_service.fetch_mtggoldfish_metagame_deck_urls(
+            format_slug="modern",
+            limit=2,
+            platform="paper"
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if len(deck_sources) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to locate two Modern decks on MTGGoldfish."
+        )
+
+    imported_decks: List[Dict[str, Any]] = []
+
+    for idx, deck_source in enumerate(deck_sources[:2], start=1):
+        player_id = f"player{idx}"
+        try:
+            import_result = await card_service.import_deck_from_url(deck_source["deck_url"])
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to import deck {deck_source['deck_url']}: {exc}"
+            )
+
+        deck = import_result["deck"]
+        player_alias = import_result.get("deck_name") or deck.name
+
+        setup_status = game_engine.claim_player_seat(
+            game_id=game_id_clean,
+            player_id=player_id,
+            player_name=player_alias
+        )
+        setup_status = game_engine.submit_player_deck(
+            game_id=game_id_clean,
+            player_id=player_id,
+            deck=deck
+        )
+
+        imported_decks.append(
+            {
+                "player_id": player_id,
+                "deck_name": deck.name,
+                "deck_url": deck_source["deck_url"]
+            }
+        )
+
+    encoded_id = quote_plus(game_id_clean)
+    game_interface_url = f"/game-interface/{encoded_id}"
+    game_room_url = f"/game-room/{encoded_id}"
+    share_links = {
+        "player1": f"{game_room_url}?player=player1",
+        "player2": f"{game_room_url}?player=player2",
+        "spectator": f"{game_room_url}?player=spectator"
+    }
+
+    return {
+        "game_id": game_id_clean,
+        "setup": setup_status,
+        "decks": imported_decks,
+        "game_interface_url": game_interface_url,
+        "game_room_url": game_room_url,
+        "share_links": share_links,
+        "metagame_source": deck_sources[0].get("metagame_url") if deck_sources else None
+    }
 
 
 @router.get("/games/list")
