@@ -6,7 +6,7 @@ The CSS for ManaForge has been consolidated to improve maintainability, performa
 
 ### Final CSS Files
 
--   **`arena.css`**: Base styles for the overall site theme and non-game pages.
+-   **`dist/manaforge.css`**: Generated Tailwind 4 bundle (built from `tailwind.css`) that provides the design tokens, utilities, and shared Arena helpers (mana symbols, gradients, nav links, etc.). Always load this first.
 -   **`game-battlefield.css`**: Styles specific to the battlefield area where permanents reside.
 -   **`game-cards.css`**: Core styles for all card representations (in hand, on battlefield, tapped, etc.).
 -   **`game-core.css`**: Fundamental styles for the main game layout, containers, and core elements.
@@ -18,11 +18,11 @@ The CSS for ManaForge has been consolidated to improve maintainability, performa
 
 ### Loading Mechanism
 
-All the stylesheets listed above are now linked directly in the `<head>` of the `app/templates/base_arena.html` template. This allows for parallel downloading by the browser and a more straightforward dependency management.
+`manaforge.css` replaces the previous Tailwind CDN script and must be loaded before the legacy files to ensure variables/utilities are available. All other stylesheets are linked directly in the `<head>` of `app/templates/base_arena.html`, which allows for parallel downloading by the browser and straightforward dependency management.
 
 ```html
 <!-- In base_arena.html -->
-<link rel="stylesheet" href="{{ url_for('static', path='css/arena.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/dist/manaforge.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-battlefield.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-cards.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-stack.css') }}">

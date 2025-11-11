@@ -339,12 +339,17 @@ class WebSocketManager {
      */
     static _initNavigation() {
         const navLinks = document.querySelectorAll('.nav-link');
+        if (!navLinks.length) {
+            return;
+        }
+
+        const normalize = (url) => url.replace(/\/$/, '');
+        const currentUrl = normalize(window.location.href);
+
         navLinks.forEach(link => {
-            link.className += ' px-3 py-2 rounded-md text-sm font-medium text-arena-text hover:text-arena-accent hover:bg-arena-surface-light transition-all duration-200';
-            
-            // Highlight active page
-            if (link.href === window.location.href) {
-                link.className += ' text-arena-accent bg-arena-surface-light';
+            link.classList.remove('nav-link-active');
+            if (normalize(link.href) === currentUrl) {
+                link.classList.add('nav-link-active');
             }
         });
     }
