@@ -123,8 +123,26 @@ class WebSocketManager {
                 const currentGameState = GameCore.getGameState();
                 
                 if (JSON.stringify(newGameState) !== JSON.stringify(currentGameState)) {
+                    const oldGameState = currentGameState;
                     GameCore.setGameState(newGameState);
                     this._refreshGameUI();
+
+                    const oldPhase = oldGameState?.phase;
+                    const newPhase = newGameState?.phase;
+                    if (
+                        oldPhase !== newPhase &&
+                        window.GameCombat &&
+                        typeof window.GameCombat.onPhaseChange === 'function'
+                    ) {
+                        setTimeout(() => {
+                            window.GameCombat.onPhaseChange(newPhase);
+                        }, 50);
+                    }
+                    
+                    // Check for combat changes
+                    if (window.GameCombat && newGameState.phase === 'combat') {
+                        this._handleCombatStateUpdate(oldGameState, newGameState, message.action_result);
+                    }
                     
                     // Check for pending actions like scry or surveil
                     if (newGameState.pending_action && newGameState.pending_action.player_id === GameCore.getSelectedPlayer()) {
@@ -309,6 +327,37 @@ class WebSocketManager {
         // Update zone counts and previews
         UIZonesManager.updateZoneCounts();
         UIZonesManager.refreshOpenZonePopups(GameCore.getGameState());
+        
+        // Redraw combat arrows if in combat phase
+        const gameState = GameCore.getGameState();
+        if (gameState && gameState.phase === 'combat' && window.GameCombat) {
+            setTimeout(() => {
+                this._redrawCombatArrows(gameState);
+            }, 100);
+        }
+    }
+    
+    /**
+     * Redraw blocking arrows for combat
+     */
+    static _redrawCombatArrows(gameState) {
+        if (!gameState || !gameState.players || !window.GameCombat) return;
+        
+        // Clear existing arrows
+        if (typeof window.GameCombat.clearArrows === 'function') {
+            window.GameCombat.clearArrows();
+        }
+        
+        // Redraw arrows for all blocking creatures
+        gameState.players.forEach(player => {
+            if (player.battlefield) {
+                player.battlefield.forEach(card => {
+                    if (card.blocking && typeof window.GameCombat.drawBlockingArrow === 'function') {
+                        window.GameCombat.drawBlockingArrow(card.unique_id, card.blocking);
+                    }
+                });
+            }
+        });
     }
 
     static _recordActionResult(actionResult) {
@@ -392,6 +441,229 @@ class WebSocketManager {
         } else {
             this._initNavigation();
             this._initHTMX();
+        }
+    }
+
+    /**
+     * Handle combat state updates to show animations
+     */
+    static _handleCombatStateUpdate(oldGameState, newGameState, actionResult) {
+        if (!oldGameState || !newGameState || !window.GameCombat) return;
+
+        const oldCombatState = oldGameState.combat_state || {};
+        const newCombatState = newGameState.combat_state || {};
+        const stepChanged = newCombatState.step !== oldCombatState.step;
+        const attackersUpdated = newCombatState.attackers_declared && !oldCombatState.attackers_declared;
+        const blockersUpdated = newCombatState.blockers_declared && !oldCombatState.blockers_declared;
+        const currentPlayer = GameCore.getSelectedPlayer();
+
+        if (window.GameCombat) {
+            if (Array.isArray(newCombatState.pending_attackers)) {
+                if (!newCombatState.expected_player || newCombatState.expected_player === currentPlayer) {
+                    window.GameCombat.attackers = new Set(newCombatState.pending_attackers);
+                }
+            }
+
+            if (newCombatState && typeof newCombatState.pending_blockers === 'object' && newCombatState.pending_blockers !== null) {
+                if (newCombatState.expected_player === currentPlayer || Object.keys(newCombatState.pending_blockers).length === 0) {
+                    window.GameCombat.blockers = new Map(Object.entries(newCombatState.pending_blockers));
+                }
+            }
+        }
+
+        if (attackersUpdated || blockersUpdated) {
+            this._applyCombatAnimations(newGameState);
+        }
+
+        if (stepChanged) {
+            console.log('Combat: step transition detected', newCombatState.step, 'expected:', newCombatState.expected_player);
+            if (newCombatState.step === 'declare_attackers') {
+                if (!newCombatState.expected_player || newCombatState.expected_player === currentPlayer) {
+                    setTimeout(() => {
+                        if (window.GameCombat && typeof window.GameCombat.startAttackStep === 'function') {
+                            window.GameCombat.startAttackStep();
+                        }
+                    }, 150);
+                }
+            } else if (newCombatState.step === 'declare_blockers') {
+                if (newCombatState.expected_player === currentPlayer) {
+                    setTimeout(() => {
+                        if (window.GameCombat && typeof window.GameCombat.startDefenseStep === 'function') {
+                            window.GameCombat.startDefenseStep();
+                        }
+                    }, 150);
+                }
+            } else if (newCombatState.step === 'end_of_combat' || newCombatState.step === 'none') {
+                if (window.GameCombat) {
+                    window.GameCombat.combatMode = null;
+                    window.GameCombat.clearHighlights();
+                    window.GameCombat.clearArrows();
+                }
+            }
+        }
+
+        // Check if this was a declare/preview combat action
+        if (actionResult && (actionResult.action === 'preview_attackers' || actionResult.action === 'preview_blockers')) {
+            this._applyCombatAnimations(newGameState);
+        } else if (actionResult && actionResult.action === 'declare_attackers') {
+            console.log('Combat: Attackers declared via WebSocket');
+            this._applyCombatAnimations(newGameState);
+            
+            // Start blocker declaration for defending player
+            const currentPlayer = GameCore.getSelectedPlayer();
+            const activePlayerIndex = newGameState.active_player || 0;
+            const currentPlayerIndex = currentPlayer === 'player2' ? 1 : 0;
+            const isDefendingPlayer = currentPlayerIndex !== activePlayerIndex;
+            
+            if (isDefendingPlayer) {
+                console.log('Starting blocker declaration mode for defending player');
+                setTimeout(() => {
+                    if (window.GameCombat && typeof window.GameCombat.startDefenseStep === 'function') {
+                        window.GameCombat.startDefenseStep();
+                    }
+                }, 200);
+            }
+        } else if (actionResult && actionResult.action === 'declare_blockers') {
+            console.log('Combat: Blockers declared via WebSocket');
+            this._applyCombatAnimations(newGameState);
+        } else {
+            // Fallback: detect changes in attacking/blocking status
+            const oldAttackers = this._getAttackingCreatures(oldGameState);
+            const newAttackers = this._getAttackingCreatures(newGameState);
+            
+            if (newAttackers.length > oldAttackers.length) {
+                console.log('Combat: New attackers detected via state comparison');
+                this._applyCombatAnimations(newGameState);
+                
+                // Start blocker declaration for defending player
+                const currentPlayer = GameCore.getSelectedPlayer();
+                const activePlayerIndex = newGameState.active_player || 0;
+                const currentPlayerIndex = currentPlayer === 'player2' ? 1 : 0;
+                const isDefendingPlayer = currentPlayerIndex !== activePlayerIndex;
+                
+                if (isDefendingPlayer) {
+                    setTimeout(() => {
+                        if (window.GameCombat && typeof window.GameCombat.startDefenseStep === 'function') {
+                            window.GameCombat.startDefenseStep();
+                        }
+                    }, 200);
+                }
+            }
+            
+            const oldBlockers = this._getBlockingCreatures(oldGameState);
+            const newBlockers = this._getBlockingCreatures(newGameState);
+            
+            if (newBlockers.length > oldBlockers.length) {
+                console.log('Combat: New blockers detected via state comparison');
+                this._applyCombatAnimations(newGameState);
+            }
+        }
+    }
+
+    /**
+     * Get all attacking creatures from game state
+     */
+    static _getAttackingCreatures(gameState) {
+        if (!gameState || !gameState.players) return [];
+        const allAttackers = [];
+        gameState.players.forEach(player => {
+            if (player.battlefield) {
+                player.battlefield.forEach(card => {
+                    if (card.attacking) {
+                        allAttackers.push(card.unique_id);
+                    }
+                });
+            }
+        });
+        return allAttackers;
+    }
+
+    /**
+     * Get all blocking creatures from game state
+     */
+    static _getBlockingCreatures(gameState) {
+        if (!gameState || !gameState.players) return [];
+        const allBlockers = [];
+        gameState.players.forEach(player => {
+            if (player.battlefield) {
+                player.battlefield.forEach(card => {
+                    if (card.blocking) {
+                        allBlockers.push(card.unique_id);
+                    }
+                });
+            }
+        });
+        return allBlockers;
+    }
+
+    /**
+     * Apply visual animations for combat
+     */
+    static _applyCombatAnimations(gameState) {
+        if (!gameState || !gameState.players) return;
+
+        const combatState = gameState.combat_state || {};
+        const pendingAttackers = new Set(Array.isArray(combatState.pending_attackers) ? combatState.pending_attackers : []);
+        const pendingBlockers = combatState.pending_blockers || {};
+        const blockingPairs = new Map();
+
+        // Apply attacker animations
+        gameState.players.forEach((player, playerIndex) => {
+            if (player.battlefield) {
+                player.battlefield.forEach(card => {
+                    const cardElement = document.querySelector(`[data-card-unique-id="${card.unique_id}"]`);
+                    if (!cardElement) return;
+
+                    // Add attacking animation
+                    const isPendingAttacker = pendingAttackers.has(card.unique_id);
+                    const isAttacking = Boolean(card.attacking);
+                    if (isAttacking || isPendingAttacker) {
+                        cardElement.classList.add('attacking-creature');
+                        if (isAttacking && card.tapped) {
+                            cardElement.style.transform = 'translateY(-20px) rotate(90deg)';
+                            cardElement.classList.add('combat-tapped');
+                        } else {
+                            cardElement.style.transform = 'translateY(-20px)';
+                            cardElement.classList.remove('combat-tapped');
+                        }
+                        if (isPendingAttacker && !isAttacking) {
+                            cardElement.dataset.pendingAttacker = 'true';
+                        } else {
+                            delete cardElement.dataset.pendingAttacker;
+                        }
+                    } else {
+                        cardElement.classList.remove('attacking-creature');
+                        cardElement.style.transform = '';
+                        cardElement.classList.remove('combat-tapped');
+                        delete cardElement.dataset.pendingAttacker;
+                    }
+
+                    // Add blocking animation
+                    const pendingBlockTarget = pendingBlockers[card.unique_id];
+                    const isBlocking = Boolean(card.blocking);
+                    if (isBlocking || pendingBlockTarget) {
+                        cardElement.classList.add('blocking-creature');
+                        const attackerTarget = isBlocking ? card.blocking : pendingBlockTarget;
+                        if (attackerTarget) {
+                            blockingPairs.set(`${card.unique_id}->${attackerTarget}`, {
+                                blocker: card.unique_id,
+                                attacker: attackerTarget
+                            });
+                        }
+                    } else {
+                        cardElement.classList.remove('blocking-creature');
+                    }
+                });
+            }
+        });
+
+        if (window.GameCombat) {
+            window.GameCombat.clearArrows();
+            if (typeof window.GameCombat.drawBlockingArrow === 'function') {
+                blockingPairs.forEach(pair => {
+                    window.GameCombat.drawBlockingArrow(pair.blocker, pair.attacker);
+                });
+            }
         }
     }
 }

@@ -149,6 +149,16 @@ async function loadGameState() {
             GameUI.generateActionPanel();
         }
         
+        // Initialize combat system for current phase if available
+        if (window.GameCombat && typeof window.GameCombat.onPhaseChange === 'function') {
+            window.GameCombat.onPhaseChange(gameState?.phase);
+        }
+        if (window.WebSocketManager && typeof window.WebSocketManager._applyCombatAnimations === 'function') {
+            setTimeout(() => {
+                window.WebSocketManager._applyCombatAnimations(gameState);
+            }, 60);
+        }
+        
     } catch (error) {
         console.error('Error loading game state:', error);
         throw error;
@@ -158,7 +168,6 @@ async function loadGameState() {
 // ===== AUTO-REFRESH FUNCTIONALITY =====
 async function refreshGameData() {
     if (window.websocket && window.websocket.readyState === WebSocket.OPEN) {
-        GameSocket.requestGameState();
         return;
     }
     
@@ -168,12 +177,19 @@ async function refreshGameData() {
             const newGameState = await response.json();
             
             if (JSON.stringify(newGameState) !== JSON.stringify(gameState)) {
+                const oldPhase = gameState?.phase;
                 gameState = newGameState;
+                const newPhase = gameState?.phase;
+                
                 console.log('Game state updated:', gameState);
                 GameUI.generateLeftArea();
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
                 GameUI.showAutoRefreshIndicator('🔄 HTTP Update');
+                // Notify combat system of phase change
+                if (oldPhase !== newPhase && window.GameCombat && typeof window.GameCombat.onPhaseChange === 'function') {
+                    window.GameCombat.onPhaseChange(newPhase);
+                }
             }
         }
     } catch (error) {
@@ -229,6 +245,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('ManaForge game modules loaded successfully');
         // Initialize the game asynchronously
         window.GameCore.initializeGame();
+        
+        // Initialize combat system if available
+        if (window.GameCombat && typeof window.GameCombat.init === 'function') {
+            window.GameCombat.init();
+            console.log('Combat system initialized');
+        }
     } else {
         console.error('Some ManaForge game modules failed to load');
     }

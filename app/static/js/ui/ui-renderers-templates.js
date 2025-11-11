@@ -189,6 +189,9 @@ class UIRenderersTemplates {
         const stack = Array.isArray(gameState?.stack) ? gameState.stack : [];
         const phaseMode = String(gameState?.phase_mode || 'casual').toLowerCase();
         const phaseModeLabel = phaseMode === 'strict' ? 'Strict' : 'Casual';
+        const combatState = gameState?.combat_state || {};
+        const combatStep = combatState.step || null;
+        const expectedCombatPlayer = combatState.expected_player || null;
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
         let controlledPlayerIndex = null;
 
@@ -221,6 +224,7 @@ class UIRenderersTemplates {
                 players[opponentSeatIndex],
                 this._getSeatFallbackName(opponentSeatIndex)
             );
+            const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
 
             if (isStrictMode && hasStack) {
                 if (isPriorityPlayer) {
@@ -250,6 +254,15 @@ class UIRenderersTemplates {
                     passConfig.passTitle = passConfig.passDisabled
                         ? `Waiting for ${activePlayerName} to pass the phase`
                         : 'Pass current phase';
+
+                    if (
+                        combatStep === 'declare_blockers' &&
+                        expectedCombatPlayer &&
+                        expectedCombatPlayer !== controlledPlayerKey
+                    ) {
+                        passConfig.passDisabled = true;
+                        passConfig.passTitle = `Waiting for ${opponentName} to confirm blockers`;
+                    }
                 }
             }
         }
@@ -572,16 +585,55 @@ class UIRenderersTemplates {
             passTitle = 'Pass current phase'
         } = config;
 
+        const gameState = GameCore.getGameState();
+        const currentPhase = gameState?.phase || 'begin';
+        
+        // Check if we're in combat phase and should show combat-specific button
+        let finalPassLabel = passLabel;
+        let finalPassAction = passAction;
+        let finalPassTitle = passTitle;
+        let finalPassDisabled = passDisabled;
+        
+        if (currentPhase === 'combat' && typeof GameCombat !== 'undefined') {
+            const combatConfig = GameCombat.getCombatButtonConfig();
+            if (combatConfig) {
+                finalPassLabel = combatConfig.label;
+                finalPassTitle = combatConfig.title;
+                finalPassDisabled = !combatConfig.enabled;
+                
+                // When clicking the button in combat, it should trigger the combat action
+                if (combatConfig.action === 'declare_attackers') {
+                    finalPassAction = 'GameCombat.confirmAttackers()';
+                } else if (combatConfig.action === 'declare_blockers') {
+                    finalPassAction = 'GameCombat.confirmBlockers()';
+                }
+            }
+        }
+
         const passButtonClasses = UIConfig.CSS_CLASSES.button.passPhase
             || UIConfig.CSS_CLASSES.button.primary;
 
-        const passPhaseBtn = UIUtils.generateButton(
-            `GameActions.performGameAction('${passAction}')`,
-            passButtonClasses,
-            passTitle,
-            passLabel,
-            passDisabled
-        );
+        let passPhaseBtn;
+        if (finalPassAction.startsWith('GameCombat.')) {
+            // Direct function call for combat actions
+            const funcName = finalPassAction.replace('GameCombat.', '').replace('()', '');
+            passPhaseBtn = UIUtils.generateButton(
+                `GameCombat.${funcName}()`,
+                passButtonClasses,
+                finalPassTitle,
+                finalPassLabel,
+                finalPassDisabled
+            );
+        } else {
+            // Regular game action
+            passPhaseBtn = UIUtils.generateButton(
+                `GameActions.performGameAction('${finalPassAction}')`,
+                passButtonClasses,
+                finalPassTitle,
+                finalPassLabel,
+                finalPassDisabled
+            );
+        }
 
         const untapBtn = UIUtils.generateButton(
             "GameActions.untapAll()",

@@ -250,11 +250,6 @@ const GameCards = {
         return card.image_url;
     },
 
-    debugCardImage: function(cardName, imageUrl, context) {
-        console.log(`🃏 [${context}] Card: ${cardName}`);
-        console.log(`Image URL: ${imageUrl || 'none'}`);
-        console.log(`Valid: ${!!imageUrl}`);
-    },
 
     preloadCardImages: function(cards) {
         if (!cards || !Array.isArray(cards)) return;
@@ -400,8 +395,27 @@ const GameCards = {
         const imageUrl = this.getSafeImageUrl(card);
         const isTapped = card.tapped || false;
         const isTargeted = card.targeted || false;
-        const tappedClass = isTapped ? ' tapped' : '';
+        const isAttacking = card.attacking || false;
+        const isBlocking = card.blocking || false;
+        const gameState = (typeof GameCore !== 'undefined' && typeof GameCore.getGameState === 'function')
+            ? GameCore.getGameState()
+            : null;
+        const inCombatPhase = gameState?.phase === 'combat';
+        const combatState = gameState?.combat_state || {};
+        const pendingAttackers = Array.isArray(combatState.pending_attackers)
+            ? combatState.pending_attackers
+            : [];
+        const pendingBlockers = combatState && typeof combatState.pending_blockers === 'object'
+            ? combatState.pending_blockers
+            : {};
+        const isPendingAttacker = pendingAttackers.includes(card.unique_id);
+        const isPendingBlocker = Object.prototype.hasOwnProperty.call(pendingBlockers, card.unique_id);
+    const suppressTappedVisual = inCombatPhase && isTapped && (isAttacking || isBlocking || isPendingBlocker);
+    const combatTappedClass = (inCombatPhase && isAttacking && isTapped) ? ' combat-tapped' : '';
+    const tappedClass = (isTapped && !suppressTappedVisual) ? ' tapped' : '';
         const targetedClass = isTargeted ? ' targeted' : '';
+        const attackingClass = isAttacking ? ' attacking-creature' : '';
+        const blockingClass = isBlocking ? ' blocking-creature' : '';
         const uniqueCardId = card.unique_id;
         const dataCardId = GameUtils.escapeHtml(cardId || '');
         const dataCardName = GameUtils.escapeHtml(cardName || '');
@@ -422,7 +436,7 @@ const GameCards = {
 
         let onClickAction = '';
         if (allowInteractions && (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield')) {
-            onClickAction = `onclick='GameActions.tapCard(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
+            onClickAction = `onclick='GameCards.handleCardClick(${jsCardId}, ${jsUniqueCardId}, "${zone}"); event.stopPropagation();'`;
         } else if (allowInteractions && zone === 'hand') {
             onClickAction = `onclick='GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
         }
@@ -440,13 +454,16 @@ const GameCards = {
         const dragStartAttr = allowInteractions ? 'ondragstart="GameCards.handleDragStart(event, this)"' : '';
         const dragEndAttr = allowInteractions ? 'ondragend="GameCards.handleDragEnd(event, this)"' : '';
         const contextMenuAttr = allowInteractions ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
+        
+        // Apply transform for attacking creatures
+        const attackingStyle = isAttacking ? 'transform: translateY(-20px);' : '';
 
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
         const powerToughnessHtml = this.generatePowerToughnessOverlay(card);
 
         return `
-            <div class="${cardClass}${tappedClass}${targetedClass}" 
+            <div class="${cardClass}${tappedClass}${combatTappedClass}${targetedClass}${attackingClass}${blockingClass}" 
                 data-card-id="${dataCardId}"
                 data-card-unique-id="${dataUniqueId}"
                 data-card-name="${dataCardName}"
@@ -458,6 +475,7 @@ const GameCards = {
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
                 data-readonly="${readOnly}"
+                style="${attackingStyle}"
                 draggable="${allowInteractions ? 'true' : 'false'}"
                 ${dragStartAttr}
                 ${dropAttr}
@@ -737,11 +755,6 @@ const GameCards = {
     },
 
     showCardPreview: function(cardId, cardName, imageUrl, event = null, cardData = null) {
-        console.log(`📋 Card Preview: ${cardName} (ID: ${cardId})`);
-        if (imageUrl) {
-            console.log(`🖼️ Image: ${imageUrl}`);
-        }
-
         const existingPreview = document.getElementById('card-preview-modal');
         if (existingPreview) {
             existingPreview.remove();
@@ -1209,6 +1222,27 @@ const GameCards = {
         cardElement.classList.add('dragging');
         event.dataTransfer.effectAllowed = 'move';
         GameCards.draggedCardElement = cardElement;
+    },
+
+    /**
+     * Handle card click - check combat mode first, then default to tap/untap
+     */
+    handleCardClick: function(cardId, uniqueCardId, zone) {
+        // Check if we're in combat mode and this is a creature
+        if (typeof GameCombat !== 'undefined') {
+            if (GameCombat.combatMode === 'declaring_attackers' && zone === 'creatures') {
+                GameCombat.toggleAttacker(uniqueCardId);
+                return;
+            }
+            
+            if (GameCombat.combatMode === 'declaring_blockers' && zone === 'creatures') {
+                GameCombat.toggleBlocker(uniqueCardId);
+                return;
+            }
+        }
+        
+        // Default behavior: tap/untap the card
+        GameActions.tapCard(cardId, uniqueCardId);
     },
 
     handleDragEnd: function(event, cardElement) {

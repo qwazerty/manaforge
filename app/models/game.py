@@ -80,6 +80,13 @@ class Card(BaseModel):
     targeted: bool = Field(
         default=False, description="Whether the card is targeted"
     )
+    # Combat support
+    attacking: bool = Field(
+        default=False, description="Whether the creature is currently attacking"
+    )
+    blocking: Optional[str] = Field(
+        default=None, description="Unique ID of the attacker this creature is blocking"
+    )
     # Double-faced card support
     is_double_faced: bool = Field(
         default=False, description="Whether this card has multiple faces"
@@ -159,6 +166,15 @@ class GamePhase(str, Enum):
     COMBAT = "combat"
     MAIN2 = "main2"
     END = "end"
+
+
+class CombatStep(str, Enum):
+    """Detailed combat sub-steps tracked by the engine."""
+    NONE = "none"
+    DECLARE_ATTACKERS = "declare_attackers"
+    DECLARE_BLOCKERS = "declare_blockers"
+    COMBAT_DAMAGE = "combat_damage"
+    END_OF_COMBAT = "end_of_combat"
 
 
 class PhaseMode(str, Enum):
@@ -251,12 +267,48 @@ class GameSetupStatus(BaseModel):
         description="Per-player deck submission statuses"
     )
 
+class CombatState(BaseModel):
+    """Fine-grained combat phase tracking."""
+    step: CombatStep = Field(
+        default=CombatStep.NONE,
+        description="Current combat step"
+    )
+    attackers_declared: bool = Field(
+        default=False,
+        description="Whether attackers have been confirmed this combat"
+    )
+    blockers_declared: bool = Field(
+        default=False,
+        description="Whether blockers have been confirmed this combat"
+    )
+    damage_resolved: bool = Field(
+        default=False,
+        description="Whether combat damage has been resolved"
+    )
+    expected_player: Optional[str] = Field(
+        default=None,
+        description="Player expected to act during this combat step"
+    )
+    pending_attackers: List[str] = Field(
+        default_factory=list,
+        description="Unique IDs of creatures currently selected as attackers"
+    )
+    pending_blockers: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of blocker unique IDs to the attackers they are assigned to"
+    )
+
+
 class GameState(BaseModel):
     """Current state of a Magic game."""
     id: str = Field(..., description="Game ID")
     players: List[Player] = Field(..., description="Players in the game")
     active_player: int = Field(default=0, description="Index of active player")
     phase: GamePhase = Field(default=GamePhase.BEGIN, description="Current phase")
+    combat_state: CombatState = Field(
+        default_factory=CombatState,
+        description="State tracking for the combat phase and its sub-steps"
+    )
     turn: int = Field(
         default=1,
         description="Turn number (increments when both players have played)"

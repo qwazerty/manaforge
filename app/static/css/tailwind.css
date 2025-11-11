@@ -65,6 +65,15 @@
     50% { opacity: 0.5; }
 }
 
+@keyframes attack-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+    }
+    50% {
+        box-shadow: 0 6px 30px rgba(239, 68, 68, 0.8);
+    }
+}
+
 @theme {
     --font-body: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1584,6 +1593,17 @@
         filter: brightness(0.8);
     }
 
+    .card-mini.combat-tapped,
+    .card-battlefield.combat-tapped {
+        opacity: 1;
+        filter: none;
+    }
+
+    .card-mini.combat-tapped:hover,
+    .card-battlefield.combat-tapped:hover {
+        opacity: 1;
+    }
+
     .card-mini.tapped:hover,
     .card-battlefield.tapped:hover {
         transform: rotate(90deg) scale(1.1);
@@ -2743,4 +2763,93 @@
 .player-name-editing {
     background: rgba(201, 170, 113, 0.2);
     border-radius: 0.5rem;
+}
+
+/* Combat Phase Styles */
+.can-attack {
+    cursor: pointer;
+    border: 2px solid rgba(34, 197, 94, 0.6);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+}
+
+.can-attack:hover {
+    border-color: rgba(34, 197, 94, 0.9);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+    transform: translateY(-2px);
+}
+
+.attacking-creature {
+    border: 3px solid rgba(239, 68, 68, 0.8);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    animation: attack-pulse 2s ease-in-out infinite;
+}
+
+.can-block {
+    cursor: pointer;
+    border: 2px solid rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.can-block:hover {
+    border-color: rgba(59, 130, 246, 0.9);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    transform: translateY(-2px);
+}
+
+.selected-blocker {
+    border: 3px solid rgba(168, 85, 247, 0.8);
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.7);
+    transform: scale(1.05);
+}
+
+.blocking-creature {
+    border: 3px solid rgba(59, 130, 246, 0.8);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+}
+
+.is-attacker {
+    outline: 3px solid rgba(239, 68, 68, 0.6);
+    outline-offset: 2px;
+}
+
+.blocking-arrow {
+    position: fixed;
+    height: 4px;
+    background: linear-gradient(90deg, 
+        rgba(59, 130, 246, 0.8) 0%, 
+        rgba(59, 130, 246, 0.6) 50%, 
+        rgba(59, 130, 246, 0.8) 100%);
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.blocking-arrow::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid rgba(59, 130, 246, 0.8);
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+}
+
+#combat-controls {
+    padding: 1rem;
+    background: rgba(26, 31, 46, 0.95);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(201, 170, 113, 0.3);
+}
+
+.combat-controls-active {
+    text-align: center;
+}
+
+.combat-controls-idle {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
