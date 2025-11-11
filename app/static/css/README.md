@@ -14,7 +14,6 @@ The CSS for ManaForge has been consolidated to improve maintainability, performa
 -   **`game-responsive.css`**: Contains all media queries and responsive adjustments for different screen sizes, particularly for 1080p height optimization.
 -   **`game-stack.css`**: Styles for the game stack where spells and abilities are placed.
 -   **`game-ui.css`**: Styles for common UI elements like buttons, notifications, context menus, and other interactive components.
--   **`game-zones.css`**: Consolidated styles for all player and opponent zones (Hand, Deck, Graveyard, Exile).
 
 ### Loading Mechanism
 
@@ -26,7 +25,6 @@ The CSS for ManaForge has been consolidated to improve maintainability, performa
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-battlefield.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-cards.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-stack.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-zones.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-players.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-core.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='css/game-ui.css') }}">

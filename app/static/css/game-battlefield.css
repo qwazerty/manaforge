@@ -26,8 +26,9 @@
     border: 1px solid rgba(201, 170, 113, 0.3);
     border-radius: 10px;
     padding: 8px;
-    min-height: 0;
+    min-height: 172px;
     position: relative;
+    overflow: visible;
 }
 
 .battlefield-zone .zone-content {

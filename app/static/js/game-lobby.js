@@ -163,13 +163,13 @@ async function fetchGameList(force = false) {
             titleBlock.innerHTML = `
                 <div>
                     <h3 class="font-magic text-lg font-bold text-arena-accent">${game.game_id}</h3>
-                    <p class="text-xs text-arena-text-muted">${formatLabel} • ${phaseLabel}</p>
+                    <p class="text-xs text-arena-muted">${formatLabel} • ${phaseLabel}</p>
                 </div>
                 <span class="text-sm text-arena-text-dim">${game.ready ? 'Ongoing' : 'Setup'}</span>
             `;
 
             const statusLine = document.createElement('div');
-            statusLine.className = 'text-sm text-arena-text-muted mb-3';
+            statusLine.className = 'text-sm text-arena-muted mb-3';
             if (game.ready) {
                 statusLine.textContent = `Battle in progress • Turn ${game.turn ?? 1}`;
             } else {
@@ -183,7 +183,7 @@ async function fetchGameList(force = false) {
 
             if (createdAtLabel) {
                 const creationLine = document.createElement('div');
-                creationLine.className = 'text-xs text-arena-text-muted mb-1';
+                creationLine.className = 'text-xs text-arena-muted mb-1';
                 creationLine.textContent = `Created ${createdAtLabel}`;
                 gameCard.appendChild(creationLine);
             }

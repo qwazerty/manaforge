@@ -12,6 +12,7 @@ node_modules/
 build/
 develop-eggs/
 dist/
+app/static/css/dist/
 downloads/
 eggs/
 .eggs/

@@ -35,14 +35,14 @@
                             id="gameId"
                             placeholder="Enter Battlefield Name..."
                             value=""
-                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-text-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
+                            class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
                         >
                         <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-arena-accent">
                             🎯
                         </div>
                         <button
                             onclick="generateRandomGameName()"
-                            class="absolute left-4 top-1/2 transform -translate-y-1/2 text-arena-accent hover:text-arena-accent-bright transition-colors"
+                            class="absolute left-4 top-1/2 transform -translate-y-1/2 text-arena-accent hover:text-arena-accent-light transition-colors"
                             title="Generate random name"
                         >
                             🎲
@@ -68,7 +68,7 @@
                                 <option value="duel_commander">Duel Commander</option>
                                 <option value="commander_multi">Commander Multi (Not yet implemented)</option>
                             </select>
-                            <p class="text-xs text-arena-text-muted">
+                            <p class="text-xs text-arena-muted">
                                 Commander variants are in preview and may have limited gameplay support.
                             </p>
                         </div>
@@ -83,7 +83,7 @@
                                 <option value="casual" selected>Casual (default)</option>
                                 <option value="strict">Strict</option>
                             </select>
-                            <p class="text-xs text-arena-text-muted">
+                            <p class="text-xs text-arena-muted">
                                 Casual lets you skip detailed phase confirmations, while Strict follows full turn structure.
                             </p>
                         </div>

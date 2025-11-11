@@ -83,12 +83,12 @@
                 try {
                     await navigator.clipboard.writeText(link);
                     copyStatusMessage.textContent = `Link copied for ${role}!`;
-                    copyStatusMessage.classList.remove('text-arena-text-muted');
+                    copyStatusMessage.classList.remove('text-arena-muted');
                     copyStatusMessage.classList.add('text-arena-accent');
                     setTimeout(() => {
                         copyStatusMessage.textContent = '';
                         copyStatusMessage.classList.remove('text-arena-accent');
-                        copyStatusMessage.classList.add('text-arena-text-muted');
+                        copyStatusMessage.classList.add('text-arena-muted');
                     }, 2500);
                 } catch (err) {
                     copyStatusMessage.textContent = 'Unable to copy link automatically.';
@@ -261,7 +261,7 @@
             if (statusElements.deckStatus) {
                 statusElements.deckStatus.textContent = 'Your seat is not yet assigned.';
                 statusElements.deckStatus.classList.remove('text-arena-accent', 'text-red-300');
-                statusElements.deckStatus.classList.add('text-arena-text-muted');
+                statusElements.deckStatus.classList.add('text-arena-muted');
             }
             return;
         }
@@ -316,7 +316,7 @@
         deckPreviewCards.innerHTML = deckPayload.cards.map((entry) => `
             <div class="flex justify-between items-center p-2 bg-arena-surface/40 rounded border border-arena-accent/10">
                 <span class="text-arena-text">${entry.quantity}x ${entry.card.name}</span>
-                <span class="text-xs text-arena-text-muted">${entry.card.mana_cost || '—'}</span>
+                <span class="text-xs text-arena-muted">${entry.card.mana_cost || '—'}</span>
             </div>
         `).join('');
 
@@ -333,14 +333,14 @@
 
         if (!deckUrl) {
             statusElements.deckStatus.textContent = 'Please enter a deck URL to import.';
-            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-text-muted');
+            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
             statusElements.deckStatus.classList.add('text-red-300');
             return null;
         }
 
         statusElements.deckStatus.textContent = 'Importing deck from URL...';
         statusElements.deckStatus.classList.remove('text-arena-accent', 'text-red-300');
-        statusElements.deckStatus.classList.add('text-arena-text-muted');
+        statusElements.deckStatus.classList.add('text-arena-muted');
 
         setImportButtonLoadingState(true);
 
@@ -370,7 +370,7 @@
             }
 
             statusElements.deckStatus.textContent = 'Deck imported successfully. Review and submit when ready.';
-            statusElements.deckStatus.classList.remove('text-arena-text-muted', 'text-red-300');
+            statusElements.deckStatus.classList.remove('text-arena-muted', 'text-red-300');
             statusElements.deckStatus.classList.add('text-arena-accent');
 
             if ((playerRole === 'player1' || playerRole === 'player2') && deckText) {
@@ -381,7 +381,7 @@
         } catch (error) {
             console.error('Deck import error:', error);
             statusElements.deckStatus.textContent = error.message || 'Unable to import deck.';
-            statusElements.deckStatus.classList.remove('text-arena-text-muted', 'text-arena-accent');
+            statusElements.deckStatus.classList.remove('text-arena-muted', 'text-arena-accent');
             statusElements.deckStatus.classList.add('text-red-300');
             return null;
         } finally {
@@ -402,14 +402,14 @@
 
         if (!deckText) {
             statusElements.deckStatus.textContent = 'Please paste a decklist or provide a deck URL first.';
-            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-text-muted');
+            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
             statusElements.deckStatus.classList.add('text-red-300');
             return;
         }
 
         statusElements.deckStatus.textContent = 'Parsing deck for preview...';
         statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-accent');
-        statusElements.deckStatus.classList.add('text-arena-text-muted');
+        statusElements.deckStatus.classList.add('text-arena-muted');
 
         try {
             const response = await fetch('/api/v1/decks/parse', {
@@ -427,7 +427,7 @@
             renderDeckPreview(parsedDeck);
 
             statusElements.deckStatus.textContent = 'Deck parsed successfully.';
-            statusElements.deckStatus.classList.remove('text-arena-text-muted');
+            statusElements.deckStatus.classList.remove('text-arena-muted');
             statusElements.deckStatus.classList.add('text-arena-accent');
         } catch (error) {
             console.error('Deck preview error:', error);
@@ -453,7 +453,7 @@
 
         if (!deckText) {
             statusElements.deckStatus.textContent = 'Please paste a decklist or import from a URL before submitting.';
-            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-text-muted');
+            statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
             statusElements.deckStatus.classList.add('text-red-300');
             return;
         }
@@ -469,7 +469,7 @@
         deckSubmitButton.classList.add('opacity-50', 'cursor-not-allowed');
         statusElements.deckStatus.textContent = 'Validating and submitting deck...';
         statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-accent');
-        statusElements.deckStatus.classList.add('text-arena-text-muted');
+        statusElements.deckStatus.classList.add('text-arena-muted');
 
         try {
             const payload = {

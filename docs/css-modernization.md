@@ -132,7 +132,7 @@ Docker images now have a Node-based build stage that runs `npm ci && npm run bui
 - [x] Update Docker build pipeline to run `npm run build:css` (multi-stage Node builder + README note).
 - [x] Replace CDN `<script src="https://cdn.tailwindcss.com">` with local build artifact.
 - [x] Start moving `arena.css` helpers into `@layer components` (`arena-card`, `arena-border`, `arena-button`, `mana-symbol`, nav links, pills, notifications, gradients, animations, etc.).
-- [ ] Identify two pilot templates (e.g., `index.html`, `game_lobby.html`) to showcase utility-based layout and remove redundant CSS.
+- [x] Identify two pilot templates (`index.html`, `game_lobby.html`) to showcase utility-based layout and remove redundant CSS; keep them as references for future conversions.
 - [ ] Track CSS deletion metrics per PR to ensure progress.
 
 Keeping this document close to the repo ensures everyone follows the same migration path and prevents regressions when new UI pieces land.
