@@ -96,7 +96,8 @@ async def game_interface(request: Request, game_id: str):
 async def game_room(
     request: Request,
     game_id: str,
-    player: Optional[str] = Query(default=None)
+    player: Optional[str] = Query(default=None),
+    player_name: Optional[str] = Query(default=None)
 ):
     """Game setup status page before the duel starts."""
     from app.api.routes import game_engine
@@ -124,7 +125,11 @@ async def game_room(
     player_role = determine_player_role(player)
 
     if player_role in {"player1", "player2"}:
-        setup_status = game_engine.claim_player_seat(game_id=game_id, player_id=player_role)
+        setup_status = game_engine.claim_player_seat(
+            game_id=game_id,
+            player_id=player_role,
+            player_name=player_name
+        )
         player_status = setup_status.player_status
 
     setup_data = setup_status.model_dump(mode="json")

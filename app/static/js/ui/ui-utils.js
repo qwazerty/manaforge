@@ -165,9 +165,13 @@ class UIUtils {
     /**
      * Get zone configuration for player type
      */
-    static getZoneConfiguration(isOpponent, playerIndex) {
+    static getZoneConfiguration(isOpponent, playerIndex, playerName = null) {
         const prefix = isOpponent ? 'opponent_' : '';
-        const titlePrefix = isOpponent ? "Opponent's " : '';
+        const safeName = typeof playerName === 'string' && playerName.trim().length
+            ? playerName.trim()
+            : null;
+        const fallbackTitle = isOpponent ? "Opponent" : "Player";
+        const titlePrefix = safeName ? `${safeName}'s ` : `${fallbackTitle}'s `;
         
         // Generate unique IDs for zone elements
         const zoneIds = {

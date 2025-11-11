@@ -222,6 +222,9 @@ class PlayerDeckStatus(BaseModel):
     deck_name: Optional[str] = Field(
         default=None, description="Name of the submitted deck"
     )
+    player_name: Optional[str] = Field(
+        default=None, description="Display name chosen by the player"
+    )
     card_count: int = Field(
         default=0, description="Number of cards in the submitted deck"
     )
