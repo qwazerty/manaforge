@@ -126,6 +126,8 @@ Docker images now have a Node-based build stage that runs `npm ci && npm run bui
 | 2 · Game Zones & Cards | Convert layout grids to Tailwind (`grid`, `flex`, `gap`, responsive modifiers). Extract card sizes into CSS variables. | Requires pairing with JS that toggles classes |
 | 3 · Polish & Cleanup | Remove unused legacy files, ensure docs/tests updated, watch size budgets | Use `npx tailwindcss --minify` in CI |
 
+> ✅ Update: `game-ui.css` has now been merged into the Tailwind component layer; templates no longer load that standalone file.
+
 ## 5. Action Items Checklist
 
 - [x] Land Tailwind CLI toolchain + npm scripts (`dev:css`, `build:css`).
