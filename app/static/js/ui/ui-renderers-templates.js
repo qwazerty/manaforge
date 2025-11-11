@@ -220,7 +220,7 @@ class UIRenderersTemplates {
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer)}
                 ${this._generateGamePhases(currentPhase)}
-                <div class="text-center text-xs text-arena-text-muted mb-3">
+                <div class="text-center text-xs text-arena-muted mb-3">
                     Phase Mode: ${phaseModeLabel}
                 </div>
                 ${this._generateActionButtonsSection(passConfig)}

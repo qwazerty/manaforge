@@ -86,6 +86,11 @@
     --color-arena-success: #10b981;
     --color-arena-danger: #ef4444;
     --color-arena-warning: #f59e0b;
+
+    --zone-card-width: 140px;
+    --zone-card-height: 200px;
+    --zone-stack-width: 90px;
+    --zone-stack-height: 130px;
 }
 
 @layer base {
@@ -243,6 +248,685 @@
 
     .auto-refresh-flash {
         animation: flash-indicator 1s ease-in-out;
+    }
+
+    /* Zone previews / stacks (migrated from game-zones.css) */
+    .zone-preview-container {
+        @apply relative;
+        width: var(--zone-card-width);
+        height: var(--zone-card-height);
+        perspective: 500px;
+    }
+
+    .zone-card-preview {
+        @apply w-full h-full overflow-hidden rounded-xl transition-transform duration-300 ease-out;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-mini-zone {
+        @apply block w-full h-full overflow-hidden shadow-md;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+        box-sizing: border-box;
+    }
+
+    .deck-preview {
+        @apply relative overflow-hidden;
+    }
+
+    .deck-stack,
+    .deck-cards-stack,
+    .graveyard-stack,
+    .graveyard-cards-stack,
+    .exile-stack {
+        @apply relative cursor-pointer transition-transform duration-200 ease-out;
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+    }
+
+    .deck-card-layer,
+    .graveyard-card-layer,
+    .exile-card-layer,
+    .deck-card-layer-mini {
+        @apply absolute rounded-lg;
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+        background: var(--color-arena-surface);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        transition: transform 0.2s ease;
+    }
+
+    .deck-top-card,
+    .graveyard-top-card,
+    .exile-top-card,
+    .deck-top-card-mini {
+        @apply absolute overflow-hidden rounded-lg;
+        width: var(--zone-card-width);
+        height: var(--zone-card-height);
+        z-index: 5;
+    }
+
+    .graveyard-top-card,
+    .exile-top-card,
+    .deck-top-card-mini {
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+    }
+
+    .graveyard-top-card img,
+    .exile-top-card img {
+        @apply w-full h-full object-cover object-center rounded-lg;
+    }
+
+    .card-back-mini,
+    .card-back-mini-small {
+        @apply rounded-lg;
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+        background-image: url('/static/images/card-back.jpg');
+        background-size: cover;
+        background-position: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-back-mini-small {
+        width: 100%;
+        height: 100%;
+        box-shadow: none;
+    }
+
+    .deck-stack:hover,
+    .deck-cards-stack:hover,
+    .graveyard-stack:hover,
+    .graveyard-cards-stack:hover,
+    .exile-stack:hover,
+    .zone-card-preview-mini:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 6px rgba(201, 170, 113, 0.4);
+        z-index: 10;
+    }
+
+    .deck-card-layer-mini {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .zone-card-preview-mini {
+        @apply w-full h-full overflow-hidden transition-transform duration-300 ease-out;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .zone-card-preview-mini:hover {
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6), 0 0 8px rgba(201, 170, 113, 0.5);
+    }
+
+    .deck-click-overlay,
+    .graveyard-click-overlay,
+    .exile-click-overlay,
+    .deck-click-overlay-mini {
+        @apply absolute inset-0 flex items-center justify-center rounded-lg transition-opacity duration-200 ease-out;
+        background: rgba(0, 0, 0, 0.6);
+        opacity: 0;
+        z-index: 10;
+    }
+
+    .deck-stack:hover .deck-click-overlay,
+    .deck-cards-stack:hover .deck-click-overlay,
+    .graveyard-stack:hover .graveyard-click-overlay,
+    .graveyard-cards-stack:hover .graveyard-click-overlay,
+    .exile-stack:hover .exile-click-overlay,
+    .zone-preview-container-mini:hover .deck-click-overlay-mini {
+        opacity: 1;
+    }
+
+    .draw-hint,
+    .zone-view-hint {
+        @apply text-[0.75rem] font-bold uppercase tracking-[1px] text-center;
+        color: var(--color-arena-accent);
+    }
+
+    .deck-cards-count,
+    .graveyard-cards-count,
+    .exile-cards-count {
+        @apply text-center mt-2;
+    }
+
+    .cards-remaining {
+        @apply inline-flex items-center justify-center text-[0.75rem] font-semibold uppercase tracking-[0.5px] px-2 py-1 rounded border transition-colors duration-200;
+        color: var(--color-arena-accent);
+        background-color: color-mix(in srgb, var(--color-arena-surface) 80%, transparent);
+        border-color: color-mix(in srgb, var(--color-arena-accent) 30%, transparent);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .deck-stack:hover + .deck-cards-count .cards-remaining,
+    .deck-cards-stack:hover + .deck-cards-count .cards-remaining,
+    .graveyard-stack:hover + .graveyard-cards-count .cards-remaining,
+    .graveyard-cards-stack:hover + .graveyard-cards-count .cards-remaining,
+    .exile-stack:hover + .exile-cards-count .cards-remaining {
+        background: rgba(201, 170, 113, 0.2);
+        border-color: rgba(201, 170, 113, 0.5);
+        color: #ffffff;
+    }
+
+    .deck-empty,
+    .graveyard-empty,
+    .exile-empty {
+        @apply flex flex-col items-center justify-center rounded-lg;
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+        background: color-mix(in srgb, var(--color-arena-surface) 60%, transparent);
+        border: 2px dashed var(--color-arena-muted);
+        font-size: 1.5rem;
+        color: var(--color-arena-muted);
+    }
+
+    .deck-empty .zone-empty-text,
+    .graveyard-empty .zone-empty-text,
+    .exile-empty .zone-empty-text {
+        font-size: 0.625rem;
+        margin-top: 0.25rem;
+        text-transform: uppercase;
+    }
+
+    .life-zone-compact {
+        @apply flex flex-col items-center text-center;
+    }
+
+    .life-total-compact {
+        @apply text-2xl font-bold text-red-500;
+    }
+
+    .life-controls-compact {
+        @apply grid w-full;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.2rem;
+    }
+
+    .life-control-compact {
+        @apply font-semibold rounded border text-[0.625rem] px-2 py-1 transition duration-200 ease-out text-center;
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .life-control-compact.red {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #fca5a5;
+    }
+
+    .life-control-compact.green {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.5);
+        color: #86efac;
+    }
+
+    .life-control-compact:hover {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+
+    .zone-preview-container-mini {
+        @apply relative;
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+        perspective: 300px;
+    }
+
+    .deck-stack-mini {
+        @apply relative;
+        width: var(--zone-stack-width);
+        height: var(--zone-stack-height);
+    }
+
+    .zone-modal {
+        @apply fixed inset-0 flex items-center justify-center;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .zone-modal.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .zone-modal-content {
+        @apply relative rounded-2xl p-8 max-w-[90vw] max-h-[90vh] overflow-y-auto border-2;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-color: #475569;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        transform: scale(0.9) translateY(20px);
+        transition: all 0.3s ease-in-out;
+    }
+
+    .zone-modal.active .zone-modal-content {
+        transform: scale(1) translateY(0);
+    }
+
+    .zone-modal-header {
+        @apply flex items-center justify-between mb-6 pb-4 border-b-2;
+        border-bottom-color: #374151;
+    }
+
+    .zone-modal-title {
+        @apply text-2xl font-bold text-arena-text flex items-center gap-2;
+    }
+
+    .zone-modal-close {
+        @apply text-white font-semibold rounded-lg text-xl px-3 py-2 transition;
+        background: linear-gradient(135deg, #dc2626, #991b1b);
+        border: none;
+    }
+
+    .zone-modal-close:hover {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    }
+
+    .zone-cards-grid {
+        @apply grid gap-6 overflow-y-auto p-4;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        max-height: 70vh;
+    }
+
+    .zone-cards-slider {
+        @apply flex overflow-x-auto overflow-y-hidden p-4;
+        gap: 0;
+        max-height: 70vh;
+        scroll-behavior: auto;
+        position: relative;
+    }
+
+    .zone-cards-slider .zone-card-slider-item {
+        @apply relative transition;
+        flex-shrink: 0;
+        width: 140px;
+        margin-right: -50px;
+        z-index: 1;
+    }
+
+    .zone-cards-slider .zone-card-slider-item:first-child {
+        margin-left: 0;
+    }
+
+    .zone-cards-slider .zone-card-slider-item:last-child {
+        margin-right: 0;
+    }
+
+    .zone-cards-slider .zone-card-slider-item:hover {
+        z-index: 10;
+        transform: translateY(-8px) scale(1.03);
+    }
+
+    .zone-cards-slider::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .zone-cards-slider::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 4px;
+    }
+
+    .zone-cards-slider::-webkit-scrollbar-thumb {
+        background: rgba(201, 170, 113, 0.6);
+        border-radius: 4px;
+    }
+
+    .zone-cards-slider::-webkit-scrollbar-thumb:hover {
+        background: rgba(201, 170, 113, 0.8);
+    }
+
+    .zone-card-slider-item .zone-card-name {
+        @apply text-sm font-semibold text-arena-text mt-3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .zone-card-slider-item .zone-card-cost {
+        @apply text-xs text-arena-text-dim mt-1;
+    }
+
+    .zone-card-item {
+        @apply rounded-2xl border p-4 text-center transition cursor-pointer;
+        background: rgba(30, 41, 59, 0.6);
+        border-color: #374151;
+    }
+
+    .zone-card-item:hover {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(201, 170, 113, 0.5);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 10px rgba(201, 170, 113, 0.3);
+    }
+
+    .zone-card-name {
+        @apply text-sm font-semibold text-arena-text mt-3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .zone-card-cost {
+        @apply text-xs text-arena-text-dim mt-1;
+    }
+
+    .zone-card-placeholder {
+        @apply w-full h-[200px] rounded-lg flex items-center justify-center text-3xl mb-2;
+        background: linear-gradient(135deg, #374151, #1f2937);
+        border: 2px dashed #6b7280;
+        color: #9ca3af;
+    }
+
+    .zone-modal .zone-card-name {
+        @apply text-xs font-semibold text-arena-text mb-1;
+    }
+
+    .zone-modal .zone-card-cost {
+        @apply text-[0.625rem] text-arena-text-dim;
+    }
+
+    .zone-empty-message {
+        @apply text-center py-12 px-4 text-arena-muted;
+    }
+
+    .zone-empty-icon {
+        @apply text-5xl mb-4 opacity-50;
+    }
+
+    .zone-empty-text {
+        @apply text-lg font-semibold mb-2;
+    }
+
+    .zone-empty-description {
+        @apply text-sm opacity-70;
+    }
+
+    .zone-context-menu {
+        @apply fixed rounded-lg border-2 shadow-2xl min-w-[200px] transition-all;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-color: #3d4852;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        opacity: 0;
+        transform: scale(0.9);
+        backdrop-filter: blur(8px);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .zone-context-menu.active {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .zone-context-menu-header {
+        @apply flex items-center gap-2 rounded-t-lg border-b px-4 py-3;
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom-color: #3d4852;
+    }
+
+    .zone-context-menu-icon {
+        @apply text-base opacity-90;
+    }
+
+    .zone-context-menu-title {
+        @apply font-semibold text-sm text-arena-text;
+    }
+
+    .zone-context-menu-actions {
+        @apply py-1;
+    }
+
+    .zone-context-menu-action {
+        @apply w-full flex items-center gap-3 text-left text-sm px-4 py-3 transition rounded-none;
+        background: none;
+        border: none;
+        color: #cbd5e1;
+        cursor: pointer;
+    }
+
+    .zone-context-menu-action:hover {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        transform: translateX(2px);
+    }
+
+    .zone-context-menu-action:active {
+        background: rgba(59, 130, 246, 0.3);
+        transform: translateX(2px) scale(0.98);
+    }
+
+    .zone-context-menu-action .action-icon {
+        @apply text-base flex justify-center min-w-[20px];
+        opacity: 0.8;
+    }
+
+    .zone-context-menu-action:hover .action-icon {
+        opacity: 1;
+    }
+
+    .zone-context-menu-action .action-label {
+        @apply font-medium flex-1;
+    }
+
+    .zone-context-menu[data-zone="deck"] .zone-context-menu-header {
+        background: rgba(139, 69, 19, 0.3);
+        border-bottom-color: rgba(139, 69, 19, 0.5);
+    }
+
+    .zone-context-menu[data-zone="deck"] .zone-context-menu-action:hover {
+        background: rgba(139, 69, 19, 0.2);
+        color: #d2b48c;
+    }
+
+    .zone-context-menu[data-zone="graveyard"] .zone-context-menu-header {
+        background: rgba(75, 0, 130, 0.3);
+        border-bottom-color: rgba(75, 0, 130, 0.5);
+    }
+
+    .zone-context-menu[data-zone="graveyard"] .zone-context-menu-action:hover {
+        background: rgba(75, 0, 130, 0.2);
+        color: #dda0dd;
+    }
+
+    .zone-context-menu[data-zone="exile"] .zone-context-menu-header {
+        background: rgba(70, 130, 180, 0.3);
+        border-bottom-color: rgba(70, 130, 180, 0.5);
+    }
+
+    .zone-context-menu[data-zone="exile"] .zone-context-menu-action:hover {
+        background: rgba(70, 130, 180, 0.2);
+        color: #87ceeb;
+    }
+
+    @media (max-width: 640px) {
+        .zone-context-menu {
+            @apply w-64;
+        }
+
+        .zone-context-menu-action {
+            padding: 10px 14px;
+        }
+
+        .zone-context-menu-header {
+            padding: 10px 14px;
+        }
+    }
+
+    .zone-context-menu-action:focus {
+        outline: 2px solid #60a5fa;
+        outline-offset: -2px;
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .zone-context-menu-enabled {
+        @apply relative;
+    }
+
+    .zone-context-menu-enabled::after {
+        content: "⋯";
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.4);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+    }
+
+    .zone-context-menu-enabled:hover::after {
+        opacity: 1;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .zone-context-menu {
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+            border-color: #2d3748;
+        }
+
+        .zone-context-menu-header {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom-color: #2d3748;
+        }
+    }
+
+    .creatures-zone-content,
+    .support-zone-content,
+    .lands-zone-content {
+        @apply flex flex-nowrap items-start overflow-x-auto overflow-y-hidden;
+        gap: 6px;
+        padding: 6px;
+    }
+
+    .creatures-zone-content {
+        @apply justify-center;
+    }
+
+    .support-zone-content {
+        @apply justify-end;
+    }
+
+    .lands-zone-content {
+        @apply justify-start;
+    }
+
+    .hand-zone-content {
+        @apply flex flex-nowrap items-start justify-center overflow-y-hidden rounded-lg;
+        gap: 2px;
+        padding: 4px;
+        margin: 4px;
+        border: 1px solid rgba(201, 170, 113, 0.3);
+    }
+
+    .hand-zone {
+        @apply relative overflow-visible;
+        min-height: 172px;
+    }
+
+    .opponent-hand-zone {
+        @apply flex flex-nowrap items-start justify-center gap-0 p-1 text-center overflow-hidden;
+        max-height: 50px;
+    }
+
+    .spectator-mode .opponent-hand-zone {
+        @apply overflow-x-auto;
+        max-height: none;
+        min-height: 172px;
+        padding: 4px;
+        margin: 4px;
+        gap: 2px;
+        border-radius: 8px;
+        border: 1px solid rgba(201, 170, 113, 0.3);
+        scrollbar-width: thin;
+        scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
+    }
+
+    .opponent-hand-zone .card-back,
+    .opponent-hand-zone .card-mini,
+    .opponent-hand-zone .card-mini-compact,
+    .opponent-hand-zone .card-mini-1080 {
+        flex-shrink: 0;
+    }
+
+    .card-zones-container {
+        @apply grid w-full gap-3 justify-items-center items-stretch;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .zone-item {
+        @apply relative flex items-center justify-center cursor-pointer transition-all duration-200;
+        min-height: 70px;
+    }
+
+    .card-zones-container .zone-item {
+        min-height: 160px;
+    }
+
+    .card-fallback {
+        @apply flex flex-col items-center justify-center rounded-lg;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.2);
+        color: rgba(201, 170, 113, 0.6);
+    }
+
+    .life-zone .life-zone-container {
+        @apply flex flex-col items-center justify-center gap-2 h-full w-full;
+    }
+
+    .life-zone .life-total-wrapper {
+        @apply w-full flex justify-center;
+    }
+
+    .life-controls-stack {
+        @apply flex flex-col gap-2 w-full items-stretch;
+    }
+
+    .life-controls-group {
+        @apply flex flex-col gap-1.5 w-full;
+    }
+
+    .life-controls-stack button {
+        width: 100%;
+    }
+
+    .battlefield-zone::before,
+    .hand-zone::before {
+        content: attr(data-zone-title);
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%) translateY(50%) rotate(-15deg);
+        font-size: 3rem;
+        font-weight: 900;
+        color: rgba(201, 170, 113, 0.05);
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        pointer-events: none;
+        z-index: 0;
+        white-space: nowrap;
+        font-family: 'Arial Black', sans-serif;
+    }
+
+    .lands-zone::before,
+    .permanents-zone::before,
+    .creatures-zone::before,
+    .support-zone::before {
+        content: none;
+    }
+
+    @media (max-width: 1024px) {
+        .card-zones-container {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .card-zones-container .zone-item {
+            min-height: 140px;
+        }
     }
 }
 
