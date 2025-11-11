@@ -29,24 +29,35 @@ document.addEventListener("DOMContentLoaded", () => {
             subtitle: (total) => `${total} paper card(s) still absent. Use the search box to filter the list.`,
             empty: "This format is fully available on Arena 🎉",
             emptySearch: "No missing card matches your query.",
+            groupLabel: "",
+            progressLabel: ({ coverage }) => {
+                const available = coverage.paper_available ?? 0;
+                const total = coverage.paper_total ?? 0;
+                return `Arena-ready ${available} / ${total}`;
+            },
         },
         arena: {
             title: "Arena-ready cards",
             subtitle: (total) => `${total} card(s) already playable on Magic Arena.`,
             empty: "No card in this format is currently playable on Arena.",
             emptySearch: "No Arena-ready card matches your query.",
+            groupLabel: "",
+            progressLabel: ({ coverage }) => {
+                const available = coverage.paper_available ?? 0;
+                const total = coverage.paper_total ?? 0;
+                return `Arena-ready ${available} / ${total}`;
+            },
         },
         paper: {
             title: "Paper-legal cards",
             subtitle: (total) => `${total} card(s) have at least one paper printing for this format.`,
             empty: "No paper printing recorded for this format yet.",
             emptySearch: "No paper-legal card matches your query.",
-        },
-        all: {
-            title: "All legal cards",
-            subtitle: (total) => `${total} legal card(s) in this format.`,
-            empty: "No card matches this format just yet.",
-            emptySearch: "No card matches your query.",
+            groupLabel: "",
+            progressLabel: ({ coverage, group }) => {
+                const total = coverage.paper_total ?? group.cards.length;
+                return `Paper-legal ${total}`;
+            },
         },
     };
 
@@ -83,7 +94,8 @@ document.addEventListener("DOMContentLoaded", () => {
             filterSelect.value = state.availability;
         }
         if (paginationBar) {
-            paginationBar.style.display = state.availability === "missing" ? "none" : "flex";
+            const showPagination = !["missing", "arena", "paper"].includes(state.availability);
+            paginationBar.style.display = showPagination ? "flex" : "none";
         }
         prevButton.disabled = true;
         nextButton.disabled = true;
@@ -126,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getAvailabilityMeta(key) {
-        return AVAILABILITY_METADATA[key] || AVAILABILITY_METADATA.all;
+        return AVAILABILITY_METADATA[key] || AVAILABILITY_METADATA.missing;
     }
 
     function renderCards(payload) {
@@ -143,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
             filterSelect.disabled = false;
         }
 
-        const showPagination = state.availability !== "missing";
+        const showPagination = !["missing", "arena", "paper"].includes(state.availability);
         if (paginationBar) {
             paginationBar.style.display = showPagination ? "flex" : "none";
         }
@@ -164,17 +176,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         listContainer.innerHTML = "";
-        if (state.availability === "missing") {
-            renderGroupedMissingCards(results, payload.set_coverage);
-        } else {
-            results.forEach((card) => {
-                listContainer.appendChild(createCardElement(card));
-            });
-            if (showPagination) {
-                prevButton.disabled = page <= 1;
-                nextButton.disabled = page >= total_pages;
-                pageIndicator.textContent = `Page ${page} / ${total_pages}`;
-            }
+        renderGroupedCards(results, payload.set_coverage, meta);
+        if (showPagination) {
+            prevButton.disabled = page <= 1;
+            nextButton.disabled = page >= total_pages;
+            pageIndicator.textContent = `Page ${page} / ${total_pages}`;
         }
 
         if (!showPagination) {
@@ -185,75 +191,79 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function createCardElement(card) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "arena-surface border border-arena-accent/10 rounded-xl p-4";
-
-        const header = document.createElement("div");
-        header.className = "flex flex-col gap-2 md:flex-row md:items-start md:justify-between";
-
-        const info = document.createElement("div");
-        const nameEl = document.createElement("p");
-        nameEl.className = "text-base font-semibold text-arena-text";
-        nameEl.textContent = card.name;
-
-        const typeEl = document.createElement("p");
-        typeEl.className = "text-sm text-arena-text-dim";
-        typeEl.textContent = card.type_line || "Unknown type";
-
-        const metaEl = document.createElement("p");
-        metaEl.className = "text-xs text-arena-text-dim";
-        const setLabel = card.set_name || (card.set_code || "").toUpperCase();
-        const releaseLabel = card.released_at || "Unknown date";
-        metaEl.textContent = `${setLabel || "Unknown set"} • #${card.collector_number || "?"} • ${releaseLabel}`;
-
-        info.appendChild(nameEl);
-        info.appendChild(typeEl);
-        info.appendChild(metaEl);
-
-        const status = document.createElement("div");
-        status.className = "text-right space-y-2";
-
-        const badge = document.createElement("span");
-        badge.className = "inline-block px-3 py-1 rounded-full text-xs font-semibold";
-        if (card.missing_on_arena) {
-            badge.classList.add("bg-amber-500/20", "text-amber-200");
-            badge.textContent = "Missing on Arena";
-        } else if (card.is_arena) {
-            badge.classList.add("bg-emerald-500/20", "text-emerald-200");
-            badge.textContent = "Available on Arena";
-        } else {
-            badge.classList.add("bg-slate-500/30", "text-slate-200");
-            badge.textContent = "Paper only";
-        }
-
-        if (card.scryfall_uri) {
-            const link = document.createElement("a");
-            link.href = card.scryfall_uri;
+        const link = document.createElement("a");
+        const hasDestination = Boolean(card.scryfall_uri);
+        link.href = hasDestination ? card.scryfall_uri : "#";
+        if (hasDestination) {
             link.target = "_blank";
             link.rel = "noopener noreferrer";
-            link.className = "text-xs text-arena-accent underline block";
-            link.textContent = "View on Scryfall";
-            status.appendChild(link);
+        } else {
+            link.setAttribute("aria-disabled", "true");
+            link.classList.add("pointer-events-none");
+        }
+        link.setAttribute("aria-label", card.name ? `Voir ${card.name} sur Scryfall` : "Voir la carte sur Scryfall");
+        link.className =
+            "group relative block rounded-2xl overflow-hidden ring-1 ring-arena-accent/20 bg-black/60 transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-arena-accent hover:-translate-y-1";
+
+        const frame = document.createElement("div");
+        frame.className = "relative w-full bg-arena-surface/40";
+        frame.style.aspectRatio = "2 / 3";
+
+        if (card.image_uri) {
+            const img = document.createElement("img");
+            img.src = card.image_uri;
+            img.alt = card.name ? `${card.name} card art` : "Card art";
+            img.loading = "lazy";
+            img.className = "w-full h-full object-cover transition-transform duration-200 group-hover:scale-105";
+            frame.appendChild(img);
+        } else {
+            const placeholder = document.createElement("div");
+            placeholder.className =
+                "w-full h-full flex items-center justify-center text-center px-3 text-xs text-arena-text-dim bg-arena-surface/70";
+            placeholder.textContent = card.name || "Image unavailable";
+            frame.appendChild(placeholder);
         }
 
-        status.appendChild(badge);
+        const overlay = document.createElement("div");
+        overlay.className = "absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-transparent to-transparent";
+        frame.appendChild(overlay);
 
-        header.appendChild(info);
-        header.appendChild(status);
-
-        wrapper.appendChild(header);
-
-        if (card.oracle_text) {
-            const text = document.createElement("p");
-            text.className = "text-sm text-arena-text mt-3 whitespace-pre-line";
-            text.textContent = card.oracle_text;
-            wrapper.appendChild(text);
+        const badge = document.createElement("span");
+        badge.className =
+            "absolute bottom-2 left-2 text-[0.65rem] font-semibold uppercase tracking-wide px-2 py-1 rounded-full text-white bg-black/70";
+        if (card.missing_on_arena) {
+            badge.textContent = "Missing";
+        } else if (card.is_arena) {
+            badge.textContent = "Arena";
+        } else if (card.is_paper) {
+            badge.textContent = "Paper";
+        } else {
+            badge.textContent = "Digital";
         }
+        frame.appendChild(badge);
 
-        return wrapper;
+        link.appendChild(frame);
+        return link;
     }
 
-    function renderGroupedMissingCards(cards, coverageData) {
+    function getProgressLabel(meta, coverage, group) {
+        const fn = meta?.progressLabel;
+        if (typeof fn === "function") {
+            try {
+                const label = fn({ coverage, group });
+                if (label) {
+                    return label;
+                }
+            } catch (error) {
+                console.error("Unable to compute progress label", error);
+            }
+        }
+        const available = coverage.paper_available ?? 0;
+        const total = coverage.paper_total ?? group.cards.length;
+        return `Arena-ready ${available} / ${total}`;
+    }
+
+    function renderGroupedCards(cards, coverageData, meta) {
         if (!cards.length) {
             return;
         }
@@ -287,12 +297,20 @@ document.addEventListener("DOMContentLoaded", () => {
             const displayName = coverage.set_name || group.setName;
             const paperTotal = coverage.paper_total ?? group.cards.length;
             const paperAvailable = coverage.paper_available ?? 0;
-            const missingCount = coverage.paper_missing ?? group.cards.length;
             let completion = coverage.paper_completion_percent;
             if (completion === undefined || completion === null || Number.isNaN(completion)) {
                 completion = paperTotal ? Math.round((paperAvailable / paperTotal) * 1000) / 10 : 0;
             }
             completion = Math.min(100, Math.max(0, Number(completion) || 0));
+            const labelFn = meta?.groupLabel;
+            let groupLabel = "";
+            if (typeof labelFn === "function") {
+                groupLabel = labelFn(group.cards.length, group) || "";
+            } else if (labelFn === undefined) {
+                groupLabel = `${group.cards.length} matching card(s)`;
+            } else if (labelFn) {
+                groupLabel = labelFn;
+            }
 
             const details = document.createElement("details");
             details.className = "arena-surface border border-arena-accent/10 rounded-2xl overflow-hidden";
@@ -303,22 +321,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <p class="text-base font-semibold text-arena-text">${displayName}</p>
-                        <p class="text-xs text-arena-text-dim">${missingCount} missing card(s)</p>
                     </div>
                     <div class="text-right">
                         <p class="text-sm font-mono text-arena-accent">${completion}%</p>
-                        <p class="text-2xs text-arena-text-dim">Completion</p>
+                        <p class="text-2xs text-arena-text-dim">Arena Completion</p>
                     </div>
                 </div>
                 <div class="w-full h-2 bg-arena-surface/60 rounded-full overflow-hidden">
                     <div class="h-full bg-emerald-400 transition-all duration-300" style="width: ${completion}%;"></div>
                 </div>
-                <p class="text-xs text-arena-text-dim">Arena-ready ${paperAvailable} / ${paperTotal}</p>
+                <p class="text-xs text-arena-text-dim">${getProgressLabel(meta, coverage, group)}</p>
             `;
             details.appendChild(summary);
 
             const cardsContainer = document.createElement("div");
-            cardsContainer.className = "space-y-3 px-4 pb-4";
+            cardsContainer.className =
+                "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-4 pb-4";
             group.cards
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .forEach((card) => {
