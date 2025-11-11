@@ -11,8 +11,9 @@ from math import ceil
 
 
 LEGAL_STATUSES = {"legal", "restricted"}
-ARENA_FORMATS = {"alchemy", "historic", "brawl", "timeless"}
-AVAILABILITY_FILTERS = {"missing", "arena", "paper", "all"}
+ARENA_FORMATS = ("alchemy", "historic", "brawl", "timeless")
+IMAGE_PREFERENCE_ORDER = ("large", "normal", "png", "border_crop", "art_crop", "small")
+AVAILABILITY_FILTERS = {"missing", "arena", "paper"}
 DEFAULT_AVAILABILITY = "missing"
 
 FORMAT_METADATA: Dict[str, Dict[str, Any]] = {
@@ -55,12 +56,52 @@ def _is_paper_format(format_code: str) -> bool:
     return format_code not in {"alchemy", "historic", "timeless", "gladiator", "future"}
 
 
-def _is_arena_available(legalities: Dict[str, str]) -> bool:
-    """A card is considered on Arena if it is legal in any Arena digital format."""
-    for arena_format in ARENA_FORMATS:
-        if legalities.get(arena_format) in LEGAL_STATUSES:
+def _is_paper_legal_card(card: Dict[str, Any]) -> bool:
+    games = set(card.get("games") or [])
+    if "paper" in games:
+        return True
+    legalities = card.get("legalities") or {}
+    for fmt, status in legalities.items():
+        if status in LEGAL_STATUSES and _is_paper_format(fmt):
             return True
     return False
+
+
+def _pick_image_from_dict(image_dict: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not isinstance(image_dict, dict):
+        return None
+    for key in IMAGE_PREFERENCE_ORDER:
+        uri = image_dict.get(key)
+        if uri:
+            return uri
+    # Return any value if preferred keys were missing
+    for uri in image_dict.values():
+        if uri:
+            return uri
+    return None
+
+
+def _get_primary_image_uri(card: Dict[str, Any]) -> Optional[str]:
+    """Return the best-fit card image URI for single or multi-faced cards."""
+    direct_uri = _pick_image_from_dict(card.get("image_uris"))
+    if direct_uri:
+        return direct_uri
+    for face in card.get("card_faces") or []:
+        face_uri = _pick_image_from_dict(face.get("image_uris"))
+        if face_uri:
+            return face_uri
+    return None
+
+
+def _get_arena_legal_formats(legalities: Dict[str, str]) -> List[str]:
+    if not legalities:
+        return []
+    return [fmt for fmt in ARENA_FORMATS if legalities.get(fmt) in LEGAL_STATUSES]
+
+
+def _is_arena_available(legalities: Dict[str, str]) -> bool:
+    """A card is considered on Arena if it is legal in any Arena digital format."""
+    return bool(_get_arena_legal_formats(legalities))
 
 
 def _is_relevant_card(card: Dict[str, Any]) -> bool:
@@ -101,9 +142,9 @@ def get_format_statistics() -> Dict[str, Any]:
 
     for card in cards:
         legalities = card.get("legalities") or {}
-        games = set(card.get("games") or [])
-        is_paper = "paper" in games
-        is_arena = _is_arena_available(legalities)
+        is_paper = _is_paper_legal_card(card)
+        arena_formats = _get_arena_legal_formats(legalities)
+        is_arena = bool(arena_formats)
 
         for format_code, status in legalities.items():
             if status not in LEGAL_STATUSES:
@@ -228,9 +269,9 @@ def get_cards_for_format(
             continue
 
         name = card.get("name", "")
-        games = set(card.get("games") or [])
-        is_paper = "paper" in games
-        is_arena = _is_arena_available(legalities)
+        is_paper = _is_paper_legal_card(card)
+        arena_formats = _get_arena_legal_formats(legalities)
+        is_arena = bool(arena_formats)
         set_code = (card.get("set") or "unknown").lower()
         set_name = card.get("set_name") or (set_code.upper() if set_code != "unknown" else "Unknown Set")
 
@@ -259,11 +300,11 @@ def get_cards_for_format(
 
         if availability_choice == "missing" and not missing_on_arena:
             continue
-        if availability_choice == "arena" and not is_arena:
+        if availability_choice == "arena" and not arena_formats:
             continue
         if availability_choice == "paper" and not is_paper:
             continue
-        # availability_choice == "all" keeps everything
+        # other availability choices keep every qualifying card
 
         results.append(
             {
@@ -280,12 +321,14 @@ def get_cards_for_format(
                 "is_arena": is_arena,
                 "missing_on_arena": missing_on_arena,
                 "scryfall_uri": card.get("scryfall_uri"),
+                "arena_formats": arena_formats,
+                "image_uri": _get_primary_image_uri(card),
             }
         )
 
     results.sort(key=lambda card: card["name"])
     total = len(results)
-    if availability_choice == "missing":
+    if availability_choice in {"missing", "arena", "paper"}:
         page = 1
         page_results = results
         total_pages = 1
