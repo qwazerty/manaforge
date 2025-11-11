@@ -43,6 +43,10 @@
     const deckPreviewCards = document.getElementById('deck-preview-cards');
     const deckPreviewCount = document.getElementById('deck-preview-count');
     const modernExampleButton = document.getElementById('modern-example-button');
+    
+    const gameFormatSelect = document.getElementById('game-format-select');
+    const phaseModeSelect = document.getElementById('phase-mode-select');
+    const playerRoleSelect = document.getElementById('player-role-select');
 
     const STATUS_POLL_INTERVAL = 2500;
     const PLAYER_NAME_STORAGE_KEY = 'manaforge:player-name';
@@ -424,6 +428,108 @@
         `;
     }
 
+    async function handleGameFormatChange(newFormat) {
+        if (!gameId || !newFormat) return;
+        
+        try {
+            const response = await fetch(`/api/v1/games/${encodeURIComponent(gameId)}/update-settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game_format: newFormat })
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.detail || 'Failed to update game format');
+            }
+
+            const updatedStatus = await response.json();
+            updateStatus(updatedStatus);
+            
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = `Game format updated to ${newFormat.replace('_', ' ')}`;
+                statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-arena-accent');
+                setTimeout(() => {
+                    statusElements.deckStatus.textContent = '';
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('Failed to update game format:', error);
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = error.message || 'Failed to update game format';
+                statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-red-300');
+            }
+            // Revert the select to the previous value
+            if (gameFormatSelect && lastStatus) {
+                gameFormatSelect.value = lastStatus.game_format;
+            }
+        }
+    }
+
+    async function handlePhaseModeChange(newPhaseMode) {
+        if (!gameId || !newPhaseMode) return;
+        
+        try {
+            const response = await fetch(`/api/v1/games/${encodeURIComponent(gameId)}/update-settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phase_mode: newPhaseMode })
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.detail || 'Failed to update phase mode');
+            }
+
+            const updatedStatus = await response.json();
+            updateStatus(updatedStatus);
+            
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = `Phase mode updated to ${newPhaseMode.replace('_', ' ')}`;
+                statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-arena-accent');
+                setTimeout(() => {
+                    statusElements.deckStatus.textContent = '';
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('Failed to update phase mode:', error);
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = error.message || 'Failed to update phase mode';
+                statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-red-300');
+            }
+            // Revert the select to the previous value
+            if (phaseModeSelect && lastStatus) {
+                phaseModeSelect.value = lastStatus.phase_mode;
+            }
+        }
+    }
+
+    function handlePlayerRoleChange(newRole) {
+        if (!gameId || !newRole) return;
+        
+        // Construct the new URL with the updated role parameter
+        const url = new URL(window.location.href);
+        url.searchParams.set('player', newRole);
+        
+        // Reload the page with the new role
+        window.location.href = url.toString();
+    }
+
+    function updateProgressPill(status) {
+        if (!statusElements.progressPill) return;
+
+        const playerStatus = status.player_status || {};
+        const submittedCount = Object.values(playerStatus).filter((info) => info.submitted).length;
+        statusElements.progressPill.innerHTML = `
+            Deck submissions:
+            <span class="font-semibold text-arena-accent">${submittedCount} / 2</span>
+        `;
+    }
+
     function updatePlayerSection(playerKey, data) {
         const detailsElement = playerSections[playerKey];
         const badgeElement = playerSections[`${playerKey}Badge`];
@@ -521,6 +627,14 @@
         updatePlayerSection('player1', status.player_status?.player1 || null);
         updatePlayerSection('player2', status.player_status?.player2 || null);
         updateModernExampleAvailability(status);
+        
+        // Update dropdown values if they've changed
+        if (gameFormatSelect && status.game_format && gameFormatSelect.value !== status.game_format) {
+            gameFormatSelect.value = status.game_format;
+        }
+        if (phaseModeSelect && status.phase_mode && phaseModeSelect.value !== status.phase_mode) {
+            phaseModeSelect.value = status.phase_mode;
+        }
     }
 
     function toggleDeckForm(visible) {
@@ -993,6 +1107,23 @@
         }
         if (modernExampleButton) {
             modernExampleButton.addEventListener('click', importModernDeckExample);
+        }
+        
+        // Add dropdown event listeners
+        if (gameFormatSelect) {
+            gameFormatSelect.addEventListener('change', (event) => {
+                handleGameFormatChange(event.target.value);
+            });
+        }
+        if (phaseModeSelect) {
+            phaseModeSelect.addEventListener('change', (event) => {
+                handlePhaseModeChange(event.target.value);
+            });
+        }
+        if (playerRoleSelect) {
+            playerRoleSelect.addEventListener('change', (event) => {
+                handlePlayerRoleChange(event.target.value);
+            });
         }
 
         if (shouldRedirectToGame(initialStatus)) {

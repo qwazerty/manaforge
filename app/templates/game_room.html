@@ -72,23 +72,39 @@
             <div class="grid gap-4 text-sm text-arena-text-dim md:grid-cols-3">
                 <div class="flex items-center gap-3 bg-arena-surface-light rounded-lg px-4 py-3 border border-arena-accent/10">
                     <span class="text-xl">🎯</span>
-                    <div>
-                        <p class="text-arena-text font-semibold">Game Format</p>
-                        <p>{{ setup['game_format'] | replace('_', ' ') | title }}</p>
+                    <div class="flex-1">
+                        <label for="game-format-select" class="text-arena-text font-semibold block mb-1">Game Format</label>
+                        <select id="game-format-select" class="w-full bg-arena-surface border border-arena-accent/30 rounded px-2 py-1 text-arena-text text-sm focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none">
+                            <option value="standard" {% if setup['game_format'] == 'standard' %}selected{% endif %}>Standard</option>
+                            <option value="modern" {% if setup['game_format'] == 'modern' %}selected{% endif %}>Modern</option>
+                            <option value="pioneer" {% if setup['game_format'] == 'pioneer' %}selected{% endif %}>Pioneer</option>
+                            <option value="pauper" {% if setup['game_format'] == 'pauper' %}selected{% endif %}>Pauper</option>
+                            <option value="legacy" {% if setup['game_format'] == 'legacy' %}selected{% endif %}>Legacy</option>
+                            <option value="vintage" {% if setup['game_format'] == 'vintage' %}selected{% endif %}>Vintage</option>
+                            <option value="duel_commander" {% if setup['game_format'] == 'duel_commander' %}selected{% endif %}>Duel Commander</option>
+                            <option value="commander_multi" {% if setup['game_format'] == 'commander_multi' %}selected{% endif %}>Commander Multi</option>
+                        </select>
                     </div>
                 </div>
                 <div class="flex items-center gap-3 bg-arena-surface-light rounded-lg px-4 py-3 border border-arena-accent/10">
                     <span class="text-xl">⏱️</span>
-                    <div>
-                        <p class="text-arena-text font-semibold">Phase Mode</p>
-                        <p>{{ setup['phase_mode'] | replace('_', ' ') | title }}</p>
+                    <div class="flex-1">
+                        <label for="phase-mode-select" class="text-arena-text font-semibold block mb-1">Phase Mode</label>
+                        <select id="phase-mode-select" class="w-full bg-arena-surface border border-arena-accent/30 rounded px-2 py-1 text-arena-text text-sm focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none">
+                            <option value="casual" {% if setup['phase_mode'] == 'casual' %}selected{% endif %}>Casual</option>
+                            <option value="strict" {% if setup['phase_mode'] == 'strict' %}selected{% endif %}>Strict</option>
+                        </select>
                     </div>
                 </div>
                 <div class="flex items-center gap-3 bg-arena-surface-light rounded-lg px-4 py-3 border border-arena-accent/10">
                     <span class="text-xl">🛡️</span>
-                    <div>
-                        <p class="text-arena-text font-semibold">Your Role</p>
-        <p>{{ player_role | replace('player', 'player ') | title }}</p>
+                    <div class="flex-1">
+                        <label for="player-role-select" class="text-arena-text font-semibold block mb-1">Your Role</label>
+                        <select id="player-role-select" class="w-full bg-arena-surface border border-arena-accent/30 rounded px-2 py-1 text-arena-text text-sm focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none">
+                            <option value="player1" {% if player_role == 'player1' %}selected{% endif %}>Player 1</option>
+                            <option value="player2" {% if player_role == 'player2' %}selected{% endif %}>Player 2</option>
+                            <option value="spectator" {% if player_role == 'spectator' %}selected{% endif %}>Spectator</option>
+                        </select>
                     </div>
                 </div>
             </div>

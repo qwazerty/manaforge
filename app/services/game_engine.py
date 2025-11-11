@@ -228,6 +228,35 @@ class SimpleGameEngine:
         setup.player_status[player_id] = player_status
         return setup
     
+    def update_game_settings(
+        self,
+        game_id: str,
+        game_format: Optional[GameFormat] = None,
+        phase_mode: Optional[PhaseMode] = None
+    ) -> GameSetupStatus:
+        """Update game settings before the game starts (before decks are validated)."""
+        if game_id not in self.game_setups:
+            raise ValueError(f"Game setup {game_id} not found")
+
+        setup = self.game_setups[game_id]
+        
+        # Don't allow changes after game is ready
+        if setup.ready:
+            raise ValueError("Cannot change game settings after the game has started")
+        
+        # Don't allow format changes after decks are submitted
+        if game_format and game_format != setup.game_format:
+            submitted_any = any(status.submitted for status in setup.player_status.values())
+            if submitted_any:
+                raise ValueError("Cannot change game format after decks have been submitted")
+            setup.game_format = game_format
+        
+        # Allow phase mode changes any time before game starts
+        if phase_mode and phase_mode != setup.phase_mode:
+            setup.phase_mode = phase_mode
+        
+        return setup
+    
     def _initialize_game_from_setup(
         self, game_id: str, player1_deck: Deck, player2_deck: Deck,
         setup: GameSetupStatus
