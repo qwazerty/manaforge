@@ -527,6 +527,11 @@ async function performHttpGameAction(actionType, actionData = {}) {
 }
 
 function playCardFromHand(cardId, uniqueId) {
+    // Close hover preview when playing a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     performGameAction('play_card', { 
         card_id: cardId,
         unique_id: uniqueId 
@@ -599,6 +604,11 @@ function changePhase(phaseId) {
 }
 
 function tapCard(cardId, uniqueCardId) {
+    // Close hover preview when tapping a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
     if (cardElement) {
@@ -629,6 +639,11 @@ function tapCard(cardId, uniqueCardId) {
 }
 
 function sendToGraveyard(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    // Close hover preview when moving a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     if (uniqueCardId) {
         clearTappedState(uniqueCardId);
         clearTargetedState(uniqueCardId);
@@ -637,6 +652,11 @@ function sendToGraveyard(cardId, sourceZone, uniqueCardId = null, callback = nul
 }
 
 function sendToExile(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    // Close hover preview when moving a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     if (uniqueCardId) {
         clearTappedState(uniqueCardId);
         clearTargetedState(uniqueCardId);
@@ -645,6 +665,11 @@ function sendToExile(cardId, sourceZone, uniqueCardId = null, callback = null) {
 }
 
 function showInRevealZone(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    // Close hover preview when moving a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     if (uniqueCardId) {
         clearTappedState(uniqueCardId);
         clearTargetedState(uniqueCardId);
@@ -657,6 +682,11 @@ function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
 }
 
 function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
+    // Close hover preview when duplicating a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     if (!uniqueCardId) {
         console.warn('Duplicate action requires a unique card identifier');
         return;
@@ -807,6 +837,11 @@ window.GameActions = {
  * Utilise les API existantes selon la zone cible.
  */
 function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null, positionIndex = null) {
+    // Close hover preview when moving a card
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+    
     const actionData = {
         card_id: cardId,
         source_zone: sourceZone,

@@ -938,6 +938,9 @@ const GameCards = {
     },
 
     toggleCardTarget: function(uniqueCardId) {
+        // Close hover preview when toggling target
+        this._closeActiveCardPreview();
+        
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
             const isTargeted = cardElement.classList.toggle('targeted');
@@ -1083,6 +1086,16 @@ const GameCards = {
             this._hoverPreviewPointerEvent = event;
         }
 
+        // Check if the hovered card still exists in the DOM
+        if (this._hoveredCardElement && !document.contains(this._hoveredCardElement)) {
+            this._hoveredCardElement = null;
+            this._hoverPreviewPointerEvent = null;
+            if (this._hoverPreviewOpened) {
+                this.closeHoverPreview();
+            }
+            return;
+        }
+
         const preview = document.getElementById('card-preview-modal');
         if (this._hoverPreviewOpened && preview && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
             this.positionCardPreview(preview, event);
@@ -1148,6 +1161,9 @@ const GameCards = {
     },
 
     flipCard: function(cardId, uniqueCardId) {
+        // Close hover preview when flipping a card
+        this._closeActiveCardPreview();
+        
         GameActions.performGameAction('flip_card', {
             card_id: cardId,
             unique_id: uniqueCardId
@@ -1197,6 +1213,9 @@ const GameCards = {
     },
 
     showCounterModal: function(uniqueCardId, cardId) {
+        // Close hover preview when opening counter modal
+        this._closeActiveCardPreview();
+        
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (!cardElement) return;
 
