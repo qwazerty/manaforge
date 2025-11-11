@@ -8,6 +8,7 @@ const GameCards = {
     _hoveredCardElement: null,
     _hoverPreviewPointerEvent: null,
     _hoverPreviewOpened: false,
+    _contextMenuOpen: false,
     _boundHoverMouseOver: null,
     _boundHoverMouseOut: null,
     _boundHoverMouseMove: null,
@@ -815,6 +816,8 @@ const GameCards = {
     showCardContextMenu: function(event, cardElement) {
         event.preventDefault();
         this._closeActiveCardPreview();
+        this._hoveredCardElement = null;
+        this._hoverPreviewPointerEvent = null;
 
         const cardId = cardElement.getAttribute('data-card-id');
         const cardName = cardElement.getAttribute('data-card-name');
@@ -926,8 +929,12 @@ const GameCards = {
         menu.style.left = `${x}px`;
         menu.style.top = `${y}px`;
         menu.style.visibility = 'visible';
+        this._contextMenuOpen = true;
 
-        document.addEventListener('click', this.closeContextMenu.bind(this));
+        if (!this._boundCloseContextMenu) {
+            this._boundCloseContextMenu = this.closeContextMenu.bind(this);
+        }
+        document.addEventListener('click', this._boundCloseContextMenu);
     },
 
     toggleCardTarget: function(uniqueCardId) {
@@ -954,7 +961,10 @@ const GameCards = {
         if (menu) {
             menu.remove();
         }
-        document.removeEventListener('click', this.closeContextMenu);
+        if (this._boundCloseContextMenu) {
+            document.removeEventListener('click', this._boundCloseContextMenu);
+        }
+        this._contextMenuOpen = false;
     },
 
     handleCardPreviewClick: function(event) {
@@ -980,6 +990,7 @@ const GameCards = {
     // Ajout des propriétés pour stocker les références liées
     _boundHandleCardPreviewClick: null,
     _boundHandleCardPreviewKeydown: null,
+    _boundCloseContextMenu: null,
 
     addCardPreviewListeners: function() {
         // Utiliser des références liées persistantes
@@ -1021,6 +1032,10 @@ const GameCards = {
     },
 
     handleHoverMouseOver: function(event) {
+        if (this._contextMenuOpen) {
+            return;
+        }
+
         const cardElement = event.target.closest('[data-card-id]');
         if (!cardElement) {
             return;
@@ -1059,6 +1074,10 @@ const GameCards = {
     },
 
     handleHoverMouseMove: function(event) {
+        if (this._contextMenuOpen) {
+            return;
+        }
+
         const cardElement = event.target.closest('[data-card-id]');
         if (cardElement) {
             this._hoverPreviewPointerEvent = event;
@@ -1073,7 +1092,7 @@ const GameCards = {
     },
 
     openHoverPreview: function(cardElement, pointerEvent) {
-        if (!cardElement) {
+        if (!cardElement || this._contextMenuOpen) {
             return;
         }
 
