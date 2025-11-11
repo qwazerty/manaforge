@@ -42,6 +42,7 @@
     const deckPreviewContainer = document.getElementById('deck-preview');
     const deckPreviewCards = document.getElementById('deck-preview-cards');
     const deckPreviewCount = document.getElementById('deck-preview-count');
+    const modernExampleButton = document.getElementById('modern-example-button');
 
     const STATUS_POLL_INTERVAL = 2500;
     const PLAYER_NAME_STORAGE_KEY = 'manaforge:player-name';
@@ -289,6 +290,53 @@
         isImportingDeck = isLoading;
     }
 
+    function applyModernExampleDisabledState(disabled) {
+        if (!modernExampleButton) return;
+        modernExampleButton.disabled = disabled;
+        modernExampleButton.classList.toggle('opacity-50', disabled);
+        modernExampleButton.classList.toggle('cursor-not-allowed', disabled);
+    }
+
+    function setModernExampleButtonState(isLoading) {
+        if (!modernExampleButton) return;
+        if (isLoading) {
+            if (!modernExampleButton.dataset.originalLabel) {
+                modernExampleButton.dataset.originalLabel = modernExampleButton.textContent;
+            }
+            modernExampleButton.textContent = 'Importing Modern decks...';
+            modernExampleButton.dataset.loading = 'true';
+            applyModernExampleDisabledState(true);
+        } else {
+            delete modernExampleButton.dataset.loading;
+            if (modernExampleButton.dataset.originalLabel) {
+                modernExampleButton.textContent = modernExampleButton.dataset.originalLabel;
+                delete modernExampleButton.dataset.originalLabel;
+            }
+            if (modernExampleButton.dataset.locked !== 'true') {
+                applyModernExampleDisabledState(false);
+            }
+        }
+    }
+
+    function updateModernExampleAvailability(status) {
+        if (!modernExampleButton) return;
+        const playerInfo = status.player_status || {};
+        const hasSubmission = ['player1', 'player2'].some((seat) => playerInfo[seat]?.submitted);
+        const shouldDisable = status.ready
+            || hasSubmission
+            || (playerRole !== 'player1' && playerRole !== 'player2');
+
+        if (shouldDisable) {
+            modernExampleButton.dataset.locked = 'true';
+        } else {
+            delete modernExampleButton.dataset.locked;
+        }
+        if (modernExampleButton.dataset.loading === 'true') {
+            return;
+        }
+        applyModernExampleDisabledState(shouldDisable);
+    }
+
     function updateShareButtons() {
         shareButtons.forEach((btn) => {
             const role = btn.getAttribute('data-copy-role');
@@ -472,6 +520,7 @@
         updateProgressPill(status);
         updatePlayerSection('player1', status.player_status?.player1 || null);
         updatePlayerSection('player2', status.player_status?.player2 || null);
+        updateModernExampleAvailability(status);
     }
 
     function toggleDeckForm(visible) {
@@ -572,6 +621,75 @@
         const totalCards = deckPayload.cards.reduce((sum, entry) => sum + entry.quantity, 0);
         deckPreviewCount.textContent = `${totalCards} cards previewed`;
         deckPreviewContainer.classList.remove('hidden');
+    }
+
+    async function importModernDeckExample() {
+        if (!modernExampleButton || !gameId) return;
+        if (playerRole !== 'player1' && playerRole !== 'player2') {
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = 'Only seated players can import demo decks.';
+                statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-red-300');
+            }
+            return;
+        }
+
+        const phaseMode = (lastStatus?.phase_mode) || (initialStatus?.phase_mode) || 'casual';
+
+        setModernExampleButtonState(true);
+        if (statusElements.deckStatus) {
+            statusElements.deckStatus.textContent = 'Fetching the latest Modern decks from MTGGoldfish...';
+            statusElements.deckStatus.classList.remove('text-red-300');
+            statusElements.deckStatus.classList.add('text-arena-muted');
+        }
+
+        try {
+            const response = await fetch('/api/v1/games/import-modern-example', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: gameId,
+                    phase_mode: phaseMode
+                })
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.detail || 'Unable to import Modern decks.');
+            }
+
+            const payload = await response.json();
+            if (payload.setup) {
+                updateStatus(payload.setup);
+                updateFormAvailability(payload.setup);
+            }
+
+            renderDeckPreview(null);
+
+            const deckList = Array.isArray(payload.decks) ? payload.decks : [];
+            const deckSummary = deckList
+                .map((deck) => deck.deck_name || deck.player_id || 'Modern Deck')
+                .join(' vs ');
+
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = deckSummary
+                    ? `Imported Modern example: ${deckSummary}. Redirecting soon...`
+                    : 'Modern example imported. Redirecting soon...';
+                statusElements.deckStatus.classList.remove('text-red-300', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-arena-accent');
+            }
+
+            pollSetupStatus(true);
+        } catch (error) {
+            console.error('Modern example import error:', error);
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = error.message || 'Unable to import Modern example.';
+                statusElements.deckStatus.classList.remove('text-arena-accent', 'text-arena-muted');
+                statusElements.deckStatus.classList.add('text-red-300');
+            }
+        } finally {
+            setModernExampleButtonState(false);
+        }
     }
 
     async function importDeckFromUrl() {
@@ -872,6 +990,9 @@
                     importDeckFromUrl();
                 }
             });
+        }
+        if (modernExampleButton) {
+            modernExampleButton.addEventListener('click', importModernDeckExample);
         }
 
         if (shouldRedirectToGame(initialStatus)) {

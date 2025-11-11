@@ -247,6 +247,30 @@
                 </div>
                 <div id="deck-preview-cards" class="grid gap-2 md:grid-cols-2 text-sm max-h-56 overflow-y-auto pr-2"></div>
             </div>
+
+            <div class="p-4 rounded-lg bg-arena-surface/60 border border-dashed border-arena-accent/20 space-y-3">
+                <div class="flex items-start gap-3">
+                    <span class="text-xl">🪄</span>
+                    <div>
+                        <p class="text-sm text-arena-text">
+                            Need a quick Modern showdown? Auto-import the top two paper decks from MTGGoldfish and start immediately.
+                        </p>
+                        <p class="text-xs text-arena-muted">
+                            Source: <a href="https://www.mtggoldfish.com/metagame/modern#paper" class="underline hover:text-arena-accent" target="_blank" rel="noopener">MTGGoldfish Modern metagame</a>.
+                        </p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    id="modern-example-button"
+                    class="arena-button w-full sm:w-auto px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-200"
+                >
+                    Import Modern Deck Example
+                </button>
+                <p class="text-xs text-arena-muted">
+                    Imports decks for both seats in this room. Only works before other decks are submitted.
+                </p>
+            </div>
         </div>
 
         <!-- Spectator Guidance -->

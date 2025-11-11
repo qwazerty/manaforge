@@ -716,6 +716,81 @@ class CardService:
                 unique_ids.append(deck_id)
         return unique_ids
 
+    async def fetch_mtggoldfish_metagame_deck_urls(
+        self,
+        format_slug: str = "modern",
+        limit: int = 2,
+        platform: str = "paper"
+    ) -> List[Dict[str, str]]:
+        """
+        Fetch deck URLs for the top decks of a MTGGoldfish metagame page.
+        """
+        normalized_format = (format_slug or "modern").strip().lower().replace(" ", "_")
+        normalized_platform = (platform or "paper").strip().lower()
+
+        try:
+            deck_limit = max(1, int(limit))
+        except (TypeError, ValueError):
+            deck_limit = 1
+
+        base_url = f"https://www.mtggoldfish.com/metagame/{normalized_format}"
+        query_suffix = ""
+        if normalized_platform == "paper":
+            query_suffix = "?paper=1"
+        elif normalized_platform in {"mtgo", "online"}:
+            query_suffix = "?mtgo=1"
+
+        candidate_urls: List[str] = []
+
+        def enqueue(url: str) -> None:
+            if url and url not in candidate_urls:
+                candidate_urls.append(url)
+
+        enqueue(base_url)
+        enqueue(f"{base_url}/full")
+        if query_suffix:
+            enqueue(f"{base_url}{query_suffix}")
+            enqueue(f"{base_url}/full{query_suffix}")
+
+        page_html: Optional[str] = None
+        deck_ids: List[str] = []
+        last_error: Optional[Exception] = None
+
+        for url in candidate_urls:
+            try:
+                candidate_html = await self._http_get_text(url)
+            except Exception as exc:
+                last_error = exc
+                continue
+            ids = self._extract_mtggoldfish_deck_ids(candidate_html)
+            if ids:
+                page_html = candidate_html
+                deck_ids = ids
+                break
+
+        if not deck_ids:
+            detail = f"Unable to locate deck identifiers on MTGGoldfish for format '{normalized_format}'."
+            if last_error:
+                detail = f"{detail} Last error: {last_error}"
+            raise ValueError(detail)
+
+        decks: List[Dict[str, str]] = []
+        anchor = "#paper" if normalized_platform == "paper" else "#online"
+        metagame_url = f"{base_url}{anchor}"
+
+        for deck_id in deck_ids[:deck_limit]:
+            decks.append(
+                {
+                    "deck_id": deck_id,
+                    "deck_url": f"https://www.mtggoldfish.com/deck/{deck_id}",
+                    "format": normalized_format,
+                    "platform": normalized_platform,
+                    "metagame_url": metagame_url
+                }
+            )
+
+        return decks
+
     async def _extract_deck_from_mtggoldfish(
         self,
         parsed_url,
