@@ -2217,6 +2217,24 @@
         z-index: 1;
     }
 
+    /* Non-clickable stack spell (for strict mode when player cast it) */
+    .stack-spell.not-clickable {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    .stack-spell.not-clickable:hover {
+        transform: none;
+    }
+
+    .stack-spell.not-clickable .stack-card-image {
+        opacity: 0.8;
+    }
+
+    .stack-spell.not-clickable:hover .stack-card-image {
+        transform: none;
+    }
+
     /* Stack card container and image styles */
     .stack-card-container {
         position: relative;

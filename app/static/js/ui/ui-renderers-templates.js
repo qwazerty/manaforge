@@ -142,12 +142,12 @@ class UIRenderersTemplates {
                 ${isActivePlayer ? this.generateActionButtons(gameState) : this.generateSpectatorView(gameState)}
             `;
 
-            this._updateStackOverlay(stack);
+            this._updateStackOverlay(stack, gameState);
             this._updateRevealOverlay(gameState);
             this._ensureCommanderPopups(gameState);
         } catch (error) {
             this._renderError(actionPanelContainer, 'Error', error.message);
-            this._updateStackOverlay([]);
+            this._updateStackOverlay([], null);
             this._updateRevealOverlay(null);
             this._ensureCommanderPopups(null);
         }
@@ -226,17 +226,31 @@ class UIRenderersTemplates {
                 if (isPriorityPlayer) {
                     passConfig.passDisabled = false;
                     passConfig.passAction = 'resolve_stack';
-                    passConfig.passLabel = 'Resolve';
+                    passConfig.passLabel = '🎯 Resolve';
                     passConfig.passTitle = 'Resolve the top spell on the stack';
                 } else {
                     passConfig.passDisabled = true;
                     passConfig.passTitle = `Waiting for ${opponentName} to resolve the stack`;
                 }
             } else {
-                passConfig.passDisabled = !isActivePlayer;
-                passConfig.passTitle = passConfig.passDisabled
-                    ? `Waiting for ${activePlayerName} to pass the phase`
-                    : 'Pass current phase';
+                // Casual mode or no stack in strict mode
+                if (hasStack) {
+                    // There's a stack, show Resolve button
+                    passConfig.passDisabled = !isActivePlayer;
+                    passConfig.passAction = 'resolve_stack';
+                    passConfig.passLabel = '🎯 Resolve';
+                    passConfig.passTitle = passConfig.passDisabled
+                        ? `Waiting for ${activePlayerName} to resolve the stack`
+                        : 'Resolve the top spell on the stack';
+                } else {
+                    // No stack, show Pass Phase button
+                    passConfig.passDisabled = !isActivePlayer;
+                    passConfig.passAction = 'pass_phase';
+                    passConfig.passLabel = '⏭️ Pass Phase';
+                    passConfig.passTitle = passConfig.passDisabled
+                        ? `Waiting for ${activePlayerName} to pass the phase`
+                        : 'Pass current phase';
+                }
             }
         }
         
@@ -608,7 +622,7 @@ class UIRenderersTemplates {
     /**
      * Update stack overlay visibility and content
      */
-    static _updateStackOverlay(stack) {
+    static _updateStackOverlay(stack, gameState = null) {
         const elements = this._ensureStackPopup();
         if (!elements) {
             return;
@@ -626,7 +640,7 @@ class UIRenderersTemplates {
         }
 
         countLabel.textContent = String(stack.length);
-        body.innerHTML = this._generateStackContent(stack);
+        body.innerHTML = this._generateStackContent(stack, gameState);
         panel.classList.remove('hidden');
         panel.setAttribute('aria-hidden', 'false');
 
@@ -815,14 +829,14 @@ class UIRenderersTemplates {
     /**
      * Generate stack content HTML
      */
-    static _generateStackContent(stack) {
+    static _generateStackContent(stack, gameState = null) {
         return `
             <div class="stack-container">
                 <div class="stack-content"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'stack')">
                     ${stack.length > 0 ? 
-                        stack.map((spell, index) => this._renderStackSpell(spell, index)).join('')
+                        stack.map((spell, index) => this._renderStackSpell(spell, index, gameState)).join('')
                         : this._renderEmptyStack()
                     }
                 </div>
@@ -833,7 +847,7 @@ class UIRenderersTemplates {
     /**
      * Render individual stack spell
      */
-    static _renderStackSpell(card, index) {
+    static _renderStackSpell(card, index, gameState = null) {
         const cardName = card.name || 'Unknown Spell';
         const imageUrl = GameCards.getSafeImageUrl(card);
         const cardId = card.id || card.name;
@@ -845,8 +859,39 @@ class UIRenderersTemplates {
         const escapedCardName = GameUtils.escapeJavaScript(cardName);
         const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
         
+        // Determine if the spell should be clickable
+        let isClickable = true;
+        let clickHandler = `GameActions.performGameAction('resolve_stack', { card_id: '${escapedCardId}', unique_id: '${uniqueId}' }); event.stopPropagation();`;
+        
+        if (gameState) {
+            const phaseMode = gameState.phase_mode || 'normal';
+            const isStrictMode = phaseMode === 'strict';
+            const currentSelectedPlayer = GameCore.getSelectedPlayer();
+            
+            if (isStrictMode && currentSelectedPlayer !== 'spectator') {
+                // In strict mode, determine controlled player index
+                let controlledPlayerIndex = null;
+                const players = gameState.players || [];
+                
+                for (let i = 0; i < players.length; i++) {
+                    if (players[i]?.id === currentSelectedPlayer) {
+                        controlledPlayerIndex = i;
+                        break;
+                    }
+                }
+                
+                // Check if the current player is the owner of the spell
+                const spellOwnerId = card.owner_id;
+                if (spellOwnerId === currentSelectedPlayer) {
+                    // Player cast this spell, they should NOT be able to click it
+                    isClickable = false;
+                    clickHandler = 'event.stopPropagation();';
+                }
+            }
+        }
+        
         return `
-            <div class="stack-spell${targetedClass}" 
+            <div class="stack-spell${targetedClass}${isClickable ? '' : ' not-clickable'}" 
                  data-index="${index}"
                  data-card-id="${cardId}"
                  data-card-unique-id="${uniqueId}"
@@ -855,7 +900,7 @@ class UIRenderersTemplates {
                  data-card-zone="stack"
                  data-stack-index="${index}"
                  oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="GameActions.performGameAction('resolve_stack', { card_id: '${escapedCardId}', unique_id: '${uniqueId}' }); event.stopPropagation();">
+                 onclick="${clickHandler}">
                 
                 <div class="stack-card-container">
                     ${imageUrl ? `
