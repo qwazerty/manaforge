@@ -696,3 +696,105 @@ async def handle_create_token(
             "scryfall_id": scryfall_id,
         },
     }
+
+@action_registry.register("declare_attackers", required_fields=["attacking_creatures"])
+async def handle_declare_attackers(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle declaring attacking creatures."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for declare_attackers"
+        )
+
+    attacking_creatures = request.get("attacking_creatures", [])
+    if not isinstance(attacking_creatures, list):
+        raise HTTPException(
+            status_code=400, detail="attacking_creatures must be a list"
+        )
+
+    return {
+        "additional_data": {
+            "attacking_creatures": attacking_creatures,
+        },
+        "broadcast_data": {
+            "attacking_creatures": attacking_creatures,
+        },
+    }
+
+@action_registry.register("declare_blockers", required_fields=["blocking_assignments"])
+async def handle_declare_blockers(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle declaring blocking creatures."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for declare_blockers"
+        )
+
+    blocking_assignments = request.get("blocking_assignments", {})
+    if not isinstance(blocking_assignments, dict):
+        raise HTTPException(
+            status_code=400, detail="blocking_assignments must be a dictionary"
+        )
+
+    return {
+        "additional_data": {
+            "blocking_assignments": blocking_assignments,
+        },
+        "broadcast_data": {
+            "blocking_assignments": blocking_assignments,
+        },
+    }
+
+
+@action_registry.register("preview_attackers", required_fields=["attacking_creatures"])
+async def handle_preview_attackers(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle previewing attacking creatures prior to confirmation."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for preview_attackers"
+        )
+
+    attacking_creatures = request.get("attacking_creatures", [])
+    if not isinstance(attacking_creatures, list):
+        raise HTTPException(
+            status_code=400, detail="attacking_creatures must be a list"
+        )
+
+    return {
+        "additional_data": {
+            "attacking_creatures": attacking_creatures,
+        },
+        "broadcast_data": {
+            "attacking_creatures": attacking_creatures,
+        },
+    }
+
+
+@action_registry.register("preview_blockers", required_fields=["blocking_assignments"])
+async def handle_preview_blockers(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle previewing blocking assignments prior to confirmation."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for preview_blockers"
+        )
+
+    blocking_assignments = request.get("blocking_assignments", {})
+    if not isinstance(blocking_assignments, dict):
+        raise HTTPException(
+            status_code=400, detail="blocking_assignments must be a dictionary"
+        )
+
+    return {
+        "additional_data": {
+            "blocking_assignments": blocking_assignments,
+        },
+        "broadcast_data": {
+            "blocking_assignments": blocking_assignments,
+        },
+    }

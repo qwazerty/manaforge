@@ -10,8 +10,8 @@ import time
 from typing import List, Optional, Dict, Any
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
-    GamePhase, CardType, GameSetupStatus, PlayerDeckStatus,
-    GameFormat, PhaseMode
+    GamePhase, CombatState, CombatStep, CardType, GameSetupStatus,
+    PlayerDeckStatus, GameFormat, PhaseMode
 )
 
 class SimpleGameEngine:
@@ -25,6 +25,152 @@ class SimpleGameEngine:
         self.games: dict[str, GameState] = {}
         self.game_setups: dict[str, GameSetupStatus] = {}
         self._pending_decks: dict[str, dict[str, Deck]] = {}
+
+    def _set_phase(self, game_state: GameState, new_phase: GamePhase) -> None:
+        """Centralized phase setter that manages combat transitions."""
+        previous_phase = game_state.phase
+        game_state.phase = new_phase
+        self._handle_phase_transition(game_state, previous_phase, new_phase)
+
+    def _handle_phase_transition(
+        self,
+        game_state: GameState,
+        previous_phase: GamePhase,
+        new_phase: GamePhase
+    ) -> None:
+        """Handle side-effects when moving between phases."""
+        if previous_phase == GamePhase.COMBAT and new_phase != GamePhase.COMBAT:
+            self._cleanup_combat_state(game_state)
+
+        if new_phase == GamePhase.COMBAT and previous_phase != GamePhase.COMBAT:
+            self._start_combat_phase(game_state)
+        elif new_phase != GamePhase.COMBAT:
+            game_state.combat_state.step = CombatStep.NONE
+            game_state.combat_state.expected_player = None
+
+    def _start_combat_phase(self, game_state: GameState) -> None:
+        """Initialize combat sub-step tracking when entering combat."""
+        self._clear_combat_assignments(game_state)
+
+        expected_player = None
+        if 0 <= game_state.active_player < len(game_state.players):
+            expected_player = game_state.players[game_state.active_player].id
+
+        game_state.combat_state = CombatState(
+            step=CombatStep.DECLARE_ATTACKERS,
+            attackers_declared=False,
+            blockers_declared=False,
+            damage_resolved=False,
+            expected_player=expected_player,
+            pending_attackers=[],
+            pending_blockers={}
+        )
+        game_state.priority_player = game_state.active_player
+
+    def _cleanup_combat_state(self, game_state: GameState) -> None:
+        """Reset combat tracking and clear temporary combat assignments."""
+        self._clear_combat_assignments(game_state)
+        combat_state = game_state.combat_state
+        combat_state.step = CombatStep.NONE
+        combat_state.attackers_declared = False
+        combat_state.blockers_declared = False
+        combat_state.damage_resolved = False
+        combat_state.expected_player = None
+        combat_state.pending_attackers = []
+        combat_state.pending_blockers = {}
+
+    def _clear_combat_assignments(self, game_state: GameState) -> None:
+        """Clear attacking and blocking flags for all permanents."""
+        for player in game_state.players:
+            battlefield = getattr(player, "battlefield", [])
+            for card in battlefield:
+                card.attacking = False
+                card.blocking = None
+
+    def _get_defending_player_index(self, game_state: GameState) -> Optional[int]:
+        """Return the defending player index for the current combat."""
+        if not game_state.players:
+            return None
+        return (game_state.active_player + 1) % len(game_state.players)
+
+    def _transition_to_blockers(self, game_state: GameState) -> None:
+        """Move combat flow to the blocker declaration step."""
+        defender_index = self._get_defending_player_index(game_state)
+        expected_player = None
+        if defender_index is not None and 0 <= defender_index < len(game_state.players):
+            expected_player = game_state.players[defender_index].id
+
+        combat_state = game_state.combat_state
+        combat_state.step = CombatStep.DECLARE_BLOCKERS
+        combat_state.expected_player = expected_player
+        combat_state.blockers_declared = False
+        combat_state.damage_resolved = False
+        combat_state.pending_blockers = {}
+
+        if defender_index is not None:
+            game_state.priority_player = defender_index
+
+    def _transition_to_combat_damage(self, game_state: GameState) -> None:
+        """Move combat flow to combat damage resolution."""
+        combat_state = game_state.combat_state
+        combat_state.step = CombatStep.COMBAT_DAMAGE
+        attacker_id = None
+        if 0 <= game_state.active_player < len(game_state.players):
+            attacker_id = game_state.players[game_state.active_player].id
+        combat_state.expected_player = attacker_id
+        game_state.priority_player = game_state.active_player
+        combat_state.pending_blockers = {}
+
+    def _end_combat_phase(self, game_state: GameState) -> None:
+        """Finish combat and advance to Main Phase 2 if applicable."""
+        if game_state.phase == GamePhase.COMBAT:
+            self._set_phase(game_state, GamePhase.MAIN2)
+        else:
+            self._cleanup_combat_state(game_state)
+
+    def _handle_combat_priority_pass(
+        self,
+        game_state: GameState,
+        action: GameAction
+    ) -> None:
+        """Advance combat sub-steps when players pass priority."""
+        combat_state = game_state.combat_state
+        expected_player_id = combat_state.expected_player
+
+        if expected_player_id and action.player_id != expected_player_id:
+            expected_index = self._get_player_index(game_state, expected_player_id)
+            if expected_index is not None:
+                game_state.priority_player = expected_index
+            return
+
+        if combat_state.step == CombatStep.DECLARE_ATTACKERS:
+            if combat_state.attackers_declared:
+                self._transition_to_blockers(game_state)
+            else:
+                combat_state.attackers_declared = True
+                combat_state.blockers_declared = True
+                combat_state.damage_resolved = True
+                combat_state.step = CombatStep.END_OF_COMBAT
+                combat_state.expected_player = None
+                self._end_combat_phase(game_state)
+        elif combat_state.step == CombatStep.DECLARE_BLOCKERS:
+            if not combat_state.blockers_declared:
+                combat_state.blockers_declared = True
+            self._transition_to_combat_damage(game_state)
+        elif combat_state.step == CombatStep.COMBAT_DAMAGE:
+            damage_action = GameAction(
+                player_id=action.player_id,
+                action_type="combat_damage"
+            )
+            self._resolve_combat_damage(game_state, damage_action)
+            combat_state.damage_resolved = True
+            combat_state.step = CombatStep.END_OF_COMBAT
+            combat_state.expected_player = None
+            self._end_combat_phase(game_state)
+        elif combat_state.step == CombatStep.END_OF_COMBAT:
+            self._end_combat_phase(game_state)
+        else:
+            game_state.priority_player = game_state.active_player
 
     def _default_player_name(self, player_id: str) -> str:
         if player_id == "player1":
@@ -408,6 +554,8 @@ class SimpleGameEngine:
             "draw_card": self._draw_card_action,
             "declare_attackers": self._declare_attackers,
             "declare_blockers": self._declare_blockers,
+            "preview_attackers": self._preview_attackers,
+            "preview_blockers": self._preview_blockers,
             "combat_damage": self._resolve_combat_damage,
             "resolve_stack": self._resolve_stack,
             "resolve_all_stack": self._resolve_all_stack,
@@ -653,7 +801,7 @@ class SimpleGameEngine:
             game_state.round += 1
         
         game_state.active_player = 1 - game_state.active_player
-        game_state.phase = GamePhase.BEGIN
+        self._set_phase(game_state, GamePhase.BEGIN)
     
     def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing to the next phase (without ending turn)."""
@@ -662,7 +810,7 @@ class SimpleGameEngine:
         
         if current_index < len(phases) - 1:
             next_phase = phases[current_index + 1]
-            game_state.phase = next_phase
+            self._set_phase(game_state, next_phase)
             
             if next_phase == GamePhase.BEGIN:
                 active_player = game_state.players[game_state.active_player]
@@ -677,7 +825,7 @@ class SimpleGameEngine:
                 game_state.round += 1
             
             game_state.active_player = 1 - game_state.active_player
-            game_state.phase = GamePhase.BEGIN
+            self._set_phase(game_state, GamePhase.BEGIN)
     
     def _change_phase(self, game_state: GameState, action: GameAction) -> None:
         """Directly change the current game phase."""
@@ -690,7 +838,7 @@ class SimpleGameEngine:
         except ValueError as exc:
             raise ValueError(f"Invalid phase value: {desired_phase}") from exc
 
-        game_state.phase = target_phase
+        self._set_phase(game_state, target_phase)
         print(
             f"Player {action.player_id} manually set phase to {target_phase.value}"
         )
@@ -707,6 +855,11 @@ class SimpleGameEngine:
                 return player
         raise ValueError(f"Player {player_id} not found")
     
+    def _has_vigilance(self, card: Card) -> bool:
+        """Check if a creature has vigilance."""
+        text = (card.text or "").lower()
+        return "vigilance" in text
+    
     def _declare_attackers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring attacking creatures."""
         if game_state.phase != GamePhase.COMBAT:
@@ -715,10 +868,49 @@ class SimpleGameEngine:
         attacking_creature_ids = action.additional_data.get(
             "attacking_creatures", []
         )
+        attacker_count = len(attacking_creature_ids)
+        
+        player = self._get_player(game_state, action.player_id)
+        
+        # First, clear all attacking status for this player
+        for card in player.battlefield:
+            card.attacking = False
+        
+        # Then mark new attackers and tap them (unless they have vigilance)
+        for unique_id in attacking_creature_ids:
+            for card in player.battlefield:
+                if card.unique_id == unique_id:
+                    card.attacking = True
+                    # Tap the creature unless it has vigilance
+                    if not self._has_vigilance(card):
+                        card.tapped = True
+                    print(
+                        f"Player {action.player_id} declared {card.name} as attacker "
+                        f"(vigilance: {self._has_vigilance(card)})"
+                    )
+                    break
+        
         print(
             f"Player {action.player_id} declared "
-            f"{len(attacking_creature_ids)} attackers"
+            f"{attacker_count} attackers"
         )
+
+        combat_state = game_state.combat_state
+        combat_state.pending_attackers = []
+
+        combat_state = game_state.combat_state
+        combat_state.attackers_declared = True
+
+        if attacker_count == 0:
+            combat_state.blockers_declared = True
+            combat_state.damage_resolved = True
+            combat_state.step = CombatStep.END_OF_COMBAT
+            combat_state.expected_player = None
+            print("No attackers declared; advancing to post-combat main phase")
+            self._end_combat_phase(game_state)
+            return
+
+        self._transition_to_blockers(game_state)
     
     def _declare_blockers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring blocking creatures."""
@@ -728,10 +920,101 @@ class SimpleGameEngine:
         blocking_assignments = action.additional_data.get(
             "blocking_assignments", {}
         )
+        
+        player = self._get_player(game_state, action.player_id)
+        
+        # First, clear all blocking status for this player
+        for card in player.battlefield:
+            card.blocking = None
+        
+        # Then assign blockers to attackers
+        # blocking_assignments format: { "blocker_unique_id": "attacker_unique_id" }
+        for blocker_id, attacker_id in blocking_assignments.items():
+            for card in player.battlefield:
+                if card.unique_id == blocker_id:
+                    card.blocking = attacker_id
+                    print(
+                        f"Player {action.player_id} assigned {card.name} "
+                        f"to block attacker {attacker_id}"
+                    )
+                    break
+        
         print(
             f"Player {action.player_id} declared "
             f"{len(blocking_assignments)} blockers"
         )
+
+        combat_state = game_state.combat_state
+        combat_state.blockers_declared = True
+        combat_state.pending_blockers = {}
+        self._transition_to_combat_damage(game_state)
+
+    def _preview_attackers(self, game_state: GameState, action: GameAction) -> None:
+        """Track the attacking creatures being selected before confirmation."""
+        if game_state.phase != GamePhase.COMBAT:
+            return
+
+        combat_state = game_state.combat_state
+        if combat_state.step != CombatStep.DECLARE_ATTACKERS:
+            return
+
+        expected_player = combat_state.expected_player
+        if expected_player and action.player_id != expected_player:
+            return
+
+        attacking_creature_ids = action.additional_data.get("attacking_creatures", [])
+        if not isinstance(attacking_creature_ids, list):
+            return
+
+        player = self._get_player(game_state, action.player_id)
+        valid_ids = {
+            card.unique_id for card in getattr(player, "battlefield", [])
+        }
+        ordered_unique_ids = []
+        for unique_id in attacking_creature_ids:
+            if unique_id in valid_ids and unique_id not in ordered_unique_ids:
+                ordered_unique_ids.append(unique_id)
+
+        combat_state.pending_attackers = ordered_unique_ids
+
+    def _preview_blockers(self, game_state: GameState, action: GameAction) -> None:
+        """Track the blocking assignments before confirmation."""
+        if game_state.phase != GamePhase.COMBAT:
+            return
+
+        combat_state = game_state.combat_state
+        if combat_state.step != CombatStep.DECLARE_BLOCKERS:
+            return
+
+        expected_player = combat_state.expected_player
+        if expected_player and action.player_id != expected_player:
+            return
+
+        blocking_assignments = action.additional_data.get("blocking_assignments", {})
+        if not isinstance(blocking_assignments, dict):
+            return
+
+        blocker_player = self._get_player(game_state, action.player_id)
+        valid_blockers = {
+            card.unique_id for card in getattr(blocker_player, "battlefield", [])
+        }
+
+        defending_index = self._get_player_index(game_state, action.player_id)
+        attacker_index = game_state.active_player
+        valid_attackers = set()
+        if defending_index is not None:
+            opponent_index = (defending_index + 1) % len(game_state.players)
+            attacker_index = opponent_index
+        if 0 <= attacker_index < len(game_state.players):
+            for card in game_state.players[attacker_index].battlefield:
+                valid_attackers.add(card.unique_id)
+
+        filtered_assignments: Dict[str, str] = {}
+        for blocker_id, attacker_id in blocking_assignments.items():
+            if blocker_id in valid_blockers and attacker_id in valid_attackers:
+                filtered_assignments[blocker_id] = attacker_id
+
+        combat_state.pending_blockers = filtered_assignments
     
     def _resolve_combat_damage(
         self, game_state: GameState, action: GameAction
@@ -741,6 +1024,14 @@ class SimpleGameEngine:
             return
         
         print("Combat damage resolved")
+        self._clear_combat_assignments(game_state)
+
+        combat_state = game_state.combat_state
+        combat_state.damage_resolved = True
+        combat_state.step = CombatStep.END_OF_COMBAT
+        combat_state.expected_player = None
+        combat_state.pending_attackers = []
+        combat_state.pending_blockers = {}
     
     def _resolve_spell_destination(self, owner: Player, spell: Card) -> str:
         """Move a resolved spell to its appropriate zone and return the zone name."""
@@ -806,6 +1097,10 @@ class SimpleGameEngine:
         """Pass priority to the other player."""
         if game_state.stack:
             self._resolve_stack(game_state, action)
+            return
+
+        if game_state.phase == GamePhase.COMBAT:
+            self._handle_combat_priority_pass(game_state, action)
         else:
             game_state.priority_player = game_state.active_player
     
