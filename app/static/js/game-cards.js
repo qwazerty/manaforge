@@ -775,8 +775,12 @@ const GameCards = {
         document.body.appendChild(preview);
         this.addCardPreviewListeners();
 
-        if (event && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+        const hasPointerPosition = event && typeof event.clientX === 'number' && typeof event.clientY === 'number';
+        if (hasPointerPosition) {
+            preview.classList.remove('card-preview-modal-centered');
             this.positionCardPreview(preview, event);
+        } else {
+            preview.classList.add('card-preview-modal-centered');
         }
     },
 
@@ -810,6 +814,7 @@ const GameCards = {
 
     showCardContextMenu: function(event, cardElement) {
         event.preventDefault();
+        this._closeActiveCardPreview();
 
         const cardId = cardElement.getAttribute('data-card-id');
         const cardName = cardElement.getAttribute('data-card-name');
