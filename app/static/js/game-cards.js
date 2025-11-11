@@ -955,25 +955,23 @@ const GameCards = {
     },
 
     handleCardPreviewClick: function(event) {
-        const preview = document.getElementById('card-preview-modal');
-        if (preview) {
-            preview.remove();
-            this.removeCardPreviewListeners();
-            this._hoverPreviewOpened = false;
-            this._hoverPreviewPointerEvent = null;
-        }
+        this._closeActiveCardPreview();
     },
 
     handleCardPreviewKeydown: function(event) {
         if (event.key === 'Escape') {
-            const preview = document.getElementById('card-preview-modal');
-            if (preview) {
-                preview.remove();
-                this.removeCardPreviewListeners();
-                this._hoverPreviewOpened = false;
-                this._hoverPreviewPointerEvent = null;
-            }
+            this._closeActiveCardPreview();
         }
+    },
+
+    _closeActiveCardPreview: function() {
+        const preview = document.getElementById('card-preview-modal');
+        if (preview) {
+            preview.remove();
+        }
+        this.removeCardPreviewListeners();
+        this._hoverPreviewOpened = false;
+        this._hoverPreviewPointerEvent = null;
     },
 
     // Ajout des propriétés pour stocker les références liées
@@ -1112,13 +1110,7 @@ const GameCards = {
             return;
         }
 
-        const preview = document.getElementById('card-preview-modal');
-        if (preview) {
-            preview.remove();
-        }
-        this.removeCardPreviewListeners();
-        this._hoverPreviewOpened = false;
-        this._hoverPreviewPointerEvent = null;
+        this._closeActiveCardPreview();
     },
 
     buildCardCenterEvent: function(cardElement) {
@@ -1155,6 +1147,8 @@ const GameCards = {
     },
 
     handleDragStart: function(event, cardElement) {
+        this._closeActiveCardPreview();
+
         const cardId = cardElement.getAttribute('data-card-id');
         const cardZone = cardElement.getAttribute('data-card-zone');
         const uniqueCardId = cardElement.getAttribute('data-card-unique-id');
