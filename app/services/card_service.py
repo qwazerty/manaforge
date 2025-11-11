@@ -826,7 +826,7 @@ class CardService:
 
         if deck_id:
             deck_text = ""
-            deck_name = f"MTGGoldfish Deck {deck_id}"
+            deck_name = f"Deck {deck_id}"
 
             arena_url = f"https://www.mtggoldfish.com/deck/arena_download/{deck_id}"
             try:
@@ -894,7 +894,7 @@ class CardService:
             except ValueError:
                 deck_page_html = ""
 
-            deck_name = f"MTGGoldfish Deck {deck_id}"
+            deck_name = f"Deck {deck_id}"
             if deck_page_html:
                 title_match = re.search(r"<title>(.*?)</title>", deck_page_html, re.IGNORECASE | re.DOTALL)
                 if title_match:

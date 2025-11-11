@@ -905,6 +905,16 @@ const GameCards = {
             if (cardZone !== 'reveal') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.showInRevealZone(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">👁️</span> Show in Reveal Zone</div>`;
             }
+            
+            // Bulk actions for specific zones
+            if (cardZone === 'hand') {
+                menuHTML += `<div class="card-context-menu-divider"></div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.moveAllHandToReveal()`)}"><span class="icon">👁️</span> Show all Hand in Reveal Zone</div>`;
+            }
+            if (cardZone === 'reveal') {
+                menuHTML += `<div class="card-context-menu-divider"></div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.returnAllRevealToHand()`)}"><span class="icon">👋</span> Return all to Hand</div>`;
+            }
         }
 
         menuHTML += `</div>`;

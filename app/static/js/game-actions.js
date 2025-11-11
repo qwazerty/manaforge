@@ -681,6 +681,76 @@ function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'hand', uniqueCardId, null, callback);
 }
 
+function moveAllHandToReveal() {
+    const currentSelectedPlayer = GameCore.getSelectedPlayer();
+    if (currentSelectedPlayer === 'spectator') {
+        GameUI.showNotification('Spectators cannot perform actions', 'error');
+        return;
+    }
+
+    const gameState = GameCore.getGameState();
+    if (!gameState || !gameState.players) {
+        GameUI.showNotification('Unable to access game state', 'error');
+        return;
+    }
+
+    // Find the current player's hand
+    const playerIndex = currentSelectedPlayer === 'player2' ? 1 : 0;
+    const player = gameState.players[playerIndex];
+    const hand = Array.isArray(player?.hand) ? player.hand : [];
+
+    if (hand.length === 0) {
+        GameUI.showNotification('Your hand is empty', 'info');
+        return;
+    }
+
+    // Move all cards from hand to reveal
+    let movedCount = 0;
+    hand.forEach(card => {
+        if (card.unique_id) {
+            moveCard(card.id || card.card_id, 'hand', 'reveal', card.unique_id);
+            movedCount++;
+        }
+    });
+
+    GameUI.showNotification(`${movedCount} card${movedCount !== 1 ? 's' : ''} revealed from hand`, 'success');
+}
+
+function returnAllRevealToHand() {
+    const currentSelectedPlayer = GameCore.getSelectedPlayer();
+    if (currentSelectedPlayer === 'spectator') {
+        GameUI.showNotification('Spectators cannot perform actions', 'error');
+        return;
+    }
+
+    const gameState = GameCore.getGameState();
+    if (!gameState || !gameState.players) {
+        GameUI.showNotification('Unable to access game state', 'error');
+        return;
+    }
+
+    // Find the current player's reveal zone
+    const playerIndex = currentSelectedPlayer === 'player2' ? 1 : 0;
+    const player = gameState.players[playerIndex];
+    const revealZone = Array.isArray(player?.reveal_zone) ? player.reveal_zone : [];
+
+    if (revealZone.length === 0) {
+        GameUI.showNotification('No cards in reveal zone', 'info');
+        return;
+    }
+
+    // Move all cards from reveal to hand
+    let movedCount = 0;
+    revealZone.forEach(card => {
+        if (card.unique_id) {
+            moveCard(card.id || card.card_id, 'reveal', 'hand', card.unique_id);
+            movedCount++;
+        }
+    });
+
+    GameUI.showNotification(`${movedCount} card${movedCount !== 1 ? 's' : ''} returned to hand`, 'success');
+}
+
 function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
     // Close hover preview when duplicating a card
     if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
@@ -829,7 +899,9 @@ window.GameActions = {
     modifyLife,
     adjustCommanderTax,
     moveCard,
-    duplicateCard
+    duplicateCard,
+    moveAllHandToReveal,
+    returnAllRevealToHand
 };
 
 /**
