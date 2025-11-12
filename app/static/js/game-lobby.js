@@ -211,7 +211,7 @@ async function fetchGameList(force = false) {
             if (game.ready) {
                 joinButton.textContent = 'Spectate Game';
                 joinButton.onclick = () => {
-                    window.location.href = `/game-interface/${encodedId}?spectator=true`;
+                    window.location.href = `/game-interface/${encodedId}?player=spectator`;
                 };
             } else {
                 const seatToJoin = determineSeatFromStatus(playerStatus);
@@ -380,7 +380,7 @@ function redirectToGameRoom(gameId, playerRole, setupStatus) {
         if (playerRole === 'player1' || playerRole === 'player2') {
             window.location.href = `${interfaceUrl}?player=${playerRole}`;
         } else {
-            window.location.href = `${interfaceUrl}?spectator=true`;
+            window.location.href = `${interfaceUrl}?player=spectator`;
         }
         return;
     }

@@ -1012,7 +1012,7 @@
         if (playerRole === 'player1' || playerRole === 'player2') {
             url.searchParams.set('player', playerRole);
         } else {
-            url.searchParams.set('spectator', 'true');
+            url.searchParams.set('player', 'spectator');
         }
         window.location.href = url.toString();
     }
