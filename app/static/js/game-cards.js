@@ -232,7 +232,11 @@ const GameCards = {
         "alliance":{"name":"Alliance","description":"Triggers whenever another creature enters the battlefield under your control."},
         "cohort":{"name":"Cohort","description":"Tap this and another Ally you control: do the listed effect."},
         "rally":{"name":"Rally","description":"Triggers whenever an Ally enters the battlefield under your control."},
-        "hellbent":{"name":"Hellbent","description":"Bonus if you have no cards in hand."}
+        "hellbent":{"name":"Hellbent","description":"Bonus if you have no cards in hand."},
+        "firebending":{"name":"Firebending","description":"Whenever this creature attacks, add X {R}. This mana lasts until end of combat."},
+        "waterbending":{"name":"Waterbending","description":"While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}."},
+        "airbending":{"name":"Airbending","description":"Exile it. While it's exiled, its owner may cast it for {2} rather than its mana cost."},
+        "earthbending":{"name":"Earthbending","description":"Target land you control becomes a 0/0 creature with haste that's still a land. Put X +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped."}
     },
     getSafeImageUrl: function(card) {
         if (!card || !card.image_url) return null;
