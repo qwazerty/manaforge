@@ -26,6 +26,68 @@ const GameCombat = {
         const text = (card.text || '').toLowerCase();
         return text.includes('vigilance');
     },
+
+    getNormalizedTypeText(card) {
+        if (!card) return '';
+
+        const typePieces = [];
+        const pushType = (value) => {
+            if (value) {
+                typePieces.push(String(value));
+            }
+        };
+
+        pushType(card.card_type);
+        pushType(card.cardType);
+        pushType(card.type_line);
+        pushType(card.typeLine);
+        pushType(card.subtype);
+        if (Array.isArray(card.types)) {
+            card.types.forEach(pushType);
+        }
+        if (Array.isArray(card.subtypes)) {
+            card.subtypes.forEach(pushType);
+        }
+        if (Array.isArray(card.supertypes)) {
+            card.supertypes.forEach(pushType);
+        }
+
+        if (Array.isArray(card.card_faces)) {
+            card.card_faces.forEach(face => {
+                pushType(face?.type_line);
+                pushType(face?.typeLine);
+                if (Array.isArray(face?.types)) {
+                    face.types.forEach(pushType);
+                }
+                if (Array.isArray(face?.subtypes)) {
+                    face.subtypes.forEach(pushType);
+                }
+            });
+        }
+
+        return typePieces.join(' ').toLowerCase();
+    },
+
+    isCreatureCard(card) {
+        return this.getNormalizedTypeText(card).includes('creature');
+    },
+
+    getCardControllerId(card, element = null) {
+        if (card && (card.controller_id || card.controllerId || card.owner_id || card.ownerId)) {
+            return card.controller_id || card.controllerId || card.owner_id || card.ownerId;
+        }
+        if (element) {
+            const datasetController = element.getAttribute('data-card-controller');
+            if (datasetController) {
+                return datasetController;
+            }
+            const datasetOwner = element.getAttribute('data-card-owner');
+            if (datasetOwner) {
+                return datasetOwner;
+            }
+        }
+        return null;
+    },
     
     /**
      * Determine what combat step we're in based on game state
@@ -174,10 +236,11 @@ const GameCombat = {
             setTimeout(() => this.applyPendingBlockerVisuals(combatState.pending_blockers), 50);
         }
         
+        this.highlightValidBlockers();
+
         if (attackingCreatures.length === 0) {
             GameUI.showNotification('No attackers - click Confirm to continue', 'info');
         } else {
-            this.highlightValidBlockers();
             this.highlightAttackers();
             GameUI.showNotification('Click blocker, then attacker to assign', 'info');
         }
@@ -339,11 +402,10 @@ const GameCombat = {
         if (!cardElement) return;
 
         const cardData = this.getCardData(uniqueId);
-        if (!cardData) return;
-
         const currentPlayerId = GameCore.getSelectedPlayer();
+        const controllerId = this.getCardControllerId(cardData, cardElement);
 
-        if (cardData.owner_id === currentPlayerId) {
+        if (controllerId === currentPlayerId) {
             if (!cardElement.classList.contains('can-block')) {
                 GameUI.showNotification('Cannot block with this creature', 'error');
                 return;
@@ -403,25 +465,51 @@ const GameCombat = {
             return;
         }
         
-        // Assign blocker to attacker
-    this.blockers.set(this.selectedBlocker, attackerUniqueId);
-        
-    // Draw arrow from blocker to attacker immediately for previews
-    this.drawBlockingArrow(this.selectedBlocker, attackerUniqueId);
-    this.syncPendingBlockers();
-        
+        const blockerId = this.selectedBlocker;
+        const previousAssignment = this.blockers.get(blockerId);
+
+        if (previousAssignment === attackerUniqueId) {
+            this.blockers.delete(blockerId);
+            this.removeBlockingArrow(blockerId, previousAssignment);
+
+            const blockerElement = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
+            if (blockerElement) {
+                blockerElement.classList.remove('blocking-creature');
+                blockerElement.classList.add('can-block');
+            }
+
+            this.selectedBlocker = null;
+            document.querySelectorAll('.selected-blocker').forEach(el => el.classList.remove('selected-blocker'));
+            this.syncPendingBlockers();
+            this.updateCombatUI();
+            if (window.GameUI && typeof GameUI.showNotification === 'function') {
+                GameUI.showNotification('Blocking assignment cleared', 'info');
+            }
+            return;
+        }
+
+        if (previousAssignment && previousAssignment !== attackerUniqueId) {
+            this.removeBlockingArrow(blockerId, previousAssignment);
+        }
+
+        this.blockers.set(blockerId, attackerUniqueId);
+        this.removeBlockingArrow(blockerId);
+        this.drawBlockingArrow(blockerId, attackerUniqueId);
+        this.syncPendingBlockers();
+
         // Clear selection
         document.querySelectorAll('.selected-blocker').forEach(el => {
             el.classList.remove('selected-blocker');
         });
         
-        const blockerCard = document.querySelector(`[data-card-unique-id="${this.selectedBlocker}"]`);
+        const blockerCard = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
         if (blockerCard) {
             blockerCard.classList.add('blocking-creature');
+            blockerCard.classList.add('can-block');
         }
         
-    this.selectedBlocker = null;
-    this.updateCombatUI();
+        this.selectedBlocker = null;
+        this.updateCombatUI();
     },
 
     updateCombatUI() {
@@ -509,13 +597,16 @@ const GameCombat = {
 
     applyPendingBlockerVisuals(pendingAssignments) {
         if (!pendingAssignments || typeof pendingAssignments !== 'object') return;
+        this.blockers = new Map(Object.entries(pendingAssignments));
         this.clearArrows();
         Object.entries(pendingAssignments).forEach(([blockerId, attackerId]) => {
             const blockerElement = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
             if (blockerElement) {
                 blockerElement.classList.add('blocking-creature');
+                blockerElement.classList.add('can-block');
             }
             if (attackerId && typeof this.drawBlockingArrow === 'function') {
+                this.removeBlockingArrow(blockerId);
                 this.drawBlockingArrow(blockerId, attackerId);
             }
         });
@@ -585,7 +676,7 @@ const GameCombat = {
         if (!currentPlayer) return;
         
         currentPlayer.battlefield.forEach(card => {
-            if (card.card_type === 'creature') {
+            if (this.isCreatureCard(card)) {
                 const cardElement = document.querySelector(`[data-card-unique-id="${card.unique_id}"]`);
                 if (cardElement) {
                     const isTapped = card.tapped;
@@ -611,7 +702,7 @@ const GameCombat = {
         if (!currentPlayer) return;
         
         currentPlayer.battlefield.forEach(card => {
-            if (card.card_type === 'creature' && !card.tapped) {
+            if (this.isCreatureCard(card) && !card.tapped) {
                 const cardElement = document.querySelector(`[data-card-unique-id="${card.unique_id}"]`);
                 if (cardElement) {
                     cardElement.classList.add('can-block');
@@ -687,6 +778,13 @@ const GameCombat = {
         arrow.style.transformOrigin = '0 0';
         
         document.body.appendChild(arrow);
+    },
+
+    removeBlockingArrow(blockerUniqueId, attackerUniqueId = null) {
+        const selector = attackerUniqueId
+            ? `.blocking-arrow[data-blocker="${blockerUniqueId}"][data-attacker="${attackerUniqueId}"]`
+            : `.blocking-arrow[data-blocker="${blockerUniqueId}"]`;
+        document.querySelectorAll(selector).forEach(arrow => arrow.remove());
     },
     
     /**
@@ -797,8 +895,8 @@ const GameCombat = {
             
             const uniqueId = cardElement.getAttribute('data-card-unique-id');
             const zone = cardElement.getAttribute('data-card-zone');
-            
-            if (zone !== 'battlefield') return;
+            const isBattlefieldZone = ['battlefield', 'creatures', 'lands', 'support', 'permanents'].includes(zone);
+            if (!isBattlefieldZone) return;
             
             const cardType = cardElement.getAttribute('data-card-type');
             if (cardType !== 'creature') return;
