@@ -3,10 +3,10 @@
 import re
 import time
 from html import unescape
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus, urlparse, urljoin
 import aiohttp
 from aiohttp import ClientError, ClientTimeout
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Set
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
 
 
@@ -705,16 +705,136 @@ class CardService:
 
         ids: List[str] = []
 
-        ids.extend(re.findall(r'data-deck-id="(\d+)"', page_html))
-        ids.extend(re.findall(r'href="/deck/(\d+)', page_html))
+        patterns = [
+            r'data-deck-id="(\d+)"',
+            r'href="/deck/(?:arena_download/|download/|visual/)?(\d+)"',
+            r'href="https?://(?:www\.)?mtggoldfish\.com/deck/(?:arena_download/|download/|visual/)?(\d+)"',
+            r'https?://(?:www\.)?mtggoldfish\.com/deck/popout\?id=(\d+)',
+            r'href="/deck/registration\?id=(\d+)"',
+            r'href="https?://(?:www\.)?mtggoldfish\.com/deck/registration\?id=(\d+)"'
+        ]
 
-        seen = set()
-        unique_ids = []
+        for pattern in patterns:
+            ids.extend(re.findall(pattern, page_html, re.IGNORECASE))
+        seen: Set[str] = set()
+        unique_ids: List[str] = []
         for deck_id in ids:
             if deck_id not in seen:
                 seen.add(deck_id)
                 unique_ids.append(deck_id)
         return unique_ids
+
+    def _extract_mtggoldfish_archetype_paths(self, page_html: str, platform: str) -> List[str]:
+        """Extract archetype paths from a metagame page, preferring the selected platform."""
+        if not page_html:
+            return []
+
+        matches = re.findall(
+            r'href="(?:https?://(?:www\.)?mtggoldfish\.com)?(/archetype/[a-z0-9\-_.]+)(?:#[^\"]*)?"',
+            page_html,
+            re.IGNORECASE
+        )
+
+        preferred_fragment = "paper" if platform == "paper" else "online"
+        order: List[str] = []
+        selected: Dict[str, str] = {}
+
+        for match in matches:
+            normalized = match.strip()
+            if not normalized:
+                continue
+
+            base_path, _, fragment = normalized.partition("#")
+            fragment = fragment.lower()
+
+            if base_path not in selected:
+                order.append(base_path)
+                selected[base_path] = normalized
+
+            if preferred_fragment and fragment == preferred_fragment:
+                selected[base_path] = f"{base_path}#{fragment}" if fragment else base_path
+                continue
+
+            existing_fragment = selected[base_path].partition("#")[2].lower()
+            if not existing_fragment and fragment:
+                selected[base_path] = normalized
+
+        archetypes: List[str] = []
+        for base_path in order:
+            chosen = selected.get(base_path, base_path)
+            chosen_base, _, chosen_fragment = chosen.partition("#")
+            chosen_fragment = chosen_fragment.lower()
+            if preferred_fragment and chosen_fragment != preferred_fragment:
+                chosen = f"{chosen_base}#{preferred_fragment}"
+            archetypes.append(chosen)
+
+        return archetypes
+
+    def _select_mtggoldfish_deck_id(
+        self,
+        deck_ids: List[str],
+        page_html: str,
+        platform: str
+    ) -> Optional[str]:
+        """Choose the most appropriate deck identifier for the requested platform."""
+        if not deck_ids:
+            return None
+
+        anchor_pattern = re.compile(
+            r'<a[^>]+href="[^\"]*/deck/(?:arena_download/|download/|visual/)?(\d+)[^\"]*"[^>]*>\s*Deck\s+Page\s*</a>',
+            re.IGNORECASE
+        )
+
+        platform_token = "tabletop" if platform == "paper" else "magic online"
+
+        for match in anchor_pattern.finditer(page_html):
+            candidate_id = match.group(1)
+            window_start = max(0, match.start() - 1200)
+            context = page_html[window_start:match.start()]
+            if re.search(platform_token, context, re.IGNORECASE):
+                return candidate_id
+
+        return deck_ids[0]
+
+    async def _resolve_mtggoldfish_archetype_deck(
+        self,
+        archetype_path: str,
+        normalized_format: str,
+        normalized_platform: str,
+        metagame_url: str
+    ) -> Optional[Dict[str, str]]:
+        """Fetch the representative deck for an archetype entry."""
+
+        if not archetype_path:
+            return None
+
+        base_url = "https://www.mtggoldfish.com"
+        archetype_url = urljoin(base_url, archetype_path.lstrip("/"))
+
+        try:
+            page_html = await self._http_get_text(archetype_url)
+        except Exception:
+            return None
+
+        deck_ids = self._extract_mtggoldfish_deck_ids(page_html)
+        if not deck_ids:
+            return None
+
+        selected_id = self._select_mtggoldfish_deck_id(deck_ids, page_html, normalized_platform)
+        if not selected_id:
+            return None
+
+        anchor = "#paper" if normalized_platform == "paper" else "#online"
+        canonical_archetype_url = f"{archetype_url}{anchor}"
+
+        return {
+            "deck_id": selected_id,
+            "deck_url": f"https://www.mtggoldfish.com/deck/{selected_id}",
+            "format": normalized_format,
+            "platform": normalized_platform,
+            "metagame_url": metagame_url,
+            "archetype_url": canonical_archetype_url
+        }
 
     async def fetch_mtggoldfish_metagame_deck_urls(
         self,
@@ -753,6 +873,7 @@ class CardService:
             enqueue(f"{base_url}/full{query_suffix}")
 
         page_html: Optional[str] = None
+        first_html: Optional[str] = None
         deck_ids: List[str] = []
         last_error: Optional[Exception] = None
 
@@ -762,32 +883,66 @@ class CardService:
             except Exception as exc:
                 last_error = exc
                 continue
+            if first_html is None:
+                first_html = candidate_html
             ids = self._extract_mtggoldfish_deck_ids(candidate_html)
             if ids:
                 page_html = candidate_html
                 deck_ids = ids
                 break
 
-        if not deck_ids:
+        decks: List[Dict[str, str]] = []
+        resolved_ids: Set[str] = set()
+        anchor = "#paper" if normalized_platform == "paper" else "#online"
+        metagame_url = f"{base_url}{anchor}"
+
+        archetype_paths = self._extract_mtggoldfish_archetype_paths(first_html or "", normalized_platform)
+        for archetype_path in archetype_paths:
+            if len(decks) >= deck_limit:
+                break
+            deck_info = await self._resolve_mtggoldfish_archetype_deck(
+                archetype_path=archetype_path,
+                normalized_format=normalized_format,
+                normalized_platform=normalized_platform,
+                metagame_url=metagame_url
+            )
+            if not deck_info:
+                continue
+            deck_id = deck_info.get("deck_id")
+            if not deck_id or deck_id in resolved_ids:
+                continue
+            resolved_ids.add(deck_id)
+            decks.append(deck_info)
+
+        if len(decks) < deck_limit and deck_ids:
+            for deck_id in deck_ids:
+                if deck_id in resolved_ids:
+                    continue
+                decks.append(
+                    {
+                        "deck_id": deck_id,
+                        "deck_url": f"https://www.mtggoldfish.com/deck/{deck_id}",
+                        "format": normalized_format,
+                        "platform": normalized_platform,
+                        "metagame_url": metagame_url,
+                        "archetype_url": ""
+                    }
+                )
+                resolved_ids.add(deck_id)
+                if len(decks) >= deck_limit:
+                    break
+
+        if not decks:
             detail = f"Unable to locate deck identifiers on MTGGoldfish for format '{normalized_format}'."
             if last_error:
                 detail = f"{detail} Last error: {last_error}"
             raise ValueError(detail)
 
-        decks: List[Dict[str, str]] = []
-        anchor = "#paper" if normalized_platform == "paper" else "#online"
-        metagame_url = f"{base_url}{anchor}"
-
-        for deck_id in deck_ids[:deck_limit]:
-            decks.append(
-                {
-                    "deck_id": deck_id,
-                    "deck_url": f"https://www.mtggoldfish.com/deck/{deck_id}",
-                    "format": normalized_format,
-                    "platform": normalized_platform,
-                    "metagame_url": metagame_url
-                }
-            )
+        if len(decks) < deck_limit:
+            detail = f"Only located {len(decks)} deck(s) on MTGGoldfish for format '{normalized_format}'."
+            if last_error:
+                detail = f"{detail} Last error: {last_error}"
+            raise ValueError(detail)
 
         return decks
 
