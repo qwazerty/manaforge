@@ -410,18 +410,77 @@ const GameCards = {
             : {};
         const isPendingAttacker = pendingAttackers.includes(card.unique_id);
         const isPendingBlocker = Object.prototype.hasOwnProperty.call(pendingBlockers, card.unique_id);
-    const suppressTappedVisual = inCombatPhase && isTapped && (isAttacking || isBlocking || isPendingBlocker);
-    const combatTappedClass = (inCombatPhase && isAttacking && isTapped) ? ' combat-tapped' : '';
-    const tappedClass = (isTapped && !suppressTappedVisual) ? ' tapped' : '';
+        const combatStep = combatState?.step || null;
+        const frontendCombatMode = typeof GameCombat !== 'undefined' ? GameCombat.combatMode : null;
+        const isDeclaringAttackers = combatStep === 'declare_attackers' || frontendCombatMode === 'declaring_attackers';
+        const suppressTappedVisual = inCombatPhase && isTapped && (isAttacking || isBlocking || isPendingBlocker) && isDeclaringAttackers;
+        const combatTappedClass = (inCombatPhase && isAttacking && isTapped) ? ' combat-tapped' : '';
+        const tappedClass = (isTapped && !suppressTappedVisual) ? ' tapped' : '';
         const targetedClass = isTargeted ? ' targeted' : '';
         const attackingClass = isAttacking ? ' attacking-creature' : '';
         const blockingClass = isBlocking ? ' blocking-creature' : '';
         const uniqueCardId = card.unique_id;
+        const typePieces = [];
+        const pushType = (value) => {
+            if (value) {
+                typePieces.push(String(value));
+            }
+        };
+        pushType(card.card_type);
+        pushType(card.cardType);
+        pushType(card.type_line);
+        pushType(card.typeLine);
+        pushType(card.subtype);
+        if (Array.isArray(card.types)) {
+            card.types.forEach(pushType);
+        }
+        if (Array.isArray(card.subtypes)) {
+            card.subtypes.forEach(pushType);
+        }
+        if (Array.isArray(card.supertypes)) {
+            card.supertypes.forEach(pushType);
+        }
+        if (Array.isArray(card.card_faces)) {
+            card.card_faces.forEach(face => {
+                pushType(face?.type_line);
+                pushType(face?.typeLine);
+                if (Array.isArray(face?.types)) {
+                    face.types.forEach(pushType);
+                }
+                if (Array.isArray(face?.subtypes)) {
+                    face.subtypes.forEach(pushType);
+                }
+            });
+        }
+        const typeLine = typePieces.join(' ').toLowerCase();
+        let primaryCardType = '';
+        if (typeLine.includes('creature')) {
+            primaryCardType = 'creature';
+        } else if (typeLine.includes('land')) {
+            primaryCardType = 'land';
+        } else if (typeLine.includes('planeswalker')) {
+            primaryCardType = 'planeswalker';
+        } else if (typeLine.includes('artifact')) {
+            primaryCardType = 'artifact';
+        } else if (typeLine.includes('enchantment')) {
+            primaryCardType = 'enchantment';
+        } else if (typeLine.includes('instant')) {
+            primaryCardType = 'instant';
+        } else if (typeLine.includes('sorcery')) {
+            primaryCardType = 'sorcery';
+        }
+
+        const controllerId = card.controller_id || card.controllerId || card.owner_id || card.ownerId || '';
+        const ownerId = card.owner_id || card.ownerId || '';
+
         const dataCardId = GameUtils.escapeHtml(cardId || '');
         const dataCardName = GameUtils.escapeHtml(cardName || '');
         const dataImageUrl = GameUtils.escapeHtml(imageUrl || '');
         const dataUniqueId = GameUtils.escapeHtml(uniqueCardId || '');
         const dataZone = GameUtils.escapeHtml(zone || '');
+        const dataCardType = GameUtils.escapeHtml(primaryCardType || '');
+        const dataCardOwner = GameUtils.escapeHtml(ownerId || '');
+        const dataCardController = GameUtils.escapeHtml(controllerId || '');
         const searchIndex = GameUtils.escapeHtml(this.buildSearchIndex(card));
         const jsCardId = JSON.stringify(cardId || '');
         const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
@@ -455,8 +514,12 @@ const GameCards = {
         const dragEndAttr = allowInteractions ? 'ondragend="GameCards.handleDragEnd(event, this)"' : '';
         const contextMenuAttr = allowInteractions ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
         
-        // Apply transform for attacking creatures
-        const attackingStyle = isAttacking ? 'transform: translateY(-20px);' : '';
+        // Apply transform for attacking creatures, keeping rotation when tapped
+        let attackingStyle = '';
+        if (isAttacking) {
+            const rotation = (isTapped && !suppressTappedVisual) ? ' rotate(90deg)' : '';
+            attackingStyle = `transform: translateY(-20px)${rotation};`;
+        }
 
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
@@ -469,6 +532,9 @@ const GameCards = {
                 data-card-name="${dataCardName}"
                 data-card-image="${dataImageUrl}"
                 data-card-zone="${dataZone}"
+                data-card-type="${dataCardType}"
+                data-card-owner="${dataCardOwner}"
+                data-card-controller="${dataCardController}"
                 data-card-tapped="${isTapped}"
                 data-card-targeted="${isTargeted}"
                 data-card-search="${searchIndex}"
