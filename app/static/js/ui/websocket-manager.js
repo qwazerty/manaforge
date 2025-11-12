@@ -607,6 +607,10 @@ class WebSocketManager {
         const pendingBlockers = combatState.pending_blockers || {};
         const blockingPairs = new Map();
 
+        const getTranslate = (element) => (
+            element && element.getAttribute('data-is-opponent') === 'true' ? 20 : -20
+        );
+
         // Apply attacker animations
         gameState.players.forEach((player, playerIndex) => {
             if (player.battlefield) {
@@ -619,11 +623,12 @@ class WebSocketManager {
                     const isAttacking = Boolean(card.attacking);
                     if (isAttacking || isPendingAttacker) {
                         cardElement.classList.add('attacking-creature');
+                        const translateY = getTranslate(cardElement);
                         if (isAttacking && card.tapped) {
-                            cardElement.style.transform = 'translateY(-20px) rotate(90deg)';
+                            cardElement.style.transform = `translateY(${translateY}px) rotate(90deg)`;
                             cardElement.classList.add('combat-tapped');
                         } else {
-                            cardElement.style.transform = 'translateY(-20px)';
+                            cardElement.style.transform = `translateY(${translateY}px)`;
                             cardElement.classList.remove('combat-tapped');
                         }
                         if (isPendingAttacker && !isAttacking) {

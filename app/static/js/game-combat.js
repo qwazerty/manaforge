@@ -17,6 +17,9 @@ const GameCombat = {
     combatMode: null, // 'declaring_attackers' or 'declaring_blockers'
     selectedBlocker: null,
     uiRefreshHandle: null,
+    blockerRenderRetryHandle: null,
+    blockerRenderStabilizeHandle: null,
+    currentBlockingVisuals: new Set(),
     
     /**
      * Check if a card has vigilance
@@ -87,6 +90,12 @@ const GameCombat = {
             }
         }
         return null;
+    },
+
+    getAttackingTranslate(cardElement) {
+        if (!cardElement) return -20;
+        const isOpponentCard = cardElement.getAttribute('data-is-opponent') === 'true';
+        return isOpponentCard ? 20 : -20;
     },
     
     /**
@@ -235,6 +244,7 @@ const GameCombat = {
             this.blockers = new Map(Object.entries(combatState.pending_blockers));
             setTimeout(() => this.applyPendingBlockerVisuals(combatState.pending_blockers), 50);
         }
+        this.renderBlockingAssignments({ retry: true });
         
         this.highlightValidBlockers();
 
@@ -281,7 +291,8 @@ const GameCombat = {
             cardElement.classList.add('attacking-creature');
             
             // Move creature forward (add visual effect)
-            cardElement.style.transform = 'translateY(-20px)';
+            const translateY = this.getAttackingTranslate(cardElement);
+            cardElement.style.transform = `translateY(${translateY}px)`;
         }
         
         this.updateCombatUI();
@@ -321,12 +332,13 @@ const GameCombat = {
                 const cardData = this.getCardData(uniqueId);
                 const hasVigilance = this.hasVigilance(cardData);
                 cardElement.setAttribute('data-card-tapped', hasVigilance ? 'false' : 'true');
+                const translateY = this.getAttackingTranslate(cardElement);
                 if (!hasVigilance) {
                     cardElement.classList.add('combat-tapped');
-                    cardElement.style.transform = 'translateY(-20px) rotate(90deg)';
+                    cardElement.style.transform = `translateY(${translateY}px) rotate(90deg)`;
                 } else {
                     cardElement.classList.remove('combat-tapped');
-                    cardElement.style.transform = 'translateY(-20px)';
+                    cardElement.style.transform = `translateY(${translateY}px)`;
                 }
             }
         });
@@ -470,17 +482,10 @@ const GameCombat = {
 
         if (previousAssignment === attackerUniqueId) {
             this.blockers.delete(blockerId);
-            this.removeBlockingArrow(blockerId, previousAssignment);
-
-            const blockerElement = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
-            if (blockerElement) {
-                blockerElement.classList.remove('blocking-creature');
-                blockerElement.classList.add('can-block');
-            }
-
-            this.selectedBlocker = null;
             document.querySelectorAll('.selected-blocker').forEach(el => el.classList.remove('selected-blocker'));
+            this.renderBlockingAssignments({ retry: true });
             this.syncPendingBlockers();
+            this.selectedBlocker = null;
             this.updateCombatUI();
             if (window.GameUI && typeof GameUI.showNotification === 'function') {
                 GameUI.showNotification('Blocking assignment cleared', 'info');
@@ -488,26 +493,14 @@ const GameCombat = {
             return;
         }
 
-        if (previousAssignment && previousAssignment !== attackerUniqueId) {
-            this.removeBlockingArrow(blockerId, previousAssignment);
-        }
-
         this.blockers.set(blockerId, attackerUniqueId);
-        this.removeBlockingArrow(blockerId);
-        this.drawBlockingArrow(blockerId, attackerUniqueId);
-        this.syncPendingBlockers();
 
-        // Clear selection
         document.querySelectorAll('.selected-blocker').forEach(el => {
             el.classList.remove('selected-blocker');
         });
-        
-        const blockerCard = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
-        if (blockerCard) {
-            blockerCard.classList.add('blocking-creature');
-            blockerCard.classList.add('can-block');
-        }
-        
+
+        this.renderBlockingAssignments({ retry: true });
+        this.syncPendingBlockers();
         this.selectedBlocker = null;
         this.updateCombatUI();
     },
@@ -585,31 +578,84 @@ const GameCombat = {
         });
     },
 
+    renderBlockingAssignments({ retry = false, attempt = 0 } = {}) {
+        if (this.blockerRenderRetryHandle) {
+            clearTimeout(this.blockerRenderRetryHandle);
+            this.blockerRenderRetryHandle = null;
+        }
+        if (this.blockerRenderStabilizeHandle) {
+            clearTimeout(this.blockerRenderStabilizeHandle);
+            this.blockerRenderStabilizeHandle = null;
+        }
+
+        document.querySelectorAll('.blocking-arrow').forEach(arrow => arrow.remove());
+
+        this.currentBlockingVisuals.forEach(uniqueId => {
+            const existing = document.querySelector(`[data-card-unique-id="${uniqueId}"]`);
+            if (existing) {
+                existing.classList.remove('blocking-creature');
+                existing.classList.add('can-block');
+            }
+        });
+        this.currentBlockingVisuals.clear();
+
+        let missingElements = false;
+
+        this.blockers.forEach((attackerId, blockerId) => {
+            if (!blockerId) {
+                return;
+            }
+
+            const blockerElement = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
+            const attackerElement = attackerId
+                ? document.querySelector(`[data-card-unique-id="${attackerId}"]`)
+                : null;
+
+            if (!blockerElement) {
+                missingElements = true;
+            } else {
+                blockerElement.classList.add('blocking-creature', 'can-block');
+                this.currentBlockingVisuals.add(blockerId);
+            }
+
+            if (attackerId) {
+                if (blockerElement && attackerElement) {
+                    this.drawBlockingArrow(blockerId, attackerId);
+                } else {
+                    missingElements = true;
+                }
+            }
+        });
+
+        if (retry && missingElements && attempt < 6) {
+            this.blockerRenderRetryHandle = setTimeout(() => {
+                this.renderBlockingAssignments({ retry: true, attempt: attempt + 1 });
+            }, 80);
+        }
+
+        if (retry) {
+            this.blockerRenderStabilizeHandle = setTimeout(() => {
+                this.blockerRenderStabilizeHandle = null;
+                this.renderBlockingAssignments({ retry: false, attempt: attempt + 1 });
+            }, 160);
+        }
+    },
+
     applyPendingAttackerVisuals(pendingAttackers) {
         if (!Array.isArray(pendingAttackers)) return;
         pendingAttackers.forEach(uniqueId => {
             const cardElement = document.querySelector(`[data-card-unique-id="${uniqueId}"]`);
             if (!cardElement) return;
             cardElement.classList.add('attacking-creature');
-            cardElement.style.transform = 'translateY(-20px)';
+            const translateY = this.getAttackingTranslate(cardElement);
+            cardElement.style.transform = `translateY(${translateY}px)`;
         });
     },
 
     applyPendingBlockerVisuals(pendingAssignments) {
         if (!pendingAssignments || typeof pendingAssignments !== 'object') return;
         this.blockers = new Map(Object.entries(pendingAssignments));
-        this.clearArrows();
-        Object.entries(pendingAssignments).forEach(([blockerId, attackerId]) => {
-            const blockerElement = document.querySelector(`[data-card-unique-id="${blockerId}"]`);
-            if (blockerElement) {
-                blockerElement.classList.add('blocking-creature');
-                blockerElement.classList.add('can-block');
-            }
-            if (attackerId && typeof this.drawBlockingArrow === 'function') {
-                this.removeBlockingArrow(blockerId);
-                this.drawBlockingArrow(blockerId, attackerId);
-            }
-        });
+        this.renderBlockingAssignments({ retry: true });
     },
     
     /**
@@ -742,6 +788,16 @@ const GameCombat = {
                 el.style.transform = '';
             }
         });
+
+        this.currentBlockingVisuals.clear();
+        if (this.blockerRenderRetryHandle) {
+            clearTimeout(this.blockerRenderRetryHandle);
+            this.blockerRenderRetryHandle = null;
+        }
+        if (this.blockerRenderStabilizeHandle) {
+            clearTimeout(this.blockerRenderStabilizeHandle);
+            this.blockerRenderStabilizeHandle = null;
+        }
     },
     
     /**
@@ -792,6 +848,14 @@ const GameCombat = {
      */
     clearArrows() {
         document.querySelectorAll('.blocking-arrow').forEach(arrow => arrow.remove());
+        if (this.blockerRenderRetryHandle) {
+            clearTimeout(this.blockerRenderRetryHandle);
+            this.blockerRenderRetryHandle = null;
+        }
+        if (this.blockerRenderStabilizeHandle) {
+            clearTimeout(this.blockerRenderStabilizeHandle);
+            this.blockerRenderStabilizeHandle = null;
+        }
     },
     
     /**
@@ -898,22 +962,24 @@ const GameCombat = {
             const isBattlefieldZone = ['battlefield', 'creatures', 'lands', 'support', 'permanents'].includes(zone);
             if (!isBattlefieldZone) return;
             
-            const cardType = cardElement.getAttribute('data-card-type');
-            if (cardType !== 'creature') return;
-            
+            const cardData = this.getCardData(uniqueId);
+            const typeAttr = cardElement.getAttribute('data-card-type');
+            const isCreature = typeAttr === 'creature' || this.isCreatureCard(cardData);
+            if (!isCreature) return;
+
             // Handle based on current combat mode
             if (this.combatMode === 'declaring_attackers') {
                 // Check if it's the current player's creature
                 const currentPlayer = GameCore.getSelectedPlayer();
-                const cardData = this.getCardData(uniqueId);
-                if (cardData && cardData.owner_id === currentPlayer) {
+                const controllerId = this.getCardControllerId(cardData, cardElement);
+                if (controllerId === currentPlayer) {
                     this.toggleAttacker(uniqueId);
                 }
             } else if (this.combatMode === 'declaring_blockers') {
                 const currentPlayer = GameCore.getSelectedPlayer();
-                const cardData = this.getCardData(uniqueId);
+                const controllerId = this.getCardControllerId(cardData, cardElement);
                 
-                if (cardData && cardData.owner_id === currentPlayer) {
+                if (controllerId === currentPlayer) {
                     // This is a potential blocker
                     if (cardElement.classList.contains('can-block')) {
                         this.selectBlocker(uniqueId);

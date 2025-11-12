@@ -2807,7 +2807,7 @@
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
 }
 
-.is-attacker {
+.is-attacker:not(.attacking-creature) {
     outline: 3px solid rgba(239, 68, 68, 0.6);
     outline-offset: 2px;
 }

@@ -517,8 +517,17 @@ const GameCards = {
         // Apply transform for attacking creatures, keeping rotation when tapped
         let attackingStyle = '';
         if (isAttacking) {
-            const rotation = (isTapped && !suppressTappedVisual) ? ' rotate(90deg)' : '';
-            attackingStyle = `transform: translateY(-20px)${rotation};`;
+            const transforms = [];
+            const translateY = isOpponent ? 20 : -20;
+            if (translateY !== 0) {
+                transforms.push(`translateY(${translateY}px)`);
+            }
+            if (isTapped && !suppressTappedVisual) {
+                transforms.push('rotate(90deg)');
+            }
+            if (transforms.length) {
+                attackingStyle = `transform: ${transforms.join(' ')};`;
+            }
         }
 
         // Generate counters display
