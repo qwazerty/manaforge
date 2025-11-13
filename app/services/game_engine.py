@@ -579,6 +579,7 @@ class SimpleGameEngine:
             "search_and_add_card": self._search_and_add_card,
             "create_token": self._create_token,
             "duplicate_card": self._duplicate_card,
+            "delete_token": self._delete_token,
         }
 
         if action.action_type in action_map:
@@ -1862,3 +1863,46 @@ class SimpleGameEngine:
 
         except Exception as e:
             print(f"Error creating token with Scryfall ID '{scryfall_id}': {e}")
+
+    def _delete_token(self, game_state: GameState, action: GameAction) -> None:
+        """Delete a token permanently from the game state."""
+        unique_id = action.additional_data.get("unique_id")
+        if not unique_id:
+            raise ValueError("unique_id is required for delete_token action")
+
+        def remove_from_collection(collection: List[Card], zone_label: str) -> bool:
+            for idx, card in enumerate(collection):
+                if card.unique_id == unique_id:
+                    if not card.is_token:
+                        raise ValueError("Cannot delete a non-token card")
+                    removed_card = collection.pop(idx)
+                    print(
+                        f"Player {action.player_id} deleted token {removed_card.name} from {zone_label}"
+                    )
+                    return True
+            return False
+
+        # Search player zones first for faster removal
+        removed = False
+        for player in game_state.players:
+            for zone_name in ["battlefield", "graveyard", "exile", "hand", "library"]:
+                zone = self._get_zone_list(game_state, player, zone_name)
+                if remove_from_collection(zone, zone_name):
+                    removed = True
+                    break
+
+            if removed:
+                break
+
+            # Temporary zones are optional attributes
+            temp_zone = getattr(player, "temporary_zone", None)
+            if temp_zone and remove_from_collection(temp_zone, "temporary_zone"):
+                removed = True
+                break
+
+        if not removed:
+            if remove_from_collection(game_state.stack, "stack"):
+                removed = True
+
+        if not removed:
+            raise ValueError(f"Token with unique_id {unique_id} not found")
