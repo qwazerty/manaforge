@@ -1891,6 +1891,31 @@
         text-decoration-color: rgba(96, 165, 250, 0.9);
     }
 
+    .action-history-card-separator {
+        @apply text-[rgba(229,221,213,0.4)] px-1;
+    }
+
+    .action-history-turn-separator {
+        @apply flex items-center gap-2 text-[0.7rem] text-[rgba(229,221,213,0.65)] uppercase tracking-[0.12em] font-semibold;
+    }
+
+    .action-history-turn-separator::before,
+    .action-history-turn-separator::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(
+            90deg,
+            rgba(201, 170, 113, 0),
+            rgba(201, 170, 113, 0.4),
+            rgba(201, 170, 113, 0)
+        );
+    }
+
+    .action-history-turn-text {
+        @apply text-[rgba(229,221,213,0.85)] whitespace-nowrap;
+    }
+
     .action-history-time {
         @apply text-[0.65rem] text-[rgba(229,221,213,0.5)] tracking-[0.05em];
     }

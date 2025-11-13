@@ -27,17 +27,26 @@ class UIActionHistory {
 
         const rawAction = action;
         const preparedDetails = this._prepareDetails(details, context);
+        const metadata = this._extractEntryMetadata(context);
         const entry = {
             action: this._formatLabel(rawAction),
             rawAction,
+            displayAction: null,
             player: this._formatPlayer(player),
             success: success !== false,
             details: preparedDetails.items,
             cardRefs: preparedDetails.cardRefs,
             timestamp: this._normalizeTimestamp(timestamp),
             origin,
-            context
+            context,
+            phase: metadata.phase || null,
+            turn: metadata.turn || null,
+            turnPlayerId: metadata.turnPlayerId || null,
+            turnPlayerName: metadata.turnPlayerName || null,
+            turnPlayerLabel: metadata.turnPlayerLabel || null
         };
+
+        entry.displayAction = this._buildActionTitle(entry);
 
         this._enrichCardDetails(entry, context);
 
@@ -65,17 +74,19 @@ class UIActionHistory {
         }
 
         for (const entry of entries) {
-            this.addFromActionResult(entry);
+            this.addFromActionResult(entry, { source: 'state' });
         }
     }
 
     /**
      * Add an entry directly from a WebSocket action_result payload.
      */
-    static addFromActionResult(actionResult) {
+    static addFromActionResult(actionResult, options = null) {
         if (!actionResult || !actionResult.action) {
             return;
         }
+
+        const resolvedSource = options && options.source ? options.source : 'websocket';
 
         const {
             action,
@@ -95,7 +106,7 @@ class UIActionHistory {
                 details: cleanedDetails,
                 origin: 'websocket'
             },
-            { source: 'websocket', payload: actionResult }
+            { source: resolvedSource, payload: actionResult }
         );
     }
 
@@ -155,7 +166,13 @@ class UIActionHistory {
         }
 
         const fragment = document.createDocumentFragment();
+        let lastTurnKey = null;
         for (const entry of [...this.entries].reverse()) {
+            const turnKey = this._buildTurnKey(entry);
+            if (turnKey && turnKey !== lastTurnKey) {
+                fragment.appendChild(this._createTurnSeparator(entry));
+                lastTurnKey = turnKey;
+            }
             fragment.appendChild(this._createEntryElement(entry));
         }
         container.appendChild(fragment);
@@ -187,7 +204,7 @@ class UIActionHistory {
 
         const actionSpan = document.createElement('div');
         actionSpan.className = 'action-history-action';
-        actionSpan.textContent = entry.action;
+        actionSpan.textContent = entry.displayAction || entry.action;
         entryElement.appendChild(actionSpan);
 
         if (entry.details.length > 0) {
@@ -195,45 +212,142 @@ class UIActionHistory {
                 const detailRow = document.createElement('div');
                 detailRow.className = 'action-history-detail';
 
-                if (detail.label) {
+                const hasAssignments =
+                    Array.isArray(detail.assignmentList) &&
+                    detail.assignmentList.length > 0;
+                const hasCardList =
+                    Array.isArray(detail.cardList) && detail.cardList.length > 0;
+                const hasSingleCard =
+                    detail.cardInfo && !hasAssignments && !hasCardList;
+
+                const shouldShowLabel =
+                    detail.label &&
+                    detail.hideLabel !== true &&
+                    !hasAssignments &&
+                    !hasCardList &&
+                    !(hasSingleCard && detail.label.toLowerCase() === 'card');
+
+                if (shouldShowLabel) {
                     const labelSpan = document.createElement('span');
                     labelSpan.textContent = `${detail.label}: `;
                     labelSpan.style.fontWeight = '600';
                     detailRow.appendChild(labelSpan);
                 }
 
-                if (
-                    detail.cardInfo &&
-                    typeof GameCards !== 'undefined' &&
-                    typeof GameCards.showCardPreview === 'function'
-                ) {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'action-history-card-link';
-                    button.textContent = detail.cardInfo.name || detail.value;
-                    button.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        const info = detail.cardInfo;
-                        const cardElement = this._findCardElement(info);
-                        const previewImage =
-                            info.imageUrl ||
-                            (cardElement
-                                ? cardElement.getAttribute('data-card-image')
-                                : null) ||
-                            null;
-                        const cardId =
-                            info.cardId ||
-                            info.id ||
-                            (cardElement
-                                ? cardElement.getAttribute('data-card-id')
-                                : null) ||
-                            info.name ||
-                            detail.value;
-                        const cardName = info.name || detail.value;
+                if (hasAssignments) {
+                    const assignmentsContainer = document.createElement('div');
+                    assignmentsContainer.className = 'action-history-card-assignments';
 
-                        GameCards.showCardPreview(cardId, cardName, previewImage, event, info);
+                    detail.assignmentList.forEach((assignment, assignmentIndex) => {
+                        if (assignmentIndex > 0) {
+                            assignmentsContainer.appendChild(
+                                this._createInlineSeparator()
+                            );
+                        }
+
+                        const assignmentRow = document.createElement('span');
+                        assignmentRow.className = 'action-history-card-assignment';
+
+                        const sourceWrapper = document.createElement('span');
+                        sourceWrapper.className = 'action-history-card-assignment-source';
+                        if (assignment.source) {
+                            const sourceButton = this._buildCardPreviewButton(
+                                assignment.source.displayName,
+                                assignment.source.cardInfo,
+                                assignment.source.displayName
+                            );
+                            if (sourceButton) {
+                                sourceWrapper.appendChild(sourceButton);
+                            }
+                        } else if (assignment.sourceFallback) {
+                            const sourceText = document.createElement('span');
+                            sourceText.className = 'action-history-card-assignment-source-text';
+                            sourceText.textContent = assignment.sourceFallback;
+                            sourceWrapper.appendChild(sourceText);
+                        }
+                        assignmentRow.appendChild(sourceWrapper);
+
+                        if (
+                            (assignment.targets && assignment.targets.length > 0) ||
+                            (assignment.targetFallbacks && assignment.targetFallbacks.length > 0)
+                        ) {
+                            const arrow = document.createElement('span');
+                            arrow.className = 'action-history-card-assignment-arrow';
+                            arrow.textContent = '→';
+                            assignmentRow.appendChild(arrow);
+
+                            const targetsWrapper = document.createElement('span');
+                            targetsWrapper.className = 'action-history-card-assignment-targets';
+
+                            if (assignment.targets && assignment.targets.length > 0) {
+                                assignment.targets.forEach((cardItem, targetIndex) => {
+                                    if (targetIndex > 0) {
+                                        targetsWrapper.appendChild(
+                                            this._createInlineSeparator(' / ')
+                                        );
+                                    }
+                                    const targetButton = this._buildCardPreviewButton(
+                                        cardItem.displayName,
+                                        cardItem.cardInfo,
+                                        cardItem.displayName
+                                    );
+                                    if (targetButton) {
+                                        targetsWrapper.appendChild(targetButton);
+                                    }
+                                });
+                            }
+
+                            if (assignment.targetFallbacks && assignment.targetFallbacks.length > 0) {
+                                const fallbackSpan = document.createElement('span');
+                                fallbackSpan.className = 'action-history-card-assignment-targets-text';
+                                fallbackSpan.textContent = assignment.targetFallbacks.join(', ');
+                                targetsWrapper.appendChild(fallbackSpan);
+                            }
+
+                            assignmentRow.appendChild(targetsWrapper);
+                        }
+
+                        assignmentsContainer.appendChild(assignmentRow);
                     });
-                    detailRow.appendChild(button);
+
+                    detailRow.appendChild(assignmentsContainer);
+                } else if (hasCardList) {
+                    const listContainer = document.createElement('div');
+                    listContainer.className = 'action-history-card-list';
+
+                    detail.cardList.forEach((cardItem, index) => {
+                        if (index > 0) {
+                            listContainer.appendChild(this._createInlineSeparator());
+                        }
+
+                        const fallbackText = cardItem.displayName || `Card ${index + 1}`;
+                        const button = this._buildCardPreviewButton(
+                            cardItem.displayName,
+                            cardItem.cardInfo,
+                            fallbackText
+                        );
+                        if (button) {
+                            listContainer.appendChild(button);
+                        }
+                    });
+
+                    detailRow.appendChild(listContainer);
+
+                    if (detail.extraValues && detail.extraValues.length > 0) {
+                        const extraSpan = document.createElement('span');
+                        extraSpan.className = 'action-history-detail-extra';
+                        extraSpan.textContent = detail.extraValues.join(', ');
+                        detailRow.appendChild(extraSpan);
+                    }
+                } else if (hasSingleCard) {
+                    const button = this._buildCardPreviewButton(
+                        detail.cardInfo.name || detail.value,
+                        detail.cardInfo,
+                        detail.value
+                    );
+                    if (button) {
+                        detailRow.appendChild(button);
+                    }
                 } else {
                     const valueSpan = document.createElement('span');
                     valueSpan.textContent = detail.value;
@@ -270,6 +384,19 @@ class UIActionHistory {
                 return;
             }
 
+            if (Array.isArray(value) && value.length > 0) {
+                const cardListDetail = this._buildCardListDetail(
+                    value,
+                    key,
+                    normalizedLabel,
+                    registerRef
+                );
+                if (cardListDetail) {
+                    items.push(cardListDetail);
+                    return;
+                }
+            }
+
             if (value && typeof value === 'object' && !Array.isArray(value)) {
                 const nestedRef = this._extractCardRefFromObject(value);
                 if (nestedRef) {
@@ -285,12 +412,27 @@ class UIActionHistory {
                     });
                     return;
                 }
+
+                const assignmentDetail = this._buildCardAssignmentDetail(
+                    value,
+                    key,
+                    normalizedLabel,
+                    registerRef
+                );
+                if (assignmentDetail) {
+                    items.push(assignmentDetail);
+                    return;
+                }
             }
 
             const detail = {
                 label: normalizedLabel,
                 value: this._formatValue(value)
             };
+
+            if (normalizedLabel && normalizedLabel.toLowerCase() === 'card') {
+                detail.hideLabel = true;
+            }
 
             if (ref) {
                 detail.cardRef = registerRef(ref);
@@ -340,6 +482,111 @@ class UIActionHistory {
         return { items, cardRefs };
     }
 
+    // ===== ENTRY METADATA =====
+
+    static _extractEntryMetadata(context) {
+        const metadata = {
+            phase: null,
+            turn: null,
+            turnPlayerId: null,
+            turnPlayerName: null,
+            turnPlayerLabel: null
+        };
+
+        const assignFromSource = (source) => {
+            if (!source || typeof source !== 'object') {
+                return;
+            }
+
+            if (!metadata.phase && typeof source.phase === 'string') {
+                metadata.phase = source.phase;
+            }
+
+            if (
+                (metadata.turn === null || Number.isNaN(metadata.turn)) &&
+                Object.prototype.hasOwnProperty.call(source, 'turn') &&
+                source.turn !== null &&
+                source.turn !== ''
+            ) {
+                const turnValue = Number(source.turn);
+                if (!Number.isNaN(turnValue)) {
+                    metadata.turn = turnValue;
+                }
+            }
+
+            const candidateId =
+                source.turn_player_id ||
+                source.active_player_id ||
+                source.turn_player;
+            if (!metadata.turnPlayerId && typeof candidateId === 'string') {
+                metadata.turnPlayerId = candidateId;
+            }
+
+            const candidateName =
+                source.turn_player_name ||
+                source.active_player_name;
+            if (!metadata.turnPlayerName && typeof candidateName === 'string') {
+                metadata.turnPlayerName = candidateName;
+            }
+        };
+
+        if (context && context.payload) {
+            assignFromSource(context.payload);
+        }
+
+        const shouldFallbackToState =
+            context &&
+            context.source === 'websocket' &&
+            (metadata.phase === null ||
+                metadata.turn === null ||
+                (!metadata.turnPlayerId && !metadata.turnPlayerName));
+
+        if (
+            shouldFallbackToState &&
+            typeof GameCore !== 'undefined' &&
+            typeof GameCore.getGameState === 'function'
+        ) {
+            const state = GameCore.getGameState();
+            if (state) {
+                if (!metadata.phase && state.phase) {
+                    metadata.phase = state.phase;
+                }
+                if (
+                    (metadata.turn === null || Number.isNaN(metadata.turn)) &&
+                    typeof state.turn === 'number'
+                ) {
+                    metadata.turn = state.turn;
+                }
+
+                if (
+                    (!metadata.turnPlayerId && !metadata.turnPlayerName) &&
+                    typeof state.active_player === 'number' &&
+                    Array.isArray(state.players)
+                ) {
+                    const activePlayer = state.players[state.active_player];
+                    if (activePlayer) {
+                        if (!metadata.turnPlayerId && activePlayer.id) {
+                            metadata.turnPlayerId = activePlayer.id;
+                        }
+                        if (!metadata.turnPlayerName && activePlayer.name) {
+                            metadata.turnPlayerName = activePlayer.name;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!metadata.turnPlayerLabel) {
+            if (metadata.turnPlayerName) {
+                metadata.turnPlayerLabel = metadata.turnPlayerName;
+            } else if (metadata.turnPlayerId) {
+                metadata.turnPlayerLabel = this._formatPlayer(metadata.turnPlayerId);
+            }
+        }
+
+        return metadata;
+    }
+
     static _registerCardRef(refs, ref) {
         if (!ref) {
             return null;
@@ -368,6 +615,10 @@ class UIActionHistory {
         }
 
         const normalized = String(action).toLowerCase();
+
+        if (normalized === 'preview_attackers' || normalized === 'preview_blockers') {
+            return true;
+        }
 
         if (normalized === 'flip_card') {
             return true;
@@ -524,10 +775,55 @@ class UIActionHistory {
         });
 
         entry.details.forEach((detail) => {
-            if (detail.cardRef && detail.cardRef.info) {
-                const info = detail.cardRef.info;
-                detail.value = info.name || detail.value;
-                detail.cardInfo = info;
+            if (detail.cardList && detail.cardList.length > 0) {
+                detail.cardList = detail.cardList
+                    .map((ref) => this._buildCardItemFromRef(ref))
+                    .filter(Boolean);
+                return;
+            }
+
+            if (detail.assignmentList && detail.assignmentList.length > 0) {
+                detail.assignmentList = detail.assignmentList
+                    .map((assignment) => {
+                        const source = this._buildCardItemFromRef(
+                            assignment.sourceRef,
+                            assignment.sourceFallback
+                        );
+
+                        const targets = (assignment.targetRefs || [])
+                            .map((ref) => this._buildCardItemFromRef(ref))
+                            .filter(Boolean);
+
+                        const targetFallbacks =
+                            assignment.targetFallbacks || [];
+
+                        if (
+                            !source &&
+                            targets.length === 0 &&
+                            targetFallbacks.length === 0
+                        ) {
+                            return null;
+                        }
+
+                        return {
+                            source,
+                            sourceFallback: assignment.sourceFallback || null,
+                            targets,
+                            targetFallbacks
+                        };
+                    })
+                    .filter(Boolean);
+                return;
+            }
+
+            if (detail.cardRef) {
+                const info =
+                    detail.cardRef.info ||
+                    this._buildFallbackInfoFromRef(detail.cardRef);
+                if (info) {
+                    detail.value = info.name || detail.value;
+                    detail.cardInfo = info;
+                }
             } else if (
                 detail.label &&
                 detail.label.toLowerCase().includes('card')
@@ -575,6 +871,55 @@ class UIActionHistory {
         }
 
         return null;
+    }
+
+    static _convertValueToCardRef(value, key = null) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+
+        if (typeof value === 'object') {
+            return this._extractCardRefFromObject(value);
+        }
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+
+            const derived = this._deriveCardRef(key, trimmed);
+            if (derived) {
+                return derived;
+            }
+
+            if (this._looksLikeCardUniqueId(trimmed)) {
+                return { uniqueId: trimmed };
+            }
+
+            if (/^\d+$/.test(trimmed)) {
+                return { cardId: trimmed };
+            }
+        }
+
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return { cardId: String(value) };
+        }
+
+        return null;
+    }
+
+    static _looksLikeCardUniqueId(value) {
+        if (!value || typeof value !== 'string') {
+            return false;
+        }
+
+        const trimmed = value.trim();
+        if (trimmed.length < 8) {
+            return false;
+        }
+
+        return /^[a-f0-9-]+$/i.test(trimmed);
     }
 
     static _extractCardRefFromObject(obj) {
@@ -660,6 +1005,113 @@ class UIActionHistory {
         return refs;
     }
 
+    static _buildCardListDetail(list, key, label, registerRef) {
+        if (!Array.isArray(list) || list.length === 0) {
+            return null;
+        }
+
+        const cardRefs = [];
+        const extraValues = [];
+
+        list.forEach((item) => {
+            const ref = this._convertValueToCardRef(item, key);
+            if (ref) {
+                const registered = registerRef(ref);
+                if (registered) {
+                    cardRefs.push(registered);
+                    return;
+                }
+            }
+
+            if (item !== null && item !== undefined && item !== '') {
+                extraValues.push(this._formatValue(item));
+            }
+        });
+
+        if (cardRefs.length === 0) {
+            return null;
+        }
+
+        const detail = {
+            label,
+            cardList: cardRefs,
+            hideLabel: true
+        };
+
+        if (extraValues.length > 0) {
+            detail.extraValues = extraValues;
+        }
+
+        return detail;
+    }
+
+    static _buildCardAssignmentDetail(obj, key, label, registerRef) {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+            return null;
+        }
+
+        const assignments = [];
+
+        Object.entries(obj).forEach(([sourceKey, targetValue]) => {
+            const sourceRef = this._convertValueToCardRef(
+                sourceKey,
+                `${key || 'assignment'}_source`
+            );
+            const registeredSource = sourceRef ? registerRef(sourceRef) : null;
+
+            const targets = Array.isArray(targetValue)
+                ? targetValue
+                : targetValue !== undefined
+                    ? [targetValue]
+                    : [];
+
+            const targetRefs = [];
+            const targetFallbacks = [];
+
+            targets.forEach((target) => {
+                const targetRef = this._convertValueToCardRef(
+                    target,
+                    `${key || 'assignment'}_target`
+                );
+                if (targetRef) {
+                    const registeredTarget = registerRef(targetRef);
+                    if (registeredTarget) {
+                        targetRefs.push(registeredTarget);
+                        return;
+                    }
+                }
+                if (target !== null && target !== undefined && target !== '') {
+                    targetFallbacks.push(this._formatValue(target));
+                }
+            });
+
+            if (
+                !registeredSource &&
+                targetRefs.length === 0 &&
+                targetFallbacks.length === 0
+            ) {
+                return;
+            }
+
+            assignments.push({
+                sourceRef: registeredSource,
+                sourceFallback: this._formatValue(sourceKey),
+                targetRefs,
+                targetFallbacks
+            });
+        });
+
+        if (assignments.length === 0) {
+            return null;
+        }
+
+        return {
+            label,
+            assignmentList: assignments,
+            hideLabel: true
+        };
+    }
+
     static _resolveCardInfo(ref) {
         if (ref.info) {
             return ref.info;
@@ -737,6 +1189,60 @@ class UIActionHistory {
         }
 
         return null;
+    }
+
+    static _buildFallbackInfoFromRef(ref) {
+        if (!ref) {
+            return null;
+        }
+
+        if (ref.info) {
+            return ref.info;
+        }
+
+        const info = {
+            name: this._formatCardName(
+                ref.name ||
+                    ref.cardId ||
+                    ref.uniqueId ||
+                    'Card'
+            ),
+            imageUrl: ref.imageUrl || ref.image_url || null,
+            cardId: ref.cardId || ref.card_id || null,
+            uniqueId: ref.uniqueId || ref.unique_id || null,
+            card_type: ref.cardType || ref.card_type || null,
+            cardType: ref.cardType || ref.card_type || null
+        };
+
+        ref.info = info;
+        return info;
+    }
+
+    static _buildCardItemFromRef(ref, fallbackValue = null) {
+        if (!ref) {
+            return null;
+        }
+
+        const info = ref.info || this._buildFallbackInfoFromRef(ref);
+        if (!info) {
+            return null;
+        }
+
+        const displayName =
+            info.name ||
+            this._formatCardName(
+                fallbackValue ||
+                    ref.cardId ||
+                    ref.name ||
+                    ref.uniqueId ||
+                    'Card'
+            );
+
+        return {
+            ref,
+            cardInfo: info,
+            displayName
+        };
     }
 
     static createCardInfoFromCard(card) {
@@ -880,6 +1386,286 @@ class UIActionHistory {
         return null;
     }
 
+    // ===== CARD PREVIEW UI HELPERS =====
+
+    static _buildCardPreviewButton(displayName, cardInfo, fallbackValue = '') {
+        if (
+            !displayName &&
+            !fallbackValue &&
+            !cardInfo
+        ) {
+            return null;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'action-history-card-link';
+        const content = displayName || fallbackValue || 'Card';
+        button.textContent = content;
+
+        this._attachCardPreviewHover(button, cardInfo, fallbackValue || content);
+        return button;
+    }
+
+    static _createInlineSeparator(text = ' | ') {
+        const separator = document.createElement('span');
+        separator.className = 'action-history-card-separator';
+        separator.textContent = text;
+        return separator;
+    }
+
+    static _createTurnSeparator(entry) {
+        const separator = document.createElement('div');
+        separator.className = 'action-history-turn-separator';
+
+        const text = document.createElement('span');
+        text.className = 'action-history-turn-text';
+        text.textContent = this._formatTurnLabel(entry);
+
+        separator.appendChild(text);
+        return separator;
+    }
+
+    static _buildTurnKey(entry) {
+        if (!entry || typeof entry.turn !== 'number' || Number.isNaN(entry.turn)) {
+            return null;
+        }
+        const playerKey =
+            entry.turnPlayerId ||
+            entry.turnPlayerLabel ||
+            entry.turnPlayerName ||
+            '';
+        return `${entry.turn}-${playerKey}`;
+    }
+
+    static _formatTurnLabel(entry) {
+        if (!entry) {
+            return 'Nouveau tour';
+        }
+
+        const parts = [];
+        if (typeof entry.turn === 'number' && !Number.isNaN(entry.turn)) {
+            parts.push(`Tour ${entry.turn}`);
+        }
+
+        if (entry.turnPlayerLabel) {
+            parts.push(entry.turnPlayerLabel);
+        } else if (entry.turnPlayerName) {
+            parts.push(entry.turnPlayerName);
+        } else if (entry.turnPlayerId) {
+            parts.push(this._formatPlayer(entry.turnPlayerId));
+        }
+
+        if (parts.length === 0) {
+            return 'Nouveau tour';
+        }
+
+        return parts.join(' • ');
+    }
+
+    static _attachCardPreviewHover(element, cardInfo, fallbackValue = '') {
+        if (!element) {
+            return;
+        }
+
+        const previewInfo =
+            cardInfo ||
+            this._buildPreviewInfoFromFallback(fallbackValue);
+
+        if (!previewInfo) {
+            return;
+        }
+
+        const showPreview = (event) => {
+            if (
+                typeof GameCards === 'undefined' ||
+                typeof GameCards.showCardPreview !== 'function'
+            ) {
+                return;
+            }
+
+            const payload = this._resolveCardPreviewPayload(previewInfo, fallbackValue);
+            if (!payload) {
+                return;
+            }
+
+            const pointerEvent = this._ensurePointerEvent(event, element);
+            GameCards.showCardPreview(
+                payload.cardId,
+                payload.cardName,
+                payload.previewImage,
+                pointerEvent,
+                payload.info
+            );
+        };
+
+        const movePreview = (event) => {
+            if (
+                typeof GameCards === 'undefined' ||
+                typeof GameCards.positionCardPreview !== 'function'
+            ) {
+                return;
+            }
+
+            if (
+                !event ||
+                typeof event.clientX !== 'number' ||
+                typeof event.clientY !== 'number'
+            ) {
+                return;
+            }
+
+            const preview = document.getElementById('card-preview-modal');
+            if (preview) {
+                GameCards.positionCardPreview(preview, event);
+            }
+        };
+
+        const closePreview = () => {
+            if (
+                typeof GameCards !== 'undefined' &&
+                typeof GameCards._closeActiveCardPreview === 'function'
+            ) {
+                GameCards._closeActiveCardPreview();
+            }
+        };
+
+        element.addEventListener('mouseenter', showPreview);
+        element.addEventListener('focus', showPreview);
+        element.addEventListener('mousemove', movePreview);
+        element.addEventListener('mouseleave', closePreview);
+        element.addEventListener('blur', closePreview);
+    }
+
+    static _resolveCardPreviewPayload(cardInfo, fallbackValue = '') {
+        if (!cardInfo) {
+            return null;
+        }
+
+        const info = cardInfo;
+        const ref = {
+            uniqueId: info.uniqueId || info.unique_id || null,
+            cardId: info.cardId || info.card_id || info.id || null,
+            name: info.name || fallbackValue || null
+        };
+        const cardElement = this._findCardElement(ref);
+        const previewImage =
+            info.imageUrl ||
+            info.image_url ||
+            (cardElement ? cardElement.getAttribute('data-card-image') : null) ||
+            null;
+
+        const cardId =
+            ref.cardId ||
+            (cardElement ? cardElement.getAttribute('data-card-id') : null) ||
+            ref.name ||
+            fallbackValue ||
+            null;
+
+        const cardName =
+            info.name ||
+            fallbackValue ||
+            cardId ||
+            'Card';
+
+        if (!cardId && !cardName && !previewImage) {
+            return null;
+        }
+
+        return {
+            info,
+            previewImage,
+            cardId,
+            cardName
+        };
+    }
+
+    static _ensurePointerEvent(event, element) {
+        if (
+            event &&
+            typeof event.clientX === 'number' &&
+            typeof event.clientY === 'number'
+        ) {
+            return event;
+        }
+
+        return this._buildElementPointerEvent(element);
+    }
+
+    static _buildElementPointerEvent(element) {
+        if (!element || typeof element.getBoundingClientRect !== 'function') {
+            return null;
+        }
+
+        const rect = element.getBoundingClientRect();
+        return {
+            clientX: rect.left + rect.width / 2,
+            clientY: rect.top + rect.height / 2
+        };
+    }
+
+    static _buildPreviewInfoFromFallback(value) {
+        if (!value) {
+            return null;
+        }
+
+        const info = {
+            name: this._formatCardName(value)
+        };
+
+        if (this._looksLikeCardUniqueId(value)) {
+            info.uniqueId = value;
+        } else if (/^\d+$/.test(value)) {
+            info.cardId = value;
+        }
+
+        return info;
+    }
+
+    // ===== ACTION PRESENTATION HELPERS =====
+
+    static _buildActionTitle(entry) {
+        if (!entry) {
+            return '';
+        }
+
+        const normalizedAction = entry.rawAction
+            ? String(entry.rawAction).toLowerCase()
+            : '';
+
+        if (normalizedAction === 'pass_phase') {
+            const phaseName = this._formatPhaseName(entry.phase);
+            if (phaseName) {
+                return `Phase suivante : ${phaseName}`;
+            }
+            return 'Phase suivante';
+        }
+
+        if (normalizedAction === 'change_phase') {
+            const phaseName = this._formatPhaseName(entry.phase);
+            if (phaseName) {
+                return `Phase forcée : ${phaseName}`;
+            }
+        }
+
+        return entry.action;
+    }
+
+    static _formatPhaseName(phase) {
+        if (!phase) {
+            return null;
+        }
+        const normalized = String(phase).toLowerCase();
+        const mapping = {
+            begin: 'Phase de début',
+            main1: 'Phase principale 1',
+            combat: 'Phase de combat',
+            main2: 'Phase principale 2',
+            end: 'Phase de fin'
+        };
+        return mapping[normalized] || this._formatLabel(phase);
+    }
+
     // ===== FORMATTING HELPERS =====
 
     static _normalizeTimestamp(timestamp) {
@@ -989,7 +1775,15 @@ class UIActionHistory {
             'action',
             'player',
             'timestamp',
-            'origin'
+            'origin',
+            'phase',
+            'turn',
+            'active_player',
+            'active_player_id',
+            'active_player_name',
+            'turn_player',
+            'turn_player_id',
+            'turn_player_name'
         ]);
 
         const cleaned = {};
