@@ -919,8 +919,20 @@ const GameCards = {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
         const isTargeted = cardElement.classList.contains('targeted');
-        const normalizedZone = (cardZone || '').toLowerCase();
+        let normalizedZone = (cardZone || '').toLowerCase();
+        if (normalizedZone.startsWith('opponent_')) {
+            normalizedZone = normalizedZone.replace('opponent_', '');
+        }
         const isBattlefieldZone = ['battlefield', 'permanents', 'lands', 'creatures', 'support'].includes(normalizedZone);
+        const cardOwnerId = cardElement.getAttribute('data-card-owner') || '';
+        const jsCardOwnerId = JSON.stringify(cardOwnerId || '');
+        const selectedPlayer = (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+            ? GameCore.getSelectedPlayer()
+            : null;
+        const isSpectator = selectedPlayer === 'spectator';
+        const canControlZones = selectedPlayer === 'player1' || selectedPlayer === 'player2';
+        const opponentPlayableZones = ['graveyard', 'exile', 'reveal', 'reveal_zone'];
+        const canPlayOpponentCard = canControlZones && !isSpectator && isOpponent && opponentPlayableZones.includes(normalizedZone);
 
         const safeCardName = GameUtils.escapeHtml(cardName || 'Unknown');
         const safeCardImage = GameUtils.escapeHtml(cardImage || '');
@@ -1014,6 +1026,17 @@ const GameCards = {
                 menuHTML += `<div class="card-context-menu-divider"></div>`;
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.returnAllRevealToHand()`)}"><span class="icon">👋</span> Return all to Hand</div>`;
             }
+        }
+
+        if (canPlayOpponentCard) {
+            const zoneLabels = {
+                graveyard: 'Graveyard',
+                exile: 'Exile',
+                reveal: 'Reveal',
+                reveal_zone: 'Reveal'
+            };
+            const zoneLabel = zoneLabels[normalizedZone] || 'Zone';
+            menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playOpponentCardFromZone(${jsCardId}, ${jsUniqueCardId}, ${jsCardZone}, ${jsCardOwnerId})`)}"><span class="icon">🪄</span> Play from ${zoneLabel}</div>`;
         }
 
         menuHTML += `</div>`;

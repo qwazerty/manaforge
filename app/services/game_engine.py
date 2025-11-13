@@ -1194,13 +1194,20 @@ class SimpleGameEngine:
         """
         unique_id = action.additional_data.get("unique_id")
         player_id = action.player_id
+        source_player_id = action.additional_data.get("source_player_id") or player_id
+        destination_player_id = action.additional_data.get("destination_player_id") or player_id
 
         if not unique_id:
             raise ValueError(
                 f"unique_id is required for moving a card to {destination_zone_name}"
             )
 
-        player = self._get_player(game_state, player_id)
+        acting_player_index = self._get_player_index(game_state, player_id)
+        if acting_player_index is None:
+            raise ValueError(f"Player index for acting player {player_id} not found")
+
+        source_player = self._get_player(game_state, source_player_id)
+        destination_player = self._get_player(game_state, destination_player_id)
 
         source_zone_name = self._normalize_zone_name(source_zone_name)
         destination_zone_name = self._normalize_zone_name(destination_zone_name)
@@ -1213,10 +1220,6 @@ class SimpleGameEngine:
                 position_index = None
 
         card_found = None
-        
-        player_index = self._get_player_index(game_state, player_id)
-        if player_index is None:
-            raise ValueError(f"Player index for {player_id} not found")
 
         if source_zone_name == "stack":
             for i, spell in enumerate(game_state.stack):
@@ -1225,7 +1228,7 @@ class SimpleGameEngine:
                     break
         else:
             source_zone_list = self._get_zone_list(
-                game_state, player, source_zone_name
+                game_state, source_player, source_zone_name
             )
             for i, card in enumerate(source_zone_list):
                 if card.unique_id == unique_id:
@@ -1235,15 +1238,24 @@ class SimpleGameEngine:
         if not card_found:
             raise ValueError(
                 f"Card with unique_id {unique_id} not found in "
-                f"{source_zone_name} for player {player_id}"
+                f"{source_zone_name} for player {source_player_id}"
             )
+
+        owner_locked_zones = {"graveyard", "exile", "library"}
+        if destination_zone_name in owner_locked_zones and card_found.owner_id:
+            try:
+                owner_player = self._get_player(game_state, card_found.owner_id)
+                destination_player = owner_player
+                destination_player_id = owner_player.id
+            except ValueError:
+                pass
 
         if destination_zone_name == "stack":
             game_state.stack.append(card_found)
             self._update_priority_from_stack(game_state)
         else:
             destination_zone_list = self._get_zone_list(
-                game_state, player, destination_zone_name
+                game_state, destination_player, destination_zone_name
             )
             
             if destination_zone_name in ["graveyard", "exile", "library", "reveal_zone", "commander_zone"]:
@@ -1268,8 +1280,9 @@ class SimpleGameEngine:
                 destination_zone_list.append(card_found)
         
         print(
-            f"Card {card_found.name} moved from {source_zone_name} to "
-            f"{destination_zone_name} for player {player_id}"
+            f"Card {card_found.name} moved from {source_zone_name} "
+            f"(player {source_player_id}) to {destination_zone_name} "
+            f"(player {destination_player_id}) by action from {player_id}"
         )
 
     def _normalize_zone_name(self, zone_name: str) -> str:
