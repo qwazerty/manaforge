@@ -1663,7 +1663,7 @@ class UIActionHistory {
             ? String(entry.rawAction).toLowerCase()
             : '';
 
-        if (normalizedAction === 'pass_phase' || normalizedAction === 'phase_transition') {
+        if (normalizedAction === 'pass_phase') {
             const phaseName = this._formatPhaseName(entry.phase);
             return phaseName || entry.action;
         }
