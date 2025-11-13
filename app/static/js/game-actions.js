@@ -941,6 +941,53 @@ function adjustCommanderTax(playerId, amount) {
     GameUI.showNotification(`${playerId}: Commander tax ${signedAmount}`, tone);
 }
 
+function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayerId = null) {
+    const currentPlayer = (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+        ? GameCore.getSelectedPlayer()
+        : null;
+
+    if (!currentPlayer || !['player1', 'player2'].includes(currentPlayer)) {
+        GameUI.showNotification('Select a player seat to play opponent cards', 'warning');
+        return;
+    }
+
+    if (!cardId || !uniqueCardId) {
+        GameUI.showNotification('Unable to identify the selected card', 'error');
+        return;
+    }
+
+    const normalizedSourceZone = typeof sourceZone === 'string'
+        ? sourceZone.toLowerCase()
+        : 'graveyard';
+    const baseSourceZone = normalizedSourceZone.startsWith('opponent_')
+        ? normalizedSourceZone.replace('opponent_', '')
+        : normalizedSourceZone;
+    const resolvedSourcePlayerId = sourcePlayerId || (currentPlayer === 'player1' ? 'player2' : 'player1');
+
+    moveCard(
+        cardId,
+        baseSourceZone,
+        'battlefield',
+        uniqueCardId,
+        null,
+        null,
+        null,
+        {
+            sourcePlayerId: resolvedSourcePlayerId,
+            destinationPlayerId: currentPlayer
+        }
+    );
+
+    const zoneLabels = {
+        graveyard: 'graveyard',
+        exile: 'exile',
+        reveal: 'reveal zone',
+        reveal_zone: 'reveal zone'
+    };
+    const zoneLabel = zoneLabels[baseSourceZone] || 'zone';
+    GameUI.showNotification(`Playing opponent's card from ${zoneLabel}`, 'info');
+}
+
 // Export actions module functionality
 window.GameActions = {
     performGameAction,
@@ -967,6 +1014,7 @@ window.GameActions = {
     drawCard,
     modifyLife,
     adjustCommanderTax,
+    playOpponentCardFromZone,
     moveCard,
     duplicateCard,
     moveAllHandToReveal,
@@ -977,7 +1025,7 @@ window.GameActions = {
  * Déplacement générique d'une carte entre zones via drag and drop.
  * Utilise les API existantes selon la zone cible.
  */
-function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null, positionIndex = null) {
+function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null, positionIndex = null, options = null) {
     // Close hover preview when moving a card
     if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
         GameCards._closeActiveCardPreview();
@@ -989,6 +1037,15 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
         target_zone: targetZone,
         unique_id: uniqueCardId,
     };
+
+    if (options && typeof options === 'object') {
+        if (options.sourcePlayerId) {
+            actionData.source_player_id = options.sourcePlayerId;
+        }
+        if (options.destinationPlayerId) {
+            actionData.destination_player_id = options.destinationPlayerId;
+        }
+    }
 
     if (deckPosition) {
         actionData.deck_position = deckPosition;

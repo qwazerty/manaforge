@@ -393,6 +393,8 @@ async def handle_move_card(
 
     deck_position = request.get("deck_position")
     position_index = request.get("position_index")
+    source_player_id = request.get("source_player_id")
+    destination_player_id = request.get("destination_player_id")
 
     additional_data = {
         "source_zone": source_zone,
@@ -413,6 +415,14 @@ async def handle_move_card(
     if position_index is not None:
         additional_data["position_index"] = position_index
         broadcast_data["position_index"] = position_index
+
+    if source_player_id:
+        additional_data["source_player_id"] = source_player_id
+        broadcast_data["source_player_id"] = source_player_id
+
+    if destination_player_id:
+        additional_data["destination_player_id"] = destination_player_id
+        broadcast_data["destination_player_id"] = destination_player_id
 
     return {
         "card_id": card_id,
