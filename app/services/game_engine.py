@@ -689,8 +689,22 @@ class SimpleGameEngine:
         history_entry = dict(entry)
         history_entry.setdefault("timestamp", time.time())
         current_phase = getattr(game_state.phase, "value", game_state.phase)
-        if current_phase and not history_entry.get("phase"):
-            history_entry["phase"] = current_phase
+        if current_phase:
+            history_entry.setdefault("phase", current_phase)
+
+        turn_value = getattr(game_state, "turn", None)
+        if isinstance(turn_value, int):
+            history_entry.setdefault("turn", turn_value)
+
+        active_index = getattr(game_state, "active_player", None)
+        players = getattr(game_state, "players", [])
+        if (
+            isinstance(active_index, int)
+            and 0 <= active_index < len(players)
+        ):
+            active_player = players[active_index]
+            history_entry.setdefault("turn_player_id", getattr(active_player, "id", None))
+            history_entry.setdefault("turn_player_name", getattr(active_player, "name", None))
 
         history = game_state.action_history
         history.append(history_entry)
