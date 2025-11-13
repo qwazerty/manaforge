@@ -248,12 +248,7 @@ async function initializeGame() {
         }
     });
     
-    // Keyboard shortcuts for testing (optional)
-    document.addEventListener('keydown', function(e) {
-        if (e.key === '1') GameActions.changePlayer('player1');
-        if (e.key === '2') GameActions.changePlayer('player2');
-        if (e.key === '3') GameActions.changePlayer('spectator');
-    });
+    // Keyboard shortcuts for changing players have been disabled to prevent accidental toggles.
 }
 
 // ===== GAME STATE LOADING =====
