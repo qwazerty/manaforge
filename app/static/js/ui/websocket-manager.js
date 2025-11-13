@@ -122,31 +122,35 @@ class WebSocketManager {
                 const newGameState = message.game_state;
                 const currentGameState = GameCore.getGameState();
                 const actionResult = message.action_result;
-                const isLocalPreviewUpdate = Boolean(
+                const isPreviewUpdate = Boolean(
                     actionResult &&
-                    (actionResult.action === 'preview_attackers' || actionResult.action === 'preview_blockers') &&
-                    actionResult.player === GameCore.getSelectedPlayer()
+                    (actionResult.action === 'preview_attackers' || actionResult.action === 'preview_blockers')
                 );
                 
                 if (JSON.stringify(newGameState) !== JSON.stringify(currentGameState)) {
                     const oldGameState = currentGameState;
                     GameCore.setGameState(newGameState);
-                    if (!isLocalPreviewUpdate) {
-                        this._refreshGameUI();
-                    } else if (window.GameCombat && newGameState?.combat_state) {
+                    let handledPreview = false;
+                    if (isPreviewUpdate && window.GameCombat && newGameState?.combat_state) {
                         const combatState = newGameState.combat_state;
                         if (actionResult.action === 'preview_attackers') {
                             const pendingAttackers = Array.isArray(combatState.pending_attackers)
                                 ? combatState.pending_attackers
                                 : [];
                             window.GameCombat.applyPendingAttackerVisuals(pendingAttackers);
+                            handledPreview = true;
                         } else if (actionResult.action === 'preview_blockers') {
                             const pendingBlockers =
                                 combatState.pending_blockers && typeof combatState.pending_blockers === 'object'
                                     ? combatState.pending_blockers
                                     : {};
                             window.GameCombat.applyPendingBlockerVisuals(pendingBlockers);
+                            handledPreview = true;
                         }
+                    }
+
+                    if (!handledPreview) {
+                        this._refreshGameUI();
                     }
 
                     const oldPhase = oldGameState?.phase;
