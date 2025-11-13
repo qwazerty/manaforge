@@ -375,6 +375,36 @@ class UIActionHistory {
             }
 
             const normalizedLabel = label ? this._formatLabel(label) : '';
+            const normalizedKey = key ? String(key).toLowerCase() : '';
+
+            if (
+                normalizedKey === 'attacking_creatures' &&
+                Array.isArray(value) &&
+                value.length === 0
+            ) {
+                items.push({
+                    label: '',
+                    value: 'None',
+                    hideLabel: true
+                });
+                return;
+            }
+
+            if (
+                normalizedKey === 'blocking_assignments' &&
+                value &&
+                typeof value === 'object' &&
+                !Array.isArray(value) &&
+                Object.keys(value).length === 0
+            ) {
+                items.push({
+                    label: '',
+                    value: 'None',
+                    hideLabel: true
+                });
+                return;
+            }
+
             const ref = this._deriveCardRef(key ?? label, value);
 
             if (this._shouldSkipDetailLabel(key ?? label)) {
@@ -1635,10 +1665,7 @@ class UIActionHistory {
 
         if (normalizedAction === 'pass_phase') {
             const phaseName = this._formatPhaseName(entry.phase);
-            if (phaseName) {
-                return `Phase suivante : ${phaseName}`;
-            }
-            return 'Phase suivante';
+            return phaseName || entry.action;
         }
 
         if (normalizedAction === 'change_phase') {
@@ -1657,11 +1684,11 @@ class UIActionHistory {
         }
         const normalized = String(phase).toLowerCase();
         const mapping = {
-            begin: 'Phase de début',
-            main1: 'Phase principale 1',
-            combat: 'Phase de combat',
-            main2: 'Phase principale 2',
-            end: 'Phase de fin'
+            begin: 'Beginning Phase',
+            main1: 'Main Phase 1',
+            combat: 'Combat Phase',
+            main2: 'Main Phase 2',
+            end: 'Ending Phase'
         };
         return mapping[normalized] || this._formatLabel(phase);
     }
