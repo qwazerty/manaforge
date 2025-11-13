@@ -697,6 +697,27 @@ async def handle_create_token(
         },
     }
 
+@action_registry.register("delete_token", required_fields=["unique_id"])
+async def handle_delete_token(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle deleting a token from the battlefield."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for delete_token"
+        )
+
+    unique_id = request.get("unique_id")
+
+    return {
+        "additional_data": {
+            "unique_id": unique_id,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+        },
+    }
+
 @action_registry.register("declare_attackers", required_fields=["attacking_creatures"])
 async def handle_declare_attackers(
     game_id: str, request: Optional[Dict], current_state: GameState

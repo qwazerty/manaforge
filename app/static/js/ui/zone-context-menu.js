@@ -176,23 +176,36 @@ class ZoneContextMenu {
      * Position menu near cursor
      */
     static positionMenu(menu, event) {
-        const rect = menu.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+        // Adjust placement so the menu stays within the viewport bounds.
+        const updatePosition = () => {
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
 
-        let x = event.clientX;
-        let y = event.clientY;
+            let x = event.clientX;
+            let y = event.clientY;
 
-        // Adjust if menu would go off-screen
-        if (x + rect.width > viewportWidth) {
-            x = viewportWidth - rect.width - 10;
-        }
-        if (y + rect.height > viewportHeight) {
-            y = viewportHeight - rect.height - 10;
-        }
+            if (x + menuWidth > viewportWidth - 10) {
+                x = Math.max(10, viewportWidth - menuWidth - 10);
+            }
+            if (y + menuHeight > viewportHeight - 10) {
+                y = Math.max(10, viewportHeight - menuHeight - 10);
+            }
 
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
+            if (x < 10) {
+                x = 10;
+            }
+            if (y < 10) {
+                y = 10;
+            }
+
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+        };
+
+        updatePosition();
+        requestAnimationFrame(updatePosition);
     }
 
     /**

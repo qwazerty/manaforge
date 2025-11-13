@@ -475,6 +475,14 @@ async function performHttpGameAction(actionType, actionData = {}) {
                     ...actionData
                 };
                 break;
+            case 'delete_token':
+                endpoint = `/api/v1/games/${gameId}/action`;
+                requestData = {
+                    action_type: 'delete_token',
+                    player_id: currentSelectedPlayer,
+                    ...actionData
+                };
+                break;
             case 'move_card':
                 endpoint = `/api/v1/games/${gameId}/move-card`;
                 break;
@@ -687,6 +695,17 @@ function sendToTopLibrary(cardId, sourceZone, uniqueCardId = null, callback = nu
 
 function sendToBottomLibrary(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'library', uniqueCardId, 'bottom', callback);
+}
+
+function deleteToken(uniqueCardId, cardName = 'Token') {
+    if (!uniqueCardId) {
+        GameUI.showNotification('Token introuvable', 'error');
+        return;
+    }
+
+    performGameAction('delete_token', { unique_id: uniqueCardId });
+    const label = cardName || 'Token';
+    GameUI.showNotification(`${label} supprimé`, 'info');
 }
 
 function millTopLibraryCard() {
@@ -939,6 +958,7 @@ window.GameActions = {
     sendToHand,
     sendToTopLibrary,
     sendToBottomLibrary,
+    deleteToken,
     millTopLibraryCard,
     updateCardTappedState,
     resolveStackSpell,

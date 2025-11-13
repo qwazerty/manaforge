@@ -1174,6 +1174,8 @@
         transform: scale(0.9);
         backdrop-filter: blur(8px);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
     }
 
     .zone-context-menu.active {
