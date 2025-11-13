@@ -166,7 +166,10 @@ class WebSocketManager {
                     }
                     
                     // Check for combat changes
-                    if (window.GameCombat && newGameState.phase === 'combat') {
+                    if (
+                        window.GameCombat &&
+                        ['attack', 'block', 'damage'].includes(newGameState.phase)
+                    ) {
                         this._handleCombatStateUpdate(oldGameState, newGameState, message.action_result);
                     }
                     
@@ -354,9 +357,13 @@ class WebSocketManager {
         UIZonesManager.updateZoneCounts();
         UIZonesManager.refreshOpenZonePopups(GameCore.getGameState());
         
-        // Redraw combat arrows if in combat phase
+        // Redraw combat arrows if in a combat window
         const gameState = GameCore.getGameState();
-        if (gameState && gameState.phase === 'combat' && window.GameCombat) {
+        if (
+            gameState &&
+            ['attack', 'block', 'damage'].includes(gameState.phase) &&
+            window.GameCombat
+        ) {
             setTimeout(() => {
                 this._redrawCombatArrows(gameState);
             }, 100);

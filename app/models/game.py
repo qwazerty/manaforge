@@ -163,7 +163,9 @@ class GamePhase(str, Enum):
     """Simplified game phases like Magic Arena."""
     BEGIN = "begin"
     MAIN1 = "main1"
-    COMBAT = "combat"
+    ATTACK = "attack"
+    BLOCK = "block"
+    DAMAGE = "damage"
     MAIN2 = "main2"
     END = "end"
 
