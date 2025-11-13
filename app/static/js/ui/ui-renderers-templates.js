@@ -270,7 +270,7 @@ class UIRenderersTemplates {
         return `
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
-                ${this._generateGamePhases(currentPhase)}
+                ${this._generateGamePhases(currentPhase, { combatState })}
                 <div class="text-center text-xs text-arena-muted mb-3">
                     Phase Mode: ${phaseModeLabel}
                 </div>
@@ -297,7 +297,7 @@ class UIRenderersTemplates {
         return `
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
-                ${this._generateGamePhases(currentPhase, { readOnly: true })}
+                ${this._generateGamePhases(currentPhase, { readOnly: true, combatState: gameState.combat_state })}
                 <div class="text-center py-6 border-t border-arena-accent/10">
                     <div class="text-3xl mb-2 leading-none">👁️</div>
                     <div class="text-arena-accent font-semibold mb-1">Spectator Mode</div>
@@ -546,29 +546,118 @@ class UIRenderersTemplates {
      * Generate game phases indicator
      */
     static _generateGamePhases(currentPhase, options = {}) {
-        const { readOnly = false } = options;
+        const {
+            readOnly = false,
+            combatState = null
+        } = options;
+
+        const phases = [
+            { id: 'begin', name: 'Begin', icon: '🔄', type: 'phase' },
+            { id: 'main1', name: 'Main 1', icon: '🎯', type: 'phase' },
+            {
+                id: 'combat_attack',
+                name: 'Attack',
+                icon: '⚔️',
+                type: 'combat',
+                step: 'declare_attackers',
+                targetPhase: 'combat'
+            },
+            {
+                id: 'combat_block',
+                name: 'Block',
+                icon: '🛡️',
+                type: 'combat',
+                step: 'declare_blockers',
+                targetPhase: 'combat'
+            },
+            {
+                id: 'combat_damage',
+                name: 'Damage',
+                icon: '💥',
+                type: 'combat',
+                step: 'combat_damage',
+                targetPhase: 'combat'
+            },
+            { id: 'main2', name: 'Main 2', icon: '✨', type: 'phase' },
+            { id: 'end', name: 'End', icon: '🏁', type: 'phase' }
+        ];
+
+        const resolveCurrentTracker = () => {
+            if (currentPhase !== 'combat') {
+                return currentPhase;
+            }
+            const stepId = (combatState?.step || 'declare_attackers').toLowerCase();
+            if (stepId === 'declare_blockers') {
+                return 'combat_block';
+            }
+            if (stepId === 'combat_damage' || stepId === 'end_of_combat') {
+                return 'combat_damage';
+            }
+            return 'combat_attack';
+        };
+
+        const currentTrackerId = resolveCurrentTracker();
+        const activeIndex = Math.max(
+            phases.findIndex(phase => phase.id === currentTrackerId),
+            0
+        );
+
+        const itemTemplate = phases.map((phase, index) => {
+            const targetPhase = phase.targetPhase || phase.id;
+            const isUnderlyingCurrent = currentPhase === targetPhase;
+            const timelineState = index < activeIndex
+                ? 'completed'
+                : index === activeIndex
+                    ? 'current'
+                    : 'upcoming';
+
+            let stateClasses = '';
+            if (timelineState === 'current') {
+                stateClasses = 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 shadow';
+            } else if (timelineState === 'completed') {
+                stateClasses = readOnly
+                    ? 'text-green-300 border border-green-500/20'
+                    : 'text-green-200 border border-green-500/30';
+            } else {
+                stateClasses = readOnly
+                    ? 'text-arena-text-dim border border-transparent'
+                    : 'text-arena-text-dim border border-transparent';
+            }
+
+            if (phase.type === 'combat' && timelineState === 'upcoming') {
+                stateClasses += ' border-dashed';
+            }
+
+            const isInteractive = !readOnly && !isUnderlyingCurrent;
+            const onClickAttr = isInteractive
+                ? `onclick="GameActions.changePhase('${targetPhase}')"`
+                : '';
+
+            let interactionClasses = isInteractive ? 'cursor-pointer' : 'cursor-default';
+            if (isInteractive) {
+                interactionClasses += timelineState === 'completed'
+                    ? ' hover:border-green-400/50 hover:text-green-100'
+                    : ' hover:text-arena-text hover:border-yellow-500/30';
+            }
+
+            const titleText = phase.type === 'combat'
+                ? `${phase.name} (Combat Step)`
+                : `${phase.name} Phase`;
+
+            return `
+                <div class="text-center py-2 px-1 rounded transition-all duration-200 ${stateClasses} ${interactionClasses}"
+                    title="${titleText}"
+                    ${onClickAttr}>
+                    <div class="text-lg mb-1 leading-none">${phase.icon}</div>
+                    <div class="text-xs font-medium leading-tight">${phase.name}</div>
+                </div>
+            `;
+        }).join('');
+
         return `
             <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
-                <div class="grid grid-cols-5 gap-1">
-                    ${UIConfig.GAME_PHASES.map(phase => {
-                        const isCurrent = currentPhase === phase.id;
-                        const stateClasses = isCurrent
-                            ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300'
-                            : readOnly
-                                ? 'text-arena-text-dim'
-                                : 'text-arena-text-dim hover:text-arena-text hover:border-yellow-500/30 cursor-pointer';
-                        const onClickAttr = isCurrent || readOnly
-                            ? ''
-                            : `onclick="GameActions.changePhase('${phase.id}')"`; 
-                        return `
-                            <div class="text-center py-2 px-1 rounded transition-all duration-200 border border-transparent ${stateClasses}"
-                                title="${phase.name} Phase"
-                                ${onClickAttr}>
-                                <div class="text-lg mb-1 leading-none">${phase.icon}</div>
-                                <div class="text-xs font-medium leading-tight">${phase.name}</div>
-                            </div>
-                        `;
-                    }).join('')}
+                <div class="grid grid-cols-7 gap-1">
+                    ${itemTemplate}
                 </div>
             </div>
         `;
