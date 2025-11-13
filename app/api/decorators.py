@@ -29,6 +29,27 @@ async def broadcast_game_update(
             action_entry = dict(action_info)
             action_entry.setdefault("timestamp", time.time())
             action_entry.setdefault("origin", "server")
+
+            phase_value = getattr(game_state, 'phase', None)
+            if phase_value is not None:
+                action_entry.setdefault(
+                    "phase",
+                    getattr(phase_value, "value", str(phase_value))
+                )
+
+            turn_value = getattr(game_state, 'turn', None)
+            if turn_value is not None:
+                action_entry.setdefault("turn", turn_value)
+
+            active_index = getattr(game_state, 'active_player', None)
+            if (
+                isinstance(active_index, int) and
+                0 <= active_index < len(getattr(game_state, 'players', []))
+            ):
+                active_player = game_state.players[active_index]
+                action_entry.setdefault("turn_player_id", getattr(active_player, 'id', None))
+                action_entry.setdefault("turn_player_name", getattr(active_player, 'name', None))
+
             game_engine.record_action_history(game_id, action_entry)
             message["action_result"] = action_entry
         

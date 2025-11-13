@@ -390,7 +390,7 @@ class WebSocketManager {
         if (typeof UIActionHistory === 'undefined' || !actionResult) {
             return;
         }
-        UIActionHistory.addFromActionResult(actionResult);
+        UIActionHistory.addFromActionResult(actionResult, { source: 'websocket' });
     }
 
     static _recordActionFailure(action, message, player = null) {
