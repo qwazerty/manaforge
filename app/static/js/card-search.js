@@ -271,7 +271,7 @@ class CardSearchModal {
         const cardsList = cards.map((card, index) => {
             return `
                 <div class="card-result-item cursor-pointer transition-all hover:scale-105 border-2 border-transparent ${index === this.selectedIndex ? 'border-blue-400 scale-105' : ''}" 
-                     data-index="${index}" data-card='${JSON.stringify(card)}'>
+                     data-index="${index}">
                     
                     <!-- Card Image Only -->
                     <div class="w-40 h-56 rounded-lg bg-gray-600 overflow-hidden shadow-lg">
@@ -306,8 +306,12 @@ class CardSearchModal {
         // Add click handlers to results
         resultsContainer.querySelectorAll('.card-result-item').forEach(result => {
             result.addEventListener('click', (e) => {
-                const cardData = JSON.parse(e.currentTarget.dataset.card);
-                this.addCardToGame(cardData);
+                const cardIndex = parseInt(e.currentTarget.dataset.index, 10);
+                if (!Number.isNaN(cardIndex) && this.currentResults[cardIndex]) {
+                    this.addCardToGame(this.currentResults[cardIndex]);
+                } else {
+                    console.warn('Invalid card index from search results', cardIndex);
+                }
             });
         });
     }
