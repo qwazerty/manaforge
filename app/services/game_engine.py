@@ -25,17 +25,36 @@ class SimpleGameEngine:
         GamePhase.BLOCK,
         GamePhase.DAMAGE
     }
+    PHASE_TRANSITION_ACTION = "phase_transition"
+    PHASES_WITH_ENGINE_HISTORY = {
+        GamePhase.ATTACK,
+        GamePhase.BLOCK,
+        GamePhase.DAMAGE,
+        GamePhase.MAIN2
+    }
     
     def __init__(self):
         self.games: dict[str, GameState] = {}
         self.game_setups: dict[str, GameSetupStatus] = {}
         self._pending_decks: dict[str, dict[str, Deck]] = {}
 
-    def _set_phase(self, game_state: GameState, new_phase: GamePhase) -> None:
+    def _set_phase(
+        self,
+        game_state: GameState,
+        new_phase: GamePhase,
+        *,
+        log_phase_entry: bool = True
+    ) -> None:
         """Centralized phase setter that manages combat transitions."""
         previous_phase = game_state.phase
         game_state.phase = new_phase
         self._handle_phase_transition(game_state, previous_phase, new_phase)
+
+        if (
+            log_phase_entry
+            and self._should_log_phase_transition(previous_phase, new_phase)
+        ):
+            self._log_phase_history_entry(game_state, new_phase)
 
     def _log_phase_history_entry(
         self,
@@ -55,7 +74,7 @@ class SimpleGameEngine:
         entry_player = target_player or "system"
         phase_value = getattr(phase, "value", str(phase))
         entry = {
-            "action": "pass_phase",
+            "action": self.PHASE_TRANSITION_ACTION,
             "player": entry_player,
             "success": True,
             "phase": phase_value,
@@ -63,6 +82,36 @@ class SimpleGameEngine:
         }
 
         self.record_action_history(game_state.id, entry)
+
+    def _should_log_phase_transition(
+        self,
+        previous_phase: Optional[GamePhase],
+        new_phase: GamePhase
+    ) -> bool:
+        target_phase = self._coerce_phase(new_phase)
+        if not target_phase or target_phase not in self.PHASES_WITH_ENGINE_HISTORY:
+            return False
+
+        prior_phase = self._coerce_phase(previous_phase)
+        return prior_phase != target_phase
+
+    def remove_pending_phase_history_entry(
+        self,
+        game_state: GameState,
+        phase: GamePhase | str
+    ) -> None:
+        """Drop the latest engine-generated phase entry if it matches phase."""
+        if not game_state or not game_state.action_history:
+            return
+
+        phase_value = getattr(phase, "value", phase)
+        last_entry = game_state.action_history[-1]
+        if (
+            last_entry.get("origin") == "engine"
+            and last_entry.get("action") == self.PHASE_TRANSITION_ACTION
+            and last_entry.get("phase") == phase_value
+        ):
+            game_state.action_history.pop()
 
     def _coerce_phase(self, phase):  # Helper to normalize phase inputs
         if isinstance(phase, GamePhase):
@@ -112,8 +161,11 @@ class SimpleGameEngine:
             else:
                 self._set_combat_step_for_phase(game_state, coerced_new)
         else:
-            game_state.combat_state.step = CombatStep.NONE
-            game_state.combat_state.expected_player = None
+            combat_state = game_state.combat_state
+            if combat_state:
+                combat_state.step = CombatStep.NONE
+                combat_state.expected_player = None
+
 
     def _start_combat_phase(self, game_state: GameState) -> None:
         """Initialize combat sub-step tracking when entering combat."""
@@ -192,7 +244,6 @@ class SimpleGameEngine:
         """Finish combat and advance to Main Phase 2 if applicable."""
         if self._is_combat_phase(game_state.phase):
             self._set_phase(game_state, GamePhase.MAIN2)
-            self._log_phase_history_entry(game_state, GamePhase.MAIN2)
         else:
             self._cleanup_combat_state(game_state)
 
