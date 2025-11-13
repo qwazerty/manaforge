@@ -50,15 +50,6 @@ async def broadcast_game_update(
                 action_entry.setdefault("turn_player_id", getattr(active_player, 'id', None))
                 action_entry.setdefault("turn_player_name", getattr(active_player, 'name', None))
 
-            # if (
-            #     action_entry.get("action") in {"pass_phase", "change_phase"}
-            #     and action_entry.get("phase")
-            # ):
-            #     game_engine.remove_pending_phase_history_entry(
-            #         game_state,
-            #         action_entry["phase"]
-            #     )
-
             game_engine.record_action_history(game_id, action_entry)
             message["action_result"] = action_entry
         

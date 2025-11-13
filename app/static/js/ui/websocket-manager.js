@@ -8,7 +8,6 @@ class WebSocketManager {
     static websocket = null;
     static gameId = null;
     static isPageVisible = true;
-    static lastHistorySignature = null;
 
     // ===== MAIN WEBSOCKET FUNCTIONALITY =====
     
@@ -128,11 +127,9 @@ class WebSocketManager {
                     (actionResult.action === 'preview_attackers' || actionResult.action === 'preview_blockers')
                 );
                 
-                let historyWasSynced = false;
                 if (JSON.stringify(newGameState) !== JSON.stringify(currentGameState)) {
                     const oldGameState = currentGameState;
                     GameCore.setGameState(newGameState);
-                    historyWasSynced = WebSocketManager._syncActionHistoryFromState(newGameState);
                     let handledPreview = false;
                     if (isPreviewUpdate && window.GameCombat && newGameState?.combat_state) {
                         const combatState = newGameState.combat_state;
@@ -191,7 +188,7 @@ class WebSocketManager {
                     }
                 }
 
-                if (actionResult && !historyWasSynced) {
+                if (actionResult) {
                     WebSocketManager._recordActionResult(actionResult);
                 }
                 break;
@@ -419,37 +416,6 @@ class WebSocketManager {
             return;
         }
         UIActionHistory.addFromActionResult(actionResult, { source: 'websocket' });
-    }
-
-    static _syncActionHistoryFromState(gameState) {
-        if (typeof UIActionHistory === 'undefined') {
-            return false;
-        }
-
-        const entries = Array.isArray(gameState?.action_history)
-            ? gameState.action_history
-            : [];
-        const signature = WebSocketManager._buildHistorySignature(entries);
-
-        if (signature === WebSocketManager.lastHistorySignature) {
-            return false;
-        }
-
-        WebSocketManager.lastHistorySignature = signature;
-        UIActionHistory.loadFromState(entries);
-        return true;
-    }
-
-    static _buildHistorySignature(entries) {
-        if (!Array.isArray(entries) || entries.length === 0) {
-            return '0';
-        }
-
-        const lastEntry = entries[entries.length - 1] || {};
-        const timestamp = lastEntry.timestamp || '';
-        const action = lastEntry.action || '';
-        const phase = lastEntry.phase || '';
-        return `${entries.length}:${timestamp}:${action}:${phase}`;
     }
 
     static _recordActionFailure(action, message, player = null) {
