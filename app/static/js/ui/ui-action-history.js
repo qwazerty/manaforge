@@ -4,7 +4,7 @@
  */
 
 class UIActionHistory {
-    static MAX_ENTRIES = 30;
+    static MAX_ENTRIES = 5000;
     static entries = [];
 
     /**
