@@ -20,6 +20,10 @@ const GameCombat = {
     blockerRenderRetryHandle: null,
     blockerRenderStabilizeHandle: null,
     currentBlockingVisuals: new Set(),
+    attackSyncHandle: null,
+    blockSyncHandle: null,
+    lastSyncedAttackersPayload: null,
+    lastSyncedBlockersPayload: null,
     
     /**
      * Check if a card has vigilance
@@ -196,6 +200,7 @@ const GameCombat = {
         this.attackers.clear();
         if (Array.isArray(combatState.pending_attackers) && combatState.pending_attackers.length) {
             this.attackers = new Set(combatState.pending_attackers);
+            this.lastSyncedAttackersPayload = JSON.stringify(combatState.pending_attackers);
             setTimeout(() => this.applyPendingAttackerVisuals(combatState.pending_attackers), 50);
         }
         this.highlightValidAttackers();
@@ -242,6 +247,7 @@ const GameCombat = {
         this.selectedBlocker = null;
         if (combatState.pending_blockers && Object.keys(combatState.pending_blockers).length > 0) {
             this.blockers = new Map(Object.entries(combatState.pending_blockers));
+            this.lastSyncedBlockersPayload = JSON.stringify(combatState.pending_blockers);
             setTimeout(() => this.applyPendingBlockerVisuals(combatState.pending_blockers), 50);
         }
         this.renderBlockingAssignments({ retry: true });
@@ -343,12 +349,6 @@ const GameCombat = {
             }
         });
 
-        // Pass priority to defending player
-        setTimeout(() => {
-            console.log('🔄 Passing priority for Defense Step');
-            GameActions.performGameAction('pass_priority');
-        }, 100);
-        
         this.combatMode = null;
         this.clearHighlights();
         
@@ -357,6 +357,8 @@ const GameCombat = {
             count === 0 ? 'No attackers declared' : `${count} attacker(s) declared`,
             'info'
         );
+
+        this.lastSyncedAttackersPayload = null;
     },
     
     /**
@@ -386,12 +388,6 @@ const GameCombat = {
             blocking_assignments: blockingAssignments
         });
         
-        // Pass priority to continue (will move to next phase)
-        setTimeout(() => {
-            console.log('🔄 Passing priority to end Combat Phase');
-            GameActions.performGameAction('pass_priority');
-        }, 100);
-        
         this.combatMode = null;
         this.clearHighlights();
         this.clearArrows();
@@ -401,6 +397,8 @@ const GameCombat = {
             count === 0 ? 'No blockers declared' : `${count} blocker(s) declared`,
             'info'
         );
+
+        this.lastSyncedBlockersPayload = null;
     },
     
     
@@ -505,8 +503,14 @@ const GameCombat = {
         this.updateCombatUI();
     },
 
-    updateCombatUI() {
+    updateCombatUI(force = false) {
         if (!window.GameUI || typeof window.GameUI.generateActionPanel !== 'function') {
+            return;
+        }
+
+        const websocket = window.websocket;
+        const isWebSocketActive = websocket && websocket.readyState === WebSocket.OPEN;
+        if (!force && isWebSocketActive) {
             return;
         }
 
@@ -523,7 +527,17 @@ const GameCombat = {
         }, 75);
     },
 
-    syncPendingAttackers() {
+    syncPendingAttackers(immediate = false) {
+        if (!immediate) {
+            if (this.attackSyncHandle) {
+                clearTimeout(this.attackSyncHandle);
+            }
+            this.attackSyncHandle = setTimeout(() => this.syncPendingAttackers(true), 120);
+            return;
+        }
+
+        this.attackSyncHandle = null;
+
         const websocket = window.websocket;
         const gameState = GameCore.getGameState();
         const combatState = gameState?.combat_state || {};
@@ -545,12 +559,29 @@ const GameCombat = {
             return;
         }
 
+        const attackingArray = Array.from(this.attackers);
+        const payload = JSON.stringify(attackingArray);
+        if (payload === this.lastSyncedAttackersPayload) {
+            return;
+        }
+
         window.GameSocket.sendGameAction('preview_attackers', {
-            attacking_creatures: Array.from(this.attackers)
+            attacking_creatures: attackingArray
         });
+        this.lastSyncedAttackersPayload = payload;
     },
 
-    syncPendingBlockers() {
+    syncPendingBlockers(immediate = false) {
+        if (!immediate) {
+            if (this.blockSyncHandle) {
+                clearTimeout(this.blockSyncHandle);
+            }
+            this.blockSyncHandle = setTimeout(() => this.syncPendingBlockers(true), 120);
+            return;
+        }
+
+        this.blockSyncHandle = null;
+
         const websocket = window.websocket;
         const gameState = GameCore.getGameState();
         const combatState = gameState?.combat_state || {};
@@ -573,9 +604,15 @@ const GameCombat = {
         }
 
         const blockingAssignments = Object.fromEntries(this.blockers);
+        const payload = JSON.stringify(blockingAssignments);
+        if (payload === this.lastSyncedBlockersPayload) {
+            return;
+        }
+
         window.GameSocket.sendGameAction('preview_blockers', {
             blocking_assignments: blockingAssignments
         });
+        this.lastSyncedBlockersPayload = payload;
     },
 
     renderBlockingAssignments({ retry = false, attempt = 0 } = {}) {
@@ -643,6 +680,10 @@ const GameCombat = {
 
     applyPendingAttackerVisuals(pendingAttackers) {
         if (!Array.isArray(pendingAttackers)) return;
+
+        this.attackers = new Set(pendingAttackers);
+        this.lastSyncedAttackersPayload = JSON.stringify(pendingAttackers);
+
         pendingAttackers.forEach(uniqueId => {
             const cardElement = document.querySelector(`[data-card-unique-id="${uniqueId}"]`);
             if (!cardElement) return;
@@ -655,6 +696,7 @@ const GameCombat = {
     applyPendingBlockerVisuals(pendingAssignments) {
         if (!pendingAssignments || typeof pendingAssignments !== 'object') return;
         this.blockers = new Map(Object.entries(pendingAssignments));
+        this.lastSyncedBlockersPayload = JSON.stringify(pendingAssignments);
         this.renderBlockingAssignments({ retry: true });
     },
     
@@ -662,6 +704,15 @@ const GameCombat = {
      * Cancel current combat action
      */
     cancelCombat() {
+        if (this.attackSyncHandle) {
+            clearTimeout(this.attackSyncHandle);
+            this.attackSyncHandle = null;
+        }
+        if (this.blockSyncHandle) {
+            clearTimeout(this.blockSyncHandle);
+            this.blockSyncHandle = null;
+        }
+
         // Clear attacker visuals
         this.attackers.forEach(uniqueId => {
             const cardElement = document.querySelector(`[data-card-unique-id="${uniqueId}"]`);
@@ -676,8 +727,8 @@ const GameCombat = {
         this.combatMode = null;
         this.clearHighlights();
         this.clearArrows();
-        this.syncPendingAttackers();
-        this.syncPendingBlockers();
+        this.syncPendingAttackers(true);
+        this.syncPendingBlockers(true);
         GameUI.showNotification('Combat action cancelled', 'info');
     },
     
@@ -896,6 +947,17 @@ const GameCombat = {
                 el.classList.remove('combat-tapped');
                 el.style.transform = '';
             });
+
+            if (this.attackSyncHandle) {
+                clearTimeout(this.attackSyncHandle);
+                this.attackSyncHandle = null;
+            }
+            if (this.blockSyncHandle) {
+                clearTimeout(this.blockSyncHandle);
+                this.blockSyncHandle = null;
+            }
+            this.lastSyncedAttackersPayload = null;
+            this.lastSyncedBlockersPayload = null;
             
             // Force re-render to remove combat animations
             if (window.GameUI && typeof window.GameUI.refreshGameState === 'function') {

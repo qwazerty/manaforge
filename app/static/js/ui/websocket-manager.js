@@ -121,11 +121,33 @@ class WebSocketManager {
             case 'game_state_update':
                 const newGameState = message.game_state;
                 const currentGameState = GameCore.getGameState();
+                const actionResult = message.action_result;
+                const isLocalPreviewUpdate = Boolean(
+                    actionResult &&
+                    (actionResult.action === 'preview_attackers' || actionResult.action === 'preview_blockers') &&
+                    actionResult.player === GameCore.getSelectedPlayer()
+                );
                 
                 if (JSON.stringify(newGameState) !== JSON.stringify(currentGameState)) {
                     const oldGameState = currentGameState;
                     GameCore.setGameState(newGameState);
-                    this._refreshGameUI();
+                    if (!isLocalPreviewUpdate) {
+                        this._refreshGameUI();
+                    } else if (window.GameCombat && newGameState?.combat_state) {
+                        const combatState = newGameState.combat_state;
+                        if (actionResult.action === 'preview_attackers') {
+                            const pendingAttackers = Array.isArray(combatState.pending_attackers)
+                                ? combatState.pending_attackers
+                                : [];
+                            window.GameCombat.applyPendingAttackerVisuals(pendingAttackers);
+                        } else if (actionResult.action === 'preview_blockers') {
+                            const pendingBlockers =
+                                combatState.pending_blockers && typeof combatState.pending_blockers === 'object'
+                                    ? combatState.pending_blockers
+                                    : {};
+                            window.GameCombat.applyPendingBlockerVisuals(pendingBlockers);
+                        }
+                    }
 
                     const oldPhase = oldGameState?.phase;
                     const newPhase = newGameState?.phase;
@@ -153,14 +175,14 @@ class WebSocketManager {
                         }
                     }
                     
-                    if (message.action_result && message.action_result.action === 'tap_card') {
-                        const result = message.action_result;
+                    if (actionResult && actionResult.action === 'tap_card') {
+                        const result = actionResult;
                         console.log(`🃏 WebSocket: Tap action completed for ${result.player}`);
                     }
                 }
 
-                if (message.action_result) {
-                    WebSocketManager._recordActionResult(message.action_result);
+                if (actionResult) {
+                    WebSocketManager._recordActionResult(actionResult);
                 }
                 break;
                 
