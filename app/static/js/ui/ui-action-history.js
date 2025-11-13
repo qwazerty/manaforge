@@ -1733,17 +1733,28 @@ class UIActionHistory {
             return 'Unknown';
         }
 
-        if (typeof player !== 'string') {
+        if (typeof player === 'string') {
+            if (
+                typeof GameCore !== 'undefined' &&
+                GameCore &&
+                typeof GameCore.getPlayerDisplayName === 'function'
+            ) {
+                const resolved = GameCore.getPlayerDisplayName(player);
+                if (resolved) {
+                    return resolved;
+                }
+            }
+
+            if (player.toLowerCase() === 'spectator') {
+                return 'Spectator';
+            }
+
+            const match = player.match(/player(\d+)/i);
+            if (match) {
+                return `Player ${match[1]}`;
+            }
+
             return this._formatLabel(player);
-        }
-
-        if (player.toLowerCase() === 'spectator') {
-            return 'Spectator';
-        }
-
-        const match = player.match(/player(\d+)/i);
-        if (match) {
-            return `Player ${match[1]}`;
         }
 
         return this._formatLabel(player);

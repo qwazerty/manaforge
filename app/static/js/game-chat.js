@@ -25,7 +25,7 @@ const GameChat = {
 
         // Obtenir le nom du joueur actuel
         const currentPlayer = window.GameCore.getSelectedPlayer();
-        const playerName = currentPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentPlayer.slice(-1);
+        const playerName = GameChat._resolveSenderName(currentPlayer);
 
         console.log('👤 Player name:', playerName);
 
@@ -49,6 +49,43 @@ const GameChat = {
         // Vider le champ de saisie
         input.value = '';
         console.log('✅ Message sent, input cleared');
+    },
+
+    _resolveSenderName: function(playerKey) {
+        if (!playerKey) {
+            return 'Unknown';
+        }
+
+        if (
+            window.GameCore &&
+            typeof window.GameCore.getPlayerDisplayName === 'function'
+        ) {
+            const resolved = window.GameCore.getPlayerDisplayName(playerKey);
+            if (resolved) {
+                return resolved;
+            }
+        }
+
+        return this._formatSeatFallback(playerKey);
+    },
+
+    _formatSeatFallback: function(playerKey) {
+        if (!playerKey) {
+            return 'Unknown';
+        }
+
+        if (playerKey === 'spectator') {
+            return 'Spectator';
+        }
+
+        const match = String(playerKey)
+            .toLowerCase()
+            .match(/player\s*(\d+)/);
+        if (match) {
+            return `Player ${match[1]}`;
+        }
+
+        return String(playerKey);
     }
 };
 

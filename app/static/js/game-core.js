@@ -11,6 +11,133 @@ let isPageVisible = true;
 let gameId = null; // Will be initialized from template
 let persistentUiLoaded = false;
 
+function normalizePlayerSeatKey(identifier) {
+    if (!identifier || typeof identifier !== 'string') {
+        return null;
+    }
+
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const normalized = trimmed.toLowerCase();
+    const collapsed = normalized.replace(/\s+/g, '');
+
+    if (normalized === 'player1' || collapsed === 'player1' || normalized === 'p1') {
+        return 'player1';
+    }
+    if (normalized === 'player2' || collapsed === 'player2' || normalized === 'p2') {
+        return 'player2';
+    }
+
+    const match = normalized.match(/player\s*(\d+)/);
+    if (match) {
+        return `player${match[1]}`;
+    }
+
+    return null;
+}
+
+function getSeatFallbackLabel(seatKey) {
+    if (seatKey === 'player1') {
+        return 'Player 1';
+    }
+    if (seatKey === 'player2') {
+        return 'Player 2';
+    }
+    return 'Player';
+}
+
+function lookupPlayerAlias(seatKey) {
+    if (!seatKey || !gameState) {
+        return null;
+    }
+
+    const players = Array.isArray(gameState.players) ? gameState.players : [];
+    const seatIndex = seatKey === 'player2' ? 1 : 0;
+
+    if (seatIndex >= 0 && seatIndex < players.length) {
+        const candidate = players[seatIndex];
+        if (candidate) {
+            const directName = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+            if (directName) {
+                return directName;
+            }
+            const fallbackName = typeof candidate.player_name === 'string' ? candidate.player_name.trim() : '';
+            if (fallbackName) {
+                return fallbackName;
+            }
+        }
+    }
+
+    const matchById = players.find(
+        (player) => player && typeof player.id === 'string' && player.id.toLowerCase() === seatKey
+    );
+    if (matchById) {
+        const name = typeof matchById.name === 'string' ? matchById.name.trim() : '';
+        if (name) {
+            return name;
+        }
+        const alias = typeof matchById.player_name === 'string' ? matchById.player_name.trim() : '';
+        if (alias) {
+            return alias;
+        }
+    }
+
+    const statusMap = gameState.player_status;
+    const statusEntry = statusMap && statusMap[seatKey];
+    if (statusEntry && typeof statusEntry.player_name === 'string') {
+        const sanitized = statusEntry.player_name.trim();
+        if (sanitized) {
+            return sanitized;
+        }
+    }
+
+    if (gameState.player_names && typeof gameState.player_names === 'object') {
+        const named = gameState.player_names[seatKey];
+        if (typeof named === 'string') {
+            const clean = named.trim();
+            if (clean) {
+                return clean;
+            }
+        }
+    }
+
+    return null;
+}
+
+function resolvePlayerDisplayName(identifier, fallback = null) {
+    if (identifier === null || identifier === undefined) {
+        return fallback || 'Unknown';
+    }
+
+    if (typeof identifier !== 'string') {
+        return String(identifier);
+    }
+
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+        return fallback || 'Unknown';
+    }
+
+    const normalized = trimmed.toLowerCase();
+    if (normalized === 'spectator') {
+        return 'Spectator';
+    }
+
+    const seatKey = normalizePlayerSeatKey(trimmed);
+    if (seatKey) {
+        const alias = lookupPlayerAlias(seatKey);
+        if (alias) {
+            return alias;
+        }
+        return getSeatFallbackLabel(seatKey);
+    }
+
+    return trimmed;
+}
+
 function updateSpectatorModeClass() {
     if (typeof document === 'undefined') {
         return;
@@ -222,6 +349,8 @@ window.GameCore = {
     getGameState: () => gameState,
     getGameId: () => gameId,
     getSelectedPlayer: () => currentSelectedPlayer,
+    getPlayerDisplayName: (identifier, fallback = null) =>
+        resolvePlayerDisplayName(identifier, fallback),
     setGameState: (state) => { gameState = state; },
     setGameId: (id) => { gameId = id; },
     setSelectedPlayer: (player) => {

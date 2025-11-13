@@ -72,7 +72,8 @@ class UINotifications {
 
         this._removeChatPlaceholder(chatArea);
         
-        const messageElement = this.createChatMessageElement(sender, message);        
+        const displaySender = this._formatChatSender(sender);
+        const messageElement = this.createChatMessageElement(displaySender, message);        
         chatArea.appendChild(messageElement);
         chatArea.scrollTop = chatArea.scrollHeight;
     }
@@ -94,7 +95,8 @@ class UINotifications {
         }
 
         for (const entry of logEntries) {
-            const sender = entry.player || entry.sender || 'Unknown';
+            const rawSender = entry.player || entry.sender || 'Unknown';
+            const sender = this._formatChatSender(rawSender);
             const text = entry.message || '';
             const messageElement = this.createChatMessageElement(sender, text);
             messageElement.dataset.timestamp = entry.timestamp ? String(entry.timestamp) : '';
@@ -304,6 +306,35 @@ class UINotifications {
         if (legacyPlaceholder && legacyPlaceholder.parentElement === container) {
             legacyPlaceholder.remove();
         }
+    }
+
+    static _formatChatSender(sender) {
+        if (
+            typeof GameCore !== 'undefined' &&
+            GameCore &&
+            typeof GameCore.getPlayerDisplayName === 'function'
+        ) {
+            const resolved = GameCore.getPlayerDisplayName(sender);
+            if (resolved) {
+                return resolved;
+            }
+        }
+
+        if (!sender) {
+            return 'Unknown';
+        }
+
+        if (typeof sender === 'string') {
+            const match = sender
+                .toLowerCase()
+                .match(/player\s*(\d+)/);
+            if (match) {
+                return `Player ${match[1]}`;
+            }
+            return sender;
+        }
+
+        return String(sender);
     }
 }
 
