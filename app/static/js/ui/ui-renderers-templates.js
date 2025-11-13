@@ -190,7 +190,6 @@ class UIRenderersTemplates {
         const phaseMode = String(gameState?.phase_mode || 'casual').toLowerCase();
         const phaseModeLabel = phaseMode === 'strict' ? 'Strict' : 'Casual';
         const combatState = gameState?.combat_state || {};
-        const combatStep = combatState.step || null;
         const expectedCombatPlayer = combatState.expected_player || null;
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
         let controlledPlayerIndex = null;
@@ -256,7 +255,7 @@ class UIRenderersTemplates {
                         : 'Pass current phase';
 
                     if (
-                        combatStep === 'declare_blockers' &&
+                        currentPhase === 'block' &&
                         expectedCombatPlayer &&
                         expectedCombatPlayer !== controlledPlayerKey
                     ) {
@@ -270,7 +269,7 @@ class UIRenderersTemplates {
         return `
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
-                ${this._generateGamePhases(currentPhase, { combatState })}
+                ${this._generateGamePhases(currentPhase)}
                 <div class="text-center text-xs text-arena-muted mb-3">
                     Phase Mode: ${phaseModeLabel}
                 </div>
@@ -297,7 +296,7 @@ class UIRenderersTemplates {
         return `
             <div>
                 ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
-                ${this._generateGamePhases(currentPhase, { readOnly: true, combatState: gameState.combat_state })}
+                ${this._generateGamePhases(currentPhase, { readOnly: true })}
                 <div class="text-center py-6 border-t border-arena-accent/10">
                     <div class="text-3xl mb-2 leading-none">👁️</div>
                     <div class="text-arena-accent font-semibold mb-1">Spectator Mode</div>
@@ -548,63 +547,26 @@ class UIRenderersTemplates {
     static _generateGamePhases(currentPhase, options = {}) {
         const {
             readOnly = false,
-            combatState = null
         } = options;
 
         const phases = [
             { id: 'begin', name: 'Begin', icon: '🔄', type: 'phase' },
             { id: 'main1', name: 'Main 1', icon: '🎯', type: 'phase' },
-            {
-                id: 'combat_attack',
-                name: 'Attack',
-                icon: '⚔️',
-                type: 'combat',
-                step: 'declare_attackers',
-                targetPhase: 'combat'
-            },
-            {
-                id: 'combat_block',
-                name: 'Block',
-                icon: '🛡️',
-                type: 'combat',
-                step: 'declare_blockers',
-                targetPhase: 'combat'
-            },
-            {
-                id: 'combat_damage',
-                name: 'Damage',
-                icon: '💥',
-                type: 'combat',
-                step: 'combat_damage',
-                targetPhase: 'combat'
-            },
+            { id: 'attack', name: 'Attack', icon: '⚔️', type: 'phase' },
+            { id: 'block', name: 'Block', icon: '🛡️', type: 'phase' },
+            { id: 'damage', name: 'Damage', icon: '💥', type: 'phase' },
             { id: 'main2', name: 'Main 2', icon: '✨', type: 'phase' },
             { id: 'end', name: 'End', icon: '🏁', type: 'phase' }
         ];
 
-        const resolveCurrentTracker = () => {
-            if (currentPhase !== 'combat') {
-                return currentPhase;
-            }
-            const stepId = (combatState?.step || 'declare_attackers').toLowerCase();
-            if (stepId === 'declare_blockers') {
-                return 'combat_block';
-            }
-            if (stepId === 'combat_damage' || stepId === 'end_of_combat') {
-                return 'combat_damage';
-            }
-            return 'combat_attack';
-        };
-
-        const currentTrackerId = resolveCurrentTracker();
+        const normalizedPhase = currentPhase || 'begin';
         const activeIndex = Math.max(
-            phases.findIndex(phase => phase.id === currentTrackerId),
+            phases.findIndex(phase => phase.id === normalizedPhase),
             0
         );
 
         const itemTemplate = phases.map((phase, index) => {
-            const targetPhase = phase.targetPhase || phase.id;
-            const isUnderlyingCurrent = currentPhase === targetPhase;
+            const isUnderlyingCurrent = normalizedPhase === phase.id;
             const timelineState = index < activeIndex
                 ? 'completed'
                 : index === activeIndex
@@ -624,13 +586,9 @@ class UIRenderersTemplates {
                     : 'text-arena-text-dim border border-transparent';
             }
 
-            if (phase.type === 'combat' && timelineState === 'upcoming') {
-                stateClasses += ' border-dashed';
-            }
-
             const isInteractive = !readOnly && !isUnderlyingCurrent;
             const onClickAttr = isInteractive
-                ? `onclick="GameActions.changePhase('${targetPhase}')"`
+                ? `onclick="GameActions.changePhase('${phase.id}')"`
                 : '';
 
             let interactionClasses = isInteractive ? 'cursor-pointer' : 'cursor-default';
@@ -640,9 +598,7 @@ class UIRenderersTemplates {
                     : ' hover:text-arena-text hover:border-yellow-500/30';
             }
 
-            const titleText = phase.type === 'combat'
-                ? `${phase.name} (Combat Step)`
-                : `${phase.name} Phase`;
+            const titleText = `${phase.name} Phase`;
 
             return `
                 <div class="text-center py-2 px-1 rounded transition-all duration-200 ${stateClasses} ${interactionClasses}"
@@ -677,13 +633,13 @@ class UIRenderersTemplates {
         const gameState = GameCore.getGameState();
         const currentPhase = gameState?.phase || 'begin';
         
-        // Check if we're in combat phase and should show combat-specific button
+        // Show combat-specific button during the attack or block phases
         let finalPassLabel = passLabel;
         let finalPassAction = passAction;
         let finalPassTitle = passTitle;
         let finalPassDisabled = passDisabled;
         
-        if (currentPhase === 'combat' && typeof GameCombat !== 'undefined') {
+        if (['attack', 'block'].includes(currentPhase) && typeof GameCombat !== 'undefined') {
             const combatConfig = GameCombat.getCombatButtonConfig();
             if (combatConfig) {
                 finalPassLabel = combatConfig.label;

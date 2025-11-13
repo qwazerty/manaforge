@@ -404,7 +404,9 @@ const GameCards = {
         const gameState = (typeof GameCore !== 'undefined' && typeof GameCore.getGameState === 'function')
             ? GameCore.getGameState()
             : null;
-        const inCombatPhase = gameState?.phase === 'combat';
+        const inCombatPhase = ['attack', 'block', 'damage'].includes(
+            (gameState?.phase || '').toLowerCase()
+        );
         const combatState = gameState?.combat_state || {};
         const pendingAttackers = Array.isArray(combatState.pending_attackers)
             ? combatState.pending_attackers

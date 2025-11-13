@@ -20,6 +20,11 @@ class SimpleGameEngine:
     MAX_ACTION_HISTORY = 10000
     MAX_CHAT_MESSAGES = 1000
     MAX_PLAYER_NAME_LENGTH = 32
+    COMBAT_PHASES = {
+        GamePhase.ATTACK,
+        GamePhase.BLOCK,
+        GamePhase.DAMAGE
+    }
     
     def __init__(self):
         self.games: dict[str, GameState] = {}
@@ -32,6 +37,61 @@ class SimpleGameEngine:
         game_state.phase = new_phase
         self._handle_phase_transition(game_state, previous_phase, new_phase)
 
+    def _log_phase_history_entry(
+        self,
+        game_state: GameState,
+        phase: GamePhase,
+        player_id: Optional[str] = None
+    ) -> None:
+        """Insert a synthetic history entry for engine-driven phase transitions."""
+        if not game_state or not phase:
+            return
+
+        target_player = player_id
+        if not target_player and isinstance(game_state.active_player, int):
+            if 0 <= game_state.active_player < len(game_state.players):
+                target_player = game_state.players[game_state.active_player].id
+
+        entry_player = target_player or "system"
+        phase_value = getattr(phase, "value", str(phase))
+        entry = {
+            "action": "pass_phase",
+            "player": entry_player,
+            "success": True,
+            "phase": phase_value,
+            "origin": "engine"
+        }
+
+        self.record_action_history(game_state.id, entry)
+
+    def _coerce_phase(self, phase):  # Helper to normalize phase inputs
+        if isinstance(phase, GamePhase):
+            return phase
+        if isinstance(phase, str):
+            try:
+                return GamePhase(phase)
+            except ValueError:
+                return None
+        return None
+
+    def _is_combat_phase(self, phase) -> bool:
+        coerced = self._coerce_phase(phase)
+        return coerced in self.COMBAT_PHASES if coerced else False
+
+    def _set_combat_step_for_phase(self, game_state: GameState, phase) -> None:
+        if not game_state or not game_state.combat_state:
+            return
+        coerced = self._coerce_phase(phase)
+        combat_state = game_state.combat_state
+        if coerced == GamePhase.ATTACK:
+            combat_state.step = CombatStep.DECLARE_ATTACKERS
+        elif coerced == GamePhase.BLOCK:
+            combat_state.step = CombatStep.DECLARE_BLOCKERS
+        elif coerced == GamePhase.DAMAGE:
+            combat_state.step = CombatStep.COMBAT_DAMAGE
+        else:
+            combat_state.step = CombatStep.NONE
+
     def _handle_phase_transition(
         self,
         game_state: GameState,
@@ -39,12 +99,19 @@ class SimpleGameEngine:
         new_phase: GamePhase
     ) -> None:
         """Handle side-effects when moving between phases."""
-        if previous_phase == GamePhase.COMBAT and new_phase != GamePhase.COMBAT:
+        was_combat = self._is_combat_phase(previous_phase)
+        now_combat = self._is_combat_phase(new_phase)
+
+        if was_combat and not now_combat:
             self._cleanup_combat_state(game_state)
 
-        if new_phase == GamePhase.COMBAT and previous_phase != GamePhase.COMBAT:
-            self._start_combat_phase(game_state)
-        elif new_phase != GamePhase.COMBAT:
+        if now_combat:
+            coerced_new = self._coerce_phase(new_phase)
+            if coerced_new == GamePhase.ATTACK and not was_combat:
+                self._start_combat_phase(game_state)
+            else:
+                self._set_combat_step_for_phase(game_state, coerced_new)
+        else:
             game_state.combat_state.step = CombatStep.NONE
             game_state.combat_state.expected_player = None
 
@@ -101,7 +168,7 @@ class SimpleGameEngine:
             expected_player = game_state.players[defender_index].id
 
         combat_state = game_state.combat_state
-        combat_state.step = CombatStep.DECLARE_BLOCKERS
+        self._set_phase(game_state, GamePhase.BLOCK)
         combat_state.expected_player = expected_player
         combat_state.blockers_declared = False
         combat_state.damage_resolved = False
@@ -113,7 +180,7 @@ class SimpleGameEngine:
     def _transition_to_combat_damage(self, game_state: GameState) -> None:
         """Move combat flow to combat damage resolution."""
         combat_state = game_state.combat_state
-        combat_state.step = CombatStep.COMBAT_DAMAGE
+        self._set_phase(game_state, GamePhase.DAMAGE)
         attacker_id = None
         if 0 <= game_state.active_player < len(game_state.players):
             attacker_id = game_state.players[game_state.active_player].id
@@ -123,8 +190,9 @@ class SimpleGameEngine:
 
     def _end_combat_phase(self, game_state: GameState) -> None:
         """Finish combat and advance to Main Phase 2 if applicable."""
-        if game_state.phase == GamePhase.COMBAT:
+        if self._is_combat_phase(game_state.phase):
             self._set_phase(game_state, GamePhase.MAIN2)
+            self._log_phase_history_entry(game_state, GamePhase.MAIN2)
         else:
             self._cleanup_combat_state(game_state)
 
@@ -134,6 +202,9 @@ class SimpleGameEngine:
         action: GameAction
     ) -> None:
         """Advance combat sub-steps when players pass priority."""
+        if not self._is_combat_phase(game_state.phase):
+            return
+
         combat_state = game_state.combat_state
         expected_player_id = combat_state.expected_player
 
@@ -458,6 +529,7 @@ class SimpleGameEngine:
         
         self.games[game_id] = game_state
         self._pending_decks.pop(game_id, None)
+        self._log_phase_history_entry(game_state, GamePhase.BEGIN)
         return game_state
     
     def create_game(
@@ -491,6 +563,7 @@ class SimpleGameEngine:
         )
         
         self.games[game_id] = game_state
+        self._log_phase_history_entry(game_state, GamePhase.BEGIN)
         return game_state
     
     def create_game_player1(
@@ -514,6 +587,7 @@ class SimpleGameEngine:
         )
         
         self.games[game_id] = game_state
+        self._log_phase_history_entry(game_state, GamePhase.BEGIN)
         return game_state
 
     def join_game(self, game_id: str, player2_deck: Deck) -> GameState:
@@ -789,7 +863,7 @@ class SimpleGameEngine:
     
     def _pass_turn(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing the turn (skips to end of turn)."""
-        if game_state.phase == GamePhase.COMBAT:
+        if self._is_combat_phase(game_state.phase):
             combat_action = GameAction(
                 player_id=action.player_id,
                 action_type="combat_damage"
@@ -866,7 +940,7 @@ class SimpleGameEngine:
     
     def _declare_attackers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring attacking creatures."""
-        if game_state.phase != GamePhase.COMBAT:
+        if game_state.phase != GamePhase.ATTACK:
             return
         
         attacking_creature_ids = action.additional_data.get(
@@ -918,7 +992,7 @@ class SimpleGameEngine:
     
     def _declare_blockers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring blocking creatures."""
-        if game_state.phase != GamePhase.COMBAT:
+        if game_state.phase != GamePhase.BLOCK:
             return
         
         blocking_assignments = action.additional_data.get(
@@ -955,7 +1029,7 @@ class SimpleGameEngine:
 
     def _preview_attackers(self, game_state: GameState, action: GameAction) -> None:
         """Track the attacking creatures being selected before confirmation."""
-        if game_state.phase != GamePhase.COMBAT:
+        if game_state.phase != GamePhase.ATTACK:
             return
 
         combat_state = game_state.combat_state
@@ -983,7 +1057,7 @@ class SimpleGameEngine:
 
     def _preview_blockers(self, game_state: GameState, action: GameAction) -> None:
         """Track the blocking assignments before confirmation."""
-        if game_state.phase != GamePhase.COMBAT:
+        if game_state.phase != GamePhase.BLOCK:
             return
 
         combat_state = game_state.combat_state
@@ -1024,7 +1098,7 @@ class SimpleGameEngine:
         self, game_state: GameState, action: GameAction
     ) -> None:
         """Resolve combat damage."""
-        if game_state.phase != GamePhase.COMBAT:
+        if game_state.phase != GamePhase.DAMAGE:
             return
         
         print("Combat damage resolved")
@@ -1103,7 +1177,7 @@ class SimpleGameEngine:
             self._resolve_stack(game_state, action)
             return
 
-        if game_state.phase == GamePhase.COMBAT:
+        if self._is_combat_phase(game_state.phase):
             self._handle_combat_priority_pass(game_state, action)
         else:
             game_state.priority_player = game_state.active_player

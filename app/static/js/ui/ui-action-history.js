@@ -1686,7 +1686,9 @@ class UIActionHistory {
         const mapping = {
             begin: 'Beginning Phase',
             main1: 'Main Phase 1',
-            combat: 'Combat Phase',
+            attack: 'Attack Phase',
+            block: 'Block Phase',
+            damage: 'Damage Phase',
             main2: 'Main Phase 2',
             end: 'Ending Phase'
         };
