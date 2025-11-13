@@ -272,6 +272,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     broadcast_info["action_result"].setdefault(
                         "timestamp", broadcast_info["timestamp"]
                     )
+                    current_phase = getattr(updated_game_state.phase, "value", updated_game_state.phase)
+                    if current_phase:
+                        broadcast_info["action_result"].setdefault("phase", current_phase)
 
                     game_engine.record_action_history(
                         game_id,

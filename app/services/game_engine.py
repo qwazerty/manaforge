@@ -614,6 +614,9 @@ class SimpleGameEngine:
 
         history_entry = dict(entry)
         history_entry.setdefault("timestamp", time.time())
+        current_phase = getattr(game_state.phase, "value", game_state.phase)
+        if current_phase and not history_entry.get("phase"):
+            history_entry["phase"] = current_phase
 
         history = game_state.action_history
         history.append(history_entry)
