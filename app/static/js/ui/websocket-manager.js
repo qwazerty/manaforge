@@ -210,15 +210,33 @@ class WebSocketManager {
                 WebSocketManager._recordActionFailure(message.action, message.message, message.player);
                 break;
                 
-            case 'chat':
-                const messagePlayer = message.player;
-                const currentSelectedPlayer = GameCore.getSelectedPlayer();
-                const currentPlayerName = currentSelectedPlayer === 'spectator' ? 'Spectator' : 'Player ' + currentSelectedPlayer.slice(-1);
-                
-                if (messagePlayer !== currentPlayerName) {
-                    UINotifications.addChatMessage(message.player, message.message);
+            case 'chat': {
+                const selectedPlayer = GameCore.getSelectedPlayer();
+                const resolveName =
+                    typeof GameCore.getPlayerDisplayName === 'function'
+                        ? (value) => GameCore.getPlayerDisplayName(value)
+                        : (value) => value;
+                const senderName = resolveName(message.player) || message.player || 'Unknown';
+                let localName = resolveName(selectedPlayer);
+
+                if (!localName) {
+                    if (selectedPlayer === 'spectator') {
+                        localName = 'Spectator';
+                    } else if (
+                        window.GameChat &&
+                        typeof window.GameChat._formatSeatFallback === 'function'
+                    ) {
+                        localName = window.GameChat._formatSeatFallback(selectedPlayer);
+                    } else {
+                        localName = selectedPlayer || 'Unknown';
+                    }
+                }
+
+                if (senderName !== localName) {
+                    UINotifications.addChatMessage(senderName, message.message);
                 }
                 break;
+            }
                 
             case 'player_status':
                 const action = message.action === 'joined' ? 'joined' : 'left';
