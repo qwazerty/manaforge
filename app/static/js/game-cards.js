@@ -990,7 +990,9 @@ const GameCards = {
             menuHTML += `
                 <div class="card-context-menu-divider"></div>
                 <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToGraveyard(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⚰️</span> Send to Graveyard</div>
-                <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToExile(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">✨</span> Send to Exile</div>`;
+                <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToExile(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">✨</span> Send to Exile</div>
+                <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToTopLibrary(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⬆️</span> Send to Top Library</div>
+                <div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToBottomLibrary(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⬇️</span> Send to Bottom Library</div>`;
             if (cardZone !== 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.moveCard(${jsCardId}, ${jsCardZone}, "hand", ${jsUniqueCardId})`)}"><span class="icon">👋</span> Return to Hand</div>`;
             }

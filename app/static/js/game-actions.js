@@ -681,6 +681,52 @@ function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'hand', uniqueCardId, null, callback);
 }
 
+function sendToTopLibrary(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    moveCard(cardId, sourceZone, 'library', uniqueCardId, 'top', callback);
+}
+
+function sendToBottomLibrary(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    moveCard(cardId, sourceZone, 'library', uniqueCardId, 'bottom', callback);
+}
+
+function millTopLibraryCard() {
+    const currentSelectedPlayer = GameCore.getSelectedPlayer();
+    if (currentSelectedPlayer === 'spectator') {
+        GameUI.showNotification('Spectators cannot mill cards', 'error');
+        return;
+    }
+
+    const gameState = GameCore.getGameState();
+    if (!gameState || !Array.isArray(gameState.players)) {
+        GameUI.showNotification('Unable to access game state', 'error');
+        return;
+    }
+
+    const playerIndex = currentSelectedPlayer === 'player2' ? 1 : 0;
+    const player = gameState.players[playerIndex] || {};
+    const library = Array.isArray(player.library)
+        ? player.library
+        : Array.isArray(player.deck)
+            ? player.deck
+            : [];
+
+    if (!library.length) {
+        GameUI.showNotification('Library is empty', 'info');
+        return;
+    }
+
+    const topCard = library[0];
+    const cardId = topCard?.id || topCard?.card_id;
+    const uniqueId = topCard?.unique_id;
+
+    if (!cardId || !uniqueId) {
+        GameUI.showNotification('Unable to identify the top card', 'error');
+        return;
+    }
+
+    moveCard(cardId, 'deck', 'graveyard', uniqueId, null, null);
+}
+
 function moveAllHandToReveal() {
     const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
@@ -891,6 +937,9 @@ window.GameActions = {
     sendToExile,
     showInRevealZone,
     sendToHand,
+    sendToTopLibrary,
+    sendToBottomLibrary,
+    millTopLibraryCard,
     updateCardTappedState,
     resolveStackSpell,
     counterStackSpell,
