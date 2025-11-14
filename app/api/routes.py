@@ -89,7 +89,7 @@ async def create_game(
             )
 
     if raw_phase_mode is None:
-        phase_mode = PhaseMode.CASUAL
+        phase_mode = PhaseMode.STRICT
     else:
         normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
         try:
@@ -129,7 +129,7 @@ async def create_modern_example_game(
     if not game_id_clean:
         raise HTTPException(status_code=400, detail="game_id cannot be empty.")
 
-    raw_phase_mode = payload.get("phase_mode") or payload.get("phaseMode") or PhaseMode.CASUAL.value
+    raw_phase_mode = payload.get("phase_mode") or payload.get("phaseMode") or PhaseMode.STRICT.value
     normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
     try:
         phase_mode = PhaseMode(normalized_phase)

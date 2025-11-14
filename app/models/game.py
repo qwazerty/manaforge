@@ -327,11 +327,18 @@ class GameState(BaseModel):
         default_factory=list, description="Spells on the stack"
     )
     priority_player: int = Field(default=0, description="Player with priority")
+    end_step_resolution_pending: bool = Field(
+        default=False,
+        description=(
+            "True when the non-active player must resolve the end step before the"
+            " next turn begins"
+        )
+    )
     game_format: GameFormat = Field(
         default=GameFormat.STANDARD, description="Game format selection for this match"
     )
     phase_mode: PhaseMode = Field(
-        default=PhaseMode.CASUAL, description="Phase progression mode configuration"
+        default=PhaseMode.STRICT, description="Phase progression mode configuration"
     )
     setup_complete: bool = Field(
         default=True,

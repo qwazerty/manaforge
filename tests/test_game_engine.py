@@ -1,6 +1,6 @@
 """Unit tests for the SimpleGameEngine helpers."""
 
-from app.models.game import GamePhase, GameState, Player
+from app.models.game import GameAction, GamePhase, GameState, Player
 from app.services.game_engine import SimpleGameEngine
 
 
@@ -63,3 +63,38 @@ def test_record_action_history_preserves_existing_metadata():
     assert entry["turn"] == 42
     assert entry["turn_player_id"] == "override"
     assert entry["turn_player_name"] == "Override"
+
+
+def test_pass_phase_end_requires_opponent_resolution():
+    engine = SimpleGameEngine()
+    state = _build_game_state(phase=GamePhase.END, turn=2, active_index=0)
+    engine.games[state.id] = state
+
+    action = GameAction(player_id="player1", action_type="pass_phase")
+    engine._pass_phase(state, action)
+
+    assert state.phase == GamePhase.END
+    assert state.active_player == 0
+    assert state.end_step_resolution_pending is True
+    assert state.priority_player == 1
+
+
+def test_pass_phase_end_opponent_completes_turn():
+    engine = SimpleGameEngine()
+    state = _build_game_state(phase=GamePhase.END, turn=2, active_index=0)
+    engine.games[state.id] = state
+
+    first_action = GameAction(player_id="player1", action_type="pass_phase")
+    engine._pass_phase(state, first_action)
+
+    assert state.end_step_resolution_pending is True
+    assert state.priority_player == 1
+
+    response_action = GameAction(player_id="player2", action_type="pass_phase")
+    engine._pass_phase(state, response_action)
+
+    assert state.end_step_resolution_pending is False
+    assert state.phase == GamePhase.BEGIN
+    assert state.active_player == 1
+    assert state.priority_player == 1
+    assert state.players_played_this_round == [True, False]
