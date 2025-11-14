@@ -64,6 +64,24 @@ class UIZonesManager {
         };
     }
 
+    static _renderZoneLabel(zoneKey) {
+        const info = this.ZONE_INFO[zoneKey];
+        if (!info) {
+            return '';
+        }
+
+        const iconMarkup = info.icon
+            ? `<span class="text-base leading-none">${info.icon}</span>`
+            : '';
+
+        return `
+            <div class="zone-label w-full flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wide text-arena-text-dim mb-2">
+                ${iconMarkup}
+                <span>${info.title}</span>
+            </div>
+        `;
+    }
+
     // ===== ZONE GENERATION =====
     
     /**
@@ -79,6 +97,7 @@ class UIZonesManager {
         const isSpectatorView = selectedPlayer === 'spectator';
         let clickHandler = '';
         let overlayText = '';
+        const zoneLabel = this._renderZoneLabel('deck');
 
         if (isSpectatorView) {
             clickHandler = isOpponent
@@ -124,6 +143,7 @@ class UIZonesManager {
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
+                ${zoneLabel}
                 ${stackCardsHTML}
                 <div class="deck-cards-count mt-2">
                     <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
@@ -146,6 +166,7 @@ class UIZonesManager {
         const clickHandler = isOpponent ?
             "UIZonesManager.showOpponentZoneModal('graveyard')" :
             "UIZonesManager.showZoneModal('graveyard')";
+        const zoneLabel = this._renderZoneLabel('graveyard');
 
         let stackCardsHTML;
         if (cardsRemaining === 0) {
@@ -172,6 +193,7 @@ class UIZonesManager {
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
+                ${zoneLabel}
                 <div class="graveyard-cards-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
                     ${stackCardsHTML}
                     ${cardsRemaining > 0 ? `
@@ -200,6 +222,7 @@ class UIZonesManager {
         const clickHandler = isOpponent ?
             "UIZonesManager.showOpponentZoneModal('exile')" :
             "UIZonesManager.showZoneModal('exile')";
+        const zoneLabel = this._renderZoneLabel('exile');
 
         let exileContentHTML;
         if (cardsRemaining === 0) {
@@ -239,6 +262,7 @@ class UIZonesManager {
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
+                ${zoneLabel}
                 ${exileContentHTML}
                 <div class="exile-cards-count mt-2">
                     <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
