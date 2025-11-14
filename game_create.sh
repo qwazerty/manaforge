@@ -9,7 +9,7 @@ API_BASE="http://localhost:8000/api/v1"
 # API_BASE="https://manaforge.houke.fr/api/v1"
 GAME_ID="test-lobby-001"
 GAME_FORMAT="standard"
-PHASE_MODE="casual"
+PHASE_MODE="strict"
 
 echo "🎮 Test de création de parties ManaForge"
 echo "========================================="

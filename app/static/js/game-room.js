@@ -748,7 +748,7 @@
             return;
         }
 
-        const phaseMode = (lastStatus?.phase_mode) || (initialStatus?.phase_mode) || 'casual';
+        const phaseMode = (lastStatus?.phase_mode) || (initialStatus?.phase_mode) || 'strict';
 
         setModernExampleButtonState(true);
         if (statusElements.deckStatus) {

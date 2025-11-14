@@ -329,7 +329,7 @@ async function ensureGameRoomExists(gameId, gameFormat, phaseMode) {
     const encodedId = encodeURIComponent(gameId);
     const setupUrl = `/api/v1/games/${encodedId}/setup`;
     const normalizedFormat = normalizeChoice(gameFormat) || 'standard';
-    const normalizedPhase = normalizeChoice(phaseMode) || 'casual';
+    const normalizedPhase = normalizeChoice(phaseMode) || 'strict';
 
     let response = await fetch(setupUrl);
     if (response.ok) {
@@ -398,7 +398,7 @@ async function joinOrCreateBattle() {
     const formatSelect = document.getElementById('gameFormat');
     const phaseModeSelect = document.getElementById('phaseMode');
     const selectedFormat = normalizeChoice(formatSelect ? formatSelect.value : 'standard') || 'standard';
-    const selectedPhaseMode = normalizeChoice(phaseModeSelect ? phaseModeSelect.value : 'casual') || 'casual';
+    const selectedPhaseMode = normalizeChoice(phaseModeSelect ? phaseModeSelect.value : 'strict') || 'strict';
 
     if (!gameId) {
         showStatus('Please enter a battlefield name', 'error');
