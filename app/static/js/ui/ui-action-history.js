@@ -6,6 +6,7 @@
 class UIActionHistory {
     static MAX_ENTRIES = 5000;
     static entries = [];
+    static entrySignatures = new Set();
 
     /**
      * Add an entry to the action history.
@@ -46,6 +47,20 @@ class UIActionHistory {
             turnPlayerLabel: metadata.turnPlayerLabel || null
         };
 
+        const entrySignature = this._buildEntrySignature({
+            action: rawAction,
+            player,
+            success: entry.success,
+            timestamp,
+            origin,
+            phase: entry.phase,
+            turn: entry.turn
+        });
+
+        if (entrySignature && this.entrySignatures.has(entrySignature)) {
+            return;
+        }
+
         entry.displayAction = this._buildActionTitle(entry);
 
         this._enrichCardDetails(entry, context);
@@ -54,9 +69,17 @@ class UIActionHistory {
             return;
         }
 
+        entry._signature = entrySignature;
+        if (entrySignature) {
+            this.entrySignatures.add(entrySignature);
+        }
+
         this.entries.push(entry);
         if (this.entries.length > this.MAX_ENTRIES) {
-            this.entries.shift();
+            const removed = this.entries.shift();
+            if (removed && removed._signature) {
+                this.entrySignatures.delete(removed._signature);
+            }
         }
 
         this._render();
@@ -67,6 +90,7 @@ class UIActionHistory {
      */
     static loadFromState(entries = []) {
         this.entries = [];
+        this.entrySignatures.clear();
 
         if (!Array.isArray(entries) || entries.length === 0) {
             this._render();
@@ -75,6 +99,28 @@ class UIActionHistory {
 
         for (const entry of entries) {
             this.addFromActionResult(entry, { source: 'state' });
+        }
+    }
+
+    /**
+     * Merge entries from the latest synchronized game state.
+     */
+    static mergeStateEntries(entries = []) {
+        if (!Array.isArray(entries) || entries.length === 0) {
+            return;
+        }
+
+        for (const entry of entries) {
+            if (!entry || typeof entry !== 'object') {
+                continue;
+            }
+
+            const signature = this._buildEntrySignature(entry);
+            if (signature && this.entrySignatures.has(signature)) {
+                continue;
+            }
+
+            this.addFromActionResult(entry, { source: 'state-sync' });
         }
     }
 
@@ -143,6 +189,7 @@ class UIActionHistory {
      */
     static clear() {
         this.entries = [];
+        this.entrySignatures.clear();
         this._render();
     }
 
@@ -1802,6 +1849,65 @@ class UIActionHistory {
             normalized === 'timestamp' ||
             normalized === 'origin'
         );
+    }
+
+    static _buildEntrySignature(source) {
+        if (!source || typeof source !== 'object') {
+            return null;
+        }
+
+        const action = this._normalizeSignaturePart(source.rawAction || source.action);
+        const player = this._normalizeSignaturePart(source.player);
+        const success = source.success === false ? '0' : '1';
+        const origin = this._normalizeSignaturePart(source.origin);
+        const phase = this._normalizeSignaturePart(source.phase);
+        const turn =
+            source.turn === undefined || source.turn === null
+                ? ''
+                : String(source.turn);
+        const timestamp = this._normalizeSignatureTimestamp(source.timestamp);
+
+        return [action, player, success, origin, phase, turn, timestamp].join('|');
+    }
+
+    static _normalizeSignaturePart(value) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        return String(value).trim().toLowerCase();
+    }
+
+    static _normalizeSignatureTimestamp(value) {
+        if (value === undefined || value === null || value === '') {
+            return '';
+        }
+
+        if (typeof value === 'number') {
+            const normalized = value < 1e12 ? Math.floor(value * 1000) : Math.floor(value);
+            return String(normalized);
+        }
+
+        if (typeof value === 'string') {
+            const numeric = Number(value);
+            if (!Number.isNaN(numeric)) {
+                const normalized =
+                    numeric < 1e12 ? Math.floor(numeric * 1000) : Math.floor(numeric);
+                return String(normalized);
+            }
+
+            const parsed = Date.parse(value);
+            if (!Number.isNaN(parsed)) {
+                return String(parsed);
+            }
+
+            return value.trim();
+        }
+
+        if (value instanceof Date) {
+            return String(value.getTime());
+        }
+
+        return String(value);
     }
 
     static _stripReservedKeys(payload) {
