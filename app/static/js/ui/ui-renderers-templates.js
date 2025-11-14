@@ -231,7 +231,6 @@ class UIRenderersTemplates {
         const phaseModeLabel = phaseMode === 'strict' ? 'Strict' : 'Casual';
         const combatState = gameState?.combat_state || {};
         const expectedCombatPlayer = combatState.expected_player || null;
-        const endStepResolutionPending = Boolean(gameState?.end_step_resolution_pending);
         const currentSelectedPlayer = GameCore.getSelectedPlayer();
         let controlledPlayerIndex = null;
 
@@ -286,18 +285,6 @@ class UIRenderersTemplates {
                     passConfig.passTitle = passConfig.passDisabled
                         ? `Waiting for ${activePlayerName} to resolve the stack`
                         : 'Resolve the top spell on the stack';
-                } else if (currentPhase === 'end' && endStepResolutionPending) {
-                    const priorityName = this._getPlayerDisplayName(
-                        players[priorityPlayer],
-                        this._getSeatFallbackName(priorityPlayer)
-                    );
-                    const isExpectedPlayer = controlledPlayerIndex === priorityPlayer;
-                    passConfig.passDisabled = !isExpectedPlayer;
-                    passConfig.passAction = 'pass_phase';
-                    passConfig.passLabel = '🎯 Resolve End Step';
-                    passConfig.passTitle = isExpectedPlayer
-                        ? 'Resolve the end step to start the next turn'
-                        : `Waiting for ${priorityName} to resolve the end step`;
                 } else {
                     // No stack, show Pass Phase button
                     passConfig.passDisabled = !isActivePlayer;

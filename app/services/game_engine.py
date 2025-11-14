@@ -35,8 +35,6 @@ class SimpleGameEngine:
         """Centralized phase setter that manages combat transitions."""
         previous_phase = game_state.phase
         game_state.phase = new_phase
-        if new_phase != GamePhase.END:
-            game_state.end_step_resolution_pending = False
         self._handle_phase_transition(game_state, previous_phase, new_phase)
 
     def _log_phase_history_entry(
@@ -901,13 +899,6 @@ class SimpleGameEngine:
         """Handle passing to the next phase (without ending turn)."""
         phases = list(GamePhase)
         current_index = phases.index(game_state.phase)
-        player_count = len(game_state.players)
-        next_player_index = (
-            (game_state.active_player + 1) % player_count
-            if player_count
-            else game_state.active_player
-        )
-        is_end_phase = game_state.phase == GamePhase.END and player_count > 1
         
         if current_index < len(phases) - 1:
             next_phase = phases[current_index + 1]
@@ -917,19 +908,6 @@ class SimpleGameEngine:
                 active_player = game_state.players[game_state.active_player]
                 self._draw_cards(active_player, 1)
         else:
-            if is_end_phase and not game_state.end_step_resolution_pending:
-                game_state.end_step_resolution_pending = True
-                game_state.priority_player = next_player_index
-                return
-
-            if is_end_phase:
-                expected_player_id = None
-                if 0 <= next_player_index < player_count:
-                    expected_player_id = game_state.players[next_player_index].id
-                if expected_player_id and action.player_id != expected_player_id:
-                    return
-                game_state.end_step_resolution_pending = False
-
             current_player_index = game_state.active_player
             game_state.players_played_this_round[current_player_index] = True
             
@@ -938,9 +916,8 @@ class SimpleGameEngine:
                 game_state.players_played_this_round = [False, False]
                 game_state.round += 1
             
-            game_state.active_player = next_player_index
+            game_state.active_player = 1 - game_state.active_player
             self._set_phase(game_state, GamePhase.BEGIN)
-            game_state.priority_player = game_state.active_player
     
     def _change_phase(self, game_state: GameState, action: GameAction) -> None:
         """Directly change the current game phase."""
