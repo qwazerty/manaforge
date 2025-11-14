@@ -6,8 +6,10 @@ from html import unescape
 from urllib.parse import quote_plus, urlparse, urljoin
 import aiohttp
 from aiohttp import ClientError, ClientTimeout
-from typing import List, Optional, Dict, Any, Tuple, Set
+from typing import List, Optional, Dict, Any, Tuple, Set, Union
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
+
+DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
 
 class CardService:
@@ -352,7 +354,7 @@ class CardService:
     
     async def _build_deck_from_entries(
         self,
-        entries: List[Tuple[int, str, Optional[str]]],
+        entries: List[DeckEntry],
         deck_name: Optional[str] = None
     ) -> Deck:
         """Build a deck object from parsed entries, keeping commanders separate."""
@@ -361,7 +363,7 @@ class CardService:
 
         for entry in entries:
             if len(entry) == 3:
-                quantity, card_name, section = entry  # type: ignore[misc]
+                quantity, card_name, section = entry
             else:
                 quantity, card_name = entry
                 section = None
@@ -397,7 +399,8 @@ class CardService:
         deck_name: Optional[str] = None
     ) -> Deck:
         """Parse a decklist in text format and create a Deck object."""
-        lines = decklist_text.strip().splitlines()
+        normalized_text = self._strip_sideboard_lines(decklist_text).strip()
+        lines = normalized_text.splitlines() if normalized_text else []
 
         card_entry_regex = re.compile(
             r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$"
@@ -418,7 +421,7 @@ class CardService:
         }
 
         current_section: Optional[str] = None
-        entries: List[Tuple[int, str, Optional[str]]] = []
+        entries: List[DeckEntry] = []
         for raw_line in lines:
             line = raw_line.strip()
             if not line or line.startswith("#"):
