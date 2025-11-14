@@ -87,14 +87,17 @@
     }
 
     function buildCardPreviewAttributes(card) {
-        const uniqueId = card.unique_id || card.id || card.card_id || card.collector_number || card.name || '';
-        const fallbackId = card.id || card.card_id || card.collector_number || uniqueId;
+        const safeCard = card || {};
+        const uniqueId = safeCard.unique_id || safeCard.id || safeCard.card_id || safeCard.collector_number || safeCard.name || '';
+        const fallbackId = safeCard.id || safeCard.card_id || safeCard.collector_number || uniqueId;
+        const serializedCard = JSON.stringify(safeCard);
         return {
             uniqueId,
             uniqueIdAttr: escapeAttr(uniqueId),
             cardIdAttr: escapeAttr(fallbackId),
-            cardNameAttr: escapeAttr(card.name || ''),
-            cardImageAttr: escapeAttr(card.image_url || '')
+            cardNameAttr: escapeAttr(safeCard.name || ''),
+            cardImageAttr: escapeAttr(safeCard.image_url || ''),
+            cardDataAttr: escapeAttr(serializedCard)
         };
     }
 
@@ -155,11 +158,17 @@
                 }
                 // Update player list
                 const playerList = document.getElementById('player-list');
-                playerList.innerHTML = room.players.map(p => `
-                    <div id="player-${p.id}" class="p-2 bg-arena-surface rounded ${p.id === playerId ? 'font-bold' : ''}">
-                        ${p.name} ${p.is_bot ? '(Bot)' : ''}
-                    </div>
-                `).join('');
+                playerList.innerHTML = room.players.map(p => {
+                    const statusIcon = p.has_picked_card
+                        ? `<span class="text-green-400" title="Card picked">&#10003;</span>`
+                        : '';
+                    return `
+                        <div id="player-${p.id}" class="p-2 bg-arena-surface rounded flex items-center justify-between ${p.id === playerId ? 'font-bold' : ''}">
+                            <span>${p.name} ${p.is_bot ? '(Bot)' : ''}</span>
+                            ${statusIcon}
+                        </div>
+                    `;
+                }).join('');
 
                 const packHeader = document.getElementById('pack-header');
                 packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
@@ -200,7 +209,8 @@
                             <div class="draft-card"
                                 data-card-id="${attrs.cardIdAttr}"
                                 data-card-name="${attrs.cardNameAttr}"
-                                data-card-image="${attrs.cardImageAttr}">
+                                data-card-image="${attrs.cardImageAttr}"
+                                data-card-data="${attrs.cardDataAttr}">
                                 <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
                             </div>
                         `;
@@ -225,6 +235,7 @@
                 data-card-id="${attrs.cardIdAttr}"
                 data-card-name="${attrs.cardNameAttr}"
                 data-card-image="${attrs.cardImageAttr}"
+                data-card-data="${attrs.cardDataAttr}"
                 onclick="selectCard(this.dataset.selectId)">
                 <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
             </div>
@@ -240,7 +251,8 @@
             <div class="draft-card"
                 data-card-id="${attrs.cardIdAttr}"
                 data-card-name="${attrs.cardNameAttr}"
-                data-card-image="${attrs.cardImageAttr}">
+                data-card-image="${attrs.cardImageAttr}"
+                data-card-data="${attrs.cardDataAttr}">
                 <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
             </div>
         `;
