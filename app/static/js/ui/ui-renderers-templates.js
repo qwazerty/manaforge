@@ -103,6 +103,7 @@ class UIRenderersTemplates {
                 ${this._renderOpponentArea(players[opponentIdx], opponentIdx, activePlayer)}
                 ${this._renderPlayerArea(players[controlledIdx], controlledIdx, activePlayer)}
             `;
+            gameBoardContainer.dataset.boardHydrated = 'true';
 
             // Apply card overlap after DOM is updated
             if (window.UICardOverlap) {
@@ -117,6 +118,45 @@ class UIRenderersTemplates {
             this._renderError(gameBoardContainer, 'Error Loading Game Board', error.message);
             this._updateRevealOverlay(null);
             this._ensureCommanderPopups(null);
+        }
+    }
+
+    static updateGameBoard(gameState, previousGameState = null) {
+        const gameBoardContainer = document.getElementById('game-board');
+        if (!this._validateContainer(gameBoardContainer, 'Game board container')) return false;
+        if (!this._validateGameState(gameState)) return false;
+        if (gameBoardContainer.dataset.boardHydrated !== 'true') {
+            return false;
+        }
+
+        try {
+            const { controlledIdx, opponentIdx, players, activePlayer } = this._getPlayerIndices(gameState);
+            const previousPlayers = Array.isArray(previousGameState?.players) ? previousGameState.players : [];
+
+            this._updatePlayerAreaBattlefield(
+                players[controlledIdx],
+                previousPlayers[controlledIdx],
+                controlledIdx,
+                false
+            );
+            this._updatePlayerAreaBattlefield(
+                players[opponentIdx],
+                previousPlayers[opponentIdx],
+                opponentIdx,
+                true
+            );
+            this._updatePlayerHandZone(players[controlledIdx], previousPlayers[controlledIdx], controlledIdx);
+            this._updateOpponentHandZone(players[opponentIdx], previousPlayers[opponentIdx], opponentIdx);
+            this._updatePlayerZoneActiveState('player', activePlayer === controlledIdx);
+            this._updatePlayerZoneActiveState('opponent', activePlayer === opponentIdx);
+
+            this._updateRevealOverlay(gameState);
+            this._ensureCommanderPopups(gameState);
+
+            return true;
+        } catch (error) {
+            console.error('Incremental game board update failed', error);
+            return false;
         }
     }
 
@@ -324,6 +364,11 @@ class UIRenderersTemplates {
     static generateBattlefieldZone(cards, zoneName, isOpponent, playerId = null) {
         const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
         const cardCount = filteredCards.length;
+        const ownerId = playerId || (isOpponent ? 'player2' : 'player1');
+        const sanitizedOwner = typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function'
+            ? GameUtils.escapeHtml(ownerId)
+            : ownerId;
+        const playerRole = isOpponent ? 'opponent' : 'player';
         const cardsHtml = filteredCards.map(card => {
             return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, null, playerId);
         }).join('');
@@ -331,10 +376,15 @@ class UIRenderersTemplates {
         return `
             <div class="battlefield-zone ${zoneName}-zone compact-zones"
                 data-battlefield-zone="${zoneName}"
+                data-zone-owner="${sanitizedOwner}"
+                data-player-role="${playerRole}"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondragleave="UIZonesManager.handleZoneDragLeave(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, '${zoneName}')">
-                <div class="${zoneName}-zone-content zone-content" data-card-count="${cardCount}">
+                <div class="${zoneName}-zone-content zone-content"
+                    data-card-count="${cardCount}"
+                    data-zone-owner="${sanitizedOwner}"
+                    data-player-role="${playerRole}">
                     ${cardsHtml}
                 </div>
             </div>
@@ -1339,6 +1389,235 @@ class UIRenderersTemplates {
         panel.style.transform = 'none';
     }
 
+    static _updatePlayerAreaBattlefield(player, previousPlayer, playerIndex, isOpponent) {
+        const ownerId = this._resolvePlayerOwnerId(player, playerIndex, isOpponent);
+        const battlefieldCards = Array.isArray(player?.battlefield) ? player.battlefield : [];
+        const previousCards = Array.isArray(previousPlayer?.battlefield) ? previousPlayer.battlefield : [];
+
+        ['lands', 'creatures', 'support'].forEach((zoneName) => {
+            this._updateBattlefieldZone(ownerId, zoneName, battlefieldCards, previousCards, { isOpponent });
+        });
+    }
+
+    static _resolvePlayerOwnerId(playerData, playerIndex, isOpponent) {
+        if (playerData && typeof playerData.id === 'string') {
+            return playerData.id;
+        }
+        if (typeof playerIndex === 'number' && !Number.isNaN(playerIndex)) {
+            return `player${playerIndex + 1}`;
+        }
+        return isOpponent ? 'player2' : 'player1';
+    }
+
+    static _updateBattlefieldZone(ownerId, zoneName, battlefieldCards, previousBattlefieldCards, options = {}) {
+        if (!ownerId) {
+            return;
+        }
+
+        const zoneSelector = `.battlefield-zone[data-zone-owner="${ownerId}"][data-battlefield-zone="${zoneName}"]`;
+        const zoneElement = document.querySelector(zoneSelector);
+        if (!zoneElement) {
+            return;
+        }
+
+        const zoneContent = zoneElement.querySelector('.zone-content');
+        if (!zoneContent) {
+            return;
+        }
+
+        const isOpponent = Boolean(options.isOpponent);
+        const currentCards = UIUtils.filterCardsByType(battlefieldCards, zoneName);
+        const previousCards = UIUtils.filterCardsByType(previousBattlefieldCards, zoneName);
+        const previousLookup = new Map(previousCards.map(card => [this._getCardKey(card), card]));
+        const existingElements = new Map();
+
+        Array.from(zoneContent.children).forEach((node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return;
+            }
+            const key = this._getCardElementKey(node);
+            if (key) {
+                existingElements.set(key, node);
+            }
+        });
+
+        currentCards.forEach((card, index) => {
+            const cardKey = this._getCardKey(card);
+            const existing = cardKey ? existingElements.get(cardKey) : null;
+            const previousCard = cardKey ? previousLookup.get(cardKey) : null;
+            const referenceNode = zoneContent.children[index] || null;
+
+            if (existing) {
+                if (previousCard && this._hasOnlySimpleStateChanges(previousCard, card)) {
+                    GameCards.updateCardElementState(existing, card, zoneName, isOpponent);
+                    if (referenceNode !== existing) {
+                        zoneContent.insertBefore(existing, referenceNode);
+                    }
+                } else {
+                    const newNode = this._createCardElement(card, zoneName, isOpponent, ownerId);
+                    zoneContent.insertBefore(newNode, referenceNode);
+                    existing.remove();
+                }
+                existingElements.delete(cardKey);
+                previousLookup.delete(cardKey);
+            } else {
+                const newNode = this._createCardElement(card, zoneName, isOpponent, ownerId);
+                zoneContent.insertBefore(newNode, referenceNode);
+            }
+        });
+
+        existingElements.forEach(node => node.remove());
+        zoneContent.setAttribute('data-card-count', currentCards.length);
+        zoneElement.setAttribute('data-card-count', currentCards.length);
+
+        if (window.UICardOverlap) {
+            window.UICardOverlap.applyOverlapToZone(zoneContent);
+        }
+    }
+
+    static _getCardKey(card) {
+        if (!card) {
+            return null;
+        }
+        return card.unique_id || card.id || card.name || null;
+    }
+
+    static _getCardElementKey(element) {
+        if (!element) {
+            return null;
+        }
+        return (
+            element.getAttribute('data-card-unique-id') ||
+            element.getAttribute('data-card-id') ||
+            element.getAttribute('data-card-name')
+        );
+    }
+
+    static _createCardElement(card, zoneName, isOpponent, ownerId) {
+        const html = GameCards.renderCardWithLoadingState(
+            card,
+            'card-battlefield',
+            true,
+            zoneName,
+            isOpponent,
+            null,
+            ownerId
+        );
+        return this._createElementFromHTML(html);
+    }
+
+    static _createElementFromHTML(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html.trim();
+        return template.content.firstElementChild;
+    }
+
+    static _hasOnlySimpleStateChanges(previousCard, nextCard) {
+        if (!previousCard || !nextCard) {
+            return false;
+        }
+
+        const simpleKeys = ['tapped', 'attacking', 'blocking', 'targeted'];
+        const simpleChanged = simpleKeys.some(
+            (key) => Boolean(previousCard[key]) !== Boolean(nextCard[key])
+        );
+        if (!simpleChanged) {
+            return false;
+        }
+
+        const sanitize = (card) => {
+            const clone = JSON.parse(JSON.stringify(card));
+            simpleKeys.forEach((key) => {
+                delete clone[key];
+            });
+            return clone;
+        };
+
+        const previousSanitized = sanitize(previousCard);
+        const nextSanitized = sanitize(nextCard);
+        return JSON.stringify(previousSanitized) === JSON.stringify(nextSanitized);
+    }
+
+    static _areCardListsEqual(nextList, previousList) {
+        const safeNext = Array.isArray(nextList) ? nextList : [];
+        const safePrev = Array.isArray(previousList) ? previousList : [];
+        return JSON.stringify(safeNext) === JSON.stringify(safePrev);
+    }
+
+    static _updatePlayerHandZone(player, previousPlayer, playerIndex) {
+        const ownerId = this._resolvePlayerOwnerId(player, playerIndex, false);
+        const container = document.querySelector(`.hand-zone-content[data-player-owner="${ownerId}"]`);
+        if (!container) {
+            return;
+        }
+
+        const hand = Array.isArray(player?.hand) ? player.hand : [];
+        const previousHand = Array.isArray(previousPlayer?.hand) ? previousPlayer.hand : [];
+        if (this._areCardListsEqual(hand, previousHand)) {
+            container.setAttribute('data-card-count', hand.length);
+            return;
+        }
+
+        container.innerHTML = this.generatePlayerHand(hand, playerIndex);
+        container.setAttribute('data-card-count', hand.length);
+
+        if (window.UICardOverlap) {
+            window.UICardOverlap.applyOverlapToZone(container);
+        }
+    }
+
+    static _updateOpponentHandZone(opponent, previousOpponent, opponentIdx) {
+        const ownerId = this._resolvePlayerOwnerId(opponent, opponentIdx, true);
+        const container = document.querySelector(`.opponent-hand-zone[data-player-owner="${ownerId}"]`);
+        if (!container) {
+            return;
+        }
+
+        const isSpectatorView =
+            typeof GameCore !== 'undefined' &&
+            typeof GameCore.getSelectedPlayer === 'function' &&
+            GameCore.getSelectedPlayer() === 'spectator';
+        const hand = Array.isArray(opponent?.hand) ? opponent.hand : [];
+        const previousHand = Array.isArray(previousOpponent?.hand) ? previousOpponent.hand : [];
+
+        if (isSpectatorView) {
+            if (this._areCardListsEqual(hand, previousHand) && container.dataset.handMode === 'spectator') {
+                container.setAttribute('data-card-count', hand.length);
+                return;
+            }
+            container.innerHTML = this.generatePlayerHand(hand, opponentIdx, {
+                isOpponent: true,
+                readOnly: true
+            });
+            container.dataset.handMode = 'spectator';
+            container.setAttribute('data-card-count', hand.length);
+            if (window.UICardOverlap) {
+                window.UICardOverlap.applyOverlapToZone(container);
+            }
+            return;
+        }
+
+        const placeholderSize = hand.length || 7;
+        if (
+            Number(container.dataset.cardCount) === placeholderSize &&
+            container.dataset.handMode === 'hidden'
+        ) {
+            return;
+        }
+        container.innerHTML = this.generateOpponentHand(placeholderSize);
+        container.dataset.handMode = 'hidden';
+        container.setAttribute('data-card-count', placeholderSize);
+    }
+
+    static _updatePlayerZoneActiveState(zoneRole, isActive) {
+        const container = document.querySelector(`[data-player-zone="${zoneRole}"]`);
+        if (!container) {
+            return;
+        }
+        const activeClass = zoneRole === 'player' ? 'player-zone-active-turn' : 'opponent-zone-active-turn';
+        container.classList.toggle(activeClass, Boolean(isActive));
+    }
+
     /**
      * Get player indices for controlled and opponent players
      */
@@ -1377,6 +1656,7 @@ class UIRenderersTemplates {
             typeof GameCore !== 'undefined' &&
             typeof GameCore.getSelectedPlayer === 'function' &&
             GameCore.getSelectedPlayer() === 'spectator';
+        const ownerId = this._resolvePlayerOwnerId(opponent, opponentIdx, true);
         const opponentHandHtml = isSpectatorView
             ? this.generatePlayerHand(opponent?.hand || [], opponentIdx, {
                 isOpponent: true,
@@ -1386,12 +1666,18 @@ class UIRenderersTemplates {
         const handDataCount = isSpectatorView ? actualHandSize : placeholderHandSize;
         
         return `
-            <div class="arena-card rounded-lg mb-3 p-3 compact-zones ${activeTurnClass}">
-                <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1" data-card-count="${handDataCount}">
+            <div class="arena-card rounded-lg mb-3 p-3 compact-zones ${activeTurnClass}"
+                data-player-zone="opponent"
+                data-player-owner="${ownerId}">
+                <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
+                    data-card-count="${handDataCount}"
+                    data-player-owner="${ownerId}"
+                    data-hand-mode="${isSpectatorView ? 'spectator' : 'hidden'}"
+                    data-zone-type="opponent-hand">
                     ${opponentHandHtml}
                 </div>
 
-                ${this.generateBattlefieldLayout(opponent?.battlefield, true, opponentIdx)}
+                ${this.generateBattlefieldLayout(opponent?.battlefield, true, ownerId)}
             </div>
         `;
     }
@@ -1403,12 +1689,18 @@ class UIRenderersTemplates {
         const handSize = player?.hand?.length || 0;
         const isPlayerActiveTurn = activePlayer === controlledIdx;
         const activeTurnClass = isPlayerActiveTurn ? 'player-zone-active-turn' : '';
+        const ownerId = this._resolvePlayerOwnerId(player, controlledIdx, false);
         
         return `
-            <div class="arena-card rounded-lg p-3 hand-zone ${activeTurnClass}">
-                ${this.generateBattlefieldLayout(player?.battlefield, false, controlledIdx)}
+            <div class="arena-card rounded-lg p-3 hand-zone ${activeTurnClass}"
+                data-player-zone="player"
+                data-player-owner="${ownerId}">
+                ${this.generateBattlefieldLayout(player?.battlefield, false, ownerId)}
 
-                <div class="hand-zone-content zone-content" data-card-count="${handSize}"
+                <div class="hand-zone-content zone-content"
+                    data-card-count="${handSize}"
+                    data-zone-type="hand"
+                    data-player-owner="${ownerId}"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'hand')">
                     ${this.generatePlayerHand(player?.hand || [], controlledIdx)}

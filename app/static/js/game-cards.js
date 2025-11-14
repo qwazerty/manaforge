@@ -393,14 +393,11 @@ const GameCards = {
         `;
     },
 
-    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null, options = {}) {
-        const cardId = card.id || card.name;
-        const cardName = card.name || 'Unknown';
-        const imageUrl = this.getSafeImageUrl(card);
-        const isTapped = card.tapped || false;
-        const isTargeted = card.targeted || false;
-        const isAttacking = card.attacking || false;
-        const isBlocking = card.blocking || false;
+    _computeCardVisualState: function(card, zone = 'unknown', isOpponent = false) {
+        const isTapped = Boolean(card?.tapped);
+        const isTargeted = Boolean(card?.targeted);
+        const isAttacking = Boolean(card?.attacking);
+        const isBlocking = Boolean(card?.blocking);
         const gameState = (typeof GameCore !== 'undefined' && typeof GameCore.getGameState === 'function')
             ? GameCore.getGameState()
             : null;
@@ -408,23 +405,72 @@ const GameCards = {
             (gameState?.phase || '').toLowerCase()
         );
         const combatState = gameState?.combat_state || {};
-        const pendingAttackers = Array.isArray(combatState.pending_attackers)
-            ? combatState.pending_attackers
-            : [];
         const pendingBlockers = combatState && typeof combatState.pending_blockers === 'object'
             ? combatState.pending_blockers
             : {};
-        const isPendingAttacker = pendingAttackers.includes(card.unique_id);
-        const isPendingBlocker = Object.prototype.hasOwnProperty.call(pendingBlockers, card.unique_id);
         const combatStep = combatState?.step || null;
         const frontendCombatMode = typeof GameCombat !== 'undefined' ? GameCombat.combatMode : null;
-        const isDeclaringAttackers = combatStep === 'declare_attackers' || frontendCombatMode === 'declaring_attackers';
-        const suppressTappedVisual = inCombatPhase && isTapped && (isAttacking || isBlocking || isPendingBlocker) && isDeclaringAttackers;
-        const combatTappedClass = (inCombatPhase && isAttacking && isTapped) ? ' combat-tapped' : '';
-        const tappedClass = (isTapped && !suppressTappedVisual) ? ' tapped' : '';
-        const targetedClass = isTargeted ? ' targeted' : '';
-        const attackingClass = isAttacking ? ' attacking-creature' : '';
-        const blockingClass = isBlocking ? ' blocking-creature' : '';
+        const isDeclaringAttackers =
+            combatStep === 'declare_attackers' || frontendCombatMode === 'declaring_attackers';
+        const isPendingBlocker = Object.prototype.hasOwnProperty.call(
+            pendingBlockers,
+            card?.unique_id
+        );
+
+        const suppressTappedVisual =
+            inCombatPhase &&
+            isTapped &&
+            (isAttacking || isBlocking || isPendingBlocker) &&
+            isDeclaringAttackers;
+
+        const classes = {
+            tapped: isTapped && !suppressTappedVisual,
+            combatTapped: inCombatPhase && isAttacking && isTapped,
+            targeted: isTargeted,
+            attacking: isAttacking,
+            blocking: isBlocking
+        };
+
+        let transformValue = '';
+        if (isAttacking) {
+            const transforms = [];
+            const translateY = isOpponent ? 20 : -20;
+            if (translateY !== 0) {
+                transforms.push(`translateY(${translateY}px)`);
+            }
+            if (isTapped && !suppressTappedVisual) {
+                transforms.push('rotate(90deg)');
+            }
+            if (transforms.length) {
+                transformValue = transforms.join(' ');
+            }
+        }
+
+        return {
+            classes,
+            data: {
+                isTapped,
+                isTargeted,
+                isAttacking,
+                isBlocking
+            },
+            transformValue,
+            styleText: transformValue ? `transform: ${transformValue};` : ''
+        };
+    },
+
+    renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null, options = {}) {
+        const cardId = card.id || card.name;
+        const cardName = card.name || 'Unknown';
+        const imageUrl = this.getSafeImageUrl(card);
+        const visualState = this._computeCardVisualState(card, zone, isOpponent);
+        const stateClasses = visualState.classes;
+        const stateFlags = visualState.data;
+        const combatTappedClass = stateClasses.combatTapped ? ' combat-tapped' : '';
+        const tappedClass = stateClasses.tapped ? ' tapped' : '';
+        const targetedClass = stateClasses.targeted ? ' targeted' : '';
+        const attackingClass = stateClasses.attacking ? ' attacking-creature' : '';
+        const blockingClass = stateClasses.blocking ? ' blocking-creature' : '';
         const uniqueCardId = card.unique_id;
         const typePieces = [];
         const pushType = (value) => {
@@ -521,20 +567,7 @@ const GameCards = {
         const contextMenuAttr = allowInteractions ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
         
         // Apply transform for attacking creatures, keeping rotation when tapped
-        let attackingStyle = '';
-        if (isAttacking) {
-            const transforms = [];
-            const translateY = isOpponent ? 20 : -20;
-            if (translateY !== 0) {
-                transforms.push(`translateY(${translateY}px)`);
-            }
-            if (isTapped && !suppressTappedVisual) {
-                transforms.push('rotate(90deg)');
-            }
-            if (transforms.length) {
-                attackingStyle = `transform: ${transforms.join(' ')};`;
-            }
-        }
+        const attackingStyle = visualState.styleText;
 
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
@@ -550,8 +583,8 @@ const GameCards = {
                 data-card-type="${dataCardType}"
                 data-card-owner="${dataCardOwner}"
                 data-card-controller="${dataCardController}"
-                data-card-tapped="${isTapped}"
-                data-card-targeted="${isTargeted}"
+                data-card-tapped="${stateFlags.isTapped}"
+                data-card-targeted="${stateFlags.isTargeted}"
                 data-card-search="${searchIndex}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
@@ -583,6 +616,33 @@ const GameCards = {
                 `}
             </div>
         `;
+    },
+
+    updateCardElementState: function(cardElement, cardData, zone = 'unknown', isOpponent = false) {
+        if (!cardElement || !cardData) {
+            return;
+        }
+
+        const visualState = this._computeCardVisualState(cardData, zone, isOpponent);
+        const stateClasses = visualState.classes;
+        const stateFlags = visualState.data;
+
+        cardElement.classList.toggle('tapped', Boolean(stateClasses.tapped));
+        cardElement.classList.toggle('combat-tapped', Boolean(stateClasses.combatTapped));
+        cardElement.classList.toggle('targeted', Boolean(stateClasses.targeted));
+        cardElement.classList.toggle('attacking-creature', Boolean(stateClasses.attacking));
+        cardElement.classList.toggle('blocking-creature', Boolean(stateClasses.blocking));
+
+        const serializedData = JSON.stringify(cardData).replace(/'/g, "&#39;");
+        cardElement.setAttribute('data-card-data', serializedData);
+        cardElement.setAttribute('data-card-tapped', stateFlags.isTapped ? 'true' : 'false');
+        cardElement.setAttribute('data-card-targeted', stateFlags.isTargeted ? 'true' : 'false');
+
+        if (visualState.transformValue) {
+            cardElement.style.transform = visualState.transformValue;
+        } else {
+            cardElement.style.removeProperty('transform');
+        }
     },
 
     generateCountersHtml: function(card) {

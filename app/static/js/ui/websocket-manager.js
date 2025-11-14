@@ -150,7 +150,7 @@ class WebSocketManager {
                     }
 
                     if (!handledPreview) {
-                        this._refreshGameUI();
+                        this._refreshGameUI(oldGameState);
                     }
 
                     const oldPhase = oldGameState?.phase;
@@ -375,9 +375,15 @@ class WebSocketManager {
     /**
      * Refresh game UI components
      */
-    static _refreshGameUI() {
+    static _refreshGameUI(previousGameState = null) {
         UIRenderersTemplates.renderLeftArea();
-        UIRenderersTemplates.renderGameBoard();
+        const boardUpdated = UIRenderersTemplates.updateGameBoard(
+            GameCore.getGameState(),
+            previousGameState
+        );
+        if (!boardUpdated) {
+            UIRenderersTemplates.renderGameBoard();
+        }
         UIRenderersTemplates.renderActionPanel();
         
         // Update zone counts and previews
