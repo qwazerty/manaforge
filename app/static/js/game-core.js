@@ -204,6 +204,14 @@ async function initializeGame() {
         console.error('Game ID not found in template data');
         return;
     }
+
+    // Determine player seat from URL before rendering anything
+    const playerFromUrl = GameUtils.getPlayerFromUrl();
+    currentSelectedPlayer = playerFromUrl;
+    updateSpectatorModeClass();
+    if (window.gameData) {
+        window.gameData.playerId = playerFromUrl;
+    }
     
     // Load initial game state from API
     try {
@@ -212,11 +220,6 @@ async function initializeGame() {
         console.error('Failed to load initial game state:', error);
         return;
     }
-    
-    // Get player from URL or default to player1
-    const playerFromUrl = GameUtils.getPlayerFromUrl();
-    currentSelectedPlayer = playerFromUrl;
-    updateSpectatorModeClass();
     
     // Initialize UI components safely
     // await GameUI.initializeGameUI();
