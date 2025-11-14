@@ -191,6 +191,15 @@ class WebSocketManager {
                 if (actionResult) {
                     WebSocketManager._recordActionResult(actionResult);
                 }
+
+                if (
+                    newGameState &&
+                    Array.isArray(newGameState.action_history) &&
+                    typeof UIActionHistory !== 'undefined' &&
+                    typeof UIActionHistory.mergeStateEntries === 'function'
+                ) {
+                    UIActionHistory.mergeStateEntries(newGameState.action_history);
+                }
                 break;
                 
             case 'game_action_start':
