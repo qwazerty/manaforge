@@ -1,0 +1,222 @@
+{% extends "base_arena.html" %}
+
+{% block title %}Deck Manager - ManaForge{% endblock %}
+
+{% block extra_css %}
+<style>
+#deck-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+.deck-column {
+    max-width: 220px;
+    margin: 0 auto;
+}
+.deck-column-stack {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+}
+.deck-column-stack .deck-card-entry {
+    margin-top: -3.5rem;
+    padding-top: 3.75rem;
+    transition: transform 0.2s ease, filter 0.2s ease;
+    position: relative;
+}
+.deck-column-stack .deck-card-entry:first-child {
+    margin-top: 0;
+    padding-top: 0;
+}
+.deck-column-stack .deck-card-entry:hover {
+    transform: translateY(-4px);
+    filter: brightness(1.05);
+}
+.deck-card-entry img {
+    pointer-events: none;
+}
+.deck-card-entry-controls button {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+.deck-card-entry .card-visual {
+    box-shadow:
+        0 14px 36px rgba(0, 0, 0, 0.55),
+        0 6px 20px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    outline: 1px solid rgba(0, 0, 0, 0.65);
+    outline-offset: -1px;
+    background: radial-gradient(circle at top, rgba(255,255,255,0.08), rgba(0,0,0,0.6));
+}
+.deck-card-entry .card-visual:hover {
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.7),
+        0 10px 28px rgba(0, 0, 0, 0.55);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="py-12 px-4">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <div class="text-center space-y-4 animate-fade-in">
+            <p class="text-sm uppercase tracking-[0.3em] text-arena-muted">Mana Lab</p>
+            <h1 class="font-magic text-4xl md:text-5xl font-bold text-arena-accent">Deck Architect</h1>
+            <p class="text-lg text-arena-text-dim max-w-3xl mx-auto">
+                Import, refine, and export your decks with Arena-style columns, card search, hover previews, and instant metrics.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4 pt-2">
+                <button id="deck-search-button" class="arena-button px-6 py-3 rounded-lg font-semibold flex items-center gap-2">
+                    <span>🔍</span>Search cards
+                </button>
+                <button id="deck-add-basic-toggle" class="px-6 py-3 rounded-lg font-semibold flex items-center gap-2 border border-arena-accent/40 text-arena-accent hover:bg-arena-accent/10 transition">
+                    <span>🌿</span>Add basic lands
+                </button>
+                <button id="deck-export-button" class="px-6 py-3 rounded-lg font-semibold flex items-center gap-2 bg-arena-surface border border-arena-accent/30 hover:border-arena-accent transition">
+                    <span>📋</span>Export to clipboard
+                </button>
+            </div>
+        </div>
+
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+            <div class="grid md:grid-cols-3 gap-4">
+                <div>
+                    <label for="deck-name-input" class="block text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">
+                        Deck name
+                    </label>
+                    <input
+                        type="text"
+                        id="deck-name-input"
+                        placeholder="Untitled brew"
+                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                    >
+                </div>
+                <div>
+                    <label for="deck-format-select" class="block text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">
+                        Format
+                    </label>
+                    <select
+                        id="deck-format-select"
+                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                    >
+                        <option value="standard">Standard</option>
+                        <option value="modern">Modern</option>
+                        <option value="pioneer">Pioneer</option>
+                        <option value="pauper">Pauper</option>
+                        <option value="legacy">Legacy</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="duel_commander">Duel Commander</option>
+                        <option value="commander_multi">Commander Multi</option>
+                    </select>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Autosave</p>
+                    <div id="deck-autosave-status" class="px-4 py-3 rounded-lg bg-arena-surface border border-arena-accent/10 text-arena-text text-sm">
+                        Changes save locally every few seconds.
+                    </div>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-4 gap-4 text-center">
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Main deck</p>
+                    <p id="deck-main-count" class="text-3xl font-bold text-arena-accent mt-1">0</p>
+                </div>
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Sideboard</p>
+                    <p id="deck-sideboard-count" class="text-3xl font-bold text-arena-text mt-1">0</p>
+                </div>
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Colors</p>
+                    <div id="deck-color-chips" class="flex flex-wrap justify-center gap-2 mt-2 text-sm"></div>
+                </div>
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Status</p>
+                    <p id="deck-status-message" class="text-sm text-arena-text-dim mt-2">Ready to brew.</p>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Type counts</p>
+                    <div id="deck-type-breakdown" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Mana curve</p>
+                    <div class="h-40 flex items-end gap-2" id="deck-mana-curve-bars"></div>
+                    <div class="flex justify-between text-xs text-arena-muted mt-2" id="deck-mana-curve-labels"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 class="font-magic text-2xl text-arena-accent">Deck layout</h2>
+                    <p class="text-arena-text-dim text-sm">Drag & drop cards between Arena-style columns. Hover to preview.</p>
+                </div>
+                <div class="flex flex-wrap gap-2" id="basic-land-buttons">
+                    <button data-land="Plains" class="px-3 py-2 rounded border border-arena-accent/30 text-sm hover:bg-arena-accent/10 transition">+ Plains</button>
+                    <button data-land="Island" class="px-3 py-2 rounded border border-arena-accent/30 text-sm hover:bg-arena-accent/10 transition">+ Island</button>
+                    <button data-land="Swamp" class="px-3 py-2 rounded border border-arena-accent/30 text-sm hover:bg-arena-accent/10 transition">+ Swamp</button>
+                    <button data-land="Mountain" class="px-3 py-2 rounded border border-arena-accent/30 text-sm hover:bg-arena-accent/10 transition">+ Mountain</button>
+                    <button data-land="Forest" class="px-3 py-2 rounded border border-arena-accent/30 text-sm hover:bg-arena-accent/10 transition">+ Forest</button>
+                    <button data-land="Wastes" class="px-3 py-2 rounded border border-arena-accent/30 text-sm hover:bg-arena-accent/10 transition">+ Wastes</button>
+                </div>
+            </div>
+            <div class="pb-2">
+                <div id="deck-columns"></div>
+            </div>
+        </section>
+
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
+                        <span>📥</span>Import from text
+                    </h3>
+                    <textarea
+                        id="deck-import-text"
+                        rows="10"
+                        placeholder="4 Lightning Bolt&#10;4 Dragon's Rage Channeler&#10;..."
+                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                    ></textarea>
+                    <button id="deck-parse-button" class="arena-button px-6 py-3 rounded-lg font-semibold">Parse decklist</button>
+                </div>
+                <div class="space-y-4">
+                    <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
+                        <span>🕸️</span>Import from URL
+                    </h3>
+                    <input
+                        type="url"
+                        id="deck-import-url"
+                        placeholder="https://moxfield.com/decks/..."
+                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                    >
+                    <button id="deck-import-url-button" class="px-6 py-3 rounded-lg font-semibold border border-arena-accent/30 hover:border-arena-accent transition flex items-center gap-2">
+                        <span>🌐</span>Fetch & parse
+                    </button>
+                    <p class="text-sm text-arena-text-dim">
+                        Uses the same parser as the game room (MTGGoldfish, Scryfall, Moxfield). Sideboards can be managed manually via the dedicated column.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="deck-export-button-secondary" class="arena-button px-5 py-3 rounded-lg font-semibold flex items-center gap-2">
+                            <span>📤</span>Export decklist
+                        </button>
+                        <button id="deck-clear-button" class="px-5 py-3 rounded-lg font-semibold flex items-center gap-2 border border-red-400/40 text-red-300 hover:bg-red-500/10 transition">
+                            <span>🗑️</span>Clear deck
+                        </button>
+                    </div>
+                    <div id="deck-import-status" class="text-sm text-arena-muted"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
+<script src="{{ url_for('static', path='js/card-search.js') }}"></script>
+<script src="{{ url_for('static', path='js/deck-manager.js') }}"></script>
+{% endblock %}
