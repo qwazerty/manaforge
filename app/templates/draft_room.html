@@ -66,11 +66,37 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
 <script>
     const roomId = "{{ room.id }}";
     const urlParams = new URLSearchParams(window.location.search);
     const playerId = urlParams.get('player');
     let websocket;
+
+    function escapeAttr(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function buildCardPreviewAttributes(card) {
+        const uniqueId = card.unique_id || card.id || card.card_id || card.collector_number || card.name || '';
+        const fallbackId = card.id || card.card_id || card.collector_number || uniqueId;
+        return {
+            uniqueId,
+            uniqueIdAttr: escapeAttr(uniqueId),
+            cardIdAttr: escapeAttr(fallbackId),
+            cardNameAttr: escapeAttr(card.name || ''),
+            cardImageAttr: escapeAttr(card.image_url || '')
+        };
+    }
 
     function initializeWebSocket() {
         if (!playerId) {
@@ -168,11 +194,17 @@
                         content += `<h3 class="font-magic text-2xl text-arena-accent">${player.name}'s Drafted Cards</h3>`;
                         content += `</div>`;
                         content += `<div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
-                        content += player.drafted_cards.map(card => `
-                            <div oncontextmenu="showCardPopup(event, '${card.image_url}')">
-                                <img src="${card.image_url}" alt="${card.name}" class="rounded-lg w-full">
+                        content += player.drafted_cards.map(card => {
+                            const attrs = buildCardPreviewAttributes(card);
+                            return `
+                            <div class="draft-card"
+                                data-card-id="${attrs.cardIdAttr}"
+                                data-card-name="${attrs.cardNameAttr}"
+                                data-card-image="${attrs.cardImageAttr}">
+                                <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
                             </div>
-                        `).join('');
+                        `;
+                        }).join('');
                         content += `</div></div>`;
                     }
                     allDraftedCardsContainer.innerHTML = content;
@@ -185,20 +217,34 @@
 
     function renderPack(pack) {
         const packContainer = document.getElementById('current-pack');
-        packContainer.innerHTML = pack.map(card => `
-            <div id="card-${card.unique_id}" class="cursor-pointer" onclick="selectCard('${card.unique_id}')" oncontextmenu="showCardPopup(event, '${card.image_url}')">
-                <img src="${card.image_url}" alt="${card.name}" class="rounded-lg w-full">
+        packContainer.innerHTML = pack.map(card => {
+            const attrs = buildCardPreviewAttributes(card);
+            return `
+            <div id="card-${attrs.uniqueIdAttr}" class="cursor-pointer"
+                data-select-id="${attrs.uniqueIdAttr}"
+                data-card-id="${attrs.cardIdAttr}"
+                data-card-name="${attrs.cardNameAttr}"
+                data-card-image="${attrs.cardImageAttr}"
+                onclick="selectCard(this.dataset.selectId)">
+                <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function renderDraftedCards(cards) {
         const draftedContainer = document.getElementById('drafted-cards');
-        draftedContainer.innerHTML = cards.map(card => `
-            <div oncontextmenu="showCardPopup(event, '${card.image_url}')">
-                <img src="${card.image_url}" alt="${card.name}" class="rounded-lg w-full">
+        draftedContainer.innerHTML = cards.map(card => {
+            const attrs = buildCardPreviewAttributes(card);
+            return `
+            <div class="draft-card"
+                data-card-id="${attrs.cardIdAttr}"
+                data-card-name="${attrs.cardNameAttr}"
+                data-card-image="${attrs.cardImageAttr}">
+                <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function selectCard(cardUniqueId) {
@@ -248,31 +294,6 @@
                 originalOnMessage(event);
             }
         };
-    }
-
-    function showCardPopup(event, imageUrl) {
-        event.preventDefault();
-        const popup = document.createElement('div');
-        popup.style.position = 'fixed';
-        popup.style.left = '0';
-        popup.style.top = '0';
-        popup.style.width = '100%';
-        popup.style.height = '100%';
-        popup.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
-        popup.style.display = 'flex';
-        popup.style.alignItems = 'center';
-        popup.style.justifyContent = 'center';
-        popup.style.zIndex = '1000';
-        popup.onclick = () => popup.remove();
-
-        const img = document.createElement('img');
-        img.src = imageUrl;
-        img.style.maxWidth = '80%';
-        img.style.maxHeight = '80%';
-        img.style.borderRadius = '10px';
-
-        popup.appendChild(img);
-        document.body.appendChild(popup);
     }
 
     document.getElementById('add-bot-button').addEventListener('click', () => {
