@@ -12,6 +12,7 @@ class CardSearchModal {
         this.targetZone = 'hand';
         this.selectedIndex = -1;
         this.boundHandleKeydown = this.handleKeydown.bind(this);
+        this.submitHandler = null;
     }
 
     /**
@@ -375,6 +376,24 @@ class CardSearchModal {
      * Add selected card to the game
      */
     async addCardToGame(card) {
+        if (typeof this.submitHandler === 'function') {
+            try {
+                const result = this.submitHandler(card);
+                if (result && typeof result.then === 'function') {
+                    const resolved = await result;
+                    if (resolved === false) {
+                        return;
+                    }
+                } else if (result === false) {
+                    return;
+                }
+                this.hide();
+            } catch (error) {
+                console.error('Custom submit handler failed', error);
+            }
+            return;
+        }
+
         if (!window.gameData || !window.gameData.gameId) {
             console.error('No game data available');
             return;
@@ -445,6 +464,17 @@ class CardSearchModal {
             'library': 'la bibliothèque'
         };
         return zoneNames[zone] || zone;
+    }
+
+    /**
+     * Allow other modules to override submit behavior.
+     */
+    setSubmitHandler(handler) {
+        if (typeof handler === 'function' || handler === null) {
+            this.submitHandler = handler;
+        } else {
+            console.warn('CardSearchModal submit handler must be a function or null');
+        }
     }
 }
 
