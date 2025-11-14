@@ -540,6 +540,11 @@
         },
 
         handleDragStart(event) {
+            if (window.GameCards && typeof GameCards.closeHoverPreview === 'function') {
+                GameCards.closeHoverPreview();
+            } else if (window.GameCards && typeof GameCards._closeActiveCardPreview === 'function') {
+                GameCards._closeActiveCardPreview();
+            }
             const entryEl = event.target.closest('[data-entry-id]');
             if (!entryEl) return;
             this.draggedEntryId = entryEl.getAttribute('data-entry-id');
