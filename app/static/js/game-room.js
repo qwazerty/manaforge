@@ -43,6 +43,9 @@
     const deckPreviewCards = document.getElementById('deck-preview-cards');
     const deckPreviewCount = document.getElementById('deck-preview-count');
     const modernExampleButton = document.getElementById('modern-example-button');
+    const deckLibrarySection = document.getElementById('deck-library-import');
+    const deckLibraryList = document.getElementById('deck-library-import-list');
+    const deckLibraryEmpty = document.getElementById('deck-library-import-empty');
     
     const gameFormatSelect = document.getElementById('game-format-select');
     const phaseModeSelect = document.getElementById('phase-mode-select');
@@ -60,6 +63,182 @@
     let lastStatus = initialStatus;
     let isSubmitting = false;
     let isImportingDeck = false;
+
+    function getLegacyDeckState() {
+        try {
+            const raw = localStorage.getItem('manaforge:deck-manager:v1');
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            const state = parsed && typeof parsed === 'object' && parsed.state
+                ? parsed.state
+                : parsed;
+            if (!state || typeof state !== 'object') return null;
+            const hasEntries = state.entries && Object.keys(state.entries).length > 0;
+            if (!hasEntries) return null;
+            return {
+                id: parsed?.deckId || 'deck-local',
+                name: state.deckName || 'Unsaved Deck',
+                format: state.format || 'modern',
+                state,
+                updatedAt: parsed?.updatedAt || new Date().toISOString(),
+                legacy: true
+            };
+        } catch (error) {
+            console.warn('Unable to read legacy deck state', error);
+            return null;
+        }
+    }
+
+    function getDeckLibraryDecks() {
+        let decks = [];
+        try {
+            if (window.DeckLibrary && typeof window.DeckLibrary.list === 'function') {
+                decks = window.DeckLibrary.list() || [];
+            }
+        } catch (error) {
+            console.warn('Unable to load deck library entries', error);
+        }
+        const legacyDeck = getLegacyDeckState();
+        if (legacyDeck && !decks.some((deck) => deck.id === legacyDeck.id)) {
+            decks = [legacyDeck, ...decks];
+        }
+        return decks;
+    }
+
+    function countCardsInColumns(state, columnKeys) {
+        if (!state || !state.columns || !state.entries) return 0;
+        return columnKeys.reduce((sum, key) => {
+            const entryIds = state.columns[key] || [];
+            return sum + entryIds.reduce((colSum, entryId) => {
+                const entry = state.entries[entryId];
+                return colSum + (entry?.quantity || 0);
+            }, 0);
+        }, 0);
+    }
+
+    function buildDecklistFromState(state) {
+        if (!state || !state.columns || !state.entries) return '';
+        const entries = state.entries;
+        const getEntries = (columnKey) => {
+            const entryIds = state.columns[columnKey] || [];
+            return entryIds
+                .map((entryId) => entries[entryId])
+                .filter((entry) => entry && entry.card && entry.quantity);
+        };
+
+        const lines = [];
+        const mainColumns = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
+        mainColumns.forEach((column) => {
+            const columnEntries = getEntries(column);
+            columnEntries.forEach((entry) => {
+                const cardName = entry.card?.name || 'Unknown Card';
+                lines.push(`${entry.quantity} ${cardName}`);
+            });
+        });
+
+        const sideEntries = getEntries('sideboard');
+        if (sideEntries.length) {
+            lines.push('');
+            lines.push('Sideboard');
+            sideEntries.forEach((entry) => {
+                const cardName = entry.card?.name || 'Unknown Card';
+                lines.push(`${entry.quantity} ${cardName}`);
+            });
+        }
+
+        const commanderEntries = getEntries('commander');
+        if (commanderEntries.length) {
+            lines.push('');
+            lines.push('Commander');
+            commanderEntries.forEach((entry) => {
+                const cardName = entry.card?.name || 'Unknown Card';
+                lines.push(`${entry.quantity} ${cardName}`);
+            });
+        }
+
+        return lines.join('\n').trim();
+    }
+
+    function renderDeckLibraryOptions() {
+        if (!deckLibrarySection || !deckLibraryList || !deckLibraryEmpty) {
+            return;
+        }
+        const decks = getDeckLibraryDecks();
+        deckLibraryList.innerHTML = '';
+
+        if (!decks.length) {
+            deckLibraryEmpty.classList.remove('hidden');
+            return;
+        }
+        deckLibraryEmpty.classList.add('hidden');
+
+        decks.forEach((deck) => {
+            const mainCount = countCardsInColumns(deck.state, ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands']);
+            const sideCount = countCardsInColumns(deck.state, ['sideboard']);
+            const subtitleParts = [
+                (deck.format || 'unknown').toUpperCase(),
+                `${mainCount} main`,
+                sideCount ? `${sideCount} side` : null
+            ].filter(Boolean);
+
+            const row = document.createElement('div');
+            row.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-arena-accent/10 bg-arena-surface/70 rounded-lg p-3';
+            row.innerHTML = `
+                <div>
+                    <p class="font-semibold text-arena-text">${deck.name || 'Untitled Deck'}</p>
+                    <p class="text-xs text-arena-muted">${subtitleParts.join(' • ')}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${deck.legacy ? '<span class="text-[10px] uppercase tracking-wide px-2 py-1 rounded-full border border-arena-accent/30 text-arena-text-dim">Unsaved</span>' : ''}
+                    <button type="button" class="arena-button px-4 py-2 text-xs font-semibold" data-deck-library-id="${deck.id}">
+                        Load deck
+                    </button>
+                </div>
+            `;
+            deckLibraryList.appendChild(row);
+        });
+    }
+
+    function handleDeckLibraryClick(event) {
+        const target = event.target.closest('button[data-deck-library-id]');
+        if (!target) return;
+        const deckId = target.dataset.deckLibraryId;
+        if (!deckId) return;
+        const deck = getDeckLibraryDecks().find((entry) => entry.id === deckId);
+        if (!deck) {
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = 'Unable to locate the selected deck.';
+                statusElements.deckStatus.classList.remove('text-arena-accent');
+                statusElements.deckStatus.classList.add('text-red-300');
+            }
+            return;
+        }
+
+        const deckText = buildDecklistFromState(deck.state);
+        if (!deckText) {
+            if (statusElements.deckStatus) {
+                statusElements.deckStatus.textContent = 'This deck appears to be empty.';
+                statusElements.deckStatus.classList.remove('text-arena-accent');
+                statusElements.deckStatus.classList.add('text-red-300');
+            }
+            return;
+        }
+
+        if (deckTextArea) {
+            deckTextArea.value = deckText;
+            deckTextArea.dispatchEvent(new Event('input'));
+        }
+        if (deckUrlInput) {
+            deckUrlInput.value = '';
+        }
+        renderDeckPreview(null);
+
+        if (statusElements.deckStatus) {
+            statusElements.deckStatus.textContent = `Loaded deck "${deck.name || 'Untitled Deck'}" from Deck Manager.`;
+            statusElements.deckStatus.classList.remove('text-red-300');
+            statusElements.deckStatus.classList.add('text-arena-accent');
+        }
+    }
 
     function getStoredPlayerAlias() {
         try {
@@ -1087,6 +1266,10 @@
         loadDeckFromCache();
         updateShareButtons();
         bindNameEditing();
+        renderDeckLibraryOptions();
+        if (deckLibraryList) {
+            deckLibraryList.addEventListener('click', handleDeckLibraryClick);
+        }
 
         if (deckPreviewButton) {
             deckPreviewButton.addEventListener('click', previewDecklist);
@@ -1144,6 +1327,7 @@
             stopPolling();
         } else {
             pollingDisabled = false;
+            renderDeckLibraryOptions();
             pollSetupStatus(true);
         }
     });

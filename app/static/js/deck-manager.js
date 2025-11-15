@@ -1,6 +1,6 @@
 /**
  * ManaForge Deck Manager
- * Client-side deck builder with Arena-style layout, stats, and import/export features.
+ * Client-side deck builder with layout, stats, and import/export features.
  */
 (function() {
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
@@ -95,7 +95,6 @@
                 importTextarea: document.getElementById('deck-import-text'),
                 importUrlInput: document.getElementById('deck-import-url'),
                 importStatus: document.getElementById('deck-import-status'),
-                saveButton: document.getElementById('deck-save-button'),
                 searchButtons: Array.from(document.querySelectorAll('[data-deck-search]')),
                 exportButtons: [
                     document.getElementById('deck-export-button'),
@@ -145,10 +144,6 @@
                     this.state.deckName = event.target.value;
                     this.queueSave();
                 });
-            }
-
-            if (this.elements.saveButton) {
-                this.elements.saveButton.addEventListener('click', () => this.saveDeckToLibrary());
             }
 
             if (this.elements.formatSelect) {
@@ -261,6 +256,13 @@
 
             this.state = nextState;
             this.ensureColumns();
+            const hadDeckId = Boolean(this.currentDeckId);
+            this.ensureDeckIdentity();
+            if (!hadDeckId) {
+                this.saveState();
+            } else {
+                this.syncLibraryState();
+            }
             this.forceFreshState = false;
         },
 
@@ -310,9 +312,10 @@
 
         saveState() {
             if (!this.state) return;
+            this.ensureDeckIdentity();
             try {
                 const payload = {
-                    deckId: this.currentDeckId || null,
+                    deckId: this.currentDeckId,
                     state: this.cloneState(this.state)
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1022,29 +1025,18 @@
             }
         },
 
-        saveDeckToLibrary() {
-            if (!window.DeckLibrary) {
-                this.setImportStatus('Deck library unavailable in this browser.', 'error');
+        ensureDeckIdentity() {
+            if (this.currentDeckId) {
                 return;
             }
-            const payload = {
-                id: this.currentDeckId || window.DeckLibrary.generateId(),
-                name: this.state.deckName || 'Untitled Deck',
-                format: this.state.format || 'modern',
-                state: this.cloneState(this.state),
-                updatedAt: new Date().toISOString()
-            };
-            try {
-                window.DeckLibrary.save(payload);
-                this.currentDeckId = payload.id;
-                this.updateDeckIdInUrl(payload.id);
-                this.setImportStatus('Deck saved to your library.', 'success');
-                this.syncLibraryState(payload);
-                this.saveState();
-            } catch (error) {
-                console.warn('Unable to save deck', error);
-                this.setImportStatus('Unable to save the deck to your library.', 'error');
+            let generatedId = null;
+            if (window.DeckLibrary && typeof window.DeckLibrary.generateId === 'function') {
+                generatedId = window.DeckLibrary.generateId();
+            } else {
+                generatedId = `deck_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
             }
+            this.currentDeckId = generatedId;
+            this.updateDeckIdInUrl(generatedId);
         },
 
         resetDeckIdentity() {

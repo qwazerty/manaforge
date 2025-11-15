@@ -214,6 +214,24 @@
 
             <form id="deck-submit-form" class="space-y-4">
                 <div class="space-y-2">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <label class="block text-sm font-semibold text-arena-text">Import from Deck Manager</label>
+                        <a href="/decks" class="text-xs text-arena-accent hover:underline">Open Deck Library</a>
+                    </div>
+                    <div id="deck-library-import" class="border border-arena-accent/20 rounded-lg bg-arena-surface/60 p-4 space-y-3">
+                        <p id="deck-library-import-empty" class="text-sm text-arena-muted hidden">
+                            No saved decks available yet. Visit the Deck Manager to create and save one.
+                        </p>
+                        <div id="deck-library-import-list" class="space-y-2"></div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-center gap-2">
+                    <span class="h-px flex-1 bg-arena-accent/20"></span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-arena-muted">or</span>
+                    <span class="h-px flex-1 bg-arena-accent/20"></span>
+                </div>
+
+                <div class="space-y-2">
                     <label for="decklistUrl" class="block text-sm font-semibold text-arena-text">Import from URL</label>
                     <div class="flex flex-col sm:flex-row gap-3">
                         <input
@@ -230,6 +248,12 @@
                     <p class="text-xs text-arena-muted">
                         Paste a public deck URL from Moxfield, Scryfall, MTGGoldfish, etc. We'll fetch the list automatically.
                     </p>
+                </div>
+
+                <div class="flex items-center justify-center gap-2">
+                    <span class="h-px flex-1 bg-arena-accent/20"></span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-arena-muted">or</span>
+                    <span class="h-px flex-1 bg-arena-accent/20"></span>
                 </div>
 
                 <textarea
@@ -317,5 +341,6 @@ window.gameRoomConfig = {{ {
     "shareLinks": share_links
 } | tojson }};
 </script>
+<script src="{{ url_for('static', path='js/deck-library.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-room.js') }}"></script>
 {% endblock %}
