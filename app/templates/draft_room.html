@@ -221,11 +221,6 @@
             </div>
         </section>
 
-        <!-- All Drafted Cards -->
-        <div id="all-drafted-cards" class="hidden mt-8">
-            <h2 class="font-magic text-3xl text-arena-accent mb-4 text-center">Draft Complete!</h2>
-            <!-- Drafted cards for all players will be rendered here -->
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -405,32 +400,6 @@
                     document.getElementById('confirm-pick-button').style.display = 'none';
                     document.getElementById('draft-complete-message').classList.remove('hidden');
                     document.getElementById('export-container').classList.remove('hidden');
-
-                    const allDraftedCardsContainer = document.getElementById('all-drafted-cards');
-                    allDraftedCardsContainer.classList.remove('hidden');
-                    
-                    let content = '';
-                    for (const player of room.players) {
-                        content += `<div class="mb-8 arena-card p-4">`;
-                        content += `<div class="flex justify-between items-center mb-4">`;
-                        content += `<h3 class="font-magic text-2xl text-arena-accent">${player.name}'s Drafted Cards</h3>`;
-                        content += `</div>`;
-                        content += `<div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">`;
-                        content += player.drafted_cards.map(card => {
-                            const attrs = buildCardPreviewAttributes(card);
-                            return `
-                            <div class="draft-card"
-                                data-card-id="${attrs.cardIdAttr}"
-                                data-card-name="${attrs.cardNameAttr}"
-                                data-card-image="${attrs.cardImageAttr}"
-                                data-card-data="${attrs.cardDataAttr}">
-                                <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
-                            </div>
-                        `;
-                        }).join('');
-                        content += `</div></div>`;
-                    }
-                    allDraftedCardsContainer.innerHTML = content;
                 }
             }
         };
