@@ -314,7 +314,7 @@
             const entryEl = document.createElement('div');
             entryEl.className = 'deck-card-entry group relative cursor-grab';
             entryEl.draggable = true;
-            entryEl.style.zIndex = String((totalEntries - entryIndex) + 1);
+            entryEl.style.zIndex = String(entryIndex + 1);
             entryEl.dataset.entryId = entry.id;
             entryEl.dataset.cardId = card.id || '';
             entryEl.dataset.cardName = card.name || '';
@@ -328,10 +328,10 @@
             const safeImage = escapeHtml(card.image_url || '');
 
             entryEl.innerHTML = `
-                    <div class="card-visual relative rounded-xl overflow-hidden shadow-lg border border-arena-accent/40 bg-arena-surface/40">
-                        ${card.image_url
-                            ? `<img src="${safeImage}" alt="${safeName}" class="w-full h-48 object-cover select-none">`
-                            : `
+                <div class="card-visual relative rounded-xl overflow-hidden shadow-lg border border-arena-accent/40 bg-arena-surface/40">
+                    ${card.image_url
+                        ? `<img src="${safeImage}" alt="${safeName}" class="w-full h-48 object-cover select-none">`
+                        : `
                                 <div class="w-full h-48 flex flex-col items-center justify-center bg-arena-surface/80 text-center text-sm px-4 text-arena-muted">
                                     <span class="text-lg font-semibold">${safeName}</span>
                                     <span>${manaCost}</span>
@@ -341,7 +341,7 @@
                         <div class="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/80 text-white text-xs font-semibold pointer-events-none">
                             ${entry.quantity}x
                         </div>
-                    <div class="deck-card-entry-controls absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div class="deck-card-entry-controls absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
                         <button class="rounded-full bg-black/60 text-white text-xs" data-entry-action="increment" data-entry-id="${entry.id}" title="Increase quantity">+</button>
                         <button class="rounded-full bg-black/60 text-white text-xs" data-entry-action="decrement" data-entry-id="${entry.id}" title="Decrease quantity">−</button>
                         <button class="rounded-full bg-red-600/70 text-white text-xs" data-entry-action="remove" data-entry-id="${entry.id}" title="Remove card">✕</button>

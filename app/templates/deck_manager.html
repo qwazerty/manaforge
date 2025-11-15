@@ -27,9 +27,8 @@
     padding: 0.75rem 1rem 2rem;
 }
 .deck-column-stack .deck-card-entry {
-    margin-top: -3.5rem;
-    padding-top: 3.75rem;
-    transition: transform 0.2s ease, filter 0.2s ease;
+    margin-top: -10rem;
+    transition: transform 0.2s ease, filter 0.2s ease, margin-top 0.2s ease;
     position: relative;
 }
 .deck-column-stack .deck-card-entry:first-child {
@@ -39,6 +38,9 @@
 .deck-column-stack .deck-card-entry:hover {
     transform: translateY(-4px);
     filter: brightness(1.05);
+}
+.deck-column-stack .deck-card-entry:hover + .deck-card-entry {
+    margin-top: 0;
 }
 .deck-card-entry img {
     pointer-events: none;
