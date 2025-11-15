@@ -48,7 +48,6 @@
     const DeckManager = {
         state: null,
         elements: {},
-        cardCache: {},
         draggedEntryId: null,
         activeDropColumn: null,
         saveTimeout: null,
@@ -73,11 +72,9 @@
             this.elements = {
                 deckNameInput: document.getElementById('deck-name-input'),
                 formatSelect: document.getElementById('deck-format-select'),
-                autosaveStatus: document.getElementById('deck-autosave-status'),
                 mainDeckCount: document.getElementById('deck-main-count'),
                 sideboardCount: document.getElementById('deck-sideboard-count'),
                 colorChips: document.getElementById('deck-color-chips'),
-                statusMessage: document.getElementById('deck-status-message'),
                 typeBreakdown: document.getElementById('deck-type-breakdown'),
                 manaCurveBars: document.getElementById('deck-mana-curve-bars'),
                 manaCurveLabels: document.getElementById('deck-mana-curve-labels'),
@@ -86,15 +83,13 @@
                 importUrlInput: document.getElementById('deck-import-url'),
                 importStatus: document.getElementById('deck-import-status'),
                 searchButton: document.getElementById('deck-search-button'),
-                basicLandButtons: document.getElementById('basic-land-buttons'),
                 exportButtons: [
                     document.getElementById('deck-export-button'),
                     document.getElementById('deck-export-button-secondary')
                 ],
                 parseButton: document.getElementById('deck-parse-button'),
                 importUrlButton: document.getElementById('deck-import-url-button'),
-                clearButton: document.getElementById('deck-clear-button'),
-                basicLandToggle: document.getElementById('deck-add-basic-toggle')
+                clearButton: document.getElementById('deck-clear-button')
             };
         },
 
@@ -132,20 +127,6 @@
                 });
             }
 
-            if (this.elements.basicLandToggle && this.elements.basicLandButtons) {
-                this.elements.basicLandToggle.addEventListener('click', () => {
-                    this.elements.basicLandButtons.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                });
-            }
-
-            if (this.elements.basicLandButtons) {
-                this.elements.basicLandButtons.addEventListener('click', (event) => {
-                    const target = event.target.closest('[data-land]');
-                    if (!target) return;
-                    this.addBasicLand(target.getAttribute('data-land'));
-                });
-            }
-
             if (Array.isArray(this.elements.exportButtons)) {
                 this.elements.exportButtons.forEach((button) => {
                     if (!button) return;
@@ -173,7 +154,6 @@
 
             window.CardSearchModal.setSubmitHandler((card) => {
                 this.addCard(card);
-                this.setStatus(`Added ${card.name} to the deck.`, 'success');
             });
         },
 
@@ -216,11 +196,11 @@
                 if (payload && payload.deck) {
                     this.loadDeckPayload(payload.deck);
                     const statusMessage = payload.message || 'Deck imported from draft.';
-                    this.setStatus(statusMessage, 'success');
+                    this.setImportStatus(statusMessage, 'success');
                 }
             } catch (error) {
                 console.warn('Unable to apply pending import', error);
-                this.setStatus('Unable to load draft deck import.', 'error');
+                this.setImportStatus('Unable to load draft deck import.', 'error');
             }
         },
 
@@ -253,10 +233,8 @@
             if (!this.state) return;
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-                this.setAutosaveStatus(`Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
             } catch (error) {
                 console.warn('Unable to persist deck state', error);
-                this.setAutosaveStatus('Autosave unavailable');
             }
         },
 
@@ -742,34 +720,6 @@
             return `${cardId || 'card'}-${random}`;
         },
 
-        async addBasicLand(landName) {
-            if (!landName) return;
-            this.setStatus(`Loading ${landName}...`, 'info');
-            try {
-                const card = await this.fetchCardByName(landName);
-                this.addCard(card, { columnKey: 'lands' });
-                this.setStatus(`${landName} added.`, 'success');
-            } catch (error) {
-                console.error('Unable to add basic land', error);
-                this.setStatus(error.message || 'Unable to add land.', 'error');
-            }
-        },
-
-        async fetchCardByName(cardName) {
-            const cacheKey = cardName.toLowerCase();
-            if (this.cardCache[cacheKey]) {
-                return this.cardCache[cacheKey];
-            }
-            const response = await fetch(`/api/v1/cards/${encodeURIComponent(cardName)}`);
-            if (!response.ok) {
-                const payload = await response.json().catch(() => ({}));
-                throw new Error(payload.detail || 'Card lookup failed');
-            }
-            const card = await response.json();
-            this.cardCache[cacheKey] = card;
-            return card;
-        },
-
         async importFromText() {
             const deckText = (this.elements.importTextarea?.value || '').trim();
             if (!deckText) {
@@ -790,7 +740,6 @@
                 const deck = await response.json();
                 this.loadDeckPayload(deck);
                 this.setImportStatus('Deck imported from text.', 'success');
-                this.setStatus('Deck updated from decklist.', 'success');
             } catch (error) {
                 console.error('Deck parse error', error);
                 this.setImportStatus(error.message || 'Unable to parse deck.', 'error');
@@ -820,9 +769,10 @@
                 }
                 if (payload.deck) {
                     this.loadDeckPayload(payload.deck);
+                    this.setImportStatus(payload.message || 'Deck imported from URL.', 'success');
+                } else {
+                    this.setImportStatus(payload.message || 'Fetched decklist. Paste to parse.', 'info');
                 }
-                this.setImportStatus('Deck imported from URL.', 'success');
-                this.setStatus('Deck updated from import.', 'success');
             } catch (error) {
                 console.error('Deck import error', error);
                 this.setImportStatus(error.message || 'Unable to import deck.', 'error');
@@ -882,10 +832,8 @@
             const exportText = this.buildDeckExport();
             try {
                 await navigator.clipboard.writeText(exportText);
-                this.setStatus('Deck copied to clipboard.', 'success');
             } catch (error) {
                 console.warn('Clipboard write failed', error);
-                this.setStatus('Unable to write to clipboard. Copy manually.', 'error');
             }
         },
 
@@ -943,21 +891,6 @@
             if (this.elements.importUrlInput) {
                 this.elements.importUrlInput.value = '';
             }
-            this.setStatus('Deck cleared.', 'info');
-        },
-
-        setStatus(message, variant = 'info') {
-            const el = this.elements.statusMessage;
-            if (!el) return;
-            el.textContent = message;
-            el.classList.remove('text-arena-muted', 'text-arena-accent', 'text-red-300');
-            if (variant === 'success') {
-                el.classList.add('text-arena-accent');
-            } else if (variant === 'error') {
-                el.classList.add('text-red-300');
-            } else {
-                el.classList.add('text-arena-muted');
-            }
         },
 
         setImportStatus(message, variant = 'info') {
@@ -971,12 +904,6 @@
                 el.classList.add('text-red-300');
             } else {
                 el.classList.add('text-arena-muted');
-            }
-        },
-
-        setAutosaveStatus(message) {
-            if (this.elements.autosaveStatus) {
-                this.elements.autosaveStatus.textContent = message;
             }
         }
     };
