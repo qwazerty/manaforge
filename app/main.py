@@ -169,11 +169,20 @@ async def game_lobby(request: Request):
 
 
 @app.get("/decks")
+async def deck_library(request: Request):
+    """Deck library page that lists saved decks."""
+    return templates.TemplateResponse(
+        "deck_library.html",
+        {"request": request, "title": "Deck Library"}
+    )
+
+
+@app.get("/decks/builder")
 async def deck_manager(request: Request):
-    """Deck manager page."""
+    """Deck builder page."""
     return templates.TemplateResponse(
         "deck_manager.html",
-        {"request": request, "title": "Deck Manager"}
+        {"request": request, "title": "Deck Builder"}
     )
 
 
