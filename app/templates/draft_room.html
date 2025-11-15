@@ -191,30 +191,28 @@
                     </select>
                 </div>
             </div>
-            <div class="grid md:grid-cols-3 gap-4 text-center">
-                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+            <div class="grid md:grid-cols-4 gap-4">
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Main deck</p>
                     <p id="deck-main-count" class="text-3xl font-bold text-arena-accent mt-1">0</p>
                 </div>
-                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Sideboard</p>
                     <p id="deck-sideboard-count" class="text-3xl font-bold text-arena-text mt-1">0</p>
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Colors</p>
-                    <div id="deck-color-chips" class="flex flex-wrap justify-center gap-2 mt-2 text-sm"></div>
+                    <div id="deck-color-chips" class="flex flex-wrap gap-2 mt-2 text-sm"></div>
                 </div>
-            </div>
-            <div class="grid md:grid-cols-2 gap-6">
-                <div>
-                    <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Type counts</p>
-                    <div id="deck-type-breakdown" class="flex flex-wrap gap-2"></div>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Mana curve</p>
-                    <div class="h-40 flex items-end gap-2" id="deck-mana-curve-bars"></div>
+                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Mana curve</p>
+                    <div class="h-42 flex items-end" id="deck-mana-curve-bars"></div>
                     <div class="flex justify-between text-xs text-arena-muted mt-2" id="deck-mana-curve-labels"></div>
                 </div>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Type counts</p>
+                <div id="deck-type-breakdown" class="flex flex-wrap gap-2"></div>
             </div>
             <div class="deck-columns-panel pb-2 space-y-4">
                 <div id="deck-columns"></div>
