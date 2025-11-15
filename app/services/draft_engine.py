@@ -11,6 +11,7 @@ from app.services.draft_service import DraftService
 
 class DraftEngine:
     """Manages draft rooms and the drafting process."""
+    MAX_PLAYER_NAME_LENGTH = 32
 
     def __init__(self, draft_service: DraftService):
         self.draft_service = draft_service
@@ -123,6 +124,37 @@ class DraftEngine:
             else:
                 player.name = f"Player {human_player_count}"
                 human_player_count += 1
+
+    def _sanitize_player_name(
+        self,
+        provided_name: Optional[str],
+        fallback_name: Optional[str]
+    ) -> str:
+        candidate = provided_name if provided_name is not None else fallback_name or "Player"
+        candidate = "".join(ch for ch in str(candidate) if ch.isprintable())
+        candidate = candidate.strip()
+        if not candidate:
+            candidate = fallback_name or "Player"
+        if len(candidate) > self.MAX_PLAYER_NAME_LENGTH:
+            candidate = candidate[: self.MAX_PLAYER_NAME_LENGTH].rstrip()
+        if not candidate:
+            candidate = fallback_name or "Player"
+        return candidate
+
+    def rename_player(self, room_id: str, player_id: str, new_name: str) -> DraftPlayer:
+        room = self.get_draft_room(room_id)
+        if not room:
+            raise ValueError("Draft room not found.")
+        player = next((p for p in room.players if p.id == player_id), None)
+        if not player:
+            raise ValueError("Player not found in this room.")
+        if player.is_bot:
+            raise ValueError("Bots cannot be renamed.")
+        sanitized = self._sanitize_player_name(new_name, player.name)
+        if not sanitized:
+            raise ValueError("Player name cannot be empty.")
+        player.name = sanitized
+        return player
 
     def fill_bots(self, room_id: str):
         """Fills the room with bots up to max_players."""
