@@ -225,7 +225,7 @@
 
         loadState() {
             let nextState = null;
-            if (this.currentDeckId && window.DeckLibrary) {
+            if (!this.forceFreshState && this.currentDeckId && window.DeckLibrary) {
                 const savedDeck = window.DeckLibrary.get(this.currentDeckId);
                 if (savedDeck && savedDeck.state) {
                     nextState = this.cloneState(savedDeck.state);
@@ -236,7 +236,7 @@
                 }
             }
 
-            if (!nextState) {
+            if (!nextState && !this.forceFreshState) {
                 try {
                     const stored = localStorage.getItem(STORAGE_KEY);
                     if (stored) {
@@ -261,6 +261,7 @@
 
             this.state = nextState;
             this.ensureColumns();
+            this.forceFreshState = false;
         },
 
         applyPendingImport() {
@@ -315,6 +316,7 @@
                     state: this.cloneState(this.state)
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                this.syncLibraryState();
             } catch (error) {
                 console.warn('Unable to persist deck state', error);
             }
@@ -1037,6 +1039,7 @@
                 this.currentDeckId = payload.id;
                 this.updateDeckIdInUrl(payload.id);
                 this.setImportStatus('Deck saved to your library.', 'success');
+                this.syncLibraryState(payload);
                 this.saveState();
             } catch (error) {
                 console.warn('Unable to save deck', error);
@@ -1060,6 +1063,23 @@
                 window.history.replaceState({}, '', url.toString());
             } catch (error) {
                 console.warn('Unable to update deck id in URL', error);
+            }
+        },
+
+        syncLibraryState(payloadOverride = null) {
+            if (!window.DeckLibrary) return;
+            if (!this.currentDeckId) return;
+            const payload = payloadOverride || {
+                id: this.currentDeckId,
+                name: this.state.deckName || 'Untitled Deck',
+                format: this.state.format || 'modern',
+                state: this.cloneState(this.state),
+                updatedAt: new Date().toISOString()
+            };
+            try {
+                window.DeckLibrary.save(payload);
+            } catch (error) {
+                console.warn('Unable to sync deck library entry', error);
             }
         },
 
