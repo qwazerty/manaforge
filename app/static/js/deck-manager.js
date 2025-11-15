@@ -1059,6 +1059,14 @@
         syncLibraryState(payloadOverride = null) {
             if (!window.DeckLibrary) return;
             if (!this.currentDeckId) return;
+            if (!this.hasDeckEntries()) {
+                try {
+                    window.DeckLibrary.remove(this.currentDeckId);
+                } catch (error) {
+                    console.warn('Unable to remove deck from library', error);
+                }
+                return;
+            }
             const payload = payloadOverride || {
                 id: this.currentDeckId,
                 name: this.state.deckName || 'Untitled Deck',
@@ -1095,10 +1103,13 @@
         },
 
         hasDeckEntries() {
-            if (!this.state || !this.state.columns) return false;
+            if (!this.state || !this.state.columns || !this.state.entries) return false;
             return COLUMN_CONFIG.some((column) => {
                 const ids = this.state.columns[column.key];
-                return Array.isArray(ids) && ids.length > 0;
+                return Array.isArray(ids) && ids.some((entryId) => {
+                    const entry = this.state.entries[entryId];
+                    return entry && entry.quantity > 0;
+                });
             });
         },
 

@@ -1034,8 +1034,9 @@ class CardService:
                 title_match = re.search(r"<title>(.*?)</title>", page_html, re.IGNORECASE | re.DOTALL)
                 if title_match:
                     raw_title = unescape(title_match.group(1))
+                    cleaned_title = raw_title.replace('Deck for Magic: the Gathering', '')
                     deck_name = (
-                        raw_title.split("»")[0]
+                        cleaned_title.split("»")[0]
                         .split("|")[0]
                         .replace("Deck: ", "")
                         .strip()
