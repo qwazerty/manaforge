@@ -85,7 +85,7 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <a href="/decks/builder?deckId=${encodeURIComponent(deck.id)}" class="arena-button px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-1">
-                    <span>✏️</span>${isLegacy ? 'Resume deck' : 'Open'}
+                    <span>✏️</span>Open
                 </a>
                 ${isLegacy ? `
                     <span class="text-xs text-arena-text-dim">Save the deck from the builder to add it to your library.</span>
