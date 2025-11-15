@@ -620,6 +620,219 @@ async def handle_remove_counter(
         },
     }
 
+
+@action_registry.register(
+    "add_custom_keyword", required_fields=["unique_id", "keyword"]
+)
+async def handle_add_custom_keyword(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle adding a temporary keyword on top of a card."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for add_custom_keyword"
+        )
+
+    unique_id = request.get("unique_id")
+    raw_keyword = request.get("keyword")
+    if raw_keyword is None:
+        raise HTTPException(status_code=400, detail="keyword is required")
+
+    keyword = str(raw_keyword).strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="keyword cannot be empty")
+
+    card_id = request.get("card_id")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "keyword": keyword,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "keyword": keyword,
+            "card_id": card_id,
+        },
+    }
+
+
+@action_registry.register(
+    "remove_custom_keyword", required_fields=["unique_id", "keyword"]
+)
+async def handle_remove_custom_keyword(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle removing a previously added keyword from a card."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for remove_custom_keyword"
+        )
+
+    unique_id = request.get("unique_id")
+    raw_keyword = request.get("keyword")
+    if raw_keyword is None:
+        raise HTTPException(status_code=400, detail="keyword is required")
+
+    keyword = str(raw_keyword).strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="keyword cannot be empty")
+
+    card_id = request.get("card_id")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "keyword": keyword,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "keyword": keyword,
+            "card_id": card_id,
+        },
+    }
+
+
+@action_registry.register(
+    "add_custom_type", required_fields=["unique_id", "card_type"]
+)
+async def handle_add_custom_type(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle adding a manual card type override."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for add_custom_type"
+        )
+
+    unique_id = request.get("unique_id")
+    raw_type = request.get("card_type")
+    if raw_type is None:
+        raise HTTPException(status_code=400, detail="card_type is required")
+
+    normalized_type = str(raw_type).strip().lower()
+    allowed_types = {
+        "land",
+        "creature",
+        "artifact",
+        "enchantment",
+        "planeswalker",
+        "instant",
+        "sorcery",
+    }
+    if normalized_type not in allowed_types:
+        allowed_values = ", ".join(sorted(allowed_types))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid card_type '{raw_type}'. Allowed values: {allowed_values}",
+        )
+
+    card_id = request.get("card_id")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "card_type": normalized_type,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_type": normalized_type,
+            "card_id": card_id,
+        },
+    }
+
+
+@action_registry.register(
+    "remove_custom_type", required_fields=["unique_id", "card_type"]
+)
+async def handle_remove_custom_type(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle removing a manual card type override."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for remove_custom_type"
+        )
+
+    unique_id = request.get("unique_id")
+    raw_type = request.get("card_type")
+    if raw_type is None:
+        raise HTTPException(status_code=400, detail="card_type is required")
+
+    normalized_type = str(raw_type).strip().lower()
+    if not normalized_type:
+        raise HTTPException(status_code=400, detail="card_type cannot be empty")
+
+    card_id = request.get("card_id")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "card_type": normalized_type,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_type": normalized_type,
+            "card_id": card_id,
+        },
+    }
+
+
+@action_registry.register(
+    "set_custom_type", required_fields=["unique_id"]
+)
+async def handle_set_custom_type(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle overriding how a card is categorized on the battlefield."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for set_custom_type"
+        )
+
+    unique_id = request.get("unique_id")
+    if not unique_id:
+        raise HTTPException(status_code=400, detail="unique_id is required")
+
+    raw_type = request.get("card_type")
+    normalized_type = None
+    if raw_type is not None and raw_type != "":
+        normalized_type = str(raw_type).strip().lower()
+        allowed_types = {
+            "land",
+            "creature",
+            "artifact",
+            "enchantment",
+            "planeswalker",
+            "instant",
+            "sorcery",
+        }
+        if normalized_type not in allowed_types:
+            allowed_values = ", ".join(sorted(allowed_types))
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid card_type '{raw_type}'. Allowed values: {allowed_values}",
+            )
+
+    card_id = request.get("card_id")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {
+            "unique_id": unique_id,
+            "card_type": normalized_type,
+        },
+        "broadcast_data": {
+            "unique_id": unique_id,
+            "card_type": normalized_type,
+            "card_id": card_id,
+        },
+    }
+
 @action_registry.register(
     "set_counter", required_fields=["unique_id", "card_id", "counter_type", "amount"]
 )

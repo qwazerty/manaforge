@@ -425,6 +425,148 @@
         padding: 1.5rem;
     }
 
+    .card-manage-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(201, 170, 113, 0.25);
+    }
+
+    .card-manage-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .card-manage-section h4 {
+        margin: 0 0 0.5rem;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #facc15;
+    }
+
+    .card-manage-hint {
+        margin: 0 0 0.75rem;
+        font-size: 0.8rem;
+        color: rgba(226, 232, 240, 0.75);
+    }
+
+    .card-manage-empty {
+        margin: 0.5rem 0 1rem;
+        color: rgba(201, 170, 113, 0.75);
+        font-style: italic;
+    }
+
+    .keyword-tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .keyword-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.7rem;
+        border-radius: 9999px;
+        border: 1px solid rgba(249, 115, 22, 0.6);
+        background: rgba(249, 115, 22, 0.15);
+        color: #f97316;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .keyword-remove-btn {
+        border: none;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        font-size: 0.85rem;
+        line-height: 1;
+        padding: 0;
+    }
+
+    .keyword-remove-btn:hover {
+        color: #fb923c;
+    }
+
+    .keyword-add-form {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .keyword-add-form input {
+        flex: 1;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 8px;
+        color: #f8fafc;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .keyword-add-form button {
+        background: linear-gradient(135deg, #facc15, #fbbf24);
+        border: none;
+        border-radius: 8px;
+        color: #1f2937;
+        font-weight: 700;
+        padding: 0.45rem 0.9rem;
+        cursor: pointer;
+    }
+
+    .keyword-add-form button:hover {
+        background: linear-gradient(135deg, #fde047, #facc15);
+    }
+
+    .type-add-form {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .type-add-form select {
+        flex: 1;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 8px;
+        color: #f8fafc;
+        padding: 0.4rem 0.6rem;
+    }
+
+    .type-add-form button {
+        background: linear-gradient(135deg, #facc15, #fbbf24);
+        border: none;
+        border-radius: 8px;
+        color: #1f2937;
+        font-weight: 700;
+        padding: 0.4rem 0.9rem;
+        cursor: pointer;
+    }
+
+    .type-add-form button:hover {
+        background: linear-gradient(135deg, #fde047, #facc15);
+    }
+
+    .type-reset-btn {
+        margin-top: 0.5rem;
+        background: transparent;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 8px;
+        color: rgba(148, 163, 184, 0.9);
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+        cursor: pointer;
+    }
+
+    .type-reset-btn:hover {
+        border-color: rgba(248, 250, 252, 0.7);
+        color: #f8fafc;
+    }
+
     .counter-controls {
         display: flex;
         flex-direction: column;
@@ -2632,6 +2774,44 @@
         pointer-events: none;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .card-overlay-stack {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        right: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .card-keyword-overlay {
+        padding: 0.2rem 0.5rem;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: rgba(248, 250, 252, 0.95);
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-align: center;
+        backdrop-filter: blur(2px);
+    }
+
+    .card-type-overlay {
+        padding: 0.2rem 0.5rem;
+        border-radius: 8px;
+        background: rgba(15, 118, 110, 0.65);
+        border: 1px solid rgba(45, 212, 191, 0.6);
+        color: rgba(6, 78, 59, 0.95);
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-align: center;
+        backdrop-filter: blur(2px);
     }
 
     .card-pt-overlay-modified {

@@ -500,6 +500,22 @@ async function performHttpGameAction(actionType, actionData = {}) {
                     ...actionData
                 };
                 break;
+            case 'add_counter':
+            case 'remove_counter':
+            case 'set_counter':
+            case 'set_power_toughness':
+            case 'add_custom_keyword':
+            case 'remove_custom_keyword':
+            case 'add_custom_type':
+            case 'remove_custom_type':
+            case 'set_custom_type':
+                endpoint = `/api/v1/games/${gameId}/action`;
+                requestData = {
+                    action_type: actionType,
+                    player_id: currentSelectedPlayer,
+                    ...actionData
+                };
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }

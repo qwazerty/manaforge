@@ -121,6 +121,21 @@ class UIUtils {
 
         const normalizeTypeText = (card) => {
             if (!card) return '';
+
+            const customTypes = (() => {
+                const overrides = card.custom_types || card.customTypes;
+                if (!Array.isArray(overrides) || overrides.length === 0) {
+                    return [];
+                }
+                return overrides
+                    .map(value => String(value).trim().toLowerCase())
+                    .filter(Boolean);
+            })();
+
+            if (customTypes.length) {
+                return customTypes.join(' ');
+            }
+
             const faceTypes = (() => {
                 if (!Array.isArray(card.card_faces) || card.card_faces.length === 0) {
                     return [];
