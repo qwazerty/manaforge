@@ -4,6 +4,7 @@
  */
 (function() {
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
+    const PENDING_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
     const COMMANDER_FORMATS = new Set(['duel_commander', 'commander_multi']);
     const COLUMN_CONFIG = [
         { key: 'commander', label: 'Commander', icon: '👑', description: 'Command zone slot' },
@@ -58,6 +59,7 @@
                 return;
             }
             this.loadState();
+            this.applyPendingImport();
             this.bindEvents();
             this.bindCardSearch();
             this.render();
@@ -201,6 +203,25 @@
                 this.state = this.getDefaultState();
             }
             this.ensureColumns();
+        },
+
+        applyPendingImport() {
+            try {
+                const pendingRaw = localStorage.getItem(PENDING_IMPORT_KEY);
+                if (!pendingRaw) {
+                    return;
+                }
+                localStorage.removeItem(PENDING_IMPORT_KEY);
+                const payload = JSON.parse(pendingRaw);
+                if (payload && payload.deck) {
+                    this.loadDeckPayload(payload.deck);
+                    const statusMessage = payload.message || 'Deck imported from draft.';
+                    this.setStatus(statusMessage, 'success');
+                }
+            } catch (error) {
+                console.warn('Unable to apply pending import', error);
+                this.setStatus('Unable to load draft deck import.', 'error');
+            }
         },
 
         ensureColumns() {
