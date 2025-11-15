@@ -87,6 +87,14 @@ class Card(BaseModel):
     blocking: Optional[str] = Field(
         default=None, description="Unique ID of the attacker this creature is blocking"
     )
+    custom_keywords: List[str] = Field(
+        default_factory=list,
+        description="Player-added keywords displayed directly on the card overlay"
+    )
+    custom_types: List[str] = Field(
+        default_factory=list,
+        description="Manual card type overrides that influence battlefield grouping"
+    )
     # Double-faced card support
     is_double_faced: bool = Field(
         default=False, description="Whether this card has multiple faces"

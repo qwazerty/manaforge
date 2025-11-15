@@ -1,6 +1,6 @@
 """Unit tests for the SimpleGameEngine helpers."""
 
-from app.models.game import GamePhase, GameState, Player
+from app.models.game import Card, CardType, GameAction, GamePhase, GameState, Player
 from app.services.game_engine import SimpleGameEngine
 
 
@@ -15,6 +15,20 @@ def _build_game_state(phase=GamePhase.BEGIN, turn=1, active_index=0):
         active_player=active_index,
         phase=phase,
         turn=turn,
+    )
+
+
+def _build_card(unique_id="card-001", card_type=CardType.LAND):
+    return Card(
+        id="card-test",
+        unique_id=unique_id,
+        owner_id="player1",
+        name="Test Card",
+        mana_cost="",
+        cmc=0,
+        card_type=card_type,
+        subtype="",
+        text=""
     )
 
 
@@ -63,3 +77,123 @@ def test_record_action_history_preserves_existing_metadata():
     assert entry["turn"] == 42
     assert entry["turn_player_id"] == "override"
     assert entry["turn_player_name"] == "Override"
+
+
+def test_add_custom_keyword_adds_only_unique_entries():
+    engine = SimpleGameEngine()
+    state = _build_game_state()
+    card = _build_card()
+    state.players[0].battlefield.append(card)
+
+    action = GameAction(
+        player_id="player1",
+        action_type="add_custom_keyword",
+        additional_data={"unique_id": card.unique_id, "keyword": "Flying"}
+    )
+    engine._add_custom_keyword(state, action)
+    assert card.custom_keywords == ["Flying"]
+
+    duplicate_action = GameAction(
+        player_id="player1",
+        action_type="add_custom_keyword",
+        additional_data={"unique_id": card.unique_id, "keyword": "flying"}
+    )
+    engine._add_custom_keyword(state, duplicate_action)
+    assert card.custom_keywords == ["Flying"]
+
+
+def test_remove_custom_keyword_is_case_insensitive():
+    engine = SimpleGameEngine()
+    state = _build_game_state()
+    card = _build_card()
+    card.custom_keywords = ["Flying", "Haste"]
+    state.players[0].battlefield.append(card)
+
+    action = GameAction(
+        player_id="player1",
+        action_type="remove_custom_keyword",
+        additional_data={"unique_id": card.unique_id, "keyword": "FLYING"}
+    )
+    engine._remove_custom_keyword(state, action)
+    assert card.custom_keywords == ["Haste"]
+
+
+def test_add_custom_type_ignores_duplicates():
+    engine = SimpleGameEngine()
+    state = _build_game_state()
+    card = _build_card()
+    state.players[0].battlefield.append(card)
+
+    action = GameAction(
+        player_id="player1",
+        action_type="add_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": "creature"}
+    )
+    engine._add_custom_type(state, action)
+    assert card.custom_types == ["creature"]
+
+    duplicate = GameAction(
+        player_id="player1",
+        action_type="add_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": "CREATURE"}
+    )
+    engine._add_custom_type(state, duplicate)
+    assert card.custom_types == ["creature"]
+
+
+def test_remove_custom_type_is_case_insensitive():
+    engine = SimpleGameEngine()
+    state = _build_game_state()
+    card = _build_card()
+    card.custom_types = ["creature", "land"]
+    state.players[0].battlefield.append(card)
+
+    action = GameAction(
+        player_id="player1",
+        action_type="remove_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": "LAND"}
+    )
+    engine._remove_custom_type(state, action)
+    assert card.custom_types == ["creature"]
+
+
+def test_set_custom_type_override_and_clear():
+    engine = SimpleGameEngine()
+    state = _build_game_state()
+    card = _build_card(card_type=CardType.LAND)
+    state.players[0].battlefield.append(card)
+
+    # Use add/remove helpers for richer interactions
+    add_action = GameAction(
+        player_id="player1",
+        action_type="add_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": "creature"}
+    )
+    engine._add_custom_type(state, add_action)
+    assert card.custom_types == ["creature"]
+
+    second_action = GameAction(
+        player_id="player1",
+        action_type="add_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": "land"}
+    )
+    engine._add_custom_type(state, second_action)
+    assert card.custom_types == ["creature", "land"]
+
+    # Remove a single type
+    remove_action = GameAction(
+        player_id="player1",
+        action_type="remove_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": "CREATURE"}
+    )
+    engine._remove_custom_type(state, remove_action)
+    assert card.custom_types == ["land"]
+
+    # Clear all using legacy setter for reset operations
+    clear_action = GameAction(
+        player_id="player1",
+        action_type="set_custom_type",
+        additional_data={"unique_id": card.unique_id, "card_type": None}
+    )
+    engine._set_custom_type(state, clear_action)
+    assert card.custom_types == []

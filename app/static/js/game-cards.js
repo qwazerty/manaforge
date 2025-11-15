@@ -506,9 +506,18 @@ const GameCards = {
                 }
             });
         }
+        const customTypes = this.getCustomTypes(card);
+        if (customTypes.length) {
+            customTypes.forEach(pushType);
+        }
         const typeLine = typePieces.join(' ').toLowerCase();
         let primaryCardType = '';
-        if (typeLine.includes('creature')) {
+        if (customTypes.length) {
+            const priorityOrder = ['creature', 'land', 'planeswalker', 'artifact', 'enchantment', 'instant', 'sorcery'];
+            const normalizedTypes = customTypes.map(type => type.toLowerCase());
+            const prioritized = priorityOrder.find(type => normalizedTypes.includes(type));
+            primaryCardType = prioritized || customTypes[0];
+        } else if (typeLine.includes('creature')) {
             primaryCardType = 'creature';
         } else if (typeLine.includes('land')) {
             primaryCardType = 'land';
@@ -574,6 +583,7 @@ const GameCards = {
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
         const powerToughnessHtml = this.generatePowerToughnessOverlay(card);
+        const overlayStack = this.generateCardOverlayStack(card);
 
         return `
             <div class="${cardClass}${tappedClass}${combatTappedClass}${targetedClass}${attackingClass}${blockingClass}" 
@@ -607,11 +617,13 @@ const GameCards = {
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <div class="card-fallback" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;">
                         </div>
+                        ${overlayStack}
                         ${countersHtml}
                         ${powerToughnessHtml}
                     </div>
                 ` : `
                     <div class="card-fallback relative">
+                        ${overlayStack}
                         ${countersHtml}
                         ${powerToughnessHtml}
                     </div>
@@ -694,6 +706,93 @@ const GameCards = {
         
         countersHtml += '</div>';
         return countersHtml;
+    },
+
+    getCustomKeywords: function(cardData) {
+        if (!cardData) {
+            return [];
+        }
+
+        const source = cardData.custom_keywords || cardData.customKeywords;
+        if (!Array.isArray(source)) {
+            return [];
+        }
+
+        return source
+            .map(keyword => String(keyword).trim())
+            .filter(keyword => keyword.length > 0);
+    },
+
+    getCustomTypes: function(cardData) {
+        if (!cardData) {
+            return [];
+        }
+
+        const source = cardData.custom_types || cardData.customTypes;
+        if (!Array.isArray(source)) {
+            return [];
+        }
+
+        return source
+            .map(type => String(type).trim().toLowerCase())
+            .filter(type => type.length > 0);
+    },
+
+    generateKeywordOverlay: function(card) {
+        const keywords = this.getCustomKeywords(card);
+        if (!keywords.length) {
+            return '';
+        }
+
+        const escape = (typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function')
+            ? GameUtils.escapeHtml
+            : (value) => value;
+        const maxVisible = 3;
+        const visible = keywords.slice(0, maxVisible).map(escape);
+        const extraCount = keywords.length - visible.length;
+        const suffix = extraCount > 0 ? ` +${extraCount}` : '';
+
+        return `
+            <div class="card-keyword-overlay" title="${escape(keywords.join(', '))}">
+                ${visible.join(' • ')}${suffix}
+            </div>
+        `;
+    },
+
+    generateTypeOverlay: function(card) {
+        const types = this.getCustomTypes(card);
+        if (!types.length) {
+            return '';
+        }
+
+        const escape = (typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function')
+            ? GameUtils.escapeHtml
+            : (value) => value;
+        const displayTypes = types.map(type => {
+            const label = type.charAt(0).toUpperCase() + type.slice(1);
+            return escape(label);
+        });
+
+        return `
+            <div class="card-type-overlay" title="Custom types: ${escape(displayTypes.join(', '))}">
+                ${displayTypes.join(' • ')}
+            </div>
+        `;
+    },
+
+    generateCardOverlayStack: function(card) {
+        const keywordOverlay = this.generateKeywordOverlay(card);
+        const typeOverlay = this.generateTypeOverlay(card);
+        if (!keywordOverlay && !typeOverlay) {
+            return '';
+        }
+
+        return `
+            <div class="card-overlay-stack">
+                ${keywordOverlay}
+                ${typeOverlay}
+            </div>
+        `;
     },
 
     getCounterIcon: function(counterType) {
@@ -798,6 +897,7 @@ const GameCards = {
         };
 
         gatherKeywords(cardData.keywords);
+        gatherKeywords(cardData.custom_keywords || cardData.customKeywords);
 
         const textFragments = [];
         const pushText = (value) => {
@@ -1061,7 +1161,7 @@ const GameCards = {
 
                 const counterIcon = '🔢';
                 menuHTML += `<div class="card-context-menu-divider"></div>`;
-                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">${counterIcon}</span> Manage Counters</div>`;
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">${counterIcon}</span> Manage Cards</div>`;
             }
 
             menuHTML += `<div class="card-context-menu-divider"></div>`;
@@ -1451,7 +1551,7 @@ const GameCards = {
         modal.innerHTML = `
             <div class="counter-modal-content">
                 <div class="counter-modal-header">
-                    <h3>${cardName} - Manage Counters</h3>
+                    <h3>${cardName} - Manage Cards</h3>
                     <button class="counter-modal-close" onclick="GameCards.closeCounterModal()">&times;</button>
                 </div>
                 <div class="counter-modal-body">
@@ -1465,24 +1565,129 @@ const GameCards = {
     },
 
     generateCounterControls: function(cardData, uniqueCardId, cardId) {
+        const sections = [
+            this.generateKeywordManager(cardData, uniqueCardId, cardId),
+            this.generateTypeManager(cardData, uniqueCardId, cardId),
+            this.generateCounterManager(cardData, uniqueCardId, cardId),
+            this.generatePowerToughnessManager(cardData, uniqueCardId, cardId)
+        ];
+
+        return sections.filter(Boolean).join('');
+    },
+
+    generateKeywordManager: function(cardData, uniqueCardId, cardId) {
+        const keywords = this.getCustomKeywords(cardData);
+        const jsUniqueId = JSON.stringify(uniqueCardId || '');
+        const jsCardId = JSON.stringify(cardId || '');
+        const escape = (typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function')
+            ? GameUtils.escapeHtml
+            : (value) => value;
+
+        const chipList = keywords.length
+            ? `
+                <div class="keyword-tag-list">
+                    ${keywords.map(keyword => {
+                        const jsKeyword = JSON.stringify(keyword);
+                        return `
+                            <span class="keyword-tag">
+                                <span class="keyword-label">${escape(keyword)}</span>
+                                <button class="keyword-remove-btn" onclick='GameCards.removeKeywordFromModal(${jsUniqueId}, ${jsKeyword}, ${jsCardId})' title="Remove keyword">&times;</button>
+                            </span>
+                        `;
+                    }).join('')}
+                </div>
+            `
+            : '<p class="card-manage-empty">No custom keywords yet.</p>';
+
+        return `
+            <section class="card-manage-section card-keyword-manager">
+                <h4>Custom Keywords</h4>
+                ${chipList}
+                <div class="keyword-add-form">
+                    <input type="text" id="keyword-input-${uniqueCardId}" placeholder="Flying, Haste..." maxlength="30">
+                    <button onclick='GameCards.addKeywordFromModal(${jsUniqueId}, ${jsCardId})'>Add</button>
+                </div>
+            </section>
+        `;
+    },
+
+    generateTypeManager: function(cardData, uniqueCardId, cardId) {
+        const customTypes = this.getCustomTypes(cardData);
+        const jsUniqueId = JSON.stringify(uniqueCardId || '');
+        const jsCardId = JSON.stringify(cardId || '');
+        const typeOptions = [
+            { value: 'creature', label: 'Creature' },
+            { value: 'land', label: 'Land' },
+            { value: 'artifact', label: 'Artifact' },
+            { value: 'enchantment', label: 'Enchantment' },
+            { value: 'planeswalker', label: 'Planeswalker' },
+            { value: 'instant', label: 'Instant' },
+            { value: 'sorcery', label: 'Sorcery' }
+        ];
+
+        const typeChips = customTypes.length
+            ? `
+                <div class="keyword-tag-list">
+                    ${customTypes.map(type => {
+                        const jsType = JSON.stringify(type);
+                        const label = type.charAt(0).toUpperCase() + type.slice(1);
+                        return `
+                            <span class="keyword-tag">
+                                <span class="keyword-label">${label}</span>
+                                <button class="keyword-remove-btn" onclick='GameCards.removeCustomTypeFromModal(${jsUniqueId}, ${jsCardId}, ${jsType})' title="Remove type">&times;</button>
+                            </span>
+                        `;
+                    }).join('')}
+                </div>
+            `
+            : '<p class="card-manage-empty">No custom type overrides yet.</p>';
+
+        const selectOptions = typeOptions.map(option => `
+            <option value="${option.value}">${option.label}</option>
+        `).join('');
+
+        return `
+            <section class="card-manage-section card-type-manager">
+                <h4>Custom Types</h4>
+                <p class="card-manage-hint">Add multiple manual types to change how the card is positioned on the battlefield.</p>
+                ${typeChips}
+                <div class="type-add-form">
+                    <select id="type-select-${uniqueCardId}">
+                        <option value="">Select a type</option>
+                        ${selectOptions}
+                    </select>
+                    <button onclick='GameCards.addCustomTypeFromModal(${jsUniqueId}, ${jsCardId})'>Add</button>
+                </div>
+                ${customTypes.length ? `
+                    <button class="type-reset-btn" onclick='GameCards.resetCustomTypes(${jsUniqueId}, ${jsCardId})'>Reset to automatic</button>
+                ` : ''}
+            </section>
+        `;
+    },
+
+    generateCounterManager: function(cardData, uniqueCardId, cardId) {
         const counters = cardData.counters || {};
         const counterEntries = Object.entries(counters).filter(([_, count]) => Number(count) > 0);
+        const jsUniqueId = JSON.stringify(uniqueCardId || '');
+        const jsCardId = JSON.stringify(cardId || '');
 
-        let html = '';
+        let html = '<section class="card-manage-section counter-manager">';
+        html += '<h4>Counters</h4>';
 
         if (counterEntries.length) {
             html += '<div class="counter-controls">';
             counterEntries.forEach(([counterType, count]) => {
                 const counterIcon = this.getCounterIcon(counterType);
+                const jsCounterType = JSON.stringify(counterType);
                 html += `
                     <div class="counter-control-row">
                         <span class="counter-icon">${counterIcon}</span>
                         <span class="counter-type">${counterType}</span>
                         <div class="counter-controls-buttons">
-                            <button onclick="GameCards.modifyCounter('${uniqueCardId}', '${cardId}', '${counterType}', -1)">-</button>
+                            <button onclick='GameCards.modifyCounter(${jsUniqueId}, ${jsCardId}, ${jsCounterType}, -1)'>-</button>
                             <span class="counter-amount">${count}</span>
-                            <button onclick="GameCards.modifyCounter('${uniqueCardId}', '${cardId}', '${counterType}', 1)">+</button>
-                            <button class="remove-counter-btn" onclick="GameCards.removeAllCounters('${uniqueCardId}', '${cardId}', '${counterType}')">Remove All</button>
+                            <button onclick='GameCards.modifyCounter(${jsUniqueId}, ${jsCardId}, ${jsCounterType}, 1)'>+</button>
+                            <button class="remove-counter-btn" onclick='GameCards.removeAllCounters(${jsUniqueId}, ${jsCardId}, ${jsCounterType})'>Remove All</button>
                         </div>
                     </div>
                 `;
@@ -1511,12 +1716,108 @@ const GameCards = {
                 </select>
                 <label for="counter-amount-input-${uniqueCardId}">Amount:</label>
                 <input type="number" id="counter-amount-input-${uniqueCardId}" value="1" min="1" max="20">
-                <button class="add-counter-btn" onclick="GameCards.addCounterFromModal('${uniqueCardId}', '${cardId}')">Add Counter</button>
+                <button class="add-counter-btn" onclick='GameCards.addCounterFromModal(${jsUniqueId}, ${jsCardId})'>Add Counter</button>
             </div>
+        </section>
         `;
-        html += this.generatePowerToughnessManager(cardData, uniqueCardId, cardId);
 
         return html;
+    },
+
+    addKeywordFromModal: function(uniqueCardId, cardId) {
+        const input = document.getElementById(`keyword-input-${uniqueCardId}`);
+        if (!input) {
+            return;
+        }
+
+        const keyword = input.value.trim();
+        if (!keyword.length) {
+            GameUI.showNotification('Enter a keyword to add', 'warning');
+            return;
+        }
+
+        GameActions.performGameAction('add_custom_keyword', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            keyword: keyword
+        });
+
+        input.value = '';
+        GameUI.showNotification(`Added keyword "${keyword}"`, 'success');
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 150);
+    },
+
+    removeKeywordFromModal: function(uniqueCardId, keyword, cardId) {
+        if (!keyword) {
+            return;
+        }
+
+        GameActions.performGameAction('remove_custom_keyword', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            keyword: keyword
+        });
+
+        GameUI.showNotification(`Removed keyword "${keyword}"`, 'info');
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 150);
+    },
+
+    addCustomTypeFromModal: function(uniqueCardId, cardId) {
+        const select = document.getElementById(`type-select-${uniqueCardId}`);
+        if (!select) {
+            return;
+        }
+
+        const selectedType = select.value;
+        if (!selectedType) {
+            GameUI.showNotification('Select a type to add', 'warning');
+            return;
+        }
+
+        GameActions.performGameAction('add_custom_type', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            card_type: selectedType
+        });
+
+        GameUI.showNotification(`Added ${selectedType} override`, 'success');
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 150);
+    },
+
+    removeCustomTypeFromModal: function(uniqueCardId, cardId, cardType) {
+        if (!cardType) {
+            return;
+        }
+
+        GameActions.performGameAction('remove_custom_type', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            card_type: cardType
+        });
+
+        GameUI.showNotification(`Removed ${cardType} override`, 'info');
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 150);
+    },
+
+    resetCustomTypes: function(uniqueCardId, cardId) {
+        GameActions.performGameAction('set_custom_type', {
+            unique_id: uniqueCardId,
+            card_id: cardId,
+            card_type: null
+        });
+
+        GameUI.showNotification('Custom types reset', 'success');
+        setTimeout(() => {
+            this.showCounterModal(uniqueCardId, cardId);
+        }, 150);
     },
 
     addCounterFromModal: function(uniqueCardId, cardId) {

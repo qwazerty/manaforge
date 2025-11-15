@@ -650,6 +650,11 @@ class SimpleGameEngine:
             "remove_counter": self._remove_counter,
             "set_counter": self._set_counter,
             "set_power_toughness": self._set_power_toughness,
+            "add_custom_keyword": self._add_custom_keyword,
+            "remove_custom_keyword": self._remove_custom_keyword,
+            "add_custom_type": self._add_custom_type,
+            "remove_custom_type": self._remove_custom_type,
+            "set_custom_type": self._set_custom_type,
             "search_and_add_card": self._search_and_add_card,
             "create_token": self._create_token,
             "duplicate_card": self._duplicate_card,
@@ -1739,6 +1744,132 @@ class SimpleGameEngine:
 
         card_found.current_power = power_value
         card_found.current_toughness = toughness_value
+
+    def _add_custom_keyword(self, game_state: GameState, action: GameAction) -> None:
+        """Attach a temporary keyword onto a card so it's visible on the board."""
+        data = action.additional_data or {}
+        unique_id = data.get("unique_id")
+        keyword = data.get("keyword")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for add_custom_keyword action")
+        if keyword is None:
+            raise ValueError("keyword is required for add_custom_keyword action")
+
+        normalized_keyword = str(keyword).strip()
+        if not normalized_keyword:
+            raise ValueError("keyword cannot be empty")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        existing_keywords = list(getattr(card_found, "custom_keywords", []) or [])
+        lowered = {value.lower() for value in existing_keywords}
+        if normalized_keyword.lower() not in lowered:
+            existing_keywords.append(normalized_keyword)
+            card_found.custom_keywords = existing_keywords
+            print(f"Added custom keyword '{normalized_keyword}' to {card_found.name}")
+
+    def _remove_custom_keyword(self, game_state: GameState, action: GameAction) -> None:
+        """Remove a previously added keyword from a card."""
+        data = action.additional_data or {}
+        unique_id = data.get("unique_id")
+        keyword = data.get("keyword")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for remove_custom_keyword action")
+        if keyword is None:
+            raise ValueError("keyword is required for remove_custom_keyword action")
+
+        normalized_keyword = str(keyword).strip().lower()
+        if not normalized_keyword:
+            raise ValueError("keyword cannot be empty")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        existing_keywords = list(getattr(card_found, "custom_keywords", []) or [])
+        filtered_keywords = [
+            value for value in existing_keywords if value.lower() != normalized_keyword
+        ]
+        card_found.custom_keywords = filtered_keywords
+        print(f"Removed custom keyword '{keyword}' from {card_found.name}")
+
+    def _add_custom_type(self, game_state: GameState, action: GameAction) -> None:
+        """Append a manual card type override."""
+        data = action.additional_data or {}
+        unique_id = data.get("unique_id")
+        custom_type = data.get("card_type")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for add_custom_type action")
+        if custom_type is None:
+            raise ValueError("card_type is required for add_custom_type action")
+
+        normalized_type = str(custom_type).strip().lower()
+        if not normalized_type:
+            raise ValueError("card_type cannot be empty")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        existing_types = list(getattr(card_found, "custom_types", []) or [])
+        lowered = {value.lower() for value in existing_types}
+        if normalized_type not in lowered:
+            existing_types.append(normalized_type)
+            card_found.custom_types = existing_types
+            print(f"Added custom type '{normalized_type}' to {card_found.name}")
+
+    def _remove_custom_type(self, game_state: GameState, action: GameAction) -> None:
+        """Remove a specific manual card type override."""
+        data = action.additional_data or {}
+        unique_id = data.get("unique_id")
+        custom_type = data.get("card_type")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for remove_custom_type action")
+        if custom_type is None:
+            raise ValueError("card_type is required for remove_custom_type action")
+
+        normalized_type = str(custom_type).strip().lower()
+        if not normalized_type:
+            raise ValueError("card_type cannot be empty")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        existing_types = list(getattr(card_found, "custom_types", []) or [])
+        filtered_types = [
+            value for value in existing_types if value.lower() != normalized_type
+        ]
+        card_found.custom_types = filtered_types
+        print(f"Removed custom type '{custom_type}' from {card_found.name}")
+
+    def _set_custom_type(self, game_state: GameState, action: GameAction) -> None:
+        """Override how a card should be categorized on the battlefield."""
+        data = action.additional_data or {}
+        unique_id = data.get("unique_id")
+        custom_type = data.get("card_type")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for set_custom_type action")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        if custom_type is None or custom_type == "":
+            card_found.custom_types = []
+            print(f"Cleared custom type override for {card_found.name}")
+            return
+
+        normalized_type = str(custom_type).strip().lower()
+        card_found.custom_types = [normalized_type]
+        print(f"Set custom type override for {card_found.name} → {normalized_type}")
 
     def _add_counter(self, game_state: GameState, action: GameAction) -> None:
         """Add counters to a card."""
