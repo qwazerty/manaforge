@@ -45,6 +45,122 @@
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
     const READY_EVENT_NAME = 'manaforge:deck-manager-ready';
+    const BASIC_LAND_PRESETS = Object.freeze({
+        plains: Object.freeze({
+            id: '4069fb4a-8ee1-41ef-ab93-39a8cc58e0e5',
+            oracle_id: 'bc71ebf6-2056-41f7-be35-b2e5c34afa99',
+            name: 'Plains',
+            card_type: 'land',
+            type_line: 'Basic Land — Plains',
+            mana_cost: '',
+            cmc: 0,
+            oracle_text: '({T}: Add {W}.)',
+            text: '({T}: Add {W}.)',
+            colors: [],
+            color_identity: ['W'],
+            produced_mana: ['W'],
+            rarity: 'common',
+            set: 'tla',
+            collector_number: '282',
+            image_url: 'https://cards.scryfall.io/normal/front/4/0/4069fb4a-8ee1-41ef-ab93-39a8cc58e0e5.jpg?1755290075',
+            scryfall_uri: 'https://scryfall.com/card/tla/282/plains?utm_source=api'
+        }),
+        island: Object.freeze({
+            id: 'a2e22347-f0cb-4cfd-88a3-4f46a16e4946',
+            oracle_id: 'b2c6aa39-2d2a-459c-a555-fb48ba993373',
+            name: 'Island',
+            card_type: 'land',
+            type_line: 'Basic Land — Island',
+            mana_cost: '',
+            cmc: 0,
+            oracle_text: '({T}: Add {U}.)',
+            text: '({T}: Add {U}.)',
+            colors: [],
+            color_identity: ['U'],
+            produced_mana: ['U'],
+            rarity: 'common',
+            set: 'tla',
+            collector_number: '283',
+            image_url: 'https://cards.scryfall.io/normal/front/a/2/a2e22347-f0cb-4cfd-88a3-4f46a16e4946.jpg?1755290097',
+            scryfall_uri: 'https://scryfall.com/card/tla/283/island?utm_source=api'
+        }),
+        swamp: Object.freeze({
+            id: 'f0b234d8-d6bb-48ec-8a4d-d8a570a69c62',
+            oracle_id: '56719f6a-1a6c-4c0a-8d21-18f7d7350b68',
+            name: 'Swamp',
+            card_type: 'land',
+            type_line: 'Basic Land — Swamp',
+            mana_cost: '',
+            cmc: 0,
+            oracle_text: '({T}: Add {B}.)',
+            text: '({T}: Add {B}.)',
+            colors: [],
+            color_identity: ['B'],
+            produced_mana: ['B'],
+            rarity: 'common',
+            set: 'tla',
+            collector_number: '284',
+            image_url: 'https://cards.scryfall.io/normal/front/f/0/f0b234d8-d6bb-48ec-8a4d-d8a570a69c62.jpg?1755290113',
+            scryfall_uri: 'https://scryfall.com/card/tla/284/swamp?utm_source=api'
+        }),
+        mountain: Object.freeze({
+            id: 'c44f81ca-f72f-445c-8901-3a894a2a47f9',
+            oracle_id: 'a3fb7228-e76b-4e96-a40e-20b5fed75685',
+            name: 'Mountain',
+            card_type: 'land',
+            type_line: 'Basic Land — Mountain',
+            mana_cost: '',
+            cmc: 0,
+            oracle_text: '({T}: Add {R}.)',
+            text: '({T}: Add {R}.)',
+            colors: [],
+            color_identity: ['R'],
+            produced_mana: ['R'],
+            rarity: 'common',
+            set: 'tla',
+            collector_number: '285',
+            image_url: 'https://cards.scryfall.io/normal/front/c/4/c44f81ca-f72f-445c-8901-3a894a2a47f9.jpg?1755290125',
+            scryfall_uri: 'https://scryfall.com/card/tla/285/mountain?utm_source=api'
+        }),
+        forest: Object.freeze({
+            id: 'a305e44f-4253-4754-b83f-1e34103d77b0',
+            oracle_id: 'b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6',
+            name: 'Forest',
+            card_type: 'land',
+            type_line: 'Basic Land — Forest',
+            mana_cost: '',
+            cmc: 0,
+            oracle_text: '({T}: Add {G}.)',
+            text: '({T}: Add {G}.)',
+            colors: [],
+            color_identity: ['G'],
+            produced_mana: ['G'],
+            rarity: 'common',
+            set: 'tla',
+            collector_number: '286',
+            image_url: 'https://cards.scryfall.io/normal/front/a/3/a305e44f-4253-4754-b83f-1e34103d77b0.jpg?1755290142',
+            scryfall_uri: 'https://scryfall.com/card/tla/286/forest?utm_source=api'
+        }),
+        wastes: Object.freeze({
+            id: 'baf8f4f2-9f25-4cd2-8d78-1041e134aeac',
+            oracle_id: '05d24b0c-904a-46b6-b42a-96a4d91a0dd4',
+            name: 'Wastes',
+            card_type: 'land',
+            type_line: 'Basic Land — Wastes',
+            mana_cost: '',
+            cmc: 0,
+            oracle_text: '({T}: Add {C}.)',
+            text: '({T}: Add {C}.)',
+            colors: [],
+            color_identity: [],
+            produced_mana: ['C'],
+            rarity: 'common',
+            set: 'eoc',
+            collector_number: '191',
+            image_url: 'https://cards.scryfall.io/normal/front/b/a/baf8f4f2-9f25-4cd2-8d78-1041e134aeac.jpg?1752945584',
+            scryfall_uri: 'https://scryfall.com/card/eoc/191/wastes?utm_source=api'
+        })
+    });
 
     const DeckManager = {
         state: null,
@@ -114,7 +230,11 @@
                     document.getElementById('deck-export-button-secondary')
                 ],
                 parseButton: document.getElementById('deck-parse-button'),
-                importUrlButton: document.getElementById('deck-import-url-button')
+                importUrlButton: document.getElementById('deck-import-url-button'),
+                basicLandsToggle: document.getElementById('deck-basic-lands-toggle'),
+                basicLandsPanel: document.getElementById('deck-basic-lands-panel'),
+                basicLandsClose: document.getElementById('deck-basic-lands-close'),
+                basicLandButtons: Array.from(document.querySelectorAll('[data-basic-land-add]'))
             };
         },
 
@@ -200,6 +320,25 @@
 
             if (this.elements.importUrlButton) {
                 this.elements.importUrlButton.addEventListener('click', () => this.importFromUrl());
+            }
+
+            if (this.elements.basicLandsToggle) {
+                this.elements.basicLandsToggle.addEventListener('click', () => this.toggleBasicLandsPanel());
+            }
+
+            if (this.elements.basicLandsClose) {
+                this.elements.basicLandsClose.addEventListener('click', () => this.toggleBasicLandsPanel(false));
+            }
+
+            if (Array.isArray(this.elements.basicLandButtons)) {
+                this.elements.basicLandButtons.forEach((button) => {
+                    if (!button) return;
+                    button.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        this.handleBasicLandButtonClick(button);
+                    });
+                });
             }
 
         },
@@ -357,6 +496,34 @@
             this.renderColumns();
             this.renderStats();
             this.updateImportVisibility();
+        },
+
+        toggleBasicLandsPanel(forceOpen = null) {
+            const panel = this.elements.basicLandsPanel;
+            const toggle = this.elements.basicLandsToggle;
+            if (!panel) return;
+            const isHidden = panel.classList.contains('hidden');
+            const shouldOpen = forceOpen === null ? isHidden : Boolean(forceOpen);
+            if (shouldOpen) {
+                panel.classList.remove('hidden');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'true');
+                }
+            } else {
+                panel.classList.add('hidden');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            }
+        },
+
+        handleBasicLandButtonClick(button) {
+            if (!button) return;
+            const landKey = button.getAttribute('data-basic-land-add');
+            if (!landKey) return;
+            this.addBasicLand(landKey, 1);
+            const landName = (BASIC_LAND_PRESETS[landKey] && BASIC_LAND_PRESETS[landKey].name) || 'Basic land';
+            this.setImportStatus(`${landName} added to your deck.`, 'success');
         },
 
         updateInputs() {
@@ -790,6 +957,16 @@
 
             this.render();
             this.queueSave();
+        },
+
+        addBasicLand(landKey, quantity) {
+            if (!landKey) return;
+            const preset = BASIC_LAND_PRESETS[landKey];
+            if (!preset) return;
+            const card = { ...preset };
+            card.text = card.text || card.oracle_text || '';
+            card.unique_id = `${preset.id}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+            this.addCard(card, { quantity, forceColumn: 'lands' });
         },
 
         findEntry(cardId, columnKey) {

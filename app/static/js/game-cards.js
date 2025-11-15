@@ -1051,13 +1051,13 @@ const GameCards = {
         const viewportHeight = window.innerHeight;
 
         let x = event.clientX + 150;
-        let y = event.clientY + 150;
+        let y = event.clientY - 50;
 
         if (x + previewRect.width > viewportWidth) {
             x = event.clientX - previewRect.width - 150;
         }
         if (y + previewRect.height > viewportHeight) {
-            y = event.clientY - previewRect.height - 150;
+            y = event.clientY - previewRect.height + 50;
         }
 
         x = Math.max(10, Math.min(x, viewportWidth - previewRect.width - 10));
