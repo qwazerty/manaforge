@@ -408,6 +408,7 @@ class GameAction(BaseModel):
 class DraftType(str, Enum):
     BOOSTER_DRAFT = "booster_draft"
     SEALED = "sealed"
+    CUBE = "cube"
 
 class DraftState(str, Enum):
     WAITING = "waiting"
@@ -419,8 +420,14 @@ class DraftPlayer(BaseModel):
     name: str
     is_bot: bool = False
     has_picked_card: bool = False
-    drafted_cards: List[Card] = []
-    current_pack: List[Card] = []
+    drafted_cards: List[Card] = Field(default_factory=list)
+    current_pack: List[Card] = Field(default_factory=list)
+
+class CubeConfiguration(BaseModel):
+    cube_id: Optional[str] = None
+    source_url: Optional[str] = None
+    name: Optional[str] = None
+    card_count: int = 0
 
 class DraftRoom(BaseModel):
     id: str
@@ -428,10 +435,11 @@ class DraftRoom(BaseModel):
     set_code: str
     set_name: str
     max_players: int = 8
-    players: List[DraftPlayer] = []
+    players: List[DraftPlayer] = Field(default_factory=list)
     draft_type: DraftType = DraftType.BOOSTER_DRAFT
     state: DraftState = DraftState.WAITING
     current_pack_number: int = 1
     current_pick_number: int = 1
-    packs: List[List[List[Card]]] = []
+    packs: List[List[List[Card]]] = Field(default_factory=list)
     pack_direction: int = 1
+    cube_configuration: Optional[CubeConfiguration] = None

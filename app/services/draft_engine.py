@@ -1,11 +1,12 @@
 """
 Engine for managing draft rooms and the drafting process.
 """
+import copy
 import uuid
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
-from app.models.game import DraftRoom, DraftPlayer, Card, DraftState
+from app.models.game import DraftRoom, DraftPlayer, Card, DraftState, DraftType, CubeConfiguration
 from app.services.draft_service import DraftService
 
 class DraftEngine:
@@ -14,16 +15,61 @@ class DraftEngine:
     def __init__(self, draft_service: DraftService):
         self.draft_service = draft_service
         self.draft_rooms: Dict[str, DraftRoom] = {}
+        self.cube_card_pools: Dict[str, List[str]] = {}
+        self.cube_pool_cursor: Dict[str, int] = {}
+        self.cube_card_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
-    def create_draft_room(self, name: str, set_code: str, set_name: str, max_players: int, creator_id: str) -> DraftRoom:
+    async def create_draft_room(
+        self,
+        name: str,
+        set_code: str,
+        set_name: str,
+        max_players: int,
+        creator_id: str,
+        cube_settings: Optional[Dict[str, Any]] = None
+    ) -> DraftRoom:
         """Creates a new draft room and adds the creator as Player 1."""
         room_id = f"draft-{uuid.uuid4().hex[:8]}"
+        cube_settings = cube_settings or {}
+        cube_configuration: Optional[CubeConfiguration] = None
+        normalized_set_code = (set_code or "").strip()
+        normalized_set_name = (set_name or "").strip()
+        draft_type = DraftType.BOOSTER_DRAFT
+
+        if cube_settings.get("use_cube"):
+            cube_payload = await self.draft_service.load_cube_pool(
+                source_url=cube_settings.get("cube_url"),
+                raw_list=cube_settings.get("cube_list"),
+                preferred_name=cube_settings.get("cube_name") or normalized_set_name or name
+            )
+            card_pool = cube_payload.get("card_pool") or []
+            if len(card_pool) < 15:
+                raise ValueError("Cube list must contain at least 15 cards.")
+            random.shuffle(card_pool)
+            self.cube_card_pools[room_id] = card_pool
+            self.cube_pool_cursor[room_id] = 0
+            self.cube_card_cache[room_id] = {}
+            cube_configuration = CubeConfiguration(
+                cube_id=cube_payload.get("cube_id"),
+                source_url=cube_payload.get("source_url"),
+                name=cube_payload.get("cube_name"),
+                card_count=cube_payload.get("card_count", len(card_pool))
+            )
+            normalized_set_name = cube_configuration.name or normalized_set_name or "Custom Cube"
+            normalized_set_code = cube_payload.get("set_code") or cube_configuration.cube_id or "cube"
+            draft_type = DraftType.CUBE
+        else:
+            if not normalized_set_code:
+                raise ValueError("Set code is required for booster drafts.")
+
         room = DraftRoom(
             id=room_id,
             name=name,
-            set_code=set_code,
-            set_name=set_name,
+            set_code=normalized_set_code,
+            set_name=normalized_set_name or normalized_set_code.upper(),
             max_players=max_players,
+            draft_type=draft_type,
+            cube_configuration=cube_configuration
         )
 
         # Add the creator as the first player
@@ -101,7 +147,10 @@ class DraftEngine:
         for _ in room.players:
             player_packs = []
             for _ in range(packs_per_player):
-                pack = await self.draft_service.generate_booster(room.set_code)
+                if room.draft_type == DraftType.CUBE:
+                    pack = await self._generate_cube_pack(room.id, 15)
+                else:
+                    pack = await self.draft_service.generate_booster(room.set_code)
                 player_packs.append(pack)
             room.packs.append(player_packs)
 
@@ -194,3 +243,49 @@ class DraftEngine:
             player.has_picked_card = False
             
         room.current_pick_number += 1
+
+    async def _generate_cube_pack(self, room_id: str, size: int) -> List[Card]:
+        """Draw a pack of cards from the cube pool."""
+        card_pool = self.cube_card_pools.get(room_id)
+        if not card_pool:
+            return []
+
+        cursor = self.cube_pool_cursor.get(room_id, 0)
+        pack: List[Card] = []
+        attempts = 0
+        max_attempts = len(card_pool) + size
+        while len(pack) < size and attempts < max_attempts:
+            if cursor >= len(card_pool):
+                random.shuffle(card_pool)
+                cursor = 0
+
+            card_name = card_pool[cursor]
+            cursor += 1
+            card = await self._resolve_cube_card(room_id, card_name)
+            if card:
+                pack.append(card)
+            attempts += 1
+
+        self.cube_pool_cursor[room_id] = cursor
+        return pack
+
+    async def _resolve_cube_card(self, room_id: str, card_name: str) -> Optional[Card]:
+        """Fetch or reuse a card template for cubes."""
+        if not card_name:
+            return None
+
+        cache = self.cube_card_cache.setdefault(room_id, {})
+        cache_key = card_name.lower()
+        template = cache.get(cache_key)
+
+        if not template:
+            card_obj = await self.draft_service.card_service.get_card_by_name(card_name)
+            if not card_obj:
+                return None
+            template = card_obj.model_dump(mode="json")
+            template.pop("unique_id", None)
+            template.pop("owner_id", None)
+            cache[cache_key] = template
+
+        card_data = copy.deepcopy(template)
+        return Card(**card_data)
