@@ -2,6 +2,72 @@
 
 {% block title %}Draft Room - {{ room.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+#draft-deck-builder-panel #deck-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    align-items: flex-start;
+}
+#draft-deck-builder-panel .deck-columns-panel {
+    padding: 0;
+}
+#draft-deck-builder-panel .deck-column {
+    max-width: 240px;
+    margin: 0 auto;
+    padding-top: 0.75rem;
+    position: relative;
+}
+#draft-deck-builder-panel .deck-column-header {
+    padding: 0 1rem 0.5rem;
+}
+#draft-deck-builder-panel .deck-column-stack {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem 2rem;
+}
+#draft-deck-builder-panel .deck-column-stack .deck-card-entry {
+    margin-top: -8rem;
+    transition: transform 0.2s ease, filter 0.2s ease, margin-top 0.2s ease;
+    position: relative;
+}
+#draft-deck-builder-panel .deck-column-stack .deck-card-entry:first-child {
+    margin-top: 0;
+    padding-top: 0;
+}
+#draft-deck-builder-panel .deck-column-stack .deck-card-entry:hover {
+    transform: translateY(-4px);
+    filter: brightness(1.05);
+}
+#draft-deck-builder-panel .deck-column-stack .deck-card-entry:hover + .deck-card-entry {
+    margin-top: 0;
+}
+#draft-deck-builder-panel .deck-card-entry img {
+    pointer-events: none;
+}
+#draft-deck-builder-panel .deck-card-entry .card-visual {
+    box-shadow:
+        0 14px 36px rgba(0, 0, 0, 0.55),
+        0 6px 20px rgba(0, 0, 0, 0.4);
+    border: none;
+    outline: none;
+    border-radius: 0.5rem;
+    background: rgba(5, 7, 13, 0.65);
+}
+#draft-deck-builder-panel .deck-card-entry .card-visual:hover {
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.7),
+        0 10px 28px rgba(0, 0, 0, 0.55);
+}
+#draft-deck-builder-panel .deck-card-entry-controls {
+    display: none;
+}
+#draft-deck-builder-panel .deck-card-entry {
+    cursor: grab;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="py-12 px-4">
     <div class="max-w-7xl mx-auto">
@@ -29,7 +95,7 @@
                     <div id="export-container" class="mt-4 hidden space-y-3">
                         <div class="flex flex-col gap-2">
                             <button onclick="exportDecklist(event)" class="arena-button w-full py-4 px-8 rounded-lg">Copy Decklist</button>
-                            <button onclick="importDraftToDeckManager(event)" class="arena-button w-full py-4 px-8 rounded-lg bg-arena-surface">Import to Deck Manager</button>
+                            <button onclick="importDraftToDeckManager(event)" class="arena-button w-full py-4 px-8 rounded-lg bg-arena-surface">Open Deck Builder</button>
                         </div>
                         <p id="draft-export-status" class="hidden text-center text-sm text-arena-text-dim"></p>
                     </div>
@@ -50,13 +116,77 @@
                     </div>
                 </div>
 
-                <!-- Drafted Cards -->
-                <div class="arena-card p-4 rounded-lg">
-                    <h2 class="font-magic text-2xl text-arena-accent mb-4">Your Drafted Cards</h2>
-                    <div id="drafted-cards" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-4">
-                        <!-- Player's drafted cards will be rendered here -->
+                <!-- Draft Deck Builder -->
+                <section id="draft-deck-builder-panel" class="arena-card p-6 rounded-lg space-y-6">
+                    <div class="flex flex-wrap justify-between items-start gap-4">
+                        <div>
+                            <h2 class="font-magic text-2xl text-arena-accent">Draft Deck Builder</h2>
+                            <p class="text-sm text-arena-text-dim">Each pick is added automatically. Drag cards between columns while everything auto-saves to your Deck Manager.</p>
+                        </div>
+                        <a id="draft-open-deck-builder" href="/decks/builder" class="arena-button px-5 py-2 rounded-lg font-semibold text-sm whitespace-nowrap">
+                            Open Full Deck Builder
+                        </a>
                     </div>
-                </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="deck-name-input" class="block text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">
+                                Deck name
+                            </label>
+                            <input
+                                type="text"
+                                id="deck-name-input"
+                                placeholder="Draft deck"
+                                class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                            >
+                        </div>
+                        <div>
+                            <label for="deck-format-select" class="block text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">
+                                Format
+                            </label>
+                            <select
+                                id="deck-format-select"
+                                class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                            >
+                                <option value="standard">Standard</option>
+                                <option value="modern">Modern</option>
+                                <option value="pioneer">Pioneer</option>
+                                <option value="pauper">Pauper</option>
+                                <option value="legacy">Legacy</option>
+                                <option value="vintage">Vintage</option>
+                                <option value="duel_commander">Duel Commander</option>
+                                <option value="commander_multi">Commander Multi</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4 text-center">
+                        <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                            <p class="text-sm uppercase tracking-wide text-arena-muted">Main deck</p>
+                            <p id="deck-main-count" class="text-3xl font-bold text-arena-accent mt-1">0</p>
+                        </div>
+                        <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                            <p class="text-sm uppercase tracking-wide text-arena-muted">Sideboard</p>
+                            <p id="deck-sideboard-count" class="text-3xl font-bold text-arena-text mt-1">0</p>
+                        </div>
+                        <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
+                            <p class="text-sm uppercase tracking-wide text-arena-muted">Colors</p>
+                            <div id="deck-color-chips" class="flex flex-wrap justify-center gap-2 mt-2 text-sm"></div>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Type counts</p>
+                            <div id="deck-type-breakdown" class="flex flex-wrap gap-2"></div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Mana curve</p>
+                            <div class="h-40 flex items-end gap-2" id="deck-mana-curve-bars"></div>
+                            <div class="flex justify-between text-xs text-arena-muted mt-2" id="deck-mana-curve-labels"></div>
+                        </div>
+                    </div>
+                    <div class="deck-columns-panel pb-2 space-y-4">
+                        <div id="deck-columns"></div>
+                    </div>
+                </section>
             </div>
         </div>
 
@@ -72,15 +202,65 @@
 {% block extra_js %}
 <script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
+<script src="{{ url_for('static', path='js/card-search.js') }}"></script>
+<script src="{{ url_for('static', path='js/deck-library.js') }}"></script>
+<script>
+    (function() {
+        const roomMeta = {
+            id: {{ room.id|tojson }},
+            name: {{ room.name|tojson }},
+            set: {{ room.set_name|tojson }}
+        };
+        const params = new URLSearchParams(window.location.search);
+        const playerParamRaw = params.get('player') || 'local';
+        const sanitizedPlayer = (playerParamRaw || 'local').replace(/[^a-zA-Z0-9_-]/g, '');
+        const deckId = `draft_${roomMeta.id}_${sanitizedPlayer || 'player'}`;
+        window.MANAFORGE_DECK_CONTEXT = {
+            deckId,
+            deckName: `${roomMeta.set || 'Draft'} - ${roomMeta.name || 'Deck'}`,
+            format: 'standard',
+            persistEmpty: true,
+            suppressUrlUpdates: true
+        };
+        window.MANAFORGE_DRAFT_META = {
+            roomId: roomMeta.id,
+            roomName: roomMeta.name,
+            setName: roomMeta.set,
+            deckId,
+            playerParam: playerParamRaw
+        };
+    })();
+</script>
+<script src="{{ url_for('static', path='js/deck-manager.js') }}"></script>
 <script>
     const roomId = "{{ room.id }}";
     const urlParams = new URLSearchParams(window.location.search);
-    const playerId = urlParams.get('player');
+    const playerId = urlParams.get('player') || (window.MANAFORGE_DRAFT_META ? window.MANAFORGE_DRAFT_META.playerParam : null);
     let websocket;
     const DECK_MANAGER_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
     let cachedDraftedCards = [];
-    let currentRoomMeta = { setName: '', roomName: '' };
+    let currentRoomMeta = { setName: ({{ room.set_name|tojson }} || ''), roomName: ({{ room.name|tojson }} || '') };
     const playerListElement = document.getElementById('player-list');
+    const deckManagerContext = window.MANAFORGE_DECK_CONTEXT || null;
+    const deckManagerLink = document.getElementById('draft-open-deck-builder');
+    const deckSyncState = {
+        latestCards: [],
+        ready: false
+    };
+
+    if (deckManagerLink && deckManagerContext && deckManagerContext.deckId) {
+        deckManagerLink.href = `/decks/builder?deckId=${encodeURIComponent(deckManagerContext.deckId)}`;
+    }
+
+    window.addEventListener('manaforge:deck-manager-ready', (event) => {
+        deckSyncState.ready = true;
+        const detail = event && event.detail ? event.detail : {};
+        const resolvedDeckId = detail.deckId || (deckManagerContext && deckManagerContext.deckId);
+        if (deckManagerLink && resolvedDeckId) {
+            deckManagerLink.href = `/decks/builder?deckId=${encodeURIComponent(resolvedDeckId)}`;
+        }
+        syncDeckBuilderWithDraft(deckSyncState.latestCards);
+    });
 
     function escapeAttr(value) {
         if (value === null || value === undefined) {
@@ -244,21 +424,10 @@
     }
 
     function renderDraftedCards(cards) {
-        const draftedContainer = document.getElementById('drafted-cards');
         const safeCards = Array.isArray(cards) ? cards : [];
-        draftedContainer.innerHTML = safeCards.map(card => {
-            const attrs = buildCardPreviewAttributes(card);
-            return `
-            <div class="draft-card"
-                data-card-id="${attrs.cardIdAttr}"
-                data-card-name="${attrs.cardNameAttr}"
-                data-card-image="${attrs.cardImageAttr}"
-                data-card-data="${attrs.cardDataAttr}">
-                <img src="${attrs.cardImageAttr}" alt="${attrs.cardNameAttr}" class="rounded-lg w-full">
-            </div>
-        `;
-        }).join('');
         cachedDraftedCards = safeCards.map((card) => cloneCardData(card)).filter(Boolean);
+        deckSyncState.latestCards = cachedDraftedCards.map((card) => cloneCardData(card)).filter(Boolean);
+        syncDeckBuilderWithDraft(deckSyncState.latestCards);
     }
 
     function getPlayerNameElement(targetPlayerId) {
@@ -487,8 +656,109 @@
         }
     }
 
+    function getCardIdentity(card) {
+        if (!card) {
+            return null;
+        }
+        return card.id || card.card_id || card.scryfall_id || card.unique_id || (card.set && card.collector_number ? `${card.set}-${card.collector_number}` : card.name) || null;
+    }
+
+    function buildDraftCardCounts(cards) {
+        const counts = {};
+        const samples = {};
+        cards.forEach((card) => {
+            const key = getCardIdentity(card);
+            if (!key) {
+                return;
+            }
+            if (!samples[key]) {
+                samples[key] = card;
+            }
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        return { counts, samples };
+    }
+
+    function getDeckManagerCardCounts() {
+        if (!window.DeckManager || !DeckManager.state || !DeckManager.state.entries) {
+            return {};
+        }
+        const counts = {};
+        Object.values(DeckManager.state.entries).forEach((entry) => {
+            if (!entry || !entry.card) return;
+            const key = getCardIdentity(entry.card);
+            if (!key) return;
+            counts[key] = (counts[key] || 0) + (entry.quantity || 0);
+        });
+        return counts;
+    }
+
+    function removeDeckManagerCopies(cardKey, quantity) {
+        if (!cardKey || !quantity || !window.DeckManager || !DeckManager.state || !DeckManager.state.entries) {
+            return;
+        }
+        let remaining = quantity;
+        const entryIds = Object.keys(DeckManager.state.entries);
+        for (const entryId of entryIds) {
+            if (remaining <= 0) {
+                break;
+            }
+            const entry = DeckManager.state.entries[entryId];
+            if (!entry || !entry.card) {
+                continue;
+            }
+            const entryKey = getCardIdentity(entry.card);
+            if (entryKey !== cardKey) {
+                continue;
+            }
+            const currentQty = entry.quantity || 0;
+            if (currentQty <= 0) {
+                continue;
+            }
+            const nextQty = Math.max(0, currentQty - remaining);
+            const removed = currentQty - nextQty;
+            DeckManager.updateEntryQuantity(entryId, nextQty);
+            remaining -= removed;
+        }
+    }
+
+    function syncDeckBuilderWithDraft(cards) {
+        if (!deckSyncState.ready || !window.DeckManager || !DeckManager.state) {
+            return;
+        }
+        const { counts: targetCounts, samples } = buildDraftCardCounts(Array.isArray(cards) ? cards : []);
+        const currentCounts = getDeckManagerCardCounts();
+        const handledKeys = new Set();
+
+        Object.entries(targetCounts).forEach(([cardKey, desiredCount]) => {
+            handledKeys.add(cardKey);
+            const current = currentCounts[cardKey] || 0;
+            if (current < desiredCount) {
+                const diff = desiredCount - current;
+                const sample = samples[cardKey];
+                if (sample) {
+                    DeckManager.addCard(cloneCardData(sample), { quantity: diff });
+                }
+            } else if (current > desiredCount) {
+                removeDeckManagerCopies(cardKey, current - desiredCount);
+            }
+        });
+
+        Object.keys(currentCounts).forEach((cardKey) => {
+            if (!handledKeys.has(cardKey)) {
+                removeDeckManagerCopies(cardKey, currentCounts[cardKey]);
+            }
+        });
+    }
+
     function importDraftToDeckManager(event) {
         event.stopPropagation();
+        const deckIdTarget = deckManagerContext && deckManagerContext.deckId;
+        if (deckIdTarget) {
+            showDraftStatus('Opening deck builder...', 'info');
+            window.location.href = `/decks/builder?deckId=${encodeURIComponent(deckIdTarget)}`;
+            return;
+        }
         if (!cachedDraftedCards.length) {
             showDraftStatus('Finish drafting before importing.', 'error');
             return;

@@ -44,6 +44,7 @@
     };
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
+    const READY_EVENT_NAME = 'manaforge:deck-manager-ready';
 
     const DeckManager = {
         state: null,
@@ -53,10 +54,18 @@
         activeDropColumn: null,
         saveTimeout: null,
         forceFreshState: false,
+        externalContext: null,
+        readyEventName: READY_EVENT_NAME,
+        isReady: false,
 
         init() {
             this.cacheElements();
-            this.currentDeckId = this.getDeckIdFromUrl();
+            this.externalContext = window.MANAFORGE_DECK_CONTEXT || null;
+            const deckIdFromUrl = this.getDeckIdFromUrl();
+            this.currentDeckId = (this.externalContext && this.externalContext.deckId) || deckIdFromUrl;
+            if (this.externalContext && this.externalContext.startFresh) {
+                this.forceFreshState = true;
+            }
             if (this.shouldStartFreshSession()) {
                 this.forceFreshState = true;
                 this.currentDeckId = null;
@@ -79,6 +88,9 @@
             if (window.GameCards && typeof GameCards.initializeHoverPreview === 'function') {
                 GameCards.initializeHoverPreview();
             }
+
+            this.isReady = true;
+            this.dispatchReadyEvent();
         },
 
         cacheElements() {
@@ -217,12 +229,15 @@
 
         loadState() {
             let nextState = null;
+            const hasExternalDeckId = Boolean(this.externalContext && this.externalContext.deckId);
             if (!this.forceFreshState && this.currentDeckId && window.DeckLibrary) {
                 const savedDeck = window.DeckLibrary.get(this.currentDeckId);
                 if (savedDeck && savedDeck.state) {
                     nextState = this.cloneState(savedDeck.state);
                     nextState.deckName = savedDeck.name || nextState.deckName;
                     nextState.format = savedDeck.format || nextState.format;
+                } else if (hasExternalDeckId) {
+                    nextState = this.getDefaultState();
                 } else {
                     this.resetDeckIdentity();
                 }
@@ -252,6 +267,7 @@
             }
 
             this.state = nextState;
+            this.applyContextDefaults();
             this.ensureColumns();
             const hadDeckId = Boolean(this.currentDeckId);
             this.ensureDeckIdentity();
@@ -279,6 +295,19 @@
             } catch (error) {
                 console.warn('Unable to apply pending import', error);
                 this.setImportStatus('Unable to load draft deck import.', 'error');
+            }
+        },
+
+        applyContextDefaults() {
+            if (!this.externalContext || !this.state) {
+                return;
+            }
+            const { deckName, format, forceDeckName, forceDeckFormat } = this.externalContext;
+            if (deckName && (forceDeckName || !this.state.deckName || this.state.deckName === 'Untitled Deck')) {
+                this.state.deckName = deckName;
+            }
+            if (format && (forceDeckFormat || !this.state.format)) {
+                this.state.format = format;
             }
         },
 
@@ -1043,6 +1072,9 @@
         },
 
         updateDeckIdInUrl(deckId) {
+            if (this.externalContext && this.externalContext.suppressUrlUpdates) {
+                return;
+            }
             try {
                 const url = new URL(window.location.href);
                 if (!deckId) {
@@ -1059,7 +1091,9 @@
         syncLibraryState(payloadOverride = null) {
             if (!window.DeckLibrary) return;
             if (!this.currentDeckId) return;
-            if (!this.hasDeckEntries()) {
+            const hasEntries = this.hasDeckEntries();
+            const allowEmptySave = Boolean(this.externalContext && this.externalContext.persistEmpty);
+            if (!hasEntries && !allowEmptySave) {
                 try {
                     window.DeckLibrary.remove(this.currentDeckId);
                 } catch (error) {
@@ -1120,6 +1154,22 @@
                 section.classList.add('hidden');
             } else {
                 section.classList.remove('hidden');
+            }
+        },
+
+        dispatchReadyEvent() {
+            if (!this.readyEventName) {
+                return;
+            }
+            try {
+                window.dispatchEvent(new CustomEvent(this.readyEventName, {
+                    detail: {
+                        deckId: this.currentDeckId,
+                        context: this.externalContext || null
+                    }
+                }));
+            } catch (error) {
+                console.warn('Unable to dispatch deck manager ready event', error);
             }
         }
     };
