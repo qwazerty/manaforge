@@ -408,7 +408,7 @@
             }));
 
             showDraftStatus('Deck sent to Deck Manager!', 'success');
-            window.location.href = '/decks';
+            window.location.href = '/decks/builder';
         } catch (error) {
             console.error('Unable to import deck into deck manager', error);
             showDraftStatus('Import failed. Please try again.', 'error');

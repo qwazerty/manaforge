@@ -8,14 +8,14 @@
     const COMMANDER_FORMATS = new Set(['duel_commander', 'commander_multi']);
     const COLUMN_CONFIG = [
         { key: 'commander', label: 'Commander', icon: '👑', description: 'Command zone slot' },
-        { key: 'cmc1', label: '1 CMC', icon: '1️⃣', description: '0-1 mana value' },
-        { key: 'cmc2', label: '2 CMC', icon: '2️⃣', description: 'Two drops' },
-        { key: 'cmc3', label: '3 CMC', icon: '3️⃣', description: 'Three drops' },
-        { key: 'cmc4', label: '4 CMC', icon: '4️⃣', description: 'Four drops' },
-        { key: 'cmc5', label: '5 CMC', icon: '5️⃣', description: 'Five drops' },
-        { key: 'cmc6plus', label: '6+ CMC', icon: '6️⃣', description: 'Big spells' },
+        { key: 'cmc1', label: '1 CMC', icon: '', description: '0-1 mana value' },
+        { key: 'cmc2', label: '2 CMC', icon: '', description: 'Two mana value' },
+        { key: 'cmc3', label: '3 CMC', icon: '', description: 'Three mana value' },
+        { key: 'cmc4', label: '4 CMC', icon: '', description: 'Four mana value' },
+        { key: 'cmc5', label: '5 CMC', icon: '', description: 'Five mana value' },
+        { key: 'cmc6plus', label: '6+ CMC', icon: '', description: 'Six or more mana value' },
         { key: 'lands', label: 'Lands', icon: '🌍', description: 'Mana base' },
-        { key: 'sideboard', label: 'Sideboard', icon: '🧰', description: 'Plan B' }
+        { key: 'sideboard', label: 'Sideboard', icon: '🧰', description: 'Sideboard' }
     ];
     const TYPE_LABELS = {
         creature: 'Creatures',
@@ -47,13 +47,26 @@
 
     const DeckManager = {
         state: null,
+        currentDeckId: null,
         elements: {},
         draggedEntryId: null,
         activeDropColumn: null,
         saveTimeout: null,
+        forceFreshState: false,
 
         init() {
             this.cacheElements();
+            this.currentDeckId = this.getDeckIdFromUrl();
+            if (this.shouldStartFreshSession()) {
+                this.forceFreshState = true;
+                this.currentDeckId = null;
+                try {
+                    localStorage.removeItem(STORAGE_KEY);
+                } catch (error) {
+                    console.warn('Unable to reset deck manager storage', error);
+                }
+                this.stripFreshSessionFlag();
+            }
             if (!this.elements.columnsContainer) {
                 return;
             }
@@ -82,6 +95,7 @@
                 importTextarea: document.getElementById('deck-import-text'),
                 importUrlInput: document.getElementById('deck-import-url'),
                 importStatus: document.getElementById('deck-import-status'),
+                saveButton: document.getElementById('deck-save-button'),
                 searchButtons: Array.from(document.querySelectorAll('[data-deck-search]')),
                 exportButtons: [
                     document.getElementById('deck-export-button'),
@@ -93,12 +107,48 @@
             };
         },
 
+        getDeckIdFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('deckId');
+            } catch (error) {
+                console.warn('Unable to parse deck id from URL', error);
+                return null;
+            }
+        },
+
+        shouldStartFreshSession() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return params.has('new');
+            } catch (error) {
+                console.warn('Unable to determine new deck flag', error);
+                return false;
+            }
+        },
+
+        stripFreshSessionFlag() {
+            try {
+                const url = new URL(window.location.href);
+                if (url.searchParams.has('new')) {
+                    url.searchParams.delete('new');
+                    window.history.replaceState({}, '', url.toString());
+                }
+            } catch (error) {
+                console.warn('Unable to strip new deck flag from URL', error);
+            }
+        },
+
         bindEvents() {
             if (this.elements.deckNameInput) {
                 this.elements.deckNameInput.addEventListener('input', (event) => {
                     this.state.deckName = event.target.value;
                     this.queueSave();
                 });
+            }
+
+            if (this.elements.saveButton) {
+                this.elements.saveButton.addEventListener('click', () => this.saveDeckToLibrary());
             }
 
             if (this.elements.formatSelect) {
@@ -174,17 +224,42 @@
         },
 
         loadState() {
-            try {
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) {
-                    this.state = JSON.parse(stored);
+            let nextState = null;
+            if (this.currentDeckId && window.DeckLibrary) {
+                const savedDeck = window.DeckLibrary.get(this.currentDeckId);
+                if (savedDeck && savedDeck.state) {
+                    nextState = this.cloneState(savedDeck.state);
+                    nextState.deckName = savedDeck.name || nextState.deckName;
+                    nextState.format = savedDeck.format || nextState.format;
                 } else {
-                    this.state = this.getDefaultState();
+                    this.resetDeckIdentity();
                 }
-            } catch (error) {
-                console.warn('Unable to load stored deck state', error);
-                this.state = this.getDefaultState();
             }
+
+            if (!nextState) {
+                try {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (parsed && typeof parsed === 'object' && parsed.state) {
+                            nextState = this.cloneState(parsed.state);
+                            if (!this.currentDeckId && parsed.deckId) {
+                                this.currentDeckId = parsed.deckId;
+                            }
+                        } else if (parsed) {
+                            nextState = this.cloneState(parsed);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Unable to load stored deck state', error);
+                }
+            }
+
+            if (!nextState) {
+                nextState = this.getDefaultState();
+            }
+
+            this.state = nextState;
             this.ensureColumns();
         },
 
@@ -235,7 +310,11 @@
         saveState() {
             if (!this.state) return;
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+                const payload = {
+                    deckId: this.currentDeckId || null,
+                    state: this.cloneState(this.state)
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
             } catch (error) {
                 console.warn('Unable to persist deck state', error);
             }
@@ -274,7 +353,7 @@
                     'deck-column',
                     'flex',
                     'flex-col',
-                    'gap-1'
+                    'gap-3'
                 ].join(' ');
 
                 if (column.key === 'commander' && !showCommander && entries.length === 0) {
@@ -329,8 +408,8 @@
 
             entryEl.innerHTML = `
                 <div class="card-visual relative rounded-xl overflow-hidden shadow-lg border border-arena-accent/40 bg-arena-surface/40">
-                    ${card.image_url
-                        ? `<img src="${safeImage}" alt="${safeName}" class="w-full h-48 object-cover select-none">`
+                        ${card.image_url
+                            ? `<img src="${safeImage}" alt="${safeName}" class="deck-card-image select-none">`
                         : `
                                 <div class="w-full h-48 flex flex-col items-center justify-center bg-arena-surface/80 text-center text-sm px-4 text-arena-muted">
                                     <span class="text-lg font-semibold">${safeName}</span>
@@ -860,6 +939,7 @@
             this.state = nextState;
             this.ensureColumns();
             this.render();
+            this.resetDeckIdentity();
             this.saveState();
         },
 
@@ -920,6 +1000,7 @@
                 return;
             }
             this.state = this.getDefaultState();
+            this.resetDeckIdentity();
             this.render();
             this.saveState();
             if (this.elements.importTextarea) {
@@ -927,6 +1008,58 @@
             }
             if (this.elements.importUrlInput) {
                 this.elements.importUrlInput.value = '';
+            }
+        },
+
+        cloneState(state) {
+            try {
+                return JSON.parse(JSON.stringify(state));
+            } catch (error) {
+                console.warn('Unable to clone deck state', error);
+                return state;
+            }
+        },
+
+        saveDeckToLibrary() {
+            if (!window.DeckLibrary) {
+                this.setImportStatus('Deck library unavailable in this browser.', 'error');
+                return;
+            }
+            const payload = {
+                id: this.currentDeckId || window.DeckLibrary.generateId(),
+                name: this.state.deckName || 'Untitled Deck',
+                format: this.state.format || 'modern',
+                state: this.cloneState(this.state),
+                updatedAt: new Date().toISOString()
+            };
+            try {
+                window.DeckLibrary.save(payload);
+                this.currentDeckId = payload.id;
+                this.updateDeckIdInUrl(payload.id);
+                this.setImportStatus('Deck saved to your library.', 'success');
+                this.saveState();
+            } catch (error) {
+                console.warn('Unable to save deck', error);
+                this.setImportStatus('Unable to save the deck to your library.', 'error');
+            }
+        },
+
+        resetDeckIdentity() {
+            this.currentDeckId = null;
+            this.updateDeckIdInUrl(null);
+        },
+
+        updateDeckIdInUrl(deckId) {
+            try {
+                const url = new URL(window.location.href);
+                if (!deckId) {
+                    url.searchParams.delete('deckId');
+                } else {
+                    url.searchParams.set('deckId', deckId);
+                }
+                window.history.replaceState({}, '', url.toString());
+            } catch (error) {
+                console.warn('Unable to update deck id in URL', error);
             }
         },
 

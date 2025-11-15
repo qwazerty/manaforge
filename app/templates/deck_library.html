@@ -1,0 +1,53 @@
+{% extends "base_arena.html" %}
+
+{% block title %}Deck Library - ManaForge{% endblock %}
+
+{% block content %}
+<div class="py-12 px-4">
+    <div class="max-w-6xl mx-auto space-y-10">
+        <div class="text-center space-y-4 animate-fade-in">
+            <p class="text-sm uppercase tracking-[0.35em] text-arena-muted">Deck Laboratory</p>
+            <h1 class="font-magic text-4xl md:text-5xl text-arena-accent">Deck Library</h1>
+            <p class="text-lg text-arena-text-dim max-w-2xl mx-auto">
+                Collect, duplicate, and relaunch your builds with a single click. Each saved list opens the Arena-style builder to keep iterating.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <a href="/decks/builder?new=1" class="arena-button px-6 py-3 rounded-lg font-semibold flex items-center gap-2">
+                    <span>➕</span>New deck
+                </a>
+                <a href="/draft" class="px-6 py-3 rounded-lg font-semibold border border-arena-accent/30 hover:border-arena-accent transition flex items-center gap-2">
+                    <span>📥</span>Import from draft
+                </a>
+            </div>
+        </div>
+
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Saved decks</p>
+                    <h2 class="text-2xl font-semibold text-white flex items-center gap-2">
+                        <span id="deck-library-count">0</span>
+                        <span class="text-base font-normal text-arena-text-dim">entries</span>
+                    </h2>
+                </div>
+                <div class="text-sm text-arena-text-dim">
+                    <span class="block">Last update:</span>
+                    <span id="deck-library-last-edit" class="text-white/70">—</span>
+                </div>
+            </div>
+
+            <div id="deck-library-empty" class="text-center text-arena-muted py-10 border border-dashed border-arena-accent/30 rounded-lg hidden">
+                <p class="text-lg font-semibold mb-2">No decks saved yet</p>
+                <p class="text-sm">Create a new deck or import one from the draft room to start building.</p>
+            </div>
+
+            <div id="deck-library-grid" class="grid gap-4 md:grid-cols-2"></div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='js/deck-library.js') }}"></script>
+<script src="{{ url_for('static', path='js/deck-manager-hub.js') }}"></script>
+{% endblock %}

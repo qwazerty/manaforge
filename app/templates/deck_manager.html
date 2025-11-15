@@ -27,7 +27,7 @@
     padding: 0.75rem 1rem 2rem;
 }
 .deck-column-stack .deck-card-entry {
-    margin-top: -10rem;
+    margin-top: -8rem;
     transition: transform 0.2s ease, filter 0.2s ease, margin-top 0.2s ease;
     position: relative;
 }
@@ -53,16 +53,15 @@
     box-shadow:
         0 14px 36px rgba(0, 0, 0, 0.55),
         0 6px 20px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    outline: 1px solid rgba(0, 0, 0, 0.65);
-    outline-offset: -1px;
-    background: radial-gradient(circle at top, rgba(255,255,255,0.08), rgba(0,0,0,0.6));
+    border: none;
+    outline: none;
+    border-radius: 0.5rem;
+    background: rgba(5, 7, 13, 0.65);
 }
 .deck-card-entry .card-visual:hover {
     box-shadow:
         0 18px 40px rgba(0, 0, 0, 0.7),
         0 10px 28px rgba(0, 0, 0, 0.55);
-    border-color: rgba(255, 255, 255, 0.35);
 }
 </style>
 {% endblock %}
@@ -144,6 +143,12 @@
                     <p class="text-arena-text-dim text-sm">Drag & drop cards between Arena-style columns. Hover to preview.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <a href="/decks" class="px-4 py-2 rounded-lg border border-arena-accent/30 hover:border-arena-accent transition font-semibold flex items-center gap-2">
+                        <span>📚</span>Library
+                    </a>
+                    <button id="deck-save-button" class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+                        <span>💾</span>Save deck
+                    </button>
                     <button id="deck-search-button-layout" data-deck-search class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                         <span>🔍</span>Search cards
                     </button>
@@ -204,5 +209,6 @@
 <script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
 <script src="{{ url_for('static', path='js/card-search.js') }}"></script>
+<script src="{{ url_for('static', path='js/deck-library.js') }}"></script>
 <script src="{{ url_for('static', path='js/deck-manager.js') }}"></script>
 {% endblock %}
