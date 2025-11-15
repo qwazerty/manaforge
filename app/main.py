@@ -2,6 +2,8 @@
 Main FastAPI application.
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,7 +27,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
-app.mount("/static", StaticFiles(directory="/app/app/static"), name="static")
+static_dir = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 app.include_router(router)
 app.include_router(websocket_router)
