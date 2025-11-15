@@ -152,6 +152,10 @@ class Deck(BaseModel):
         default_factory=list,
         description="List of cards in the deck with quantities"
     )
+    sideboard: List[DeckCard] = Field(
+        default_factory=list,
+        description="Sideboard cards with quantities"
+    )
     commanders: List[Card] = Field(
         default_factory=list,
         description="Commander cards assigned to this deck"
