@@ -70,12 +70,61 @@
 <div class="py-12 px-4">
     <div class="max-w-7xl mx-auto space-y-8">
         <div class="text-center space-y-4 animate-fade-in">
-            <p class="text-sm uppercase tracking-[0.3em] text-arena-muted">Mana Lab</p>
             <h1 class="font-magic text-4xl md:text-5xl font-bold text-arena-accent">Deck Architect</h1>
             <p class="text-lg text-arena-text-dim max-w-3xl mx-auto">
                 Import, refine, and export your decks with Arena-style columns, card search, hover previews, and instant metrics.
             </p>
         </div>
+
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+            <div class="flex flex-col lg:flex-row lg:items-start gap-8">
+                <div class="space-y-4 flex-1">
+                    <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
+                        <span>🕸️</span>Import from URL
+                    </h3>
+                    <input
+                        type="url"
+                        id="deck-import-url"
+                        placeholder="https://moxfield.com/decks/..."
+                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                    >
+                    <button id="deck-import-url-button" class="px-6 py-3 rounded-lg font-semibold border border-arena-accent/30 hover:border-arena-accent transition flex items-center gap-2">
+                        <span>🌐</span>Import from URL
+                    </button>
+                    <p class="text-sm text-arena-text-dim">
+                        Paste a public deck URL from Moxfield, Scryfall, MTGGoldfish, etc. We'll fetch the list automatically.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="deck-export-button-secondary" class="arena-button px-5 py-3 rounded-lg font-semibold flex items-center gap-2">
+                            <span>📤</span>Export decklist
+                        </button>
+                        <button id="deck-clear-button" class="px-5 py-3 rounded-lg font-semibold flex items-center gap-2 border border-red-400/40 text-red-300 hover:bg-red-500/10 transition">
+                            <span>🗑️</span>Clear deck
+                        </button>
+                    </div>
+                    <div id="deck-import-status" class="text-sm text-arena-muted"></div>
+                </div>
+                <div class="flex items-center justify-center lg:flex-none">
+                    <div class="flex flex-col items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-arena-muted">
+                        <span class="h-6 w-px bg-arena-accent/30"></span>
+                        <span>or</span>
+                        <span class="h-6 w-px bg-arena-accent/30"></span>
+                    </div>
+                </div>
+                <div class="space-y-3 flex-1">
+                    <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
+                        <span>📥</span>Import from text
+                    </h3>
+                    <textarea
+                        id="deck-import-text"
+                        rows="6"
+                        placeholder="4 Lightning Bolt&#10;4 Dragon's Rage Channeler&#10;..."
+                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
+                    ></textarea>
+                    <button id="deck-parse-button" class="arena-button px-6 py-3 rounded-lg font-semibold">Import</button>
+                </div>
+            </div>
+        </section>
 
         <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
             <div class="grid md:grid-cols-2 gap-4">
@@ -156,49 +205,6 @@
             </div>
             <div class="deck-columns-panel pb-2">
                 <div id="deck-columns"></div>
-            </div>
-        </section>
-
-        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
-            <div class="grid lg:grid-cols-2 gap-8">
-                <div class="space-y-3">
-                    <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
-                        <span>📥</span>Import from text
-                    </h3>
-                    <textarea
-                        id="deck-import-text"
-                        rows="6"
-                        placeholder="4 Lightning Bolt&#10;4 Dragon's Rage Channeler&#10;..."
-                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
-                    ></textarea>
-                    <button id="deck-parse-button" class="arena-button px-6 py-3 rounded-lg font-semibold">Import</button>
-                </div>
-                <div class="space-y-4">
-                    <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
-                        <span>🕸️</span>Import from URL
-                    </h3>
-                    <input
-                        type="url"
-                        id="deck-import-url"
-                        placeholder="https://moxfield.com/decks/..."
-                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
-                    >
-                    <button id="deck-import-url-button" class="px-6 py-3 rounded-lg font-semibold border border-arena-accent/30 hover:border-arena-accent transition flex items-center gap-2">
-                        <span>🌐</span>Import from URL
-                    </button>
-                    <p class="text-sm text-arena-text-dim">
-                        Uses the same parser as the game room (MTGGoldfish, Scryfall, Moxfield). Sideboards can be managed manually via the dedicated column.
-                    </p>
-                    <div class="flex flex-wrap gap-3">
-                        <button id="deck-export-button-secondary" class="arena-button px-5 py-3 rounded-lg font-semibold flex items-center gap-2">
-                            <span>📤</span>Export decklist
-                        </button>
-                        <button id="deck-clear-button" class="px-5 py-3 rounded-lg font-semibold flex items-center gap-2 border border-red-400/40 text-red-300 hover:bg-red-500/10 transition">
-                            <span>🗑️</span>Clear deck
-                        </button>
-                    </div>
-                    <div id="deck-import-status" class="text-sm text-arena-muted"></div>
-                </div>
             </div>
         </section>
     </div>
