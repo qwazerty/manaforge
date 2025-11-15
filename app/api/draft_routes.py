@@ -48,6 +48,10 @@ class PickCardRequest(BaseModel):
     player_id: str
     card_unique_id: str
 
+class RenamePlayerRequest(BaseModel):
+    player_id: str
+    player_name: str
+
 @router.post("/rooms", response_model=DraftRoom)
 async def create_draft_room(
     request: CreateRoomRequest,
@@ -124,6 +128,27 @@ async def pick_card(
     if not success:
         raise HTTPException(status_code=400, detail="Invalid pick")
     return {"message": "Card picked"}
+
+@router.post("/rooms/{room_id}/rename")
+async def rename_player(
+    room_id: str,
+    request: RenamePlayerRequest,
+    engine: DraftEngine = Depends(get_draft_engine)
+):
+    """Rename a human player in the draft room."""
+    try:
+        player = engine.rename_player(room_id, request.player_id, request.player_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    from app.api.websocket import manager  # Local import to avoid circular dependency
+    room = engine.get_draft_room(room_id)
+    if room:
+        await manager.broadcast_to_game(room_id, {
+            "type": "draft_state_update",
+            "room_state": room.model_dump(mode="json")
+        })
+    return player
 
 @router.get("/sets")
 async def search_sets(

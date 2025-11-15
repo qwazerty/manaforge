@@ -21,11 +21,11 @@
                     </div>
                     {% endfor %}
                 </div>
-                <div class="mt-4">
+                <div class="mt-4 space-y-2">
                     <button id="add-bot-button" class="arena-button w-full py-4 px-8 rounded-lg">Add Bot</button>
-                    <button id="fill-bots-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Fill with Bots</button>
-                    <button id="start-draft-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2">Start Draft</button>
-                    <button id="confirm-pick-button" class="arena-button w-full py-4 px-8 rounded-lg mt-2" disabled>Confirm Pick</button>
+                    <button id="fill-bots-button" class="arena-button w-full py-4 px-8 rounded-lg">Fill with Bots</button>
+                    <button id="start-draft-button" class="arena-button w-full py-4 px-8 rounded-lg">Start Draft</button>
+                    <button id="confirm-pick-button" class="arena-button w-full py-4 px-8 rounded-lg" disabled>Confirm Pick</button>
                     <div id="export-container" class="mt-4 hidden space-y-3">
                         <div class="flex flex-col gap-2">
                             <button onclick="exportDecklist(event)" class="arena-button w-full py-4 px-8 rounded-lg">Copy Decklist</button>
@@ -80,6 +80,7 @@
     const DECK_MANAGER_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
     let cachedDraftedCards = [];
     let currentRoomMeta = { setName: '', roomName: '' };
+    const playerListElement = document.getElementById('player-list');
 
     function escapeAttr(value) {
         if (value === null || value === undefined) {
@@ -167,19 +168,7 @@
                     }
                     renderDraftedCards(me.drafted_cards);
                 }
-                // Update player list
-                const playerList = document.getElementById('player-list');
-                playerList.innerHTML = room.players.map(p => {
-                    const statusIcon = p.has_picked_card
-                        ? `<span class="text-green-400" title="Card picked">&#10003;</span>`
-                        : '';
-                    return `
-                        <div id="player-${p.id}" class="p-2 bg-arena-surface rounded flex items-center justify-between ${p.id === playerId ? 'font-bold' : ''}">
-                            <span>${p.name} ${p.is_bot ? '(Bot)' : ''}</span>
-                            ${statusIcon}
-                        </div>
-                    `;
-                }).join('');
+                renderPlayerList(room);
 
                 const packHeader = document.getElementById('pack-header');
                 packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
@@ -270,6 +259,133 @@
         `;
         }).join('');
         cachedDraftedCards = safeCards.map((card) => cloneCardData(card)).filter(Boolean);
+    }
+
+    function getPlayerNameElement(targetPlayerId) {
+        if (!targetPlayerId) return null;
+        const escapedId = window.CSS && window.CSS.escape ? window.CSS.escape(targetPlayerId) : targetPlayerId.replace(/"/g, '\\"');
+        return document.querySelector(`[data-player-entry-name="${escapedId}"]`);
+    }
+
+    async function submitDraftNameChange(targetPlayerId, desiredName) {
+        const trimmed = desiredName.trim();
+        if (!trimmed) {
+            throw new Error('Name cannot be empty.');
+        }
+        const response = await fetch(`/api/v1/draft/rooms/${encodeURIComponent(roomId)}/rename`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player_id: targetPlayerId, player_name: trimmed })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.detail || 'Unable to update name.');
+        }
+        return payload?.name || trimmed;
+    }
+
+    function finishDraftNameEdit(nameElement, targetPlayerId, originalName, commit = true) {
+        const cleanup = () => {
+            nameElement.removeAttribute('contenteditable');
+            nameElement.classList.remove('ring-2', 'ring-arena-accent/50', 'px-1', 'rounded');
+            nameElement.dataset.editing = 'false';
+        };
+
+        if (!commit) {
+            nameElement.textContent = originalName;
+            cleanup();
+            return;
+        }
+
+        const nextValue = nameElement.textContent.trim();
+        if (!nextValue || nextValue === originalName) {
+            nameElement.textContent = originalName;
+            cleanup();
+            return;
+        }
+
+        submitDraftNameChange(targetPlayerId, nextValue)
+            .then((sanitized) => {
+                nameElement.textContent = sanitized || nextValue;
+                showDraftStatus('Name updated.', 'success');
+            })
+            .catch((error) => {
+                console.error('Unable to rename player', error);
+                nameElement.textContent = originalName;
+                showDraftStatus(error.message || 'Unable to update name.', 'error');
+            })
+            .finally(cleanup);
+    }
+
+    function startDraftNameEdit(targetPlayerId) {
+        if (!playerId || playerId !== targetPlayerId) return;
+        const nameElement = getPlayerNameElement(targetPlayerId);
+        if (!nameElement || nameElement.dataset.editing === 'true') return;
+        const originalName = nameElement.textContent.trim();
+        nameElement.dataset.editing = 'true';
+        nameElement.contentEditable = 'true';
+        nameElement.spellcheck = false;
+        nameElement.classList.add('ring-2', 'ring-arena-accent/50', 'px-1', 'rounded');
+        setTimeout(() => selectTextContent(nameElement), 0);
+
+        const handleKeydown = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                nameElement.removeEventListener('keydown', handleKeydown);
+                nameElement.removeEventListener('blur', handleBlur);
+                finishDraftNameEdit(nameElement, targetPlayerId, originalName, true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                nameElement.removeEventListener('keydown', handleKeydown);
+                nameElement.removeEventListener('blur', handleBlur);
+                finishDraftNameEdit(nameElement, targetPlayerId, originalName, false);
+            }
+        };
+
+        const handleBlur = () => {
+            nameElement.removeEventListener('keydown', handleKeydown);
+            nameElement.removeEventListener('blur', handleBlur);
+            finishDraftNameEdit(nameElement, targetPlayerId, originalName, true);
+        };
+
+        nameElement.addEventListener('keydown', handleKeydown);
+        nameElement.addEventListener('blur', handleBlur);
+    }
+
+    function selectTextContent(element) {
+        if (!element) return;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    function renderPlayerList(room) {
+        if (!playerListElement) return;
+        const players = Array.isArray(room.players) ? room.players : [];
+        playerListElement.innerHTML = players.map((p) => {
+            const safeId = escapeAttr(p.id || '');
+            const safeName = escapeAttr(p.name || '');
+            const statusIcon = p.has_picked_card
+                ? `<span class="text-green-400" title="Card picked">&#10003;</span>`
+                : '';
+            const canRename = Boolean(playerId && p.id === playerId && !p.is_bot);
+            const renameButton = canRename
+                ? `<button type="button" class="text-xs text-arena-muted hover:text-arena-accent transition-colors" title="Rename" data-player-rename="${safeId}">✏️</button>`
+                : '';
+            const botLabel = p.is_bot ? `<span class="text-xs text-arena-text-dim">(Bot)</span>` : '';
+            return `
+                <div id="player-${safeId}" class="p-2 bg-arena-surface rounded flex items-center justify-between ${p.id === playerId ? 'font-bold' : ''}">
+                    <span class="flex items-center gap-2">
+                        <span data-player-entry-name="${safeId}">${safeName}</span>
+                        ${botLabel}
+                        ${renameButton}
+                    </span>
+                    ${statusIcon}
+                </div>
+            `;
+        }).join('');
     }
 
     function selectCard(cardUniqueId) {
@@ -418,17 +534,22 @@
     document.getElementById('add-bot-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'add_bot' }));
     });
-
     document.getElementById('fill-bots-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'fill_bots' }));
     });
-
     document.getElementById('confirm-pick-button').addEventListener('click', pickCard);
     document.getElementById('confirm-pick-button').style.display = 'none';
-
     document.getElementById('start-draft-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'start_draft' }));
     });
+    if (playerListElement) {
+        playerListElement.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-player-rename]');
+            if (!trigger) return;
+            const targetId = trigger.dataset.playerRename;
+            startDraftNameEdit(targetId);
+        });
+    }
 
     window.addEventListener('load', initializeWebSocket);
 
