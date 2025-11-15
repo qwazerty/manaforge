@@ -43,7 +43,29 @@ async def search_cards(
     card_service: CardService = Depends(get_card_service)
 ) -> List[Card]:
     """Search for cards by name with optional type filtering (e.g., type=token, type=creature, etc.)."""
-    return await card_service.search_cards(q, limit, type)
+    raw_results = await card_service.search_cards(q, limit, type)
+    normalized_results: List[Card] = []
+
+    for entry in raw_results:
+        if isinstance(entry, Card):
+            normalized_results.append(entry)
+            continue
+
+        if isinstance(entry, dict):
+            payload = entry
+        else:
+            payload = getattr(entry, "__dict__", {})
+
+        card_data = dict(payload)
+
+        card_data.setdefault(
+            "unique_id",
+            f"{card_data.get('id', 'card')}_{uuid.uuid4().hex[:8]}"
+        )
+
+        normalized_results.append(Card(**card_data))
+
+    return normalized_results
 
 
 @router.get("/cards/{card_id}")

@@ -3,7 +3,8 @@ Core models for the Magic The Gathering game.
 """
 
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+import uuid
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
@@ -48,7 +49,8 @@ class Card(BaseModel):
         default=None, description="Scryfall's unique ID for this card"
     )
     unique_id: str = Field(
-        ..., description="Unique instance identifier for a card in a game"
+        default_factory=lambda: f"card_{uuid.uuid4().hex}",
+        description="Unique instance identifier for a card in a game"
     )
     owner_id: Optional[str] = Field(
         default=None, description="ID of the player who owns this card instance"
@@ -59,8 +61,10 @@ class Card(BaseModel):
     card_type: CardType = Field(..., description="Primary card type")
     subtype: str = Field(default="", description="Card subtype")
     text: str = Field(default="", description="Card text/abilities")
-    power: Optional[str] = Field(default=None, description="Creature power")
-    toughness: Optional[str] = Field(
+    power: Optional[int | str] = Field(
+        default=None, description="Creature power"
+    )
+    toughness: Optional[int | str] = Field(
         default=None, description="Creature toughness"
     )
     current_power: Optional[str] = Field(
@@ -122,6 +126,7 @@ class Card(BaseModel):
     )
 
 
+
 class DeckCard(BaseModel):
     """A card in a deck with quantity."""
     card: Card = Field(..., description="The card")
@@ -155,6 +160,26 @@ class Deck(BaseModel):
         default=GameFormat.STANDARD,
         description="Deck format"
     )
+
+    @field_validator("cards", mode="before")
+    @classmethod
+    def _ensure_deck_cards(cls, values):
+        """
+        Allow simple Card instances or dicts in tests to be coerced into
+        DeckCard entries with a default quantity of 1.
+        """
+        if not values:
+            return values
+
+        normalized: List[Any] = []
+        for entry in values:
+            if isinstance(entry, DeckCard):
+                normalized.append(entry)
+            elif isinstance(entry, Card):
+                normalized.append({"card": entry, "quantity": 1})
+            else:
+                normalized.append(entry)
+        return normalized
 
 
 class GameZone(str, Enum):

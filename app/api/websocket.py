@@ -18,12 +18,26 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, List[tuple]] = {}
         self.heartbeat_task: Optional[asyncio.Task] = None
-        self.start_heartbeat()
     
-    def start_heartbeat(self):
-        """Start the heartbeat task for connection health monitoring."""
-        if self.heartbeat_task is None or self.heartbeat_task.done():
-            self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+    def ensure_heartbeat(self):
+        """
+        Start the heartbeat task for connection health monitoring.
+        
+        This is invoked lazily from async contexts (where an event loop is
+        running) to avoid trying to create tasks at import time, which breaks
+        our pytest collection.
+        """
+        if self.heartbeat_task and not self.heartbeat_task.done():
+            return
+        
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop yet (e.g. during module import). We'll try
+            # again once we enter an async context.
+            return
+        
+        self.heartbeat_task = loop.create_task(self._heartbeat_loop())
     
     async def _heartbeat_loop(self):
         """Send periodic ping to all connections and clean up dead ones."""
@@ -66,6 +80,7 @@ class ConnectionManager:
     ):
         """Accept and store a WebSocket connection."""
         await websocket.accept()
+        self.ensure_heartbeat()
         
         if game_id not in self.active_connections:
             self.active_connections[game_id] = []
