@@ -76,7 +76,7 @@
             </p>
         </div>
 
-        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+        <section id="deck-import-section" class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
             <div class="flex flex-col lg:flex-row lg:items-stretch gap-8">
                 <div class="space-y-5 flex-1">
                     <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
@@ -186,9 +186,9 @@
                     <p class="text-arena-text-dim text-sm">Drag & drop cards between columns. Hover to preview.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <a href="/decks" class="px-4 py-2 rounded-lg border border-arena-accent/30 hover:border-arena-accent transition font-semibold flex items-center gap-2">
-                        <span>📚</span>Library
-                    </a>
+                    <button id="deck-export-button-secondary" class="arena-button px-5 py-2 rounded-lg font-semibold flex items-center gap-2">
+                        <span>📤</span>Export decklist
+                    </button>
                     <button id="deck-search-button-layout" data-deck-search class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                         <span>🔍</span>Search cards
                     </button>
@@ -196,14 +196,6 @@
             </div>
             <div class="deck-columns-panel pb-2 space-y-4">
                 <div id="deck-columns"></div>
-                <div class="flex flex-wrap gap-3 justify-end">
-                    <button id="deck-export-button-secondary" class="arena-button px-5 py-3 rounded-lg font-semibold flex items-center gap-2">
-                        <span>📤</span>Export decklist
-                    </button>
-                    <button id="deck-clear-button" class="px-5 py-3 rounded-lg font-semibold flex items-center gap-2 border border-red-400/40 text-red-300 hover:bg-red-500/10 transition">
-                        <span>🗑️</span>Clear deck
-                    </button>
-                </div>
             </div>
         </section>
     </div>

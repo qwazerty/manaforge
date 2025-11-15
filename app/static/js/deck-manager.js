@@ -95,14 +95,14 @@
                 importTextarea: document.getElementById('deck-import-text'),
                 importUrlInput: document.getElementById('deck-import-url'),
                 importStatus: document.getElementById('deck-import-status'),
+                importSection: document.getElementById('deck-import-section'),
                 searchButtons: Array.from(document.querySelectorAll('[data-deck-search]')),
                 exportButtons: [
                     document.getElementById('deck-export-button'),
                     document.getElementById('deck-export-button-secondary')
                 ],
                 parseButton: document.getElementById('deck-parse-button'),
-                importUrlButton: document.getElementById('deck-import-url-button'),
-                clearButton: document.getElementById('deck-clear-button')
+                importUrlButton: document.getElementById('deck-import-url-button')
             };
         },
 
@@ -190,9 +190,6 @@
                 this.elements.importUrlButton.addEventListener('click', () => this.importFromUrl());
             }
 
-            if (this.elements.clearButton) {
-                this.elements.clearButton.addEventListener('click', () => this.clearDeck());
-            }
         },
 
         bindCardSearch() {
@@ -330,6 +327,7 @@
             this.updateInputs();
             this.renderColumns();
             this.renderStats();
+            this.updateImportVisibility();
         },
 
         updateInputs() {
@@ -1094,6 +1092,24 @@
             button.disabled = Boolean(isLoading);
             button.classList.toggle('opacity-50', Boolean(isLoading));
             button.classList.toggle('cursor-not-allowed', Boolean(isLoading));
+        },
+
+        hasDeckEntries() {
+            if (!this.state || !this.state.columns) return false;
+            return COLUMN_CONFIG.some((column) => {
+                const ids = this.state.columns[column.key];
+                return Array.isArray(ids) && ids.length > 0;
+            });
+        },
+
+        updateImportVisibility() {
+            const section = this.elements.importSection;
+            if (!section) return;
+            if (this.hasDeckEntries()) {
+                section.classList.add('hidden');
+            } else {
+                section.classList.remove('hidden');
+            }
         }
     };
 
