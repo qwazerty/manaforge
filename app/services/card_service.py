@@ -359,6 +359,7 @@ class CardService:
     ) -> Deck:
         """Build a deck object from parsed entries, keeping commanders separate."""
         deck_cards: List[DeckCard] = []
+        sideboard_cards: List[DeckCard] = []
         commanders: List[Card] = []
 
         for entry in entries:
@@ -380,6 +381,10 @@ class CardService:
                 )
                 print(f"⭐ Identified commander: {card_name}")
                 continue
+            if section == "sideboard":
+                sideboard_cards.append(DeckCard(card=card, quantity=quantity))
+                print(f"🧰 Added {quantity}x {card_name} to sideboard")
+                continue
 
             deck_card = DeckCard(card=card, quantity=quantity)
             deck_cards.append(deck_card)
@@ -390,6 +395,7 @@ class CardService:
             id=deck_id,
             name=resolved_name,
             cards=deck_cards,
+            sideboard=sideboard_cards,
             commanders=commanders
         )
 
@@ -399,12 +405,13 @@ class CardService:
         deck_name: Optional[str] = None
     ) -> Deck:
         """Parse a decklist in text format and create a Deck object."""
-        normalized_text = self._strip_sideboard_lines(decklist_text).strip()
+        normalized_text = (decklist_text or "").strip()
         lines = normalized_text.splitlines() if normalized_text else []
 
         card_entry_regex = re.compile(
             r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$"
         )
+        sb_entry_regex = re.compile(r"^\s*sb:\s*(\d+)\s+(.+)$", re.IGNORECASE)
 
         section_aliases = {
             "commander": "commander",
@@ -417,7 +424,11 @@ class CardService:
             "mainboard": "main",
             "main deck": "main",
             "compagnon": "companion",
-            "companion": "companion"
+            "companion": "companion",
+            "sideboard": "sideboard",
+            "sideboards": "sideboard",
+            "side board": "sideboard",
+            "sb": "sideboard"
         }
 
         current_section: Optional[str] = None
@@ -425,6 +436,13 @@ class CardService:
         for raw_line in lines:
             line = raw_line.strip()
             if not line or line.startswith("#"):
+                continue
+
+            sb_match = sb_entry_regex.match(line)
+            if sb_match:
+                quantity = int(sb_match.group(1))
+                card_name = sb_match.group(2).strip()
+                entries.append((quantity, card_name, "sideboard"))
                 continue
 
             match = card_entry_regex.match(line)
@@ -1175,7 +1193,7 @@ class CardService:
         Import a deck from a supported URL and return both text and parsed deck.
         """
         deck_text, preferred_name = await self._download_deck_text_and_name(source_url)
-        normalized_text = self._strip_sideboard_lines(deck_text).strip()
+        normalized_text = (deck_text or "").strip()
         if not normalized_text:
             raise ValueError("Deck download returned empty decklist.")
 

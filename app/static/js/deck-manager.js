@@ -82,7 +82,7 @@
                 importTextarea: document.getElementById('deck-import-text'),
                 importUrlInput: document.getElementById('deck-import-url'),
                 importStatus: document.getElementById('deck-import-status'),
-                searchButton: document.getElementById('deck-search-button'),
+                searchButtons: Array.from(document.querySelectorAll('[data-deck-search]')),
                 exportButtons: [
                     document.getElementById('deck-export-button'),
                     document.getElementById('deck-export-button-secondary')
@@ -119,11 +119,14 @@
                 this.elements.columnsContainer.addEventListener('click', (event) => this.handleEntryAction(event));
             }
 
-            if (this.elements.searchButton) {
-                this.elements.searchButton.addEventListener('click', () => {
-                    if (window.CardSearchModal) {
-                        window.CardSearchModal.show('hand');
-                    }
+            if (Array.isArray(this.elements.searchButtons)) {
+                this.elements.searchButtons.forEach((button) => {
+                    if (!button) return;
+                    button.addEventListener('click', () => {
+                        if (window.CardSearchModal) {
+                            window.CardSearchModal.show('hand');
+                        }
+                    });
                 });
             }
 
@@ -269,25 +272,21 @@
                 columnEl.dataset.columnKey = column.key;
                 columnEl.className = [
                     'deck-column',
-                    'bg-arena-surface/70',
-                    'border',
-                    'border-arena-accent/20',
-                    'rounded-xl',
-                    'p-3',
                     'flex',
                     'flex-col',
-                    'gap-3'
+                    'gap-1'
                 ].join(' ');
 
                 if (column.key === 'commander' && !showCommander && entries.length === 0) {
                     columnEl.classList.add('hidden');
                 }
 
+                const columnCount = entries.reduce((sum, entry) => sum + entry.quantity, 0);
                 columnEl.innerHTML = `
-                    <div class="flex items-center justify-between">
+                    <div class="deck-column-header flex items-center justify-between">
                         <div>
-                            <p class="text-xs uppercase tracking-wide text-arena-muted">${column.icon} ${column.label}</p>
-                            <p class="text-sm text-arena-text-dim">${entries.reduce((sum, entry) => sum + entry.quantity, 0)} cards</p>
+                            <p>${column.icon} ${column.label}</p>
+                            <p>${columnCount} cards</p>
                         </div>
                     </div>
                     <div class="flex-1 deck-column-stack" data-card-list></div>
@@ -423,6 +422,15 @@
             const entries = Object.entries(manaCurve);
             const counts = entries.map(([, count]) => count);
             const max = Math.max(...counts, 1);
+            const MAX_BAR_HEIGHT = 160;
+            const MIN_BAR_HEIGHT = 12;
+            const hasValues = counts.some((value) => value > 0);
+
+            if (!hasValues) {
+                barsContainer.innerHTML = '<p class="text-sm text-arena-muted">Add spells to visualize the curve.</p>';
+                labelsContainer.innerHTML = '';
+                return;
+            }
 
             entries.forEach(([label, count]) => {
                 const wrapper = document.createElement('div');
@@ -434,8 +442,9 @@
 
                 const bar = document.createElement('div');
                 bar.className = 'w-8 bg-gradient-to-t from-arena-accent/30 to-arena-accent rounded-t';
-                const heightPercent = max ? Math.max(8, Math.round((count / max) * 100)) : 8;
-                bar.style.height = `${heightPercent}%`;
+                const heightRatio = max ? count / max : 0;
+                const heightPx = Math.max(MIN_BAR_HEIGHT, Math.round(heightRatio * MAX_BAR_HEIGHT));
+                bar.style.height = `${heightPx}px`;
 
                 wrapper.appendChild(countLabel);
                 wrapper.appendChild(bar);
@@ -447,10 +456,6 @@
                 labelsContainer.appendChild(labelItem);
             });
 
-            if (!entries.length) {
-                barsContainer.innerHTML = '<p class="text-sm text-arena-muted">Add spells to visualize the curve.</p>';
-                labelsContainer.innerHTML = '';
-            }
         },
 
         computeStats() {
@@ -462,7 +467,8 @@
             const typeCounts = {};
             const colors = {};
             const manaCurve = {
-                '0-1': 0,
+                '0': 0,
+                '1': 0,
                 '2': 0,
                 '3': 0,
                 '4': 0,
@@ -473,32 +479,31 @@
             mainEntries.forEach((entry) => {
                 const card = entry.card || {};
                 const typeKey = (card.card_type || 'other').toLowerCase();
+                const isLand = /\bland\b/.test(typeKey);
                 typeCounts[typeKey] = (typeCounts[typeKey] || 0) + entry.quantity;
 
-                let cardColors = card.colors;
-                if (!Array.isArray(cardColors) || !cardColors.length) {
-                    cardColors = ['C'];
-                }
-                cardColors.forEach((color) => {
-                    colors[color] = (colors[color] || 0) + entry.quantity;
-                });
-
-                const cardTypeLower = typeKey.toLowerCase();
-                if (cardTypeLower !== 'land') {
-                    const cmc = Number(card.cmc) || 0;
-                    if (cmc <= 1) {
-                        manaCurve['0-1'] += entry.quantity;
-                    } else if (cmc === 2) {
-                        manaCurve['2'] += entry.quantity;
-                    } else if (cmc === 3) {
-                        manaCurve['3'] += entry.quantity;
-                    } else if (cmc === 4) {
-                        manaCurve['4'] += entry.quantity;
-                    } else if (cmc === 5) {
-                        manaCurve['5'] += entry.quantity;
-                    } else {
-                        manaCurve['6+'] += entry.quantity;
+                if (!isLand) {
+                    let cardColors = card.colors;
+                    if (!Array.isArray(cardColors) || !cardColors.length) {
+                        cardColors = ['C'];
                     }
+                    cardColors.forEach((color) => {
+                        colors[color] = (colors[color] || 0) + entry.quantity;
+                    });
+
+                    const cmcRaw = Number(card.cmc);
+                    let bucket = '0';
+                    if (!Number.isFinite(cmcRaw) || cmcRaw < 0) {
+                        bucket = '0';
+                    } else if (cmcRaw >= 6) {
+                        bucket = '6+';
+                    } else {
+                        bucket = String(Math.floor(cmcRaw));
+                    }
+                    if (!Object.prototype.hasOwnProperty.call(manaCurve, bucket)) {
+                        bucket = '0';
+                    }
+                    manaCurve[bucket] += entry.quantity;
                 }
             });
 
@@ -727,6 +732,7 @@
                 return;
             }
             this.setImportStatus('Parsing decklist...', 'info');
+            this.setButtonLoading(this.elements.parseButton, true);
             try {
                 const response = await fetch('/api/v1/decks/parse', {
                     method: 'POST',
@@ -743,6 +749,8 @@
             } catch (error) {
                 console.error('Deck parse error', error);
                 this.setImportStatus(error.message || 'Unable to parse deck.', 'error');
+            } finally {
+                this.setButtonLoading(this.elements.parseButton, false);
             }
         },
 
@@ -753,6 +761,7 @@
                 return;
             }
             this.setImportStatus('Fetching decklist from URL...', 'info');
+            this.setButtonLoading(this.elements.importUrlButton, true);
             try {
                 const response = await fetch('/api/v1/decks/import-url', {
                     method: 'POST',
@@ -776,6 +785,8 @@
             } catch (error) {
                 console.error('Deck import error', error);
                 this.setImportStatus(error.message || 'Unable to import deck.', 'error');
+            } finally {
+                this.setButtonLoading(this.elements.importUrlButton, false);
             }
         },
 
@@ -784,20 +795,44 @@
             const nextState = this.getDefaultState();
             nextState.deckName = deck.name || nextState.deckName;
             nextState.format = deck.format || this.state.format;
+            const entryLookup = new Map();
+            const appendEntry = (deckEntry, columnKey) => {
+                const card = deckEntry?.card;
+                if (!card || !columnKey || !nextState.columns[columnKey]) {
+                    return;
+                }
+                const quantity = Number(deckEntry.quantity) || 1;
+                const cardKeyRaw = card.id || card.name || '';
+                const mapKey = cardKeyRaw ? `${columnKey}:${String(cardKeyRaw).toLowerCase()}` : null;
+                const existingEntryId = mapKey ? entryLookup.get(mapKey) : null;
+
+                if (existingEntryId) {
+                    nextState.entries[existingEntryId].quantity += quantity;
+                    return;
+                }
+
+                const entryId = this.generateEntryId(card.id);
+                nextState.entries[entryId] = {
+                    id: entryId,
+                    card,
+                    quantity
+                };
+                nextState.columns[columnKey].push(entryId);
+                if (mapKey) {
+                    entryLookup.set(mapKey, entryId);
+                }
+            };
 
             if (Array.isArray(deck.cards)) {
                 deck.cards.forEach((entry) => {
-                    const card = entry.card;
-                    if (!card) return;
-                    const quantity = Number(entry.quantity) || 1;
-                    const columnKey = this.resolveDefaultColumn(card);
-                    const entryId = this.generateEntryId(card.id);
-                    nextState.entries[entryId] = {
-                        id: entryId,
-                        card,
-                        quantity
-                    };
-                    nextState.columns[columnKey].push(entryId);
+                    const columnKey = this.resolveDefaultColumn(entry.card);
+                    appendEntry(entry, columnKey);
+                });
+            }
+
+            if (Array.isArray(deck.sideboard)) {
+                deck.sideboard.forEach((entry) => {
+                    appendEntry(entry, 'sideboard');
                 });
             }
 
@@ -832,8 +867,10 @@
             const exportText = this.buildDeckExport();
             try {
                 await navigator.clipboard.writeText(exportText);
+                this.setImportStatus('Deck copied to clipboard.', 'success');
             } catch (error) {
                 console.warn('Clipboard write failed', error);
+                this.setImportStatus('Unable to copy deck automatically. Please paste manually.', 'error');
             }
         },
 
@@ -905,6 +942,13 @@
             } else {
                 el.classList.add('text-arena-muted');
             }
+        },
+
+        setButtonLoading(button, isLoading) {
+            if (!button) return;
+            button.disabled = Boolean(isLoading);
+            button.classList.toggle('opacity-50', Boolean(isLoading));
+            button.classList.toggle('cursor-not-allowed', Boolean(isLoading));
         }
     };
 

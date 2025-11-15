@@ -7,16 +7,24 @@
 #deck-columns {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-    gap: 0.75rem;
+    align-items: flex-start;
+}
+.deck-columns-panel {
+    padding: 0;
 }
 .deck-column {
-    max-width: 220px;
+    max-width: 240px;
     margin: 0 auto;
+    padding-top: 0.75rem;
+    position: relative;
+}
+.deck-column-header {
+    padding: 0 1rem 0.5rem;
 }
 .deck-column-stack {
     display: flex;
     flex-direction: column;
-    padding-bottom: 2rem;
+    padding: 0.75rem 1rem 2rem;
 }
 .deck-column-stack .deck-card-entry {
     margin-top: -3.5rem;
@@ -66,14 +74,6 @@
             <p class="text-lg text-arena-text-dim max-w-3xl mx-auto">
                 Import, refine, and export your decks with Arena-style columns, card search, hover previews, and instant metrics.
             </p>
-            <div class="flex flex-wrap justify-center gap-4 pt-2">
-                <button id="deck-search-button" class="arena-button px-6 py-3 rounded-lg font-semibold flex items-center gap-2">
-                    <span>🔍</span>Search cards
-                </button>
-                <button id="deck-export-button" class="px-6 py-3 rounded-lg font-semibold flex items-center gap-2 bg-arena-surface border border-arena-accent/30 hover:border-arena-accent transition">
-                    <span>📋</span>Export to clipboard
-                </button>
-            </div>
         </div>
 
         <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
@@ -141,8 +141,13 @@
                     <h2 class="font-magic text-2xl text-arena-accent">Deck layout</h2>
                     <p class="text-arena-text-dim text-sm">Drag & drop cards between Arena-style columns. Hover to preview.</p>
                 </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="deck-search-button-layout" data-deck-search class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+                        <span>🔍</span>Search cards
+                    </button>
+                </div>
             </div>
-            <div class="pb-2">
+            <div class="deck-columns-panel pb-2">
                 <div id="deck-columns"></div>
             </div>
         </section>
@@ -155,11 +160,11 @@
                     </h3>
                     <textarea
                         id="deck-import-text"
-                        rows="10"
+                        rows="6"
                         placeholder="4 Lightning Bolt&#10;4 Dragon's Rage Channeler&#10;..."
                         class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
                     ></textarea>
-                    <button id="deck-parse-button" class="arena-button px-6 py-3 rounded-lg font-semibold">Parse decklist</button>
+                    <button id="deck-parse-button" class="arena-button px-6 py-3 rounded-lg font-semibold">Import</button>
                 </div>
                 <div class="space-y-4">
                     <h3 class="font-semibold text-arena-accent text-xl flex items-center gap-2">
@@ -172,7 +177,7 @@
                         class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
                     >
                     <button id="deck-import-url-button" class="px-6 py-3 rounded-lg font-semibold border border-arena-accent/30 hover:border-arena-accent transition flex items-center gap-2">
-                        <span>🌐</span>Fetch & parse
+                        <span>🌐</span>Import from URL
                     </button>
                     <p class="text-sm text-arena-text-dim">
                         Uses the same parser as the game room (MTGGoldfish, Scryfall, Moxfield). Sideboards can be managed manually via the dedicated column.
