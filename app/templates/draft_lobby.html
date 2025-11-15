@@ -35,9 +35,28 @@
                         </button>
                     </div>
                     <div>
+                        <label for="draftMode" class="block text-arena-text-dim mb-2">Draft Mode</label>
+                        <select id="draftMode" class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200">
+                            <option value="set">Set Booster Draft</option>
+                            <option value="cube">Cube Draft</option>
+                        </select>
+                    </div>
+                    <div id="set-options">
                         <label for="setName" class="block text-arena-text-dim mb-2">Set Name</label>
                         <input type="text" id="setName" placeholder="Search for a set (e.g., Dominaria United)" class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200">
                         <div id="set-suggestions" class="mt-2"></div>
+                    </div>
+                    <div id="cube-options" class="hidden space-y-4">
+                        <div>
+                            <label for="cubeUrl" class="block text-arena-text-dim mb-2">CubeCobra List URL</label>
+                            <input type="text" id="cubeUrl" placeholder="https://cubecobra.com/cube/list/yourcube" class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200">
+                            <p class="text-xs text-arena-muted mt-1">We will automatically fetch the MTGO export from CubeCobra using the provided list or download URL.</p>
+                        </div>
+                        <div>
+                            <label for="cubeList" class="block text-arena-text-dim mb-2">Import Cube List</label>
+                            <textarea id="cubeList" rows="5" placeholder="Optional: paste a plain text list (e.g., MTGO export) if you do not have a URL." class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"></textarea>
+                            <p class="text-xs text-arena-muted mt-1">Paste an MTGO-style list: we will parse it and create 15-card packs.</p>
+                        </div>
                     </div>
                     <input type="hidden" id="setCode">
                     <input type="hidden" id="setFullName">
@@ -66,8 +85,45 @@
     let suggestionsDiv;
     let setCodeInput;
     let setFullNameInput;
+    let draftModeSelect;
+    let setOptionsContainer;
+    let cubeOptionsContainer;
     let allSets = [];
     let isLoadingSets = false;
+
+    function isSetDraftMode() {
+        if (!draftModeSelect) {
+            draftModeSelect = document.getElementById('draftMode');
+        }
+        return !draftModeSelect || draftModeSelect.value === 'set';
+    }
+
+    function updateDraftModeUI() {
+        const inSetMode = isSetDraftMode();
+        if (!setOptionsContainer) {
+            setOptionsContainer = document.getElementById('set-options');
+        }
+        if (!cubeOptionsContainer) {
+            cubeOptionsContainer = document.getElementById('cube-options');
+        }
+        if (setOptionsContainer) {
+            setOptionsContainer.classList.toggle('hidden', !inSetMode);
+        }
+        if (cubeOptionsContainer) {
+            cubeOptionsContainer.classList.toggle('hidden', inSetMode);
+        }
+        if (!inSetMode) {
+            hideSetSuggestions();
+        }
+    }
+
+    function initializeDraftModeControls() {
+        draftModeSelect = document.getElementById('draftMode');
+        if (draftModeSelect) {
+            draftModeSelect.addEventListener('change', updateDraftModeUI);
+        }
+        updateDraftModeUI();
+    }
 
     async function ensureSetsLoaded() {
         if (allSets.length || isLoadingSets) {
@@ -164,6 +220,11 @@
             return;
         }
 
+        if (!isSetDraftMode()) {
+            hideSetSuggestions();
+            return;
+        }
+
         if (!allSets.length) {
             renderLoadingSets();
             await ensureSetsLoaded();
@@ -175,6 +236,11 @@
 
     async function handleSetInput() {
         if (!setInput) {
+            return;
+        }
+
+        if (!isSetDraftMode()) {
+            hideSetSuggestions();
             return;
         }
 
@@ -200,33 +266,67 @@
 
     async function createDraftRoom() {
         const roomName = document.getElementById('roomName').value;
-        const setCode = setCodeInput ? setCodeInput.value : document.getElementById('setCode').value;
-        const setFullName = setFullNameInput ? setFullNameInput.value : document.getElementById('setFullName').value;
-
-        if (!setCode) {
-            alert('Please select a set.');
-            return;
-        }
-
+        const mode = draftModeSelect ? draftModeSelect.value : 'set';
         const creatorId = `player-${Math.random().toString(36).substr(2, 9)}`;
+        const payload = {
+            name: roomName,
+            creator_id: creatorId,
+            set_code: '',
+            set_name: '',
+            use_cube: mode === 'cube'
+        };
+
+        if (mode === 'cube') {
+            const cubeUrlInput = document.getElementById('cubeUrl');
+            const cubeListInput = document.getElementById('cubeList');
+            const cubeUrl = cubeUrlInput ? cubeUrlInput.value.trim() : '';
+            const cubeList = cubeListInput ? cubeListInput.value.trim() : '';
+
+            if (!cubeUrl && !cubeList) {
+                alert('Provide a CubeCobra URL or paste a cube list.');
+                return;
+            }
+
+            payload.set_code = 'cube';
+            payload.set_name = 'Custom Cube';
+            payload.cube_name = payload.set_name;
+            payload.cube_url = cubeUrl || null;
+            payload.cube_list = cubeList || null;
+        } else {
+            const setCode = setCodeInput ? setCodeInput.value : document.getElementById('setCode').value;
+            const setFullName = setFullNameInput ? setFullNameInput.value : document.getElementById('setFullName').value;
+
+            if (!setCode) {
+                alert('Please select a set.');
+                return;
+            }
+
+            payload.set_code = setCode;
+            payload.set_name = setFullName || (setInput ? setInput.value : setCode);
+        }
 
         const response = await fetch('/api/v1/draft/rooms', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: roomName,
-                set_code: setCode,
-                set_name: setFullName,
-                creator_id: creatorId
-            })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
             const room = await response.json();
             window.location.href = `/draft/${room.id}?player=${creatorId}`;
-        } else {
-            alert('Failed to create draft room.');
+            return;
         }
+
+        let errorMessage = 'Failed to create draft room.';
+        try {
+            const errorPayload = await response.json();
+            if (errorPayload && errorPayload.detail) {
+                errorMessage = errorPayload.detail;
+            }
+        } catch (err) {
+            // Ignore JSON parsing issues and use default message.
+        }
+        alert(errorMessage);
     }
 
     async function loadDraftRooms() {
@@ -313,6 +413,7 @@
     }
 
     window.addEventListener('load', () => {
+        initializeDraftModeControls();
         initializeSetSelection();
         loadDraftRooms();
         generateRandomRoomName();

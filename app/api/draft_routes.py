@@ -39,6 +39,10 @@ class CreateRoomRequest(BaseModel):
     set_code: str
     set_name: str
     max_players: int = 8
+    use_cube: bool = False
+    cube_url: Optional[str] = None
+    cube_list: Optional[str] = None
+    cube_name: Optional[str] = None
 
 class PickCardRequest(BaseModel):
     player_id: str
@@ -51,13 +55,22 @@ async def create_draft_room(
 ):
     """Create a new draft room."""
     room_name = request.name if request.name else generate_random_name()
-    room = engine.create_draft_room(
-        name=room_name,
-        set_code=request.set_code,
-        set_name=request.set_name,
-        max_players=request.max_players,
-        creator_id=request.creator_id
-    )
+    try:
+        room = await engine.create_draft_room(
+            name=room_name,
+            set_code=request.set_code,
+            set_name=request.set_name,
+            max_players=request.max_players,
+            creator_id=request.creator_id,
+            cube_settings={
+                "use_cube": request.use_cube,
+                "cube_url": request.cube_url,
+                "cube_list": request.cube_list,
+                "cube_name": request.cube_name
+            }
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return room
 
 @router.get("/rooms", response_model=List[DraftRoom])
