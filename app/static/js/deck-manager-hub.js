@@ -30,32 +30,6 @@
         }, 0);
     }
 
-    function getLegacyDeck() {
-        try {
-            const raw = localStorage.getItem('manaforge:deck-manager:v1');
-            if (!raw) return null;
-            const parsed = JSON.parse(raw);
-            const state = parsed && typeof parsed === 'object' && parsed.state
-                ? parsed.state
-                : parsed;
-            if (!state || typeof state !== 'object') return null;
-            if (!state.entries || !Object.keys(state.entries).length) {
-                return null;
-            }
-            return {
-                id: parsed.deckId || 'local-deck',
-                name: state.deckName || 'Unsaved Deck',
-                format: state.format || 'modern',
-                state,
-                updatedAt: parsed.updatedAt || new Date().toISOString(),
-                _legacy: true
-            };
-        } catch (error) {
-            console.warn('Unable to load legacy deck', error);
-            return null;
-        }
-    }
-
     function createDeckCard(deck) {
         const wrapper = document.createElement('div');
         wrapper.className = 'bg-arena-surface/70 border border-arena-accent/10 rounded-xl p-4 flex flex-col gap-4';
@@ -71,7 +45,6 @@
             commanderCount ? `${commanderCount} commander` : null
         ].filter(Boolean);
 
-        const isLegacy = Boolean(deck._legacy);
         wrapper.innerHTML = `
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -87,16 +60,12 @@
                 <a href="/decks/builder?deckId=${encodeURIComponent(deck.id)}" class="arena-button px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-1">
                     <span>✏️</span>Open
                 </a>
-                ${isLegacy ? `
-                    <span class="text-xs text-arena-text-dim">Save the deck from the builder to add it to your library.</span>
-                ` : `
-                    <button class="px-4 py-2 rounded-lg border border-arena-accent/30 hover:border-arena-accent transition text-sm flex items-center gap-1" data-action="duplicate" data-deck-id="${deck.id}">
-                        <span>🧬</span>Duplicate
-                    </button>
-                    <button class="px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition text-sm flex items-center gap-1" data-action="delete" data-deck-id="${deck.id}">
-                        <span>🗑️</span>Delete
-                    </button>
-                `}
+                <button class="px-4 py-2 rounded-lg border border-arena-accent/30 hover:border-arena-accent transition text-sm flex items-center gap-1" data-action="duplicate" data-deck-id="${deck.id}">
+                    <span>🧬</span>Duplicate
+                </button>
+                <button class="px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition text-sm flex items-center gap-1" data-action="delete" data-deck-id="${deck.id}">
+                    <span>🗑️</span>Delete
+                </button>
             </div>
         `;
 
@@ -109,10 +78,6 @@
         }
         const baseDecks = window.DeckLibrary ? window.DeckLibrary.list() : [];
         const decks = Array.isArray(baseDecks) ? [...baseDecks] : [];
-        const legacyDeck = getLegacyDeck();
-        if (legacyDeck && !decks.find((deck) => deck.id === legacyDeck.id)) {
-            decks.unshift(legacyDeck);
-        }
         selectors.grid.innerHTML = '';
 
         if (Array.isArray(decks) && decks.length) {
