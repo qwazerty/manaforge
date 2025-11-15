@@ -1001,19 +1001,24 @@ class UIRenderersTemplates {
         const isTargeted = card.targeted || false;
         const targetedClass = isTargeted ? ' targeted' : '';
         const uniqueId = card.unique_id;
+        const ownerId = card.owner_id || card.ownerId || '';
+        const controllerId = card.controller_id || card.controllerId || ownerId;
 
         const escapedCardId = GameUtils.escapeJavaScript(cardId);
         const escapedCardName = GameUtils.escapeJavaScript(cardName);
         const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
+        const serializedCardData = JSON.stringify(card).replace(/'/g, '&#39;');
         
         // Determine if the spell should be clickable
         let isClickable = true;
         let clickHandler = `GameActions.performGameAction('resolve_stack', { card_id: '${escapedCardId}', unique_id: '${uniqueId}' }); event.stopPropagation();`;
+        const currentSelectedPlayer = typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
+            ? GameCore.getSelectedPlayer()
+            : null;
         
         if (gameState) {
             const phaseMode = gameState.phase_mode || 'normal';
             const isStrictMode = phaseMode === 'strict';
-            const currentSelectedPlayer = GameCore.getSelectedPlayer();
             
             if (isStrictMode && currentSelectedPlayer !== 'spectator') {
                 // In strict mode, determine controlled player index
@@ -1036,6 +1041,15 @@ class UIRenderersTemplates {
                 }
             }
         }
+
+        const canDragToHand =
+            currentSelectedPlayer &&
+            currentSelectedPlayer !== 'spectator' &&
+            Boolean(uniqueId) &&
+            (currentSelectedPlayer === ownerId || currentSelectedPlayer === controllerId);
+        const dragAttributes = canDragToHand
+            ? `draggable="true" ondragstart="GameCards.handleDragStart(event, this)" ondragend="GameCards.handleDragEnd(event, this)"`
+            : 'draggable="false"';
         
         return `
             <div class="stack-spell${targetedClass}${isClickable ? '' : ' not-clickable'}" 
@@ -1045,9 +1059,13 @@ class UIRenderersTemplates {
                  data-card-name="${escapedCardName}"
                  data-card-image="${escapedImageUrl}"
                  data-card-zone="stack"
+                 data-card-owner="${ownerId}"
+                 data-card-controller="${controllerId}"
+                 data-card-data='${serializedCardData}'
                  data-stack-index="${index}"
                  oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="${clickHandler}">
+                 onclick="${clickHandler}"
+                 ${dragAttributes}>
                 
                 <div class="stack-card-container">
                     ${imageUrl ? `

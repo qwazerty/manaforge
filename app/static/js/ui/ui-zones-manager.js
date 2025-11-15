@@ -601,12 +601,21 @@ class UIZonesManager {
             const { cardId, cardZone, uniqueCardId } = data;
 
             const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
+            const battlefieldZones = ['battlefield', 'lands', 'creatures', 'support', 'permanents'];
             if (
                 cardZone === 'hand' &&
                 battlefieldTargets.includes(targetZone) &&
                 window.GameActions &&
                 typeof window.GameActions.playCardFromHand === 'function'
             ) {
+                const isStrictMode = (() => {
+                    if (typeof GameCore === 'undefined' || typeof GameCore.getGameState !== 'function') {
+                        return false;
+                    }
+                    const state = GameCore.getGameState();
+                    return String(state?.phase_mode || '').toLowerCase() === 'strict';
+                })();
+
                 let cardData = null;
                 if (uniqueCardId) {
                     const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
@@ -631,8 +640,10 @@ class UIZonesManager {
                     cardTypeField.includes('sorcery') ||
                     normalizedTypes.includes('instant') ||
                     normalizedTypes.includes('sorcery');
+                const shouldRouteThroughStack =
+                    isStrictMode && battlefieldZones.includes(targetZone) ? true : isInstantOrSorcery;
 
-                if (isInstantOrSorcery) {
+                if (shouldRouteThroughStack) {
                     window.GameActions.playCardFromHand(cardId, uniqueCardId);
                     return;
                 }
