@@ -1,4 +1,5 @@
 <!-- External JavaScript modules for game logic -->
+<script src="{{ url_for('static', path='js/game-config.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-chat.js') }}"></script>
@@ -22,14 +23,3 @@
 <script src="{{ url_for('static', path='js/game-combat.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-actions.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-core.js') }}"></script>
-
-<!-- Initialize game with server data -->
-<script>
-// Pass game ID to JavaScript, fetch data via API
-window.gameData = {
-    gameId: "{{ game.id }}",
-    apiBaseUrl: "/api/v1"
-};
-
-// The game will be initialized automatically by game-core.js
-</script>

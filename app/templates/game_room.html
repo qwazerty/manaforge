@@ -8,7 +8,17 @@
 {% set player1_name = player1['player_name'] if player1 and player1['player_name'] else 'Player 1' %}
 {% set player2_name = player2['player_name'] if player2 and player2['player_name'] else 'Player 2' %}
 {% block content %}
-<div id="game-setup-root" class="py-12 px-4">
+<div id="game-setup-root"
+    class="py-12 px-4"
+    data-game-room-config='{{ {
+        "gameId": game_id,
+        "playerRole": player_role,
+        "setupApiUrl": setup_api_url,
+        "submitApiUrl": submit_api_url,
+        "gameInterfaceUrl": game_interface_url,
+        "initialStatus": setup,
+        "shareLinks": share_links
+    } | tojson | e }}'>
     <div class="max-w-6xl mx-auto space-y-8">
         <!-- Room Overview -->
         <div class="arena-card rounded-xl p-8 space-y-6 animate-slide-up">
@@ -330,17 +340,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-window.gameRoomConfig = {{ {
-    "gameId": game_id,
-    "playerRole": player_role,
-    "setupApiUrl": setup_api_url,
-    "submitApiUrl": submit_api_url,
-    "gameInterfaceUrl": game_interface_url,
-    "initialStatus": setup,
-    "shareLinks": share_links
-} | tojson }};
-</script>
 <script src="{{ url_for('static', path='js/deck-library.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-room.js') }}"></script>
 {% endblock %}

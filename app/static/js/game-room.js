@@ -1,6 +1,15 @@
 // Game room page controller
 (function () {
-    const config = window.gameRoomConfig || {};
+    const configElement = document.getElementById('game-setup-root');
+    let config = window.gameRoomConfig || {};
+    if (configElement && configElement.dataset && configElement.dataset.gameRoomConfig) {
+        try {
+            config = JSON.parse(configElement.dataset.gameRoomConfig) || {};
+            window.gameRoomConfig = config;
+        } catch (error) {
+            console.warn('Unable to parse game room config dataset', error);
+        }
+    }
     const {
         gameId,
         playerRole,
