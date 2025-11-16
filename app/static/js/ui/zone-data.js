@@ -77,4 +77,68 @@ class ZoneData {
             topCard
         };
     }
+
+    static getLifeZoneConfig(playerData = {}, playerId = 'player1') {
+        const safeData = playerData || {};
+        const lifeValue = typeof safeData.life === 'number'
+            ? safeData.life
+            : parseInt(safeData.life || 20, 10) || 20;
+        const countersHtml = UIPlayerCounters.renderCounterBadges(safeData, playerId);
+        const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
+        const manageButton = {
+            label: '⚙️ Counters',
+            title: 'Manage player counters',
+            className: `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center`,
+            onClick: () => UIPlayerCounters.openCounterManager(playerId)
+        };
+        const toControlConfig = (control, index) => {
+            const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
+            if (control.type === 'custom') {
+                const direction = Number(control.direction) >= 0 ? 1 : -1;
+                return {
+                    id: `life-control-${playerId}-${index}`,
+                    label: control.label,
+                    title: direction > 0 ? 'Add custom amount' : 'Remove custom amount',
+                    className: classes,
+                    onClick: () => UIZonesManager.openCustomLifeInput(playerId, direction)
+                };
+            }
+            const value = typeof control.value === 'number' ? control.value : 0;
+            return {
+                id: `life-control-${playerId}-${index}`,
+                label: control.label,
+                title: value >= 0 ? `Add ${value} life` : `Remove ${Math.abs(value)} life`,
+                className: classes,
+                onClick: () => GameActions.modifyLife(playerId, value)
+            };
+        };
+
+        const isNegativeControl = (control) =>
+            (control.type === 'custom' && Number(control.direction) < 0) ||
+            (typeof control.value === 'number' && control.value < 0);
+        const isPositiveControl = (control) =>
+            (control.type === 'custom' && Number(control.direction) > 0) ||
+            (typeof control.value === 'number' && control.value > 0);
+
+        const negativeControls = lifeControls
+            .map((control, index) => ({ control, index }))
+            .filter(({ control }) => isNegativeControl(control))
+            .map(({ control, index }) => toControlConfig(control, index));
+        const positiveControls = lifeControls
+            .map((control, index) => ({ control, index }))
+            .filter(({ control }) => isPositiveControl(control))
+            .map(({ control, index }) => toControlConfig(control, index));
+
+        const hasCustomLifeControls = lifeControls.some(control => control.type === 'custom');
+
+        return {
+            life: lifeValue,
+            playerId,
+            countersHtml,
+            manageButton,
+            negativeControls,
+            positiveControls,
+            hasCustomLifeControls
+        };
+    }
 }
