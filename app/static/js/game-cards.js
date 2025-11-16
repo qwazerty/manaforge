@@ -243,7 +243,7 @@ const GameCards = {
     getSafeImageUrl: function(card) {
         if (!card || !card.image_url) return null;
         
-        // Pour les cartes double faces, permettre les images de face arrière
+        // Allow back-face images for double-faced cards
         if (card.is_double_faced && card.card_faces && card.card_faces.length > 1) {
             const currentFace = card.current_face || 0;
             if (currentFace < card.card_faces.length && card.card_faces[currentFace].image_url) {
@@ -251,7 +251,7 @@ const GameCards = {
             }
         }
         
-        // Pour les cartes simples, éviter les images "/back/" (dos de cartes génériques)
+        // For single-faced cards, skip generic "/back/" images
         if (card.image_url.includes("/back/") && !card.is_double_faced) return null;
         return card.image_url;
     },
@@ -1305,13 +1305,13 @@ const GameCards = {
         this._hoverPreviewPointerEvent = null;
     },
 
-    // Ajout des propriétés pour stocker les références liées
+    // Add properties to store bound references
     _boundHandleCardPreviewClick: null,
     _boundHandleCardPreviewKeydown: null,
     _boundCloseContextMenu: null,
 
     addCardPreviewListeners: function() {
-        // Utiliser des références liées persistantes
+        // Use persistent bound references
         if (!this._boundHandleCardPreviewClick) {
             this._boundHandleCardPreviewClick = this.handleCardPreviewClick.bind(this);
         }
@@ -1491,7 +1491,7 @@ const GameCards = {
 
             const socket = window.websocket;
             if (socket && socket.readyState === WebSocket.OPEN) {
-                // Les mises à jour arrivent automatiquement via le WebSocket actif
+                // Updates arrive automatically via the active WebSocket
                 console.log('Card flip processed, interface will update via WebSocket');
             } else {
                 console.warn('Card flip processed without active WebSocket; UI may require manual sync.');

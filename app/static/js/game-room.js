@@ -335,7 +335,7 @@
         if (!gameId) return null;
         const trimmed = newName.trim();
         if (!trimmed) {
-            throw new Error('Le nom ne peut pas être vide.');
+            throw new Error('Name cannot be empty.');
         }
 
         const response = await fetch(`/api/v1/games/${encodeURIComponent(gameId)}/claim-seat`, {
@@ -349,7 +349,7 @@
 
         const updatedStatus = await response.json().catch(() => null);
         if (!response.ok) {
-            const detail = updatedStatus?.detail || 'Impossible de mettre à jour le nom.';
+            const detail = updatedStatus?.detail || 'Unable to update the name.';
             throw new Error(detail);
         }
 
@@ -399,7 +399,7 @@
             .then((sanitized) => {
                 nameElement.textContent = sanitized || newValue;
                 if (statusElements.deckStatus) {
-                    statusElements.deckStatus.textContent = 'Nom mis à jour.';
+                    statusElements.deckStatus.textContent = 'Name updated.';
                     statusElements.deckStatus.classList.remove('text-red-300');
                     statusElements.deckStatus.classList.add('text-arena-accent');
                 }
@@ -408,7 +408,7 @@
                 console.error('Alias update failed:', error);
                 nameElement.textContent = originalName;
                 if (statusElements.deckStatus) {
-                    statusElements.deckStatus.textContent = error.message || 'Impossible de mettre à jour le nom.';
+                    statusElements.deckStatus.textContent = error.message || 'Unable to update the name.';
                     statusElements.deckStatus.classList.add('text-red-300');
                 }
             })

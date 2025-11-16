@@ -6,7 +6,7 @@
 const GameChat = {
     sendChatMessage: function(event) {
         console.log('📝 sendChatMessage called');
-        event.preventDefault(); // Empêche le submit du formulaire
+        event.preventDefault(); // Prevent the form submission
 
         const input = document.getElementById('chat-input');
         const message = input.value.trim();
@@ -23,16 +23,16 @@ const GameChat = {
             return;
         }
 
-        // Obtenir le nom du joueur actuel
+        // Retrieve the current player's name
         const currentPlayer = window.GameCore.getSelectedPlayer();
         const playerName = GameChat._resolveSenderName(currentPlayer);
 
         console.log('👤 Player name:', playerName);
 
-        // Ajouter immédiatement le message à l'interface (optimistic update)
+        // Optimistically add the message to the UI
         window.GameUI.addChatMessage(playerName, message);
 
-        // Envoyer via WebSocket
+        // Send over WebSocket
         if (window.websocket && window.websocket.readyState === WebSocket.OPEN) {
             console.log('📡 Sending via WebSocket');
             window.websocket.send(JSON.stringify({
@@ -46,7 +46,7 @@ const GameChat = {
             window.GameUI.showNotification('Chat not available (WebSocket disconnected)', 'warning');
         }
 
-        // Vider le champ de saisie
+        // Clear the input field
         input.value = '';
         console.log('✅ Message sent, input cleared');
     },

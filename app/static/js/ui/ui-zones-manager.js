@@ -294,14 +294,14 @@ class UIZonesManager {
         const manageButton = UIUtils.generateButton(
             `UIPlayerCounters.openCounterManager('${playerId}')`,
             `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center`,
-            'Gérer les compteurs du joueur',
+            'Manage player counters',
             '⚙️ Counters'
         );
         const renderLifeControlButton = (control) => {
             const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
             if (control.type === 'custom') {
                 const direction = control.direction >= 0 ? 1 : -1;
-                const title = direction > 0 ? 'Ajouter un montant personnalisé' : 'Retirer un montant personnalisé';
+                const title = direction > 0 ? 'Add custom amount' : 'Remove custom amount';
                 return UIUtils.generateButton(
                     `UIZonesManager.openCustomLifeInput('${playerId}', ${direction})`,
                     classes,
@@ -337,7 +337,7 @@ class UIZonesManager {
                 ${hasCustomLifeControls ? `
                     <div class="life-custom-input hidden" id="life-custom-input-${playerId}" data-direction="">
                         <p class="text-xs text-arena-muted" id="life-custom-input-label-${playerId}">
-                            Indiquer un montant personnalisé
+                            Enter a custom amount
                         </p>
                         <input
                             type="number"
@@ -345,19 +345,19 @@ class UIZonesManager {
                             min="1"
                             step="1"
                             class="w-full rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text"
-                            placeholder="Montant">
+                            placeholder="Amount">
                         <div class="life-custom-actions">
                             <button
                                 type="button"
                                 class="flex-1 px-3 py-2 rounded-lg bg-emerald-500/30 border border-emerald-400/60 text-emerald-50 text-sm"
                                 onclick="UIZonesManager.submitCustomLifeInput('${playerId}')">
-                                Valider
+                                Confirm
                             </button>
                             <button
                                 type="button"
                                 class="flex-1 px-3 py-2 rounded-lg bg-arena-surface-light border border-arena-accent/30 text-arena-text text-sm"
                                 onclick="UIZonesManager.cancelCustomLifeInput('${playerId}')">
-                                Annuler
+                                Cancel
                             </button>
                         </div>
                     </div>
@@ -384,8 +384,8 @@ class UIZonesManager {
         const normalizedDirection = Number(direction) >= 0 ? 1 : -1;
         container.dataset.direction = normalizedDirection > 0 ? 'positive' : 'negative';
         label.textContent = normalizedDirection > 0
-            ? 'Ajouter un montant personnalisé'
-            : 'Retirer un montant personnalisé';
+            ? 'Add custom amount'
+            : 'Remove custom amount';
         container.classList.remove('hidden');
         input.value = '';
         input.focus();
@@ -404,7 +404,7 @@ class UIZonesManager {
         const rawAmount = Math.abs(parseInt(input.value, 10));
         if (!rawAmount) {
             if (window.GameUI && typeof GameUI.showNotification === 'function') {
-                GameUI.showNotification('Indiquer un montant valide', 'warning');
+                GameUI.showNotification('Enter a valid amount', 'warning');
             }
             input.focus();
             return;
@@ -820,7 +820,7 @@ class UIZonesManager {
                 }
             }
 
-            // Appeler une action pour déplacer la carte (à adapter selon la logique backend)
+            // Trigger an action to move the card (adjust to the backend logic)
             if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
                 window.GameActions.moveCard(
                     cardId,
@@ -832,10 +832,10 @@ class UIZonesManager {
                     positionIndex
                 );
             } else {
-                UINotifications.showNotification('Déplacement de carte non implémenté côté backend.', 'warning');
+                UINotifications.showNotification('Card movement not implemented on the backend.', 'warning');
             }
         } catch (e) {
-            UINotifications.showNotification('Erreur lors du drop de carte.', 'error');
+            UINotifications.showNotification('Error during card drop.', 'error');
         }
     }
 
