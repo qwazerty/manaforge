@@ -280,17 +280,44 @@ class UIZonesManager {
     static generateLifeZone(playerData, playerId, titlePrefix) {
         const safeData = playerData || {};
         const life = typeof safeData.life === 'number' ? safeData.life : parseInt(safeData.life || 20, 10) || 20;
-        const countersHtml = (typeof UIPlayerCounters !== 'undefined' && UIPlayerCounters)
-            ? UIPlayerCounters.renderCounterBadges(safeData, playerId)
-            : '<p class="text-xs text-arena-muted">Aucun compteur actif</p>';
-        const negativeControls = UIConfig.LIFE_CONTROLS.filter(c => c.value < 0);
-        const positiveControls = UIConfig.LIFE_CONTROLS.filter(c => c.value > 0);
+        const countersHtml = UIPlayerCounters.renderCounterBadges(safeData, playerId);
+        const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
+        const negativeControls = lifeControls.filter(control =>
+            (control.type === 'custom' && control.direction < 0) ||
+            (typeof control.value === 'number' && control.value < 0)
+        );
+        const positiveControls = lifeControls.filter(control =>
+            (control.type === 'custom' && control.direction > 0) ||
+            (typeof control.value === 'number' && control.value > 0)
+        );
+        const hasCustomLifeControls = lifeControls.some(control => control.type === 'custom');
         const manageButton = UIUtils.generateButton(
             `UIPlayerCounters.openCounterManager('${playerId}')`,
-            `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center mt-2`,
+            `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center`,
             'Gérer les compteurs du joueur',
-            '⚙️ Gérer les compteurs'
+            '⚙️ Counters'
         );
+        const renderLifeControlButton = (control) => {
+            const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
+            if (control.type === 'custom') {
+                const direction = control.direction >= 0 ? 1 : -1;
+                const title = direction > 0 ? 'Ajouter un montant personnalisé' : 'Retirer un montant personnalisé';
+                return UIUtils.generateButton(
+                    `UIZonesManager.openCustomLifeInput('${playerId}', ${direction})`,
+                    classes,
+                    title,
+                    control.label
+                );
+            }
+            const value = typeof control.value === 'number' ? control.value : 0;
+            const title = value > 0 ? `Add ${value} life` : `Remove ${Math.abs(value)} life`;
+            return UIUtils.generateButton(
+                `GameActions.modifyLife('${playerId}', ${value})`,
+                classes,
+                title,
+                control.label
+            );
+        };
 
         return UIUtils.generateZoneWrapper(`
             <div class="life-zone-container p-4">
@@ -301,32 +328,108 @@ class UIZonesManager {
                 </div>
                 <div class="life-controls-stack">
                     <div class="life-controls-group">
-                        ${negativeControls.map(control =>
-                            UIUtils.generateButton(
-                                `GameActions.modifyLife('${playerId}', ${control.value})`,
-                                UIConfig.CSS_CLASSES.button.life[control.class],
-                                `Remove ${Math.abs(control.value)} life`,
-                                control.label
-                            )
-                        ).join('')}
+                        ${negativeControls.map((control) => renderLifeControlButton(control)).join('')}
                     </div>
                     <div class="life-controls-group">
-                        ${positiveControls.map(control =>
-                            UIUtils.generateButton(
-                                `GameActions.modifyLife('${playerId}', ${control.value})`,
-                                UIConfig.CSS_CLASSES.button.life[control.class],
-                                `Add ${control.value} life`,
-                                control.label
-                            )
-                        ).join('')}
+                        ${positiveControls.map((control) => renderLifeControlButton(control)).join('')}
                     </div>
                 </div>
-                <div class="player-counter-section mt-4">
+                ${hasCustomLifeControls ? `
+                    <div class="life-custom-input hidden" id="life-custom-input-${playerId}" data-direction="">
+                        <p class="text-xs text-arena-muted" id="life-custom-input-label-${playerId}">
+                            Indiquer un montant personnalisé
+                        </p>
+                        <input
+                            type="number"
+                            id="life-custom-value-${playerId}"
+                            min="1"
+                            step="1"
+                            class="w-full rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text"
+                            placeholder="Montant">
+                        <div class="life-custom-actions">
+                            <button
+                                type="button"
+                                class="flex-1 px-3 py-2 rounded-lg bg-emerald-500/30 border border-emerald-400/60 text-emerald-50 text-sm"
+                                onclick="UIZonesManager.submitCustomLifeInput('${playerId}')">
+                                Valider
+                            </button>
+                            <button
+                                type="button"
+                                class="flex-1 px-3 py-2 rounded-lg bg-arena-surface-light border border-arena-accent/30 text-arena-text text-sm"
+                                onclick="UIZonesManager.cancelCustomLifeInput('${playerId}')">
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+                <div class="player-counter-section">
                     ${countersHtml}
                     ${manageButton}
                 </div>
             </div>
         `, 'life');
+    }
+
+    /**
+     * Display custom life input field for personalized adjustments.
+     */
+    static openCustomLifeInput(playerId, direction = 1) {
+        const container = document.getElementById(`life-custom-input-${playerId}`);
+        const label = document.getElementById(`life-custom-input-label-${playerId}`);
+        const input = document.getElementById(`life-custom-value-${playerId}`);
+        if (!container || !label || !input) {
+            return;
+        }
+
+        const normalizedDirection = Number(direction) >= 0 ? 1 : -1;
+        container.dataset.direction = normalizedDirection > 0 ? 'positive' : 'negative';
+        label.textContent = normalizedDirection > 0
+            ? 'Ajouter un montant personnalisé'
+            : 'Retirer un montant personnalisé';
+        container.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    }
+
+    /**
+     * Apply the custom life value entered by the user.
+     */
+    static submitCustomLifeInput(playerId) {
+        const container = document.getElementById(`life-custom-input-${playerId}`);
+        const input = document.getElementById(`life-custom-value-${playerId}`);
+        if (!container || !input) {
+            return;
+        }
+
+        const rawAmount = Math.abs(parseInt(input.value, 10));
+        if (!rawAmount) {
+            if (window.GameUI && typeof GameUI.showNotification === 'function') {
+                GameUI.showNotification('Indiquer un montant valide', 'warning');
+            }
+            input.focus();
+            return;
+        }
+
+        const direction = container.dataset.direction === 'negative' ? -1 : 1;
+        GameActions.modifyLife(playerId, rawAmount * direction);
+        this.cancelCustomLifeInput(playerId);
+    }
+
+    /**
+     * Hide and reset the custom life input field.
+     */
+    static cancelCustomLifeInput(playerId) {
+        const container = document.getElementById(`life-custom-input-${playerId}`);
+        const input = document.getElementById(`life-custom-value-${playerId}`);
+        if (!container) {
+            return;
+        }
+
+        container.classList.add('hidden');
+        container.dataset.direction = '';
+        if (input) {
+            input.value = '';
+        }
     }
 
     /**

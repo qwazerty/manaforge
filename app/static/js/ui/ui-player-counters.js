@@ -4,9 +4,6 @@
 class UIPlayerCounters {
     static renderCounterBadges(playerData = {}, playerId = null) {
         const entries = this._getCounterEntries(playerData);
-        if (!entries.length) {
-            return '<p class="text-xs text-arena-muted">Aucun compteur actif</p>';
-        }
 
         return `
             <div class="player-counter-badges flex flex-wrap gap-2">

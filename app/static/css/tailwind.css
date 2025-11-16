@@ -1730,7 +1730,7 @@
     }
 
     .life-zone .life-zone-container {
-        @apply flex flex-col items-center justify-center gap-2 h-full w-full;
+        @apply relative flex flex-col items-center justify-center gap-2 h-full w-full;
     }
 
     .life-zone .life-total-wrapper {
@@ -1746,6 +1746,29 @@
     }
 
     .life-controls-stack button {
+        width: 100%;
+    }
+
+    .life-custom-input {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 1rem;
+        background-color: rgba(26, 31, 46, 0.95);
+        border: 1px solid rgba(201, 170, 113, 0.4);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        backdrop-filter: blur(4px);
+    }
+
+    .life-custom-input .life-custom-actions {
+        display: flex;
+        gap: 0.5rem;
         width: 100%;
     }
 
