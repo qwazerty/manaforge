@@ -392,6 +392,9 @@ class WebSocketManager {
         if (typeof UIPlayerCounters !== 'undefined' && UIPlayerCounters) {
             UIPlayerCounters.refreshModal();
         }
+        if (typeof UIZonesManager !== 'undefined' && UIZonesManager) {
+            UIZonesManager.hydrateSvelteZones();
+        }
         
         // Redraw combat arrows if in a combat window
         const gameState = GameCore.getGameState();

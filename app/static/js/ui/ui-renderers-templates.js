@@ -79,6 +79,7 @@ class UIRenderersTemplates {
             `;
 
             this.renderActionPanel();
+            UIZonesManager.hydrateSvelteZones();
         } catch (error) {
             this._renderError(stackContainer, 'Error loading stack', error.message);
         }
@@ -152,7 +153,6 @@ class UIRenderersTemplates {
 
             this._updateRevealOverlay(gameState);
             this._ensureCommanderPopups(gameState);
-
             return true;
         } catch (error) {
             console.error('Incremental game board update failed', error);

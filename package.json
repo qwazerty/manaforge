@@ -8,9 +8,10 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev:css": "tailwindcss -i ./app/static/css/tailwind.css -o ./app/static/css/dist/manaforge.css --watch",
-    "build:css": "tailwindcss -i ./app/static/css/tailwind.css -o ./app/static/css/dist/manaforge.css --minify"
+    "build:css": "tailwindcss -i ./app/static/css/tailwind.css -o ./app/static/css/dist/manaforge.css --minify",
+    "build:svelte": "node tools/build-svelte.mjs",
+    "dev:svelte": "node tools/watch-svelte.mjs"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,8 @@
     "@tailwindcss/cli": "^4.1.17",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
+    "svelte": "^5.0.0",
+    "esbuild": "^0.18.0",
     "tailwindcss": "^4.1.17"
   }
 }

@@ -6,6 +6,10 @@
 
 class UIZonesManager {
     static _zonePopupElements = new Map();
+    static _deckZoneConfigs = new Map();
+    static _graveyardZoneConfigs = new Map();
+    static _exileZoneConfigs = new Map();
+    static _zoneConfigCounter = 0;
     // ===== CONSTANTS =====
     static CARD_TYPE_ICONS = {
         'creature': '🦎',
@@ -88,71 +92,24 @@ class UIZonesManager {
      * Generate deck zone with clickable cards for drawing
      */
     static generateDeckZone(deck = [], isOpponent = false) {
-        const deckArray = Array.isArray(deck) ? deck : [];
-        const cardsRemaining = deckArray.length;
-        const selectedPlayer =
-            (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
-                ? GameCore.getSelectedPlayer()
-                : null;
-        const isSpectatorView = selectedPlayer === 'spectator';
-        let clickHandler = '';
-        let overlayText = '';
+        const config = ZoneData.getDeckZoneConfig(deck, isOpponent);
         const zoneLabel = this._renderZoneLabel('deck');
+        const ownerKey = isOpponent ? 'player2' : 'player1';
+        const zoneKey = this._registerZoneConfig('deck', config);
 
-        if (isSpectatorView) {
-            clickHandler = isOpponent
-                ? "onclick=\"UIZonesManager.showOpponentZoneModal('deck')\""
-                : "onclick=\"UIZonesManager.showZoneModal('deck')\"";
-            overlayText = 'View';
-        } else if (!isOpponent) {
-            clickHandler = 'onclick="GameActions.drawCard()"';
-            overlayText = 'Draw';
-        }
-
-        const deckClass = isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack';
-        const zoneIdentifier = isOpponent ? 'opponent_deck' : 'deck';
-
-        let stackCardsHTML;
-        if (cardsRemaining === 0) {
-            stackCardsHTML = `
-                <div class="${deckClass}" data-zone-context="${zoneIdentifier}" ${clickHandler}>
-                    ${UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
-                </div>
-            `;
-        } else {
-            const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
-            const stackCards = Array(stackLayers).fill().map((_, index) => {
-                const transforms = {
-                    x: index * 1, y: index * 1.5,
-                    rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
-                };
-                return UIUtils.generateCardLayer(null, index, transforms);
-            }).join('');
-
-            stackCardsHTML = `
-                <div class="${deckClass}" data-zone-context="${zoneIdentifier}" ${clickHandler}>
-                    ${stackCards}
-                    <div class="deck-click-overlay">
-                        <span class="draw-hint">${overlayText}</span>
-                    </div>
-                </div>
-            `;
-        }
+        const deckPlaceholder = `
+            <div class="deck-zone-placeholder" data-zone-type="deck" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
+        `;
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
                 ${zoneLabel}
-                ${stackCardsHTML}
-                <div class="deck-cards-count mt-2">
-                    <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
-                </div>
+                ${deckPlaceholder}
             </div>
         `, 'deck');
 
-        // Add context menu after DOM update
-        this._attachContextMenu('.deck-cards-stack', zoneIdentifier);
         return zoneContent;
     }
 
@@ -160,55 +117,24 @@ class UIZonesManager {
      * Generate graveyard zone with stack effect showing actual card images
      */
     static generateGraveyardZone(graveyard = [], isOpponent = false) {
-        const graveyardArray = Array.isArray(graveyard) ? graveyard : [];
-        const cardsRemaining = graveyardArray.length;
-        const zoneIdentifier = isOpponent ? 'opponent_graveyard' : 'graveyard';
-        const clickHandler = isOpponent ?
-            "UIZonesManager.showOpponentZoneModal('graveyard')" :
-            "UIZonesManager.showZoneModal('graveyard')";
+        const config = ZoneData.getGraveyardZoneConfig(graveyard, isOpponent);
         const zoneLabel = this._renderZoneLabel('graveyard');
+        const ownerKey = isOpponent ? 'player2' : 'player1';
+        const zoneKey = this._registerZoneConfig('graveyard', { ...config, ownerKey });
 
-        let stackCardsHTML;
-        if (cardsRemaining === 0) {
-            stackCardsHTML = `
-                <div class="graveyard-empty">
-                    <span>⚰️</span>
-                    <div class="zone-empty-text">Empty</div>
-                </div>
-            `;
-        } else {
-            const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
-            stackCardsHTML = Array(stackLayers).fill().map((_, index) => {
-                const transforms = {
-                    x: index * 1, y: index * 1.5,
-                    rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
-                };
-                const cardIndex = Math.max(0, cardsRemaining - stackLayers + index);
-                const card = graveyardArray[cardIndex];
-                return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
-            }).join('');
-        }
+        const graveyardPlaceholder = `
+            <div class="graveyard-zone-placeholder" data-zone-type="graveyard" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
+        `;
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
                 ${zoneLabel}
-                <div class="graveyard-cards-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
-                    ${stackCardsHTML}
-                    ${cardsRemaining > 0 ? `
-                    <div class="graveyard-click-overlay">
-                        <span class="zone-view-hint">View<br>All</span>
-                    </div>
-                    ` : ''}
-                </div>
-                <div class="graveyard-cards-count mt-2">
-                    <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
-                </div>
+                ${graveyardPlaceholder}
             </div>
         `, 'graveyard');
 
-        this._attachContextMenu('.graveyard-cards-stack', zoneIdentifier);
         return zoneContent;
     }
 
@@ -216,61 +142,24 @@ class UIZonesManager {
      * Generate exile zone with single card preview and stack effect
      */
     static generateExileZone(exile = [], isOpponent = false) {
-        const exileArray = Array.isArray(exile) ? exile : [];
-        const cardsRemaining = exileArray.length;
-        const zoneIdentifier = isOpponent ? 'opponent_exile' : 'exile';
-        const clickHandler = isOpponent ?
-            "UIZonesManager.showOpponentZoneModal('exile')" :
-            "UIZonesManager.showZoneModal('exile')";
+        const config = ZoneData.getExileZoneConfig(exile, isOpponent);
         const zoneLabel = this._renderZoneLabel('exile');
+        const ownerKey = isOpponent ? 'player2' : 'player1';
+        const zoneKey = this._registerZoneConfig('exile', { ...config, ownerKey });
 
-        let exileContentHTML;
-        if (cardsRemaining === 0) {
-            exileContentHTML = `
-                <div class="exile-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
-                    <div class="exile-empty">
-                        <span>🌌</span>
-                        <div class="zone-empty-text">Empty</div>
-                    </div>
-                </div>
-            `;
-        } else {
-            const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
-            const stackCards = Array(stackLayers).fill().map((_, index) => {
-                const transforms = {
-                    x: index * 1, y: index * 1,
-                    rotation: (index % 2 === 0) ? -1 : 1, zIndex: index + 1
-                };
-                return UIUtils.generateCardLayer(null, index, transforms, 'exile-card-layer');
-            }).join('');
-            const topCard = exileArray[exileArray.length - 1];
-
-            exileContentHTML = `
-                <div class="exile-stack" data-zone-context="${zoneIdentifier}" onclick="${clickHandler}">
-                    ${stackCards}
-                    <div class="exile-top-card">
-                        ${GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
-                    </div>
-                    <div class="exile-click-overlay">
-                        <span class="zone-view-hint">View<br>All</span>
-                    </div>
-                </div>
-            `;
-        }
+        const placeholder = `
+            <div class="exile-zone-placeholder" data-zone-type="exile" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
+        `;
 
         const zoneContent = UIUtils.generateZoneWrapper(`
             <div class="relative flex flex-col items-center py-4"
                 ondragover="UIZonesManager.handleZoneDragOver(event)"
                 ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
                 ${zoneLabel}
-                ${exileContentHTML}
-                <div class="exile-cards-count mt-2">
-                    <span class="cards-remaining">${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}</span>
-                </div>
+                ${placeholder}
             </div>
         `, 'exile');
 
-        this._attachContextMenu('.exile-stack', zoneIdentifier);
         return zoneContent;
     }
 
@@ -988,6 +877,127 @@ class UIZonesManager {
                 element.dataset.zoneMenuAttached = 'true';
             }
         }, 100);
+    }
+
+    static _registerZoneConfig(type, config) {
+        const key = `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        if (type === 'deck') {
+            this._deckZoneConfigs.set(key, config);
+        } else if (type === 'graveyard') {
+            this._graveyardZoneConfigs.set(key, config);
+        } else if (type === 'exile') {
+            this._exileZoneConfigs.set(key, config);
+        }
+        return key;
+    }
+
+    static hydrateSvelteZones() {
+        this._hydrateDeckZones();
+        this._hydrateGraveyardZones();
+        this._hydrateExileZones();
+    }
+
+    static _hydrateDeckZones() {
+        if (typeof DeckZoneComponent === 'undefined') {
+            return;
+        }
+        document.querySelectorAll('[data-zone-type="deck"]').forEach((element) => {
+            if (element.dataset.zoneHydrated === 'true') {
+                return;
+            }
+            const key = element.dataset.zoneKey;
+            const config = this._deckZoneConfigs.get(key);
+            if (!config) {
+                return;
+            }
+            try {
+                element.innerHTML = '';
+                new DeckZoneComponent.default({
+                    target: element,
+                    props: {
+                        cardsRemaining: config.cardsRemaining,
+                        deckClass: config.deckClass,
+                        zoneIdentifier: config.zoneIdentifier,
+                        overlayText: config.overlayText,
+                        onClick: config.onClick
+                    }
+                });
+                element.dataset.zoneHydrated = 'true';
+                this._deckZoneConfigs.delete(key);
+                this._attachContextMenu('.deck-cards-stack', config.zoneIdentifier);
+            } catch (error) {
+                console.error('[UIZonesManager] Failed to hydrate deck zone', error);
+            }
+        });
+    }
+
+    static _hydrateGraveyardZones() {
+        if (typeof GraveyardZoneComponent === 'undefined') {
+            return;
+        }
+        document.querySelectorAll('[data-zone-type="graveyard"]').forEach((element) => {
+            if (element.dataset.zoneHydrated === 'true') {
+                return;
+            }
+            const key = element.dataset.zoneKey;
+            const config = this._graveyardZoneConfigs.get(key);
+            if (!config) {
+                return;
+            }
+            try {
+                element.innerHTML = '';
+                new GraveyardZoneComponent.default({
+                    target: element,
+                    props: {
+                        cards: config.graveyardArray,
+                        cardsRemaining: config.cardsRemaining,
+                        zoneIdentifier: config.zoneIdentifier,
+                        overlayHtml: config.overlayHtml,
+                        onClick: config.clickHandler
+                    }
+                });
+                element.dataset.zoneHydrated = 'true';
+                this._graveyardZoneConfigs.delete(key);
+                this._attachContextMenu('.graveyard-cards-stack', config.zoneIdentifier);
+            } catch (error) {
+                console.error('[UIZonesManager] Failed to hydrate graveyard zone', error);
+            }
+        });
+    }
+
+    static _hydrateExileZones() {
+        if (typeof ExileZoneComponent === 'undefined') {
+            return;
+        }
+        document.querySelectorAll('[data-zone-type="exile"]').forEach((element) => {
+            if (element.dataset.zoneHydrated === 'true') {
+                return;
+            }
+            const key = element.dataset.zoneKey;
+            const config = this._exileZoneConfigs.get(key);
+            if (!config) {
+                return;
+            }
+            try {
+                element.innerHTML = '';
+                new ExileZoneComponent.default({
+                    target: element,
+                    props: {
+                        cards: config.exileArray,
+                        zoneIdentifier: config.zoneIdentifier,
+                        cardsRemaining: config.cardsRemaining,
+                        overlayHtml: config.overlayHtml,
+                        topCard: config.topCard,
+                        onClick: config.clickHandler
+                    }
+                });
+                element.dataset.zoneHydrated = 'true';
+                this._exileZoneConfigs.delete(key);
+                this._attachContextMenu('.exile-stack', config.zoneIdentifier);
+            } catch (error) {
+                console.error('[UIZonesManager] Failed to hydrate exile zone', error);
+            }
+        });
     }
 
     /**
