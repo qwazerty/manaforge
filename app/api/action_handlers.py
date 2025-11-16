@@ -165,6 +165,80 @@ async def handle_modify_life(
         "broadcast_data": {"target": target_player, "amount": amount}
     }
 
+@action_registry.register(
+    "modify_player_counter",
+    required_fields=["target_player", "counter_type", "amount"]
+)
+async def handle_modify_player_counter(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Adjust a counter on a player by a delta."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for modify_player_counter"
+        )
+
+    target_player = request.get("target_player")
+    counter_type = request.get("counter_type")
+    amount = request.get("amount")
+
+    if target_player is None:
+        raise HTTPException(status_code=400, detail="target_player is required")
+    if counter_type is None:
+        raise HTTPException(status_code=400, detail="counter_type is required")
+    if amount is None:
+        raise HTTPException(status_code=400, detail="amount is required")
+
+    return {
+        "additional_data": {
+            "target_player": target_player,
+            "counter_type": counter_type,
+            "amount": amount
+        },
+        "broadcast_data": {
+            "target": target_player,
+            "counter_type": counter_type,
+            "amount": amount
+        }
+    }
+
+@action_registry.register(
+    "set_player_counter",
+    required_fields=["target_player", "counter_type", "amount"]
+)
+async def handle_set_player_counter(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Force a player's counter to a specific value."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for set_player_counter"
+        )
+
+    target_player = request.get("target_player")
+    counter_type = request.get("counter_type")
+    amount = request.get("amount")
+
+    if target_player is None:
+        raise HTTPException(status_code=400, detail="target_player is required")
+    if counter_type is None:
+        raise HTTPException(status_code=400, detail="counter_type is required")
+    if amount is None:
+        raise HTTPException(status_code=400, detail="amount is required")
+
+    return {
+        "additional_data": {
+            "target_player": target_player,
+            "counter_type": counter_type,
+            "amount": amount
+        },
+        "broadcast_data": {
+            "target": target_player,
+            "counter_type": counter_type,
+            "amount": amount
+        }
+    }
+
 @action_registry.register("adjust_commander_tax", required_fields=["amount"])
 async def handle_adjust_commander_tax(
     game_id: str, request: Optional[Dict], current_state: GameState

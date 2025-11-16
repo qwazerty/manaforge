@@ -389,6 +389,9 @@ class WebSocketManager {
         // Update zone counts and previews
         UIZonesManager.updateZoneCounts();
         UIZonesManager.refreshOpenZonePopups(GameCore.getGameState());
+        if (typeof UIPlayerCounters !== 'undefined' && UIPlayerCounters) {
+            UIPlayerCounters.refreshModal();
+        }
         
         // Redraw combat arrows if in a combat window
         const gameState = GameCore.getGameState();

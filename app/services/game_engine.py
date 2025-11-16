@@ -635,6 +635,8 @@ class SimpleGameEngine:
             "resolve_all_stack": self._resolve_all_stack,
             "pass_priority": self._pass_priority,
             "modify_life": self._modify_life,
+            "modify_player_counter": self._modify_player_counter,
+            "set_player_counter": self._set_player_counter,
             "adjust_commander_tax": self._adjust_commander_tax,
             "tap_card": self._tap_card,
             "change_phase": self._change_phase,
@@ -1226,6 +1228,70 @@ class SimpleGameEngine:
         print(
             f"Player {target_player_id} life changed from {old_life} to "
             f"{target_player.life} (amount: {amount})"
+        )
+    
+    def _modify_player_counter(self, game_state: GameState, action: GameAction) -> None:
+        """Apply a delta to a player's counter."""
+        data = action.additional_data or {}
+        target_player_id = data.get("target_player")
+        counter_type = data.get("counter_type")
+        amount = data.get("amount")
+
+        if not target_player_id:
+            raise ValueError("target_player is required for modify_player_counter action")
+        if not counter_type:
+            raise ValueError("counter_type is required for modify_player_counter action")
+        if amount is None:
+            raise ValueError("amount is required for modify_player_counter action")
+
+        player = self._get_player(game_state, target_player_id)
+        normalized_counter = str(counter_type).strip().lower()
+        current_value = player.counters.get(normalized_counter, 0)
+        try:
+            amount_value = int(amount)
+        except (TypeError, ValueError):
+            raise ValueError("amount must be an integer for modify_player_counter action")
+        new_value = current_value + amount_value
+        if new_value <= 0:
+            if normalized_counter in player.counters:
+                del player.counters[normalized_counter]
+        else:
+            player.counters[normalized_counter] = new_value
+
+        print(
+            f"Player {target_player_id} {normalized_counter} counters changed from "
+            f"{current_value} to {player.counters.get(normalized_counter, 0)} "
+            f"(delta: {amount_value})"
+        )
+
+    def _set_player_counter(self, game_state: GameState, action: GameAction) -> None:
+        """Force a player's counter to a specific value."""
+        data = action.additional_data or {}
+        target_player_id = data.get("target_player")
+        counter_type = data.get("counter_type")
+        amount = data.get("amount")
+
+        if not target_player_id:
+            raise ValueError("target_player is required for set_player_counter action")
+        if not counter_type:
+            raise ValueError("counter_type is required for set_player_counter action")
+        if amount is None:
+            raise ValueError("amount is required for set_player_counter action")
+
+        player = self._get_player(game_state, target_player_id)
+        normalized_counter = str(counter_type).strip().lower()
+        try:
+            target_value = int(amount)
+        except (TypeError, ValueError):
+            raise ValueError("amount must be an integer for set_player_counter action")
+        if target_value <= 0:
+            player.counters.pop(normalized_counter, None)
+        else:
+            player.counters[normalized_counter] = target_value
+
+        print(
+            f"Player {target_player_id} {normalized_counter} counters set to "
+            f"{player.counters.get(normalized_counter, 0)}"
         )
     
     def _adjust_commander_tax(self, game_state: GameState, action: GameAction) -> None:

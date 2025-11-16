@@ -509,6 +509,8 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'add_custom_type':
             case 'remove_custom_type':
             case 'set_custom_type':
+            case 'modify_player_counter':
+            case 'set_player_counter':
                 endpoint = `/api/v1/games/${gameId}/action`;
                 requestData = {
                     action_type: actionType,
@@ -945,6 +947,61 @@ function modifyLife(playerId, amount) {
     GameUI.showNotification(`${playerId}: ${actionText}`, amount > 0 ? 'success' : 'warning');
 }
 
+function modifyPlayerCounter(playerId, counterType, amount) {
+    const normalizedType = typeof counterType === 'string'
+        ? counterType.trim().toLowerCase()
+        : '';
+    const parsedAmount = parseInt(amount, 10);
+
+    if (!normalizedType) {
+        GameUI.showNotification('Type de compteur requis', 'warning');
+        return;
+    }
+    if (Number.isNaN(parsedAmount) || parsedAmount === 0) {
+        GameUI.showNotification('Valeur de compteur invalide', 'warning');
+        return;
+    }
+
+    performGameAction('modify_player_counter', {
+        target_player: playerId,
+        counter_type: normalizedType,
+        amount: parsedAmount
+    });
+
+    const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
+    const tone = parsedAmount > 0 ? 'success' : 'warning';
+    const signed = parsedAmount > 0 ? `+${parsedAmount}` : `${parsedAmount}`;
+    GameUI.showNotification(`${playerId}: ${formattedType} ${signed}`, tone);
+}
+
+function setPlayerCounter(playerId, counterType, value) {
+    const normalizedType = typeof counterType === 'string'
+        ? counterType.trim().toLowerCase()
+        : '';
+    const parsedValue = parseInt(value, 10);
+
+    if (!normalizedType) {
+        GameUI.showNotification('Type de compteur requis', 'warning');
+        return;
+    }
+    if (Number.isNaN(parsedValue)) {
+        GameUI.showNotification('Valeur de compteur invalide', 'warning');
+        return;
+    }
+
+    performGameAction('set_player_counter', {
+        target_player: playerId,
+        counter_type: normalizedType,
+        amount: parsedValue
+    });
+
+    const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
+    const message = parsedValue <= 0
+        ? `Suppression des compteurs ${formattedType}`
+        : `${formattedType} réglé à ${parsedValue}`;
+    GameUI.showNotification(`${playerId}: ${message}`, 'info');
+}
+
 function adjustCommanderTax(playerId, amount) {
     performGameAction('adjust_commander_tax', {
         player_id: playerId,
@@ -1029,6 +1086,8 @@ window.GameActions = {
     copyStackSpell,
     drawCard,
     modifyLife,
+    modifyPlayerCounter,
+    setPlayerCounter,
     adjustCommanderTax,
     playOpponentCardFromZone,
     moveCard,

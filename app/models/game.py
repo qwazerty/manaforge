@@ -261,6 +261,10 @@ class Player(BaseModel):
         default_factory=list,
         description="Temporary zone for scry/surveil"
     )
+    counters: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Counters applied to the player (poison, energy, etc.)"
+    )
 
 
 class PlayerDeckStatus(BaseModel):
