@@ -657,7 +657,6 @@ class UIRenderersTemplates {
     static generateButton(onclick, classes, title, content) { return UIUtils.generateButton(onclick, classes, title, content); }
     static generateZoneWrapper(content, zoneType) { return UIUtils.generateZoneWrapper(content, zoneType); }
     static generateEmptyZoneContent(icon, message) { return UIUtils.generateEmptyZoneContent(icon, message); }
-    static generateCardLayer(card, index, transforms) { return UIUtils.generateCardLayer(card, index, transforms); }
     static generateEmptyZone(icon, name) { return UIUtils.generateEmptyZone(icon, name); }
     static generateZoneClickHandler(isOpponent, prefix, zoneType, title) { return UIUtils.generateZoneClickHandler(isOpponent, prefix, zoneType, title); }
     static filterCardsByType(cards, zoneName) { return UIUtils.filterCardsByType(cards, zoneName); }

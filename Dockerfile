@@ -16,6 +16,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
+RUN useradd -m -s /bin/sh user
 RUN apt-get update && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -40,3 +41,4 @@ EXPOSE 8000
 # Run the application
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+USER user

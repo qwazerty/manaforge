@@ -5,13 +5,6 @@
     export let overlayHtml = 'View<br>All';
     export let onClick = null;
 
-    const cardTransforms = (index) => ({
-        x: index * 1,
-        y: index * 1.5,
-        rotation: index % 2 === 0 ? -1 : 1,
-        zIndex: index + 1
-    });
-
     const renderLayers = () => {
         if (cards.length === 0) {
             return '';
@@ -20,9 +13,12 @@
         const stackLayers = Math.min(5, Math.max(1, cards.length));
         const topCards = cards.slice(-stackLayers);
 
-        return topCards.map((card, index) => {
-            const transforms = cardTransforms(index);
-            return UIUtils.generateCardLayerWithImage(card, index, transforms, 'graveyard-card-layer');
+        return topCards.map((card) => {
+            return `
+                <div class="graveyard-card-layer">
+                    ${GameCards.renderCardWithLoadingState(card, 'card-front-mini', true, 'graveyard')}
+                </div>
+            `;
         }).join('');
     };
 

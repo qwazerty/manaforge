@@ -6,21 +6,17 @@
     export let topCard = null;
     export let onClick = null;
 
-    const cardTransforms = (index) => ({
-        x: index * 1,
-        y: index * 1,
-        rotation: index % 2 === 0 ? -1 : 1,
-        zIndex: index + 1
-    });
-
     const renderStack = () => {
         if (cards.length === 0) {
             return '';
         }
         const stackLayers = Math.min(5, Math.max(1, cards.length));
-        return Array.from({ length: stackLayers }, (_, index) => {
-            const transforms = cardTransforms(index);
-            return UIUtils.generateCardLayer(null, index, transforms, 'exile-card-layer');
+        return Array.from({ length: stackLayers }, () => {
+            return `
+                <div class="exile-card-layer">
+                    <div class="card-back-mini"></div>
+                </div>
+            `;
         }).join('');
     };
 
