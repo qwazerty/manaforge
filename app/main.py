@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import Optional
+from fastapi.encoders import jsonable_encoder
 
 from app.core.config import settings
 from app.api.routes import router
@@ -205,9 +206,10 @@ async def draft_room(request: Request, room_id: str):
             "error.html",
             {"request": request, "message": "Draft room not found"}
         )
+    room_payload = jsonable_encoder(room)
     return templates.TemplateResponse(
         "draft_room.html",
-        {"request": request, "room": room}
+        {"request": request, "room": room_payload}
     )
 
 
