@@ -15,10 +15,10 @@ class UIConfig {
     ];
 
     static LIFE_CONTROLS = [
-        { value: -1, class: 'red', label: '-1' },
-        { value: -5, class: 'red', label: '-5' },
-        { value: 1, class: 'green', label: '+1' },
-        { value: 5, class: 'green', label: '+5' }
+        { type: 'preset', value: -1, class: 'red', label: '-1' },
+        { type: 'custom', direction: -1, class: 'red', label: '-X' },
+        { type: 'preset', value: 1, class: 'green', label: '+1' },
+        { type: 'custom', direction: 1, class: 'green', label: '+X' }
     ];
 
     static CSS_CLASSES = {
