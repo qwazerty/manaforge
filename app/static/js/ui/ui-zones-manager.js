@@ -277,9 +277,20 @@ class UIZonesManager {
     /**
      * Generate life total zone with enhanced life controls
      */
-    static generateLifeZone(life, playerId, titlePrefix) {
+    static generateLifeZone(playerData, playerId, titlePrefix) {
+        const safeData = playerData || {};
+        const life = typeof safeData.life === 'number' ? safeData.life : parseInt(safeData.life || 20, 10) || 20;
+        const countersHtml = (typeof UIPlayerCounters !== 'undefined' && UIPlayerCounters)
+            ? UIPlayerCounters.renderCounterBadges(safeData, playerId)
+            : '<p class="text-xs text-arena-muted">Aucun compteur actif</p>';
         const negativeControls = UIConfig.LIFE_CONTROLS.filter(c => c.value < 0);
         const positiveControls = UIConfig.LIFE_CONTROLS.filter(c => c.value > 0);
+        const manageButton = UIUtils.generateButton(
+            `UIPlayerCounters.openCounterManager('${playerId}')`,
+            `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center mt-2`,
+            'Gérer les compteurs du joueur',
+            '⚙️ Gérer les compteurs'
+        );
 
         return UIUtils.generateZoneWrapper(`
             <div class="life-zone-container p-4">
@@ -309,6 +320,10 @@ class UIZonesManager {
                             )
                         ).join('')}
                     </div>
+                </div>
+                <div class="player-counter-section mt-4">
+                    ${countersHtml}
+                    ${manageButton}
                 </div>
             </div>
         `, 'life');

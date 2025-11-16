@@ -694,9 +694,12 @@ const GameCards = {
                 } else {
                     // Default handling for other counter types
                     const counterIcon = this.getCounterIcon(counterType);
+                    const iconMarkup = counterIcon
+                        ? `<span class="counter-icon">${counterIcon}</span>`
+                        : `<span class="counter-icon counter-icon-text">${counterType}</span>`;
                     countersHtml += `
                         <div class="counter ${counterClass}" title="${count} ${counterType} counter(s)">
-                            <span class="counter-icon">${counterIcon}</span>
+                            ${iconMarkup}
                             <span class="counter-value">${count}</span>
                         </div>
                     `;
@@ -796,6 +799,10 @@ const GameCards = {
     },
 
     getCounterIcon: function(counterType) {
+        if (!counterType) {
+            return null;
+        }
+
         const icons = {
             'loyalty': '🛡️',
             '+1/+1': '💪',
@@ -810,7 +817,19 @@ const GameCards = {
             'blood': '🩸',
             'oil': '🛢️'
         };
-        return icons[counterType] || '🔢';
+
+        if (Object.prototype.hasOwnProperty.call(icons, counterType)) {
+            return icons[counterType];
+        }
+
+        const normalized = typeof counterType === 'string'
+            ? counterType.toLowerCase()
+            : counterType;
+        if (normalized && Object.prototype.hasOwnProperty.call(icons, normalized)) {
+            return icons[normalized];
+        }
+
+        return null;
     },
 
     getCounterClass: function(counterType) {
@@ -1678,11 +1697,18 @@ const GameCards = {
             html += '<div class="counter-controls">';
             counterEntries.forEach(([counterType, count]) => {
                 const counterIcon = this.getCounterIcon(counterType);
+                const labelHtml = counterIcon
+                    ? `
+                        <span class="counter-icon">${counterIcon}</span>
+                        <span class="counter-type">${counterType}</span>
+                    `
+                    : `
+                        <span class="counter-icon counter-icon-text">${counterType}</span>
+                    `;
                 const jsCounterType = JSON.stringify(counterType);
                 html += `
                     <div class="counter-control-row">
-                        <span class="counter-icon">${counterIcon}</span>
-                        <span class="counter-type">${counterType}</span>
+                        ${labelHtml}
                         <div class="counter-controls-buttons">
                             <button onclick='GameCards.modifyCounter(${jsUniqueId}, ${jsCardId}, ${jsCounterType}, -1)'>-</button>
                             <span class="counter-amount">${count}</span>
@@ -1714,6 +1740,9 @@ const GameCards = {
                     <option value="blood">Blood</option>
                     <option value="oil">Oil</option>
                 </select>
+                <label for="counter-type-custom-${uniqueCardId}">Custom Type (optional):</label>
+                <input type="text" id="counter-type-custom-${uniqueCardId}" placeholder="Quest, Shield, etc." maxlength="30">
+                <small class="counter-hint">Leave blank to use the selection above.</small>
                 <label for="counter-amount-input-${uniqueCardId}">Amount:</label>
                 <input type="number" id="counter-amount-input-${uniqueCardId}" value="1" min="1" max="20">
                 <button class="add-counter-btn" onclick='GameCards.addCounterFromModal(${jsUniqueId}, ${jsCardId})'>Add Counter</button>
@@ -1822,14 +1851,21 @@ const GameCards = {
 
     addCounterFromModal: function(uniqueCardId, cardId) {
         const typeSelect = document.getElementById(`counter-type-select-${uniqueCardId}`);
+        const customInput = document.getElementById(`counter-type-custom-${uniqueCardId}`);
         const amountInput = document.getElementById(`counter-amount-input-${uniqueCardId}`);
 
-        if (!typeSelect || !amountInput) {
+        if ((!typeSelect && !customInput) || !amountInput) {
             return;
         }
 
-        const counterType = typeSelect.value;
+        const customType = customInput ? customInput.value.trim() : '';
+        const counterType = customType || (typeSelect ? typeSelect.value : '');
         const amount = parseInt(amountInput.value, 10) || 1;
+
+        if (!counterType) {
+            GameUI.showNotification('Select or enter a counter type', 'warning');
+            return;
+        }
 
         GameActions.performGameAction('add_counter', {
             unique_id: uniqueCardId,
@@ -1839,6 +1875,10 @@ const GameCards = {
         });
 
         GameUI.showNotification(`Added ${amount} ${counterType} counter(s)`, 'success');
+
+        if (customInput) {
+            customInput.value = '';
+        }
 
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);

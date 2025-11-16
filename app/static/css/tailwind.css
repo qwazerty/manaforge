@@ -405,6 +405,15 @@
         margin-right: 2px;
     }
 
+    .counter-icon-text {
+        font-size: 8px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-right: 2px;
+        color: #f9fafb;
+    }
+
     .counter-value {
         color: white;
         font-size: 8px;
@@ -672,6 +681,14 @@
 
     .counter-control-row .counter-icon {
         font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+
+    .counter-control-row .counter-icon-text {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #fef3c7;
         margin-right: 0.5rem;
     }
 

@@ -503,7 +503,7 @@ class UIRenderersTemplates {
     static generateDeckZone(deck, isOpponent) { return UIZonesManager.generateDeckZone(deck, isOpponent); }
     static generateGraveyardZone(graveyard, isOpponent) { return UIZonesManager.generateGraveyardZone(graveyard, isOpponent); }
     static generateExileZone(exile, isOpponent) { return UIZonesManager.generateExileZone(exile, isOpponent); }
-    static generateLifeZone(life, playerId, titlePrefix) { return UIZonesManager.generateLifeZone(life, playerId, titlePrefix); }
+    static generateLifeZone(playerData, playerId, titlePrefix) { return UIZonesManager.generateLifeZone(playerData, playerId, titlePrefix); }
 
     // ===== PRIVATE HELPER METHODS =====
     
@@ -524,7 +524,7 @@ class UIRenderersTemplates {
         const deckData = library.length > 0 ? library : deck;
 
         return {
-            life: this.generateLifeZone(life, playerId, titlePrefix),
+            life: this.generateLifeZone(safePlayerData, playerId, titlePrefix),
             deck: this.generateDeckZone(deckData, isOpponent),
             graveyard: this.generateGraveyardZone(graveyard, isOpponent),
             exile: this.generateExileZone(exile, isOpponent)
