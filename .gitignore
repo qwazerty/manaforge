@@ -184,6 +184,7 @@ player_data/
 # Static file builds
 app/static/dist/
 app/static/build/
+app/static/js/ui/components/
 
 # Testing
 .coverage
