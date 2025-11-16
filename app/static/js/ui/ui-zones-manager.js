@@ -1081,7 +1081,10 @@ class UIZonesManager {
         const titleLabel = panel.querySelector('.zone-popup-label');
 
         if (typeof UIRenderersTemplates !== 'undefined') {
-            UIRenderersTemplates._makeStackPopupDraggable(panel, handle);
+            if (typeof UIRenderersTemplates !== 'undefined' &&
+                typeof UIRenderersTemplates._makePopupDraggable === 'function') {
+                UIRenderersTemplates._makePopupDraggable(panel, handle);
+            }
             UIRenderersTemplates._initializePopupSearch(panel);
         }
 

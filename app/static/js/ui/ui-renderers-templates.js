@@ -8,6 +8,8 @@ class UIRenderersTemplates {
     static _revealPopupElements = new Map();
     static _actionPanelComponent = null;
     static _actionPanelTarget = null;
+    static _stackPopupComponent = null;
+    static _stackPopupTarget = null;
     // ===== MAIN RENDERING METHODS =====
     
     /**
@@ -719,335 +721,59 @@ class UIRenderersTemplates {
      * Update stack overlay visibility and content
      */
     static _updateStackOverlay(stack, gameState = null) {
-        const elements = this._ensureStackPopup();
-        if (!elements) {
+        const component = this._ensureStackPopupComponent();
+        if (!component) {
             return;
         }
 
-        const { panel, body, countLabel } = elements;
+        const safeStack = Array.isArray(stack) ? stack : [];
+        const visible = safeStack.length > 0;
 
-        if (!Array.isArray(stack) || stack.length === 0) {
-            panel.classList.add('hidden');
-            panel.setAttribute('aria-hidden', 'true');
-            body.innerHTML = '';
-            countLabel.textContent = '0';
-            delete panel.dataset.userMoved;
-            return;
-        }
-
-        countLabel.textContent = String(stack.length);
-        body.innerHTML = this._generateStackContent(stack, gameState);
-        panel.classList.remove('hidden');
-        panel.setAttribute('aria-hidden', 'false');
-
-        if (panel.dataset.userMoved !== 'true') {
-            requestAnimationFrame(() => this._positionStackPopupRelativeToBoard(panel));
+        try {
+            component.$set({
+                stack: safeStack,
+                visible,
+                gameState
+            });
+        } catch (error) {
+            console.error('Failed to update stack popup', error);
         }
     }
 
-    static _ensureStackPopup() {
-        if (this._stackPopupElements && this._stackPopupElements.panel) {
-            return this._stackPopupElements;
+    static _ensureStackPopupComponent() {
+        if (typeof StackPopupComponent === 'undefined') {
+            return null;
+        }
+
+        if (this._stackPopupComponent) {
+            return this._stackPopupComponent;
         }
 
         if (typeof document === 'undefined') {
             return null;
         }
 
-        let panel = document.getElementById('stack-popup');
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.id = 'stack-popup';
-            panel.className = 'stack-popup hidden';
-            panel.setAttribute('role', 'dialog');
-            panel.setAttribute('aria-label', 'Stack');
-            panel.setAttribute('aria-hidden', 'true');
-            panel.innerHTML = `
-                <div class="stack-popup-header" data-draggable-handle>
-                    <div class="stack-popup-title">
-                        <span class="stack-popup-icon">📜</span>
-                        <span class="stack-popup-label">Stack</span>
-                        <span class="stack-popup-count" id="stack-popup-count">0</span>
-                    </div>
-                </div>
-                <div class="stack-popup-body" id="stack-popup-body"></div>
-            `;
-            document.body.appendChild(panel);
-        }
+        const target = document.createElement('div');
+        document.body.appendChild(target);
 
-        const handle = panel.querySelector('[data-draggable-handle]');
-        const body = panel.querySelector('#stack-popup-body');
-        const countLabel = panel.querySelector('#stack-popup-count');
-
-        this._makeStackPopupDraggable(panel, handle);
-
-        this._stackPopupElements = { panel, body, countLabel };
-        return this._stackPopupElements;
-    }
-
-    static _positionStackPopupRelativeToBoard(panel) {
-        if (!panel) {
-            return;
-        }
-
-        const board = document.getElementById('game-board');
-        if (!board) {
-            return;
-        }
-
-        const padding = 16;
-        const boardRect = board.getBoundingClientRect();
-        const panelRect = panel.getBoundingClientRect();
-        const panelHeight = panelRect.height || panel.offsetHeight || 0;
-        const panelWidth = panelRect.width || panel.offsetWidth || 0;
-
-        let top = boardRect.top + (boardRect.height / 2) - (panelHeight / 2);
-        let left = boardRect.right - panelWidth - padding;
-
-        top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
-
-        const minLeft = boardRect.left + padding;
-        const maxLeft = window.innerWidth - panelWidth - padding;
-        left = Math.max(minLeft, Math.min(left, maxLeft));
-
-        panel.style.top = `${top}px`;
-        panel.style.left = `${left}px`;
-        panel.style.right = 'auto';
-        panel.style.bottom = 'auto';
-        panel.style.transform = 'none';
-    }
-
-    static _makeStackPopupDraggable(panel, handle) {
-        if (!panel || !handle || panel.dataset.draggableInit === 'true') {
-            return;
-        }
-
-        let isDragging = false;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
-
-        const startDragging = (clientX, clientY) => {
-            isDragging = true;
-            panel.dataset.userMoved = 'true';
-            panel.classList.add('stack-popup-dragging');
-            const rect = panel.getBoundingClientRect();
-            dragOffsetX = clientX - rect.left;
-            dragOffsetY = clientY - rect.top;
-            panel.style.right = 'auto';
-            panel.style.bottom = 'auto';
-            panel.style.transform = 'none';
-        };
-
-        const stopDragging = () => {
-            if (!isDragging) {
-                return;
-            }
-            isDragging = false;
-            panel.classList.remove('stack-popup-dragging');
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            document.removeEventListener('touchmove', onTouchMove);
-            document.removeEventListener('touchend', onTouchEnd);
-        };
-
-        const onMouseMove = (event) => {
-            if (!isDragging) {
-                return;
-            }
-            this._positionStackPopup(panel, event.clientX - dragOffsetX, event.clientY - dragOffsetY);
-        };
-
-        const onMouseUp = () => {
-            stopDragging();
-        };
-
-        const onTouchMove = (event) => {
-            if (!isDragging) {
-                return;
-            }
-            const touch = event.touches[0];
-            if (!touch) {
-                return;
-            }
-            this._positionStackPopup(panel, touch.clientX - dragOffsetX, touch.clientY - dragOffsetY);
-        };
-
-        const onTouchEnd = () => {
-            stopDragging();
-        };
-
-        const onMouseDown = (event) => {
-            if (event.button !== 0 || event.target.closest('button')) {
-                return;
-            }
-            startDragging(event.clientX, event.clientY);
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-            event.preventDefault();
-        };
-
-        const onTouchStart = (event) => {
-            const touch = event.touches[0];
-            if (!touch || event.target.closest('button')) {
-                return;
-            }
-            startDragging(touch.clientX, touch.clientY);
-            document.addEventListener('touchmove', onTouchMove, { passive: false });
-            document.addEventListener('touchend', onTouchEnd);
-            event.preventDefault();
-        };
-
-        handle.addEventListener('mousedown', onMouseDown);
-        handle.addEventListener('touchstart', onTouchStart, { passive: false });
-
-        panel.dataset.draggableInit = 'true';
-    }
-
-    static _positionStackPopup(panel, left, top) {
-        if (!panel) {
-            return;
-        }
-
-        const padding = 16;
-        const width = panel.offsetWidth;
-        const height = panel.offsetHeight;
-        const maxX = window.innerWidth - width - padding;
-        const maxY = window.innerHeight - height - padding;
-
-        const clampedLeft = Math.min(Math.max(left, padding), Math.max(maxX, padding));
-        const clampedTop = Math.min(Math.max(top, padding), Math.max(maxY, padding));
-
-        panel.style.left = `${clampedLeft}px`;
-        panel.style.top = `${clampedTop}px`;
-        panel.style.transform = 'none';
-    }
-
-    /**
-     * Generate stack content HTML
-     */
-    static _generateStackContent(stack, gameState = null) {
-        return `
-            <div class="stack-container">
-                <div class="stack-content"
-                    ondragover="UIZonesManager.handleZoneDragOver(event)"
-                    ondrop="UIZonesManager.handleZoneDrop(event, 'stack')">
-                    ${stack.length > 0 ? 
-                        stack.map((spell, index) => this._renderStackSpell(spell, index, gameState)).join('')
-                        : this._renderEmptyStack()
-                    }
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render individual stack spell
-     */
-    static _renderStackSpell(card, index, gameState = null) {
-        const cardName = card.name || 'Unknown Spell';
-        const imageUrl = GameCards.getSafeImageUrl(card);
-        const cardId = card.id || card.name;
-        const isTargeted = card.targeted || false;
-        const targetedClass = isTargeted ? ' targeted' : '';
-        const uniqueId = card.unique_id;
-        const ownerId = card.owner_id || card.ownerId || '';
-        const controllerId = card.controller_id || card.controllerId || ownerId;
-
-        const escapedCardId = GameUtils.escapeJavaScript(cardId);
-        const escapedCardName = GameUtils.escapeJavaScript(cardName);
-        const escapedImageUrl = GameUtils.escapeJavaScript(imageUrl || '');
-        const serializedCardData = JSON.stringify(card).replace(/'/g, '&#39;');
-        
-        // Determine if the spell should be clickable
-        let isClickable = true;
-        let clickHandler = `GameActions.performGameAction('resolve_stack', { card_id: '${escapedCardId}', unique_id: '${uniqueId}' }); event.stopPropagation();`;
-        const currentSelectedPlayer = typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
-            ? GameCore.getSelectedPlayer()
-            : null;
-        
-        if (gameState) {
-            const phaseMode = gameState.phase_mode || 'normal';
-            const isStrictMode = phaseMode === 'strict';
-            
-            if (isStrictMode && currentSelectedPlayer !== 'spectator') {
-                // In strict mode, determine controlled player index
-                let controlledPlayerIndex = null;
-                const players = gameState.players || [];
-                
-                for (let i = 0; i < players.length; i++) {
-                    if (players[i]?.id === currentSelectedPlayer) {
-                        controlledPlayerIndex = i;
-                        break;
-                    }
+        try {
+            this._stackPopupComponent = new StackPopupComponent.default({
+                target,
+                props: {
+                    stack: [],
+                    visible: false,
+                    gameState: null
                 }
-                
-                // Check if the current player is the owner of the spell
-                const spellOwnerId = card.owner_id;
-                if (spellOwnerId === currentSelectedPlayer) {
-                    // Player cast this spell, they should NOT be able to click it
-                    isClickable = false;
-                    clickHandler = 'event.stopPropagation();';
-                }
-            }
+            });
+            this._stackPopupTarget = target;
+        } catch (error) {
+            console.error('Failed to initialize stack popup', error);
+            target.remove();
+            this._stackPopupComponent = null;
+            this._stackPopupTarget = null;
         }
 
-        const canDragToHand =
-            currentSelectedPlayer &&
-            currentSelectedPlayer !== 'spectator' &&
-            Boolean(uniqueId) &&
-            (currentSelectedPlayer === ownerId || currentSelectedPlayer === controllerId);
-        const dragAttributes = canDragToHand
-            ? `draggable="true" ondragstart="GameCards.handleDragStart(event, this)" ondragend="GameCards.handleDragEnd(event, this)"`
-            : 'draggable="false"';
-        
-        return `
-            <div class="stack-spell${targetedClass}${isClickable ? '' : ' not-clickable'}" 
-                 data-index="${index}"
-                 data-card-id="${cardId}"
-                 data-card-unique-id="${uniqueId}"
-                 data-card-name="${escapedCardName}"
-                 data-card-image="${escapedImageUrl}"
-                 data-card-zone="stack"
-                 data-card-owner="${ownerId}"
-                 data-card-controller="${controllerId}"
-                 data-card-data='${serializedCardData}'
-                 data-stack-index="${index}"
-                 oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"
-                 onclick="${clickHandler}"
-                 ${dragAttributes}>
-                
-                <div class="stack-card-container">
-                    ${imageUrl ? `
-                        <img src="${imageUrl}" 
-                             alt="${cardName}" 
-                             class="stack-card-image"
-                             style="opacity: 0; transition: opacity 0.3s ease;"
-                             onload="this.style.opacity=1; this.nextElementSibling.style.display='none';"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div class="stack-card-fallback" style="display: none;">
-                        </div>
-                    ` : `
-                        <div class="stack-card-fallback">
-                        </div>
-                    `}
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Render empty stack message
-     */
-    static _renderEmptyStack() {
-        return `
-            <div class="stack-empty">
-                <div style="font-size: 24px; margin-bottom: 8px;">📚</div>
-                <div>The stack is empty</div>
-                <div style="font-size: 10px; margin-top: 4px; color: rgba(201, 170, 113, 0.4);">
-                    Spells and abilities will appear here
-                </div>
-            </div>
-        `;
+        return this._stackPopupComponent;
     }
 
     static _updateRevealOverlay(gameState) {
@@ -1127,6 +853,108 @@ class UIRenderersTemplates {
                 padding + (visibleCount * baseCardWidth) + Math.max(0, visibleCount - 1) * gap
             )
         );
+    }
+
+    static _makePopupDraggable(panel, handle) {
+        if (!panel || !handle || panel.dataset.popupDraggableInit === 'true') {
+            return;
+        }
+
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        const startDragging = (clientX, clientY) => {
+            if (isDragging) return;
+            isDragging = true;
+            panel.dataset.userMoved = 'true';
+            panel.classList.add('popup-dragging');
+            const rect = panel.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+        };
+
+        const stopDragging = () => {
+            if (!isDragging) {
+                return;
+            }
+            isDragging = false;
+            panel.classList.remove('popup-dragging');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+        };
+
+        const onMouseMove = (event) => {
+            if (!isDragging) {
+                return;
+            }
+            this._positionPopup(panel, event.clientX - dragOffsetX, event.clientY - dragOffsetY);
+        };
+
+        const onMouseUp = () => {
+            stopDragging();
+        };
+
+        const onTouchMove = (event) => {
+            if (!isDragging) {
+                return;
+            }
+            const touch = event.touches[0];
+            if (!touch) {
+                return;
+            }
+            this._positionPopup(panel, touch.clientX - dragOffsetX, touch.clientY - dragOffsetY);
+            event.preventDefault();
+        };
+
+        const onTouchEnd = () => {
+            stopDragging();
+        };
+
+        const onMouseDown = (event) => {
+            if (event.button !== 0 || event.target.closest('button')) {
+                return;
+            }
+            startDragging(event.clientX, event.clientY);
+            event.preventDefault();
+        };
+
+        const onTouchStart = (event) => {
+            const touch = event.touches[0];
+            if (!touch || event.target.closest('button')) {
+                return;
+            }
+            startDragging(touch.clientX, touch.clientY);
+            event.preventDefault();
+        };
+
+        handle.addEventListener('mousedown', onMouseDown);
+        handle.addEventListener('touchstart', onTouchStart, { passive: false });
+        panel.dataset.popupDraggableInit = 'true';
+    }
+
+    static _positionPopup(panel, left, top) {
+        if (!panel) {
+            return;
+        }
+        const padding = 16;
+        const width = panel.offsetWidth;
+        const height = panel.offsetHeight;
+        const maxX = window.innerWidth - width - padding;
+        const maxY = window.innerHeight - height - padding;
+        const clampedLeft = Math.min(Math.max(left, padding), Math.max(maxX, padding));
+        const clampedTop = Math.min(Math.max(top, padding), Math.max(maxY, padding));
+        panel.style.left = `${clampedLeft}px`;
+        panel.style.top = `${clampedTop}px`;
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.transform = 'none';
     }
 
     static _ensurePopupSearchElements(panel) {
@@ -1277,7 +1105,7 @@ class UIRenderersTemplates {
         const countLabel = panel.querySelector(`#reveal-popup-count-${playerId}`);
         const titleLabel = panel.querySelector('.reveal-popup-label');
 
-        this._makeStackPopupDraggable(panel, handle);
+        this._makePopupDraggable(panel, handle);
         this._initializePopupSearch(panel);
 
         const elements = { panel, body, countLabel, titleLabel };
