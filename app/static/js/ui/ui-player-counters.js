@@ -4,6 +4,11 @@
 class UIPlayerCounters {
     static renderCounterBadges(playerData = {}, playerId = null) {
         const entries = this._getCounterEntries(playerData);
+        const chipClass = [
+            'player-counter-chip inline-flex items-center gap-2',
+            UIConfig?.CSS_CLASSES?.button?.life?.green ||
+                'bg-green-500/20 border border-green-500/50 text-green-300 py-1 px-2 rounded text-xs font-semibold'
+        ].join(' ');
 
         return `
             <div class="player-counter-badges flex flex-wrap gap-2">
@@ -11,10 +16,10 @@ class UIPlayerCounters {
                     const icon = this._getCounterIcon(type);
                     const label = this._formatCounterLabel(type);
                     return `
-                        <span class="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-arena-accent/40 bg-arena-surface/60 text-xs text-arena-text player-counter-chip">
+                        <span class="${chipClass}">
                             ${icon ? `<span class="text-base">${icon}</span>` : ''}
-                            <span class="uppercase tracking-wide text-[10px] text-arena-muted">${label}</span>
-                            <span class="font-semibold text-arena-accent">${amount}</span>
+                            <span class="uppercase tracking-wide text-[10px] text-white/70">${label}</span>
+                            <span class="font-semibold text-white">${amount}</span>
                         </span>
                     `;
                 }).join('')}
@@ -131,12 +136,18 @@ class UIPlayerCounters {
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <button class="px-2 py-1 rounded bg-red-500/30 text-sm"
+                                    <button
+                                        type="button"
+                                        class="${UIConfig?.CSS_CLASSES?.button?.life?.red || ''}"
                                         onclick='UIPlayerCounters.modifyCounter(${JSON.stringify(playerId)}, ${jsType}, -1)'>-</button>
                                     <span class="text-lg font-bold text-arena-accent">${amount}</span>
-                                    <button class="px-2 py-1 rounded bg-green-500/30 text-sm"
+                                    <button
+                                        type="button"
+                                        class="${UIConfig?.CSS_CLASSES?.button?.life?.green || ''}"
                                         onclick='UIPlayerCounters.modifyCounter(${JSON.stringify(playerId)}, ${jsType}, 1)'>+</button>
-                                    <button class="px-2 py-1 rounded bg-arena-surface-light text-xs"
+                                    <button
+                                        type="button"
+                                        class="${UIConfig?.CSS_CLASSES?.button?.secondary || ''} text-xs px-3 py-2"
                                         onclick='UIPlayerCounters.removeCounter(${JSON.stringify(playerId)}, ${jsType})'>Reinitialiser</button>
                                 </div>
                             </div>
@@ -157,7 +168,9 @@ class UIPlayerCounters {
                     <input type="text" id="player-counter-type-${playerId}" class="w-full rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text" placeholder="Poison, charge..." maxlength="30">
                     <div class="flex gap-2">
                         <input type="number" id="player-counter-amount-${playerId}" class="w-24 rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text" value="1" min="1" step="1">
-                        <button class="flex-1 bg-emerald-500/30 hover:bg-emerald-500/40 border border-emerald-400/50 text-emerald-50 rounded-lg px-3 py-2"
+                        <button
+                            type="button"
+                            class="${UIConfig?.CSS_CLASSES?.button?.life?.green || ''} w-full text-center uppercase tracking-wide"
                             onclick='UIPlayerCounters.addCounterFromModal(${JSON.stringify(playerId)})'>Ajouter</button>
                     </div>
                 </div>
