@@ -1,6 +1,4 @@
-"""
-Tests pour l'API avec les nouvelles versions des packages.
-"""
+"""Tests for the API with the new package versions."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,12 +8,12 @@ from app.main import app
 
 
 class TestAPIEndpoints:
-    """Tests des endpoints API."""
+    """Tests for the API endpoints."""
     
     @pytest.fixture
     def client(self):
-        """Client de test FastAPI."""
-        # Patch des dépendances de base de données pour les tests
+        """FastAPI test client."""
+        # Patch base database dependencies for tests
         with patch('app.core.database.connect_to_mongo'), \
              patch('app.core.database.close_mongo_connection'), \
              patch('app.core.database.get_database') as mock_get_db:
@@ -27,25 +25,25 @@ class TestAPIEndpoints:
                 yield client
     
     def test_api_routes_exist(self, client):
-        """Test que les routes API existent."""
-        # Cette liste des routes peut être adaptée selon l'implémentation réelle
+        """Ensure the API routes exist."""
+        # This list of routes can be adapted to the actual implementation
         expected_routes = [
             "/api/v1/cards/search",
             "/api/v1/decks",
             "/api/v1/game/create",
         ]
         
-        # Vérifier que les routes existent dans l'application
+        # Ensure the routes exist in the application
         api_paths = [route.path for route in app.routes if hasattr(route, 'path')]
         
-        # Au moins quelques routes API devraient exister
+        # At least some API routes should exist
         api_routes = [path for path in api_paths if path.startswith('/api')]
         assert len(api_routes) > 0
     
     @patch('app.services.card_service.CardService.search_cards')
     def test_card_search_endpoint(self, mock_search, client):
-        """Test l'endpoint de recherche de cartes."""
-        # Mock du résultat de recherche
+        """Test the card search endpoint."""
+        # Mock the search result
         mock_search.return_value = [
             {
                 "id": "lightning-bolt",
@@ -59,27 +57,27 @@ class TestAPIEndpoints:
             }
         ]
         
-        # Test de l'endpoint
+        # Test the endpoint
         response = client.get("/api/v1/cards/search?q=lightning")
         
-        # Vérifier que l'endpoint répond (même si la logique n'est pas complète)
-        # En cas d'erreur de dépendance, on s'attend à un 500 ou 422, pas 404
+        # Ensure the endpoint responds (even if the logic is not complete)
+        # On dependency errors, expect a 500 or 422, not 404
         assert response.status_code in [200, 422, 500]
     
     def test_health_check_or_basic_endpoint(self, client):
-        """Test d'un endpoint basique."""
-        # Test que l'application répond
+        """Test a basic endpoint."""
+        # Test that the application responds
         response = client.get("/")
         
-        # L'endpoint devrait exister ou retourner une erreur contrôlée
+        # The endpoint should exist or return a controlled error
         assert response.status_code in [200, 404, 422, 500]
 
 
 class TestHTTPXCompatibility:
-    """Tests de compatibilité avec HTTPX."""
+    """HTTPX compatibility tests."""
     
     def test_httpx_client_creation(self):
-        """Test la création d'un client HTTPX."""
+        """Test creating an HTTPX client."""
         import httpx
         
         with httpx.Client() as client:
@@ -87,7 +85,7 @@ class TestHTTPXCompatibility:
     
     @pytest.mark.asyncio
     async def test_httpx_async_client(self):
-        """Test le client HTTPX asynchrone."""
+        """Test the async HTTPX client."""
         import httpx
         
         async with httpx.AsyncClient() as client:
@@ -95,24 +93,24 @@ class TestHTTPXCompatibility:
 
 
 class TestFastAPITestClient:
-    """Tests du TestClient FastAPI."""
+    """FastAPI TestClient tests."""
     
     def test_test_client_creation(self):
-        """Test la création du TestClient."""
+        """Test creating the TestClient."""
         client = TestClient(app)
         assert client is not None
     
     def test_test_client_context_manager(self):
-        """Test l'utilisation du TestClient comme context manager."""
+        """Test using the TestClient as a context manager."""
         with TestClient(app) as client:
             assert client is not None
 
 
 class TestJinja2Templates:
-    """Tests des templates Jinja2."""
+    """Jinja2 template tests."""
     
     def test_jinja2_template_creation(self):
-        """Test la création d'un template Jinja2."""
+        """Test creating a Jinja2 template."""
         from jinja2 import Template
         
         template = Template("Hello {{ name }}!")
@@ -120,7 +118,7 @@ class TestJinja2Templates:
         assert result == "Hello World!"
     
     def test_fastapi_templates_import(self):
-        """Test l'import des templates FastAPI."""
+        """Test importing FastAPI templates."""
         from fastapi.templating import Jinja2Templates
         
         templates = Jinja2Templates(directory="app/templates")

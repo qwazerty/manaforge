@@ -1,6 +1,4 @@
-"""
-Tests de base pour vérifier la compatibilité avec les nouvelles versions des packages.
-"""
+"""Basic tests to verify compatibility with the new package versions."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,77 +8,77 @@ from app.main import app
 
 
 class TestBasicFunctionality:
-    """Tests de base pour l'application."""
+    """Basic tests for the application."""
     
     @pytest.fixture
     def client(self):
-        """Client de test FastAPI."""
+        """FastAPI test client."""
         with TestClient(app) as client:
             yield client
     
     def test_app_creation(self):
-        """Test que l'application FastAPI se crée correctement."""
+        """Test that the FastAPI application is created properly."""
         assert app is not None
         assert app.title == "ManaForge"
         assert app.version == "0.1.0"
     
     def test_static_files_mount(self):
-        """Test que les fichiers statiques sont montés."""
-        # Vérifier que le mount point existe dans les routes
+        """Test that the static files are mounted."""
+        # Ensure the mount point exists in the routes
         static_mounts = [route for route in app.routes if hasattr(route, 'path') and route.path == '/static']
         assert len(static_mounts) > 0
     
     def test_routers_included(self):
-        """Test que les routeurs sont inclus."""
-        # Vérifier qu'il y a des routes API
+        """Test that the routers are included."""
+        # Ensure there are API routes
         api_routes = [route for route in app.routes if hasattr(route, 'path') and route.path.startswith('/api')]
         assert len(api_routes) > 0
 
 
 class TestPackageCompatibility:
-    """Tests de compatibilité des packages."""
+    """Package compatibility tests."""
     
     def test_fastapi_import(self):
-        """Test que FastAPI s'importe correctement."""
+        """Test that FastAPI imports correctly."""
         from fastapi import FastAPI
         assert FastAPI is not None
     
     def test_pydantic_import(self):
-        """Test que Pydantic s'importe correctement."""
+        """Test that Pydantic imports correctly."""
         from pydantic import BaseModel
         assert BaseModel is not None
     
     def test_motor_import(self):
-        """Test que Motor s'importe correctement."""
+        """Test that Motor imports correctly."""
         from motor.motor_asyncio import AsyncIOMotorClient
         assert AsyncIOMotorClient is not None
     
     def test_pytest_asyncio_import(self):
-        """Test que pytest-asyncio s'importe correctement."""
+        """Test that pytest-asyncio imports correctly."""
         import pytest_asyncio
         assert pytest_asyncio is not None
     
     def test_httpx_import(self):
-        """Test que HTTPX s'importe correctement."""
+        """Test that HTTPX imports correctly."""
         import httpx
         assert httpx is not None
     
     def test_jinja2_import(self):
-        """Test que Jinja2 s'importe correctement."""
+        """Test that Jinja2 imports correctly."""
         from jinja2 import Template
         assert Template is not None
     
     def test_uvicorn_import(self):
-        """Test que Uvicorn s'importe correctement."""
+        """Test that Uvicorn imports correctly."""
         import uvicorn
         assert uvicorn is not None
 
 
 class TestPydanticModels:
-    """Tests des modèles Pydantic avec la nouvelle version."""
+    """Pydantic model tests for the new version."""
     
     def test_pydantic_model_creation(self):
-        """Test la création d'un modèle Pydantic basique."""
+        """Test creating a basic Pydantic model."""
         from pydantic import BaseModel
         
         class TestModel(BaseModel):
@@ -92,29 +90,29 @@ class TestPydanticModels:
         assert model.value == 10
     
     def test_pydantic_validation(self):
-        """Test la validation Pydantic."""
+        """Test Pydantic validation."""
         from pydantic import BaseModel, ValidationError
         
         class TestModel(BaseModel):
             name: str
             value: int
         
-        # Test validation réussie
+        # Successful validation test
         model = TestModel(name="test", value=42)
         assert model.name == "test"
         assert model.value == 42
         
-        # Test validation échouée
+        # Failed validation test
         with pytest.raises(ValidationError):
             TestModel(name="test", value="not_an_int")
 
 
 @pytest.mark.asyncio
 class TestAsyncFunctionality:
-    """Tests des fonctionnalités asynchrones."""
+    """Asynchronous functionality tests."""
     
     async def test_async_function(self):
-        """Test qu'une fonction async fonctionne."""
+        """Test that an async function works."""
         async def test_func():
             return "success"
         
@@ -125,35 +123,35 @@ class TestAsyncFunctionality:
     @patch('app.core.database.close_mongo_connection')
     @patch('app.core.database.get_database')
     async def test_lifespan_mock(self, mock_get_db, mock_close, mock_connect):
-        """Test du lifespan avec des mocks."""
-        # Mock des fonctions de base de données
+        """Test the lifespan with mocks."""
+        # Mock the database functions
         mock_connect.return_value = None
         mock_close.return_value = None
         mock_db = AsyncMock()
         mock_get_db.return_value = mock_db
 
-        # Créer une application de test simple pour le lifespan
+        # Create a simple test app for the lifespan
         from fastapi import FastAPI
         test_app = FastAPI()
         
-        # Mock du CardService
+        # Mock the CardService
         with patch('app.services.card_service.CardService') as mock_card_service:
             mock_card_service_instance = AsyncMock()
             mock_card_service.return_value = mock_card_service_instance
 
-            # Test que nous pouvons créer l'app sans erreur
+            # Test that we can create the app without errors
             from app.main import lifespan
 
-            # Simuler le cycle de vie
+            # Simulate the lifecycle
             lifespan_context = lifespan(test_app)
             try:
                 await lifespan_context.__aenter__()
                 await lifespan_context.__aexit__(None, None, None)
             except Exception:
-                # Si le lifespan réel est utilisé, on vérifie juste qu'il n'y a pas d'erreur critique
+            # If the real lifespan is used, just ensure there are no critical errors
                 pass
 
-            # Vérifier que les fonctions auraient pu être appelées (test plus flexible)
+            # Ensure the functions could have been called (more flexible test)
             assert mock_connect.call_count >= 0
             assert mock_close.call_count >= 0
             assert mock_close.call_count >= 0

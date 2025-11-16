@@ -717,13 +717,13 @@ function sendToBottomLibrary(cardId, sourceZone, uniqueCardId = null, callback =
 
 function deleteToken(uniqueCardId, cardName = 'Token') {
     if (!uniqueCardId) {
-        GameUI.showNotification('Token introuvable', 'error');
+        GameUI.showNotification('Token not found', 'error');
         return;
     }
 
     performGameAction('delete_token', { unique_id: uniqueCardId });
     const label = cardName || 'Token';
-    GameUI.showNotification(`${label} supprimé`, 'info');
+    GameUI.showNotification(`${label} removed`, 'info');
 }
 
 function millTopLibraryCard() {
@@ -954,11 +954,11 @@ function modifyPlayerCounter(playerId, counterType, amount) {
     const parsedAmount = parseInt(amount, 10);
 
     if (!normalizedType) {
-        GameUI.showNotification('Type de compteur requis', 'warning');
+        GameUI.showNotification('Counter type required', 'warning');
         return;
     }
     if (Number.isNaN(parsedAmount) || parsedAmount === 0) {
-        GameUI.showNotification('Valeur de compteur invalide', 'warning');
+        GameUI.showNotification('Invalid counter value', 'warning');
         return;
     }
 
@@ -981,11 +981,11 @@ function setPlayerCounter(playerId, counterType, value) {
     const parsedValue = parseInt(value, 10);
 
     if (!normalizedType) {
-        GameUI.showNotification('Type de compteur requis', 'warning');
+        GameUI.showNotification('Counter type required', 'warning');
         return;
     }
     if (Number.isNaN(parsedValue)) {
-        GameUI.showNotification('Valeur de compteur invalide', 'warning');
+        GameUI.showNotification('Invalid counter value', 'warning');
         return;
     }
 
@@ -997,8 +997,8 @@ function setPlayerCounter(playerId, counterType, value) {
 
     const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
     const message = parsedValue <= 0
-        ? `Suppression des compteurs ${formattedType}`
-        : `${formattedType} réglé à ${parsedValue}`;
+        ? `Removed ${formattedType} counters`
+        : `${formattedType} set to ${parsedValue}`;
     GameUI.showNotification(`${playerId}: ${message}`, 'info');
 }
 
@@ -1097,8 +1097,8 @@ window.GameActions = {
 };
 
 /**
- * Déplacement générique d'une carte entre zones via drag and drop.
- * Utilise les API existantes selon la zone cible.
+ * Generic card movement between zones via drag and drop.
+ * Uses the existing APIs based on the target zone.
  */
 function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null, positionIndex = null, options = null) {
     // Close hover preview when moving a card

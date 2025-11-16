@@ -1,6 +1,4 @@
-"""
-Tests pour les modèles de données avec les nouvelles versions de Pydantic.
-"""
+"""Tests for the data models with the new versions of Pydantic."""
 
 import pytest
 from pydantic import ValidationError
@@ -9,10 +7,10 @@ from app.models.game import Card, Deck, GameState, CardType, Rarity, Color
 
 
 class TestCardModel:
-    """Tests pour le modèle Card."""
+    """Tests for the Card model."""
     
     def test_card_creation_basic(self):
-        """Test la création d'une carte basique."""
+        """Test creating a basic card."""
         card = Card(
             id="bolt-001",
             name="Lightning Bolt",
@@ -30,7 +28,7 @@ class TestCardModel:
         assert Color.RED in card.colors
     
     def test_card_with_power_toughness(self):
-        """Test création d'une créature avec force/endurance."""
+        """Test creating a creature with power/toughness."""
         card = Card(
             id="bears-001",
             name="Grizzly Bears",
@@ -49,36 +47,36 @@ class TestCardModel:
         assert card.card_type == CardType.CREATURE
     
     def test_card_validation_error(self):
-        """Test les erreurs de validation."""
-        # Test avec un type de carte invalide
+        """Test validation errors."""
+        # Test with an invalid card type
         with pytest.raises(ValidationError):
             Card(
                 id="invalid-001",
                 name="Invalid Card",
                 mana_cost="1",
-                card_type="invalid_type",  # Type invalide
+                card_type="invalid_type",  # Invalid type
                 rarity=Rarity.COMMON,
                 colors=[Color.WHITE]
             )
 
 
 class TestEnums:
-    """Tests pour les énumérations."""
+    """Tests for the enums."""
     
     def test_card_type_enum(self):
-        """Test l'énumération CardType."""
+        """Test the CardType enum."""
         assert CardType.CREATURE == "creature"
         assert CardType.INSTANT == "instant"
         assert CardType.LAND == "land"
     
     def test_rarity_enum(self):
-        """Test l'énumération Rarity."""
+        """Test the Rarity enum."""
         assert Rarity.COMMON == "common"
         assert Rarity.RARE == "rare"
         assert Rarity.MYTHIC == "mythic"
     
     def test_color_enum(self):
-        """Test l'énumération Color."""
+        """Test the Color enum."""
         assert Color.WHITE == "W"
         assert Color.BLUE == "U"
         assert Color.BLACK == "B"
@@ -87,10 +85,10 @@ class TestEnums:
 
 
 class TestDeckModel:
-    """Tests pour le modèle Deck."""
+    """Tests for the Deck model."""
     
     def test_deck_creation(self):
-        """Test la création d'un deck."""
+        """Test creating a deck."""
         card = Card(
             id="bolt-001",
             name="Lightning Bolt",
@@ -112,7 +110,7 @@ class TestDeckModel:
         assert deck.format == "standard"
     
     def test_empty_deck(self):
-        """Test la création d'un deck vide."""
+        """Test creating an empty deck."""
         deck = Deck(
             name="Empty Deck",
             cards=[],
@@ -125,10 +123,10 @@ class TestDeckModel:
 
 
 class TestPydanticV2Features:
-    """Tests des nouvelles fonctionnalités de Pydantic v2."""
+    """Tests for new Pydantic v2 features."""
     
     def test_model_dump(self):
-        """Test la nouvelle méthode model_dump de Pydantic v2."""
+        """Test the new Pydantic v2 model_dump method."""
         card = Card(
             id="test-001",
             name="Test Card",
@@ -139,14 +137,14 @@ class TestPydanticV2Features:
             text="Test text."
         )
         
-        # Test model_dump (nouvelle API Pydantic v2)
+        # Test model_dump (new Pydantic v2 API)
         data = card.model_dump()
         assert isinstance(data, dict)
         assert data["name"] == "Test Card"
         assert data["card_type"] == "instant"
     
     def test_model_validate(self):
-        """Test la méthode model_validate de Pydantic v2."""
+        """Test the Pydantic v2 model_validate method."""
         card_data = {
             "id": "test-002",
             "name": "Test Card",
@@ -157,7 +155,7 @@ class TestPydanticV2Features:
             "text": "Draw a card."
         }
         
-        # Test model_validate (nouvelle API Pydantic v2)
+        # Test model_validate (new Pydantic v2 API)
         card = Card.model_validate(card_data)
         assert card.name == "Test Card"
         assert card.mana_cost == "2U"

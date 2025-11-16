@@ -57,7 +57,7 @@ class CardSearchModal {
                 <!-- Header -->
                 <div class="flex items-center justify-between p-4 border-b border-gray-700">
                     <h2 class="text-xl font-bold text-white">
-                        🔍 Ajouter à <span class="text-blue-400">${this.getZoneDisplayName(this.targetZone)}</span>
+                        🔍 Add to <span class="text-blue-400">${this.getZoneDisplayName(this.targetZone)}</span>
                     </h2>
                     <button id="close-search-modal" class="text-gray-400 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,7 +72,7 @@ class CardSearchModal {
                         <input 
                             id="card-search-input" 
                             type="text" 
-                            placeholder="Tapez le nom d'une carte (ex: Bir → Birds of Paradise, Light → Lightning Bolt...)"
+                            placeholder="Type a card name (e.g., Bir → Birds of Paradise, Light → Lightning Bolt...)"
                             class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
                             autocomplete="off"
                         >
@@ -101,8 +101,8 @@ class CardSearchModal {
                             <svg class="w-20 h-20 mx-auto mb-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
-                            <p class="text-xl mb-2">Commencez à taper pour voir les suggestions</p>
-                            <p class="text-gray-500">Quelques lettres suffisent : "Bir" trouve "Birds of Paradise"</p>
+                            <p class="text-xl mb-2">Start typing to see suggestions</p>
+                            <p class="text-gray-500">A few letters are enough: "Bir" finds "Birds of Paradise"</p>
                         </div>
                     </div>
                 </div>
@@ -135,7 +135,7 @@ class CardSearchModal {
         const searchInput = this.modal.querySelector('#card-search-input');
         searchInput.addEventListener('input', this.handleSearchInput.bind(this));
         
-        // Token checkbox - relancer la recherche quand elle change
+        // Token checkbox - re-run search when it changes
         const tokenCheckbox = this.modal.querySelector('#token-checkbox');
         tokenCheckbox.addEventListener('change', () => {
             const query = searchInput.value.trim();
@@ -194,7 +194,7 @@ class CardSearchModal {
                     <svg class="w-20 h-20 mx-auto mb-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
-                    <p class="text-xl mb-2">Commencez à taper pour voir les suggestions</p>
+                    <p class="text-xl mb-2">Start typing to see suggestions</p>
                 </div>
             `;
             return;
@@ -203,8 +203,8 @@ class CardSearchModal {
         if (query.length < 2) {
             resultsContainer.innerHTML = `
                 <div class="text-center text-gray-400 py-8">
-                    <p class="text-lg">Continuez à taper...</p>
-                    <p class="text-sm text-gray-500 mt-2">Au moins 2 caractères requis</p>
+                    <p class="text-lg">Keep typing...</p>
+                    <p class="text-sm text-gray-500 mt-2">At least 2 characters required</p>
                 </div>
             `;
             return;
@@ -243,7 +243,7 @@ class CardSearchModal {
             this.displayResults(cards, query);
         } catch (error) {
             console.error('Search error:', error);
-            this.displayError('Erreur lors de la recherche');
+            this.displayError('Error during the search');
         } finally {
             loadingEl.classList.add('hidden');
         }
@@ -262,8 +262,8 @@ class CardSearchModal {
                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.837 0-5.374-1.194-7.172-3.109M15 11.25L8.75 4.5a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75H15z"/>
                     </svg>
-                    <p class="text-lg mb-2">Aucune carte trouvée</p>
-                    <p class="text-sm text-gray-500">Essayez avec d'autres mots-clés pour "${query}"</p>
+                    <p class="text-lg mb-2">No cards found</p>
+                    <p class="text-sm text-gray-500">Try different keywords for "${query}"</p>
                 </div>
             `;
             return;
@@ -295,8 +295,8 @@ class CardSearchModal {
         resultsContainer.innerHTML = `
             <div>
                 <div class="text-sm text-gray-400 mb-4 flex items-center justify-between">
-                    <span>💡 ${cards.length} résultat${cards.length > 1 ? 's' : ''} pour "${query}"</span>
-                    <span class="text-xs">Cliquez sur une carte pour l'ajouter</span>
+                    <span>💡 ${cards.length} result${cards.length > 1 ? 's' : ''} for "${query}"</span>
+                    <span class="text-xs">Click a card to add it</span>
                 </div>
                 <div class="grid grid-cols-4 gap-4">
                     ${cardsList}
@@ -367,7 +367,7 @@ class CardSearchModal {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <p class="text-lg">${message}</p>
-                <p class="text-sm text-gray-500 mt-2">Vérifiez votre connexion et réessayez</p>
+                <p class="text-sm text-gray-500 mt-2">Check your connection and try again</p>
             </div>
         `;
     }
@@ -436,7 +436,7 @@ class CardSearchModal {
                     const tokenText = isToken ? ' (token)' : '';
                     const zoneName = isToken ? 'le champ de bataille' : this.getZoneDisplayName(this.targetZone);
                     UINotifications.showNotification(
-                        `✅ ${card.name}${tokenText} ajoutée à ${zoneName}`,
+                        `✅ ${card.name}${tokenText} added to ${zoneName}`,
                         'success'
                     );
                 }
@@ -447,7 +447,7 @@ class CardSearchModal {
         } catch (error) {
             console.error('Error adding card:', error);
             if (typeof UINotifications !== 'undefined') {
-                UINotifications.showNotification('❌ Erreur lors de l\'ajout de la carte', 'error');
+                UINotifications.showNotification('❌ Error adding the card', 'error');
             }
         }
     }
@@ -457,11 +457,11 @@ class CardSearchModal {
      */
     getZoneDisplayName(zone) {
         const zoneNames = {
-            'hand': 'la main',
-            'battlefield': 'le champ de bataille',
-            'graveyard': 'le cimetière',
-            'exile': 'l\'exil',
-            'library': 'la bibliothèque'
+            'hand': 'the hand',
+            'battlefield': 'the battlefield',
+            'graveyard': 'the graveyard',
+            'exile': 'the exile',
+            'library': 'the library'
         };
         return zoneNames[zone] || zone;
     }

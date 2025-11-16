@@ -1718,7 +1718,7 @@ class UIActionHistory {
         if (normalizedAction === 'change_phase') {
             const phaseName = this._formatPhaseName(entry.phase);
             if (phaseName) {
-                return `Phase forcée : ${phaseName}`;
+                return `Forced phase: ${phaseName}`;
             }
         }
 
