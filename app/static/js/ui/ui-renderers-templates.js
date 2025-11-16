@@ -6,6 +6,8 @@
 
 class UIRenderersTemplates {
     static _revealPopupElements = new Map();
+    static _actionPanelComponent = null;
+    static _actionPanelTarget = null;
     // ===== MAIN RENDERING METHODS =====
     
     /**
@@ -167,30 +169,322 @@ class UIRenderersTemplates {
         const gameState = GameCore.getGameState();
         const actionPanelContainer = document.getElementById('action-panel');
         
-        if (!this._validateContainer(actionPanelContainer, 'Action panel container')) return;
-        if (!this._validateGameState(gameState)) return;
+        if (!this._validateContainer(actionPanelContainer, 'Action panel container')) {
+            this._destroyActionPanelComponent();
+            return;
+        }
+        if (!this._validateGameState(gameState)) {
+            this._destroyActionPanelComponent();
+            return;
+        }
 
         try {
-            const currentSelectedPlayer = GameCore.getSelectedPlayer();
-            const isActivePlayer = currentSelectedPlayer !== 'spectator';
-            const stack = gameState.stack || [];
-            
-            actionPanelContainer.innerHTML = `
-                <h4 class="font-magic font-semibold mb-2 text-arena-accent flex items-center">
-                    <span class="mr-2">⚡</span>Game Actions
-                </h4>
-                ${isActivePlayer ? this.generateActionButtons(gameState) : this.generateSpectatorView(gameState)}
-            `;
+            const stack = Array.isArray(gameState.stack) ? gameState.stack : [];
+            const panelProps = this._buildActionPanelProps(gameState);
+
+            this._renderActionPanelSvelte(actionPanelContainer, panelProps);
 
             this._updateStackOverlay(stack, gameState);
             this._updateRevealOverlay(gameState);
             this._ensureCommanderPopups(gameState);
         } catch (error) {
+            this._destroyActionPanelComponent();
             this._renderError(actionPanelContainer, 'Error', error.message);
             this._updateStackOverlay([], null);
             this._updateRevealOverlay(null);
             this._ensureCommanderPopups(null);
         }
+    }
+
+    static _renderActionPanelSvelte(container, props) {
+        if (typeof ActionPanelComponent === 'undefined') {
+            container.innerHTML = `
+                <div class="text-center py-4 text-arena-text-dim text-sm">
+                    Unable to load action panel
+                </div>
+            `;
+            return;
+        }
+
+        if (!this._actionPanelComponent || this._actionPanelTarget !== container) {
+            this._destroyActionPanelComponent();
+            container.innerHTML = '';
+            this._actionPanelComponent = new ActionPanelComponent.default({
+                target: container,
+                props
+            });
+            this._actionPanelTarget = container;
+        } else {
+            this._actionPanelComponent.$set(props);
+        }
+    }
+
+    static _destroyActionPanelComponent() {
+        if (this._actionPanelComponent) {
+            this._actionPanelComponent.$destroy();
+            this._actionPanelComponent = null;
+            this._actionPanelTarget = null;
+        }
+    }
+
+    static _buildActionPanelProps(gameState) {
+        const selectedPlayer = GameCore.getSelectedPlayer();
+        const spectatorMode = selectedPlayer === 'spectator';
+        const players = Array.isArray(gameState?.players) ? gameState.players : [];
+        const currentPhase = gameState?.phase || 'begin';
+        const currentTurn = typeof gameState?.turn === 'number' ? gameState.turn : 1;
+        const activePlayerIndex = typeof gameState?.active_player === 'number'
+            ? gameState.active_player
+            : 0;
+        const priorityPlayerIndex = typeof gameState?.priority_player === 'number'
+            ? gameState.priority_player
+            : activePlayerIndex;
+        const phaseMode = String(gameState?.phase_mode || 'strict').toLowerCase();
+        const phaseModeLabel = phaseMode === 'strict' ? 'Strict' : 'Casual';
+
+        const activePlayerName = this._getPlayerDisplayName(
+            players[activePlayerIndex],
+            this._getSeatFallbackName(activePlayerIndex)
+        );
+        const priorityPlayerName = this._getPlayerDisplayName(
+            players[priorityPlayerIndex],
+            this._getSeatFallbackName(priorityPlayerIndex)
+        );
+
+        const props = {
+            headerIcon: '⚡',
+            headerTitle: 'Game Actions',
+            spectatorMode,
+            gameInfo: {
+                turn: currentTurn,
+                active: activePlayerName,
+                priority: priorityPlayerName
+            },
+            phases: Array.isArray(UIConfig?.GAME_PHASES)
+                ? UIConfig.GAME_PHASES.map((phase) => ({ ...phase }))
+                : [],
+            currentPhase,
+            readOnlyPhases: spectatorMode,
+            phaseModeLabel,
+            phaseClickHandler: this._createPhaseClickHandler()
+        };
+
+        if (spectatorMode) {
+            props.spectatorInfo = {
+                icon: '👁️',
+                title: 'Spectator Mode',
+                message: 'Game controls are disabled while you are watching.'
+            };
+            return props;
+        }
+
+        const controlledPlayerIndex = selectedPlayer === 'player1'
+            ? 0
+            : selectedPlayer === 'player2'
+                ? 1
+                : null;
+
+        props.passButton = this._buildPassButtonConfig({
+            gameState,
+            players,
+            controlledPlayerIndex,
+            activePlayerIndex,
+            priorityPlayerIndex
+        });
+        props.searchButton = this._buildSearchButtonConfig();
+        props.quickButtons = this._buildQuickActionButtons();
+        return props;
+    }
+
+    static _createPhaseClickHandler() {
+        return (phaseId) => {
+            if (!phaseId || typeof GameActions === 'undefined' || typeof GameActions.changePhase !== 'function') {
+                return;
+            }
+            GameActions.changePhase(phaseId);
+        };
+    }
+
+    static _buildPassButtonConfig(options) {
+        const {
+            gameState,
+            players,
+            controlledPlayerIndex,
+            activePlayerIndex,
+            priorityPlayerIndex
+        } = options;
+
+        const stack = Array.isArray(gameState?.stack) ? gameState.stack : [];
+        const phaseMode = String(gameState?.phase_mode || 'strict').toLowerCase();
+        const currentPhase = gameState?.phase || 'begin';
+        const combatState = gameState?.combat_state || {};
+        const expectedCombatPlayer = combatState.expected_player || null;
+        const passClasses = (UIConfig?.CSS_CLASSES?.button?.passPhase)
+            || (UIConfig?.CSS_CLASSES?.button?.primary)
+            || '';
+
+        let passDisabled = true;
+        let passLabel = '⏭️ Pass Phase';
+        let passAction = 'pass_phase';
+        let passTitle = 'Pass current phase';
+
+        const activePlayerName = this._getPlayerDisplayName(
+            players[activePlayerIndex],
+            this._getSeatFallbackName(activePlayerIndex)
+        );
+
+        if (controlledPlayerIndex === null) {
+            passTitle = 'Select a player to perform actions';
+        } else {
+            const isStrictMode = phaseMode === 'strict';
+            const hasStack = stack.length > 0;
+            const isActivePlayer = controlledPlayerIndex === activePlayerIndex;
+            const isPriorityPlayer = controlledPlayerIndex === priorityPlayerIndex;
+            const opponentSeatIndex = controlledPlayerIndex === 0 ? 1 : 0;
+            const opponentName = this._getPlayerDisplayName(
+                players[opponentSeatIndex],
+                this._getSeatFallbackName(opponentSeatIndex)
+            );
+            const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
+
+            if (isStrictMode && hasStack) {
+                if (isPriorityPlayer) {
+                    passDisabled = false;
+                    passAction = 'resolve_stack';
+                    passLabel = '🎯 Resolve';
+                    passTitle = 'Resolve the top spell on the stack';
+                } else {
+                    passDisabled = true;
+                    passTitle = `Waiting for ${opponentName} to resolve the stack`;
+                }
+            } else if (hasStack) {
+                passDisabled = !isActivePlayer;
+                passAction = 'resolve_stack';
+                passLabel = '🎯 Resolve';
+                passTitle = passDisabled
+                    ? `Waiting for ${activePlayerName} to resolve the stack`
+                    : 'Resolve the top spell on the stack';
+            } else {
+                passDisabled = !isActivePlayer;
+                passAction = 'pass_phase';
+                passLabel = '⏭️ Pass Phase';
+                passTitle = passDisabled
+                    ? `Waiting for ${activePlayerName} to pass the phase`
+                    : 'Pass current phase';
+
+                if (
+                    currentPhase === 'block' &&
+                    expectedCombatPlayer &&
+                    expectedCombatPlayer !== controlledPlayerKey
+                ) {
+                    passDisabled = true;
+                    passTitle = `Waiting for ${opponentName} to confirm blockers`;
+                }
+            }
+        }
+
+        let onClick = this._createGameActionHandler(passAction);
+
+        if (
+            ['attack', 'block'].includes(currentPhase) &&
+            typeof GameCombat !== 'undefined' &&
+            typeof GameCombat.getCombatButtonConfig === 'function'
+        ) {
+            const combatConfig = GameCombat.getCombatButtonConfig();
+            if (combatConfig) {
+                passLabel = combatConfig.label;
+                passTitle = combatConfig.title;
+                passDisabled = !combatConfig.enabled;
+
+                if (combatConfig.action === 'declare_attackers' &&
+                    typeof GameCombat.confirmAttackers === 'function') {
+                    onClick = () => {
+                        if (!passDisabled) {
+                            GameCombat.confirmAttackers();
+                        }
+                    };
+                } else if (combatConfig.action === 'declare_blockers' &&
+                    typeof GameCombat.confirmBlockers === 'function') {
+                    onClick = () => {
+                        if (!passDisabled) {
+                            GameCombat.confirmBlockers();
+                        }
+                    };
+                } else if (combatConfig.action) {
+                    onClick = this._createGameActionHandler(combatConfig.action);
+                }
+            }
+        }
+
+        return {
+            label: passLabel,
+            title: passTitle,
+            disabled: passDisabled,
+            className: passClasses,
+            onClick
+        };
+    }
+
+    static _buildSearchButtonConfig() {
+        const className = `${UIConfig?.CSS_CLASSES?.button?.secondary || ''} w-full`;
+        return {
+            label: '🔍 Search cards',
+            title: 'Search for a card to add to the battlefield',
+            disabled: false,
+            className,
+            onClick: () => {
+                if (typeof window !== 'undefined' && typeof window.showCardSearch === 'function') {
+                    window.showCardSearch('battlefield');
+                }
+            }
+        };
+    }
+
+    static _buildQuickActionButtons() {
+        const baseClass = UIConfig?.CSS_CLASSES?.button?.secondary || '';
+
+        return [
+            {
+                id: 'untap-all',
+                label: '🔄 Untap All',
+                title: 'Untap all permanents',
+                disabled: false,
+                className: baseClass,
+                onClick: () => {
+                    if (typeof GameActions !== 'undefined' && typeof GameActions.untapAll === 'function') {
+                        GameActions.untapAll();
+                    }
+                }
+            },
+            {
+                id: 'resolve-all-stack',
+                label: '🎯 Resolve All Stack',
+                title: 'Resolve all spells on the stack',
+                disabled: false,
+                className: baseClass,
+                onClick: () => {
+                    if (
+                        typeof GameActions !== 'undefined' &&
+                        typeof GameActions.performGameAction === 'function'
+                    ) {
+                        GameActions.performGameAction('resolve_all_stack');
+                    }
+                }
+            }
+        ];
+    }
+
+    static _createGameActionHandler(action) {
+        return () => {
+            if (
+                !action ||
+                typeof GameActions === 'undefined' ||
+                typeof GameActions.performGameAction !== 'function'
+            ) {
+                return;
+            }
+            GameActions.performGameAction(action);
+        };
     }
 
     // ===== TEMPLATE GENERATION METHODS =====
@@ -210,138 +504,6 @@ class UIRenderersTemplates {
         return `
             <div class="card-zones-container">
                 ${orderedZones.join('')}
-            </div>
-        `;
-    }
-
-    /**
-     * Generate action buttons for active player
-     */
-    static generateActionButtons(gameStateParam = null) {
-        const gameState = gameStateParam || GameCore.getGameState();
-        const currentPhase = gameState?.phase || 'begin';
-        const currentTurn = gameState?.turn || 1;
-        const activePlayer = gameState?.active_player || 0;
-        const players = Array.isArray(gameState?.players) ? gameState.players : [];
-        const priorityPlayer = typeof gameState?.priority_player === 'number'
-            ? gameState.priority_player
-            : activePlayer;
-        const stack = Array.isArray(gameState?.stack) ? gameState.stack : [];
-        const phaseMode = String(gameState?.phase_mode || 'strict').toLowerCase();
-        const phaseModeLabel = phaseMode === 'strict' ? 'Strict' : 'Casual';
-        const combatState = gameState?.combat_state || {};
-        const expectedCombatPlayer = combatState.expected_player || null;
-        const currentSelectedPlayer = GameCore.getSelectedPlayer();
-        let controlledPlayerIndex = null;
-
-        if (currentSelectedPlayer === 'player1') {
-            controlledPlayerIndex = 0;
-        } else if (currentSelectedPlayer === 'player2') {
-            controlledPlayerIndex = 1;
-        }
-
-        const passConfig = {
-            passDisabled: true,
-            passLabel: '⏭️ Pass Phase',
-            passAction: 'pass_phase',
-            passTitle: 'Pass current phase'
-        };
-        const activePlayerName = this._getPlayerDisplayName(
-            players[activePlayer],
-            this._getSeatFallbackName(activePlayer)
-        );
-
-        if (controlledPlayerIndex === null) {
-            passConfig.passTitle = 'Select a player to perform actions';
-        } else {
-            const isStrictMode = phaseMode === 'strict';
-            const hasStack = stack.length > 0;
-            const isActivePlayer = controlledPlayerIndex === activePlayer;
-            const isPriorityPlayer = controlledPlayerIndex === priorityPlayer;
-            const opponentSeatIndex = controlledPlayerIndex === 0 ? 1 : 0;
-            const opponentName = this._getPlayerDisplayName(
-                players[opponentSeatIndex],
-                this._getSeatFallbackName(opponentSeatIndex)
-            );
-            const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
-
-            if (isStrictMode && hasStack) {
-                if (isPriorityPlayer) {
-                    passConfig.passDisabled = false;
-                    passConfig.passAction = 'resolve_stack';
-                    passConfig.passLabel = '🎯 Resolve';
-                    passConfig.passTitle = 'Resolve the top spell on the stack';
-                } else {
-                    passConfig.passDisabled = true;
-                    passConfig.passTitle = `Waiting for ${opponentName} to resolve the stack`;
-                }
-            } else {
-                // Casual mode or no stack in strict mode
-                if (hasStack) {
-                    // There's a stack, show Resolve button
-                    passConfig.passDisabled = !isActivePlayer;
-                    passConfig.passAction = 'resolve_stack';
-                    passConfig.passLabel = '🎯 Resolve';
-                    passConfig.passTitle = passConfig.passDisabled
-                        ? `Waiting for ${activePlayerName} to resolve the stack`
-                        : 'Resolve the top spell on the stack';
-                } else {
-                    // No stack, show Pass Phase button
-                    passConfig.passDisabled = !isActivePlayer;
-                    passConfig.passAction = 'pass_phase';
-                    passConfig.passLabel = '⏭️ Pass Phase';
-                    passConfig.passTitle = passConfig.passDisabled
-                        ? `Waiting for ${activePlayerName} to pass the phase`
-                        : 'Pass current phase';
-
-                    if (
-                        currentPhase === 'block' &&
-                        expectedCombatPlayer &&
-                        expectedCombatPlayer !== controlledPlayerKey
-                    ) {
-                        passConfig.passDisabled = true;
-                        passConfig.passTitle = `Waiting for ${opponentName} to confirm blockers`;
-                    }
-                }
-            }
-        }
-        
-        return `
-            <div>
-                ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
-                ${this._generateGamePhases(currentPhase)}
-                <div class="text-center text-xs text-arena-muted mb-3">
-                    Phase Mode: ${phaseModeLabel}
-                </div>
-                ${this._generateActionButtonsSection(passConfig)}
-            </div>
-        `;
-    }
-
-    /**
-     * Generate spectator view
-     */
-    static generateSpectatorView(gameStateParam = null) {
-        const gameState = gameStateParam || GameCore.getGameState() || {};
-        const currentPhase = gameState.phase || 'begin';
-        const currentTurn = typeof gameState.turn === 'number' ? gameState.turn : 1;
-        const activePlayer = typeof gameState.active_player === 'number'
-            ? gameState.active_player
-            : 0;
-        const priorityPlayer = typeof gameState.priority_player === 'number'
-            ? gameState.priority_player
-            : activePlayer;
-        const players = Array.isArray(gameState.players) ? gameState.players : [];
-
-        return `
-            <div>
-                ${this._generateGameInfoSection(currentTurn, activePlayer, players, priorityPlayer)}
-                ${this._generateGamePhases(currentPhase, { readOnly: true })}
-                <div class="text-center py-6 border-t border-arena-accent/10">
-                    <div class="text-3xl mb-2 leading-none">👁️</div>
-                    <div class="text-arena-accent font-semibold mb-1">Spectator Mode</div>
-                    <p class="text-arena-text-dim text-sm">Game controls are disabled while you are watching.</p>
-                </div>
             </div>
         `;
     }
@@ -551,219 +713,6 @@ class UIRenderersTemplates {
             'player2': { class: 'bg-red-500/20 border-red-500/50 text-red-400', title: 'Player 2', description: 'You control the second player position' },
             'spectator': { class: 'bg-purple-500/20 border-purple-500/50 text-purple-400', title: '👁️ Spectator', description: 'You are watching the battle unfold' }
         };
-    }
-
-    /**
-     * Generate game info section
-     */
-    static _generateGameInfoSection(currentTurn, activePlayer, players = [], priorityIndex = null) {
-        const activePlayerName = this._getPlayerDisplayName(
-            players[activePlayer],
-            this._getSeatFallbackName(activePlayer)
-        );
-        const resolvedPriorityIndex = priorityIndex === null ? activePlayer : priorityIndex;
-        const priorityName = this._getPlayerDisplayName(
-            players[resolvedPriorityIndex],
-            this._getSeatFallbackName(resolvedPriorityIndex)
-        );
-        
-        return `
-            <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="text-center">
-                    <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
-                        <div class="text-blue-300 font-semibold text-sm">Turn</div>
-                        <div class="text-lg font-bold text-arena-accent">${currentTurn}</div>
-                    </div>
-                </div>
-                <div class="text-center">
-                    <div class="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
-                        <div class="text-yellow-300 font-semibold text-sm">Active</div>
-                        <div class="text-lg font-bold text-arena-accent">${activePlayerName}</div>
-                    </div>
-                </div>
-                <div class="text-center">
-                    <div class="bg-purple-500/20 rounded-lg p-3 border border-purple-500/30">
-                        <div class="text-purple-300 font-semibold text-sm">Priority</div>
-                        <div class="text-lg font-bold text-arena-accent">${priorityName}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate game phases indicator
-     */
-    static _generateGamePhases(currentPhase, options = {}) {
-        const {
-            readOnly = false,
-        } = options;
-
-        const phases = [
-            { id: 'begin', name: 'Begin', icon: '🔄', type: 'phase' },
-            { id: 'main1', name: 'Main 1', icon: '🎯', type: 'phase' },
-            { id: 'attack', name: 'Attack', icon: '⚔️', type: 'phase' },
-            { id: 'block', name: 'Block', icon: '🛡️', type: 'phase' },
-            { id: 'damage', name: 'Damage', icon: '💥', type: 'phase' },
-            { id: 'main2', name: 'Main 2', icon: '✨', type: 'phase' },
-            { id: 'end', name: 'End', icon: '🏁', type: 'phase' }
-        ];
-
-        const normalizedPhase = currentPhase || 'begin';
-        const activeIndex = Math.max(
-            phases.findIndex(phase => phase.id === normalizedPhase),
-            0
-        );
-
-        const itemTemplate = phases.map((phase, index) => {
-            const isUnderlyingCurrent = normalizedPhase === phase.id;
-            const timelineState = index < activeIndex
-                ? 'completed'
-                : index === activeIndex
-                    ? 'current'
-                    : 'upcoming';
-
-            let stateClasses = '';
-            if (timelineState === 'current') {
-                stateClasses = 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 shadow';
-            } else if (timelineState === 'completed') {
-                stateClasses = readOnly
-                    ? 'text-green-300 border border-green-500/20'
-                    : 'text-green-200 border border-green-500/30';
-            } else {
-                stateClasses = readOnly
-                    ? 'text-arena-text-dim border border-transparent'
-                    : 'text-arena-text-dim border border-transparent';
-            }
-
-            const isInteractive = !readOnly && !isUnderlyingCurrent;
-            const onClickAttr = isInteractive
-                ? `onclick="GameActions.changePhase('${phase.id}')"`
-                : '';
-
-            let interactionClasses = isInteractive ? 'cursor-pointer' : 'cursor-default';
-            if (isInteractive) {
-                interactionClasses += timelineState === 'completed'
-                    ? ' hover:border-green-400/50 hover:text-green-100'
-                    : ' hover:text-arena-text hover:border-yellow-500/30';
-            }
-
-            const titleText = `${phase.name} Phase`;
-
-            return `
-                <div class="text-center py-2 px-1 rounded transition-all duration-200 ${stateClasses} ${interactionClasses}"
-                    title="${titleText}"
-                    ${onClickAttr}>
-                    <div class="text-lg mb-1 leading-none">${phase.icon}</div>
-                    <div class="text-xs font-medium leading-tight">${phase.name}</div>
-                </div>
-            `;
-        }).join('');
-
-        return `
-            <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
-                <div class="grid grid-cols-7 gap-1">
-                    ${itemTemplate}
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Generate action buttons section
-     */
-    static _generateActionButtonsSection(config = {}) {
-        const {
-            passDisabled = false,
-            passLabel = '⏭️ Pass Phase',
-            passAction = 'pass_phase',
-            passTitle = 'Pass current phase'
-        } = config;
-
-        const gameState = GameCore.getGameState();
-        const currentPhase = gameState?.phase || 'begin';
-        
-        // Show combat-specific button during the attack or block phases
-        let finalPassLabel = passLabel;
-        let finalPassAction = passAction;
-        let finalPassTitle = passTitle;
-        let finalPassDisabled = passDisabled;
-        
-        if (['attack', 'block'].includes(currentPhase) && typeof GameCombat !== 'undefined') {
-            const combatConfig = GameCombat.getCombatButtonConfig();
-            if (combatConfig) {
-                finalPassLabel = combatConfig.label;
-                finalPassTitle = combatConfig.title;
-                finalPassDisabled = !combatConfig.enabled;
-                
-                // When clicking the button in combat, it should trigger the combat action
-                if (combatConfig.action === 'declare_attackers') {
-                    finalPassAction = 'GameCombat.confirmAttackers()';
-                } else if (combatConfig.action === 'declare_blockers') {
-                    finalPassAction = 'GameCombat.confirmBlockers()';
-                }
-            }
-        }
-
-        const passButtonClasses = UIConfig.CSS_CLASSES.button.passPhase
-            || UIConfig.CSS_CLASSES.button.primary;
-
-        let passPhaseBtn;
-        if (finalPassAction.startsWith('GameCombat.')) {
-            // Direct function call for combat actions
-            const funcName = finalPassAction.replace('GameCombat.', '').replace('()', '');
-            passPhaseBtn = UIUtils.generateButton(
-                `GameCombat.${funcName}()`,
-                passButtonClasses,
-                finalPassTitle,
-                finalPassLabel,
-                finalPassDisabled
-            );
-        } else {
-            // Regular game action
-            passPhaseBtn = UIUtils.generateButton(
-                `GameActions.performGameAction('${finalPassAction}')`,
-                passButtonClasses,
-                finalPassTitle,
-                finalPassLabel,
-                finalPassDisabled
-            );
-        }
-
-        const untapBtn = UIUtils.generateButton(
-            "GameActions.untapAll()",
-            UIConfig.CSS_CLASSES.button.secondary,
-            "Untap all permanents",
-            "🔄 Untap All"
-        );
-
-        const resolveStackBtn = UIUtils.generateButton(
-            "GameActions.performGameAction('resolve_all_stack')",
-            UIConfig.CSS_CLASSES.button.secondary,
-            "Resolve all spells on the stack",
-            "🎯 Resolve All Stack"
-        );
-
-        return `
-            <div class="flex items-center mb-3">
-                ${passPhaseBtn}
-            </div>
-            
-            <!-- Card Search Section -->
-            <div class="mb-4">
-                ${UIUtils.generateButton(
-                    "showCardSearch('battlefield')",
-                    UIConfig.CSS_CLASSES.button.secondary + ' w-full',
-                    "Search for a card to add to the battlefield",
-                    "🔍 Search cards"
-                )}
-            </div>
-            
-            <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-                ${untapBtn}
-                ${resolveStackBtn}
-            </div>
-        `;
     }
 
     /**
