@@ -5,23 +5,17 @@
     export let overlayText = '';
     export let onClick = null;
 
-    const cardTransforms = (index) => ({
-        x: index * 1,
-        y: index * 1.5,
-        rotation: index % 2 === 0 ? -1 : 1,
-        zIndex: index + 1
-    });
-
     const generateStack = () => {
         if (cardsRemaining === 0) {
             return '';
         }
 
         const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
-        return Array.from({ length: stackLayers }, (_, index) => {
-            const transforms = cardTransforms(index);
-            return UIUtils.generateCardLayer(null, index, transforms);
-        }).join('');
+        return Array.from({ length: stackLayers }, () => `
+            <div class="deck-card-layer">
+                <div class="card-back-mini"></div>
+            </div>
+        `).join('');
     };
 
     $: stackCards = generateStack();
