@@ -9,6 +9,7 @@ class UIZonesManager {
     static _deckZoneConfigs = new Map();
     static _graveyardZoneConfigs = new Map();
     static _exileZoneConfigs = new Map();
+    static _lifeZoneConfigs = new Map();
     static _zoneConfigCounter = 0;
     // ===== CONSTANTS =====
     static CARD_TYPE_ICONS = {
@@ -167,96 +168,14 @@ class UIZonesManager {
      * Generate life total zone with enhanced life controls
      */
     static generateLifeZone(playerData, playerId, titlePrefix) {
-        const safeData = playerData || {};
-        const life = typeof safeData.life === 'number' ? safeData.life : parseInt(safeData.life || 20, 10) || 20;
-        const countersHtml = UIPlayerCounters.renderCounterBadges(safeData, playerId);
-        const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
-        const negativeControls = lifeControls.filter(control =>
-            (control.type === 'custom' && control.direction < 0) ||
-            (typeof control.value === 'number' && control.value < 0)
-        );
-        const positiveControls = lifeControls.filter(control =>
-            (control.type === 'custom' && control.direction > 0) ||
-            (typeof control.value === 'number' && control.value > 0)
-        );
-        const hasCustomLifeControls = lifeControls.some(control => control.type === 'custom');
-        const manageButton = UIUtils.generateButton(
-            `UIPlayerCounters.openCounterManager('${playerId}')`,
-            `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center`,
-            'Manage player counters',
-            '⚙️ Counters'
-        );
-        const renderLifeControlButton = (control) => {
-            const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
-            if (control.type === 'custom') {
-                const direction = control.direction >= 0 ? 1 : -1;
-                const title = direction > 0 ? 'Add custom amount' : 'Remove custom amount';
-                return UIUtils.generateButton(
-                    `UIZonesManager.openCustomLifeInput('${playerId}', ${direction})`,
-                    classes,
-                    title,
-                    control.label
-                );
-            }
-            const value = typeof control.value === 'number' ? control.value : 0;
-            const title = value > 0 ? `Add ${value} life` : `Remove ${Math.abs(value)} life`;
-            return UIUtils.generateButton(
-                `GameActions.modifyLife('${playerId}', ${value})`,
-                classes,
-                title,
-                control.label
-            );
-        };
+        const config = ZoneData.getLifeZoneConfig(playerData, playerId);
+        const ownerKey = playerId || 'player1';
+        const zoneKey = this._registerZoneConfig('life', { ...config, ownerKey });
+        const placeholder = `
+            <div class="life-zone-placeholder" data-zone-type="life" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
+        `;
 
-        return UIUtils.generateZoneWrapper(`
-            <div class="life-zone-container p-4">
-                <div class="life-total-wrapper">
-                    <div class="text-2xl font-bold text-red-400 life-total-display">
-                        ❤️ ${life}
-                    </div>
-                </div>
-                <div class="life-controls-stack">
-                    <div class="life-controls-group">
-                        ${negativeControls.map((control) => renderLifeControlButton(control)).join('')}
-                    </div>
-                    <div class="life-controls-group">
-                        ${positiveControls.map((control) => renderLifeControlButton(control)).join('')}
-                    </div>
-                </div>
-                ${hasCustomLifeControls ? `
-                    <div class="life-custom-input hidden" id="life-custom-input-${playerId}" data-direction="">
-                        <p class="text-xs text-arena-muted" id="life-custom-input-label-${playerId}">
-                            Enter a custom amount
-                        </p>
-                        <input
-                            type="number"
-                            id="life-custom-value-${playerId}"
-                            min="1"
-                            step="1"
-                            class="w-full rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text"
-                            placeholder="Amount">
-                        <div class="life-custom-actions">
-                            <button
-                                type="button"
-                                class="flex-1 px-3 py-2 rounded-lg bg-emerald-500/30 border border-emerald-400/60 text-emerald-50 text-sm"
-                                onclick="UIZonesManager.submitCustomLifeInput('${playerId}')">
-                                Confirm
-                            </button>
-                            <button
-                                type="button"
-                                class="flex-1 px-3 py-2 rounded-lg bg-arena-surface-light border border-arena-accent/30 text-arena-text text-sm"
-                                onclick="UIZonesManager.cancelCustomLifeInput('${playerId}')">
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                ` : ''}
-                <div class="player-counter-section">
-                    ${countersHtml}
-                    ${manageButton}
-                </div>
-            </div>
-        `, 'life');
+        return UIUtils.generateZoneWrapper(placeholder, 'life');
     }
 
     /**
@@ -887,6 +806,8 @@ class UIZonesManager {
             this._graveyardZoneConfigs.set(key, config);
         } else if (type === 'exile') {
             this._exileZoneConfigs.set(key, config);
+        } else if (type === 'life') {
+            this._lifeZoneConfigs.set(key, config);
         }
         return key;
     }
@@ -895,6 +816,7 @@ class UIZonesManager {
         this._hydrateDeckZones();
         this._hydrateGraveyardZones();
         this._hydrateExileZones();
+        this._hydrateLifeZones();
     }
 
     static _hydrateDeckZones() {
@@ -996,6 +918,41 @@ class UIZonesManager {
                 this._attachContextMenu('.exile-stack', config.zoneIdentifier);
             } catch (error) {
                 console.error('[UIZonesManager] Failed to hydrate exile zone', error);
+            }
+        });
+    }
+
+    static _hydrateLifeZones() {
+        if (typeof LifeZoneComponent === 'undefined') {
+            return;
+        }
+        document.querySelectorAll('[data-zone-type="life"]').forEach((element) => {
+            if (element.dataset.zoneHydrated === 'true') {
+                return;
+            }
+            const key = element.dataset.zoneKey;
+            const config = this._lifeZoneConfigs.get(key);
+            if (!config) {
+                return;
+            }
+            try {
+                element.innerHTML = '';
+                new LifeZoneComponent.default({
+                    target: element,
+                    props: {
+                        life: config.life,
+                        playerId: config.playerId,
+                        negativeControls: config.negativeControls,
+                        positiveControls: config.positiveControls,
+                        hasCustomLifeControls: config.hasCustomLifeControls,
+                        countersHtml: config.countersHtml,
+                        manageButton: config.manageButton || null
+                    }
+                });
+                element.dataset.zoneHydrated = 'true';
+                this._lifeZoneConfigs.delete(key);
+            } catch (error) {
+                console.error('[UIZonesManager] Failed to hydrate life zone', error);
             }
         });
     }
