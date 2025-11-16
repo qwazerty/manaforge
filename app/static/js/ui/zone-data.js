@@ -88,7 +88,11 @@ class ZoneData {
         const manageButton = {
             label: '⚙️ Counters',
             title: 'Manage player counters',
-            className: `${UIConfig.CSS_CLASSES.button.secondary} w-full text-center`,
+            className: [
+                'w-full flex items-center justify-center gap-2 text-xs font-semibold px-3 py-2 rounded',
+                'bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/50 hover:border-indigo-300',
+                'text-indigo-100 hover:text-white transition-all duration-200'
+            ].join(' '),
             onClick: () => UIPlayerCounters.openCounterManager(playerId)
         };
         const toControlConfig = (control, index) => {
