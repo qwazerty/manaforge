@@ -2,6 +2,7 @@
 Main FastAPI application.
 """
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Query
@@ -17,9 +18,10 @@ from app.api.draft_routes import router as draft_router
 from app.services.format_stats_service import get_format_statistics
 
 
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    pass
+    yield
 
 
 app = FastAPI(
@@ -42,8 +44,9 @@ templates = Jinja2Templates(directory="app/templates")
 async def home(request: Request):
     """Home page."""
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "title": "ManaForge"}
+        {"title": "ManaForge"}
     )
 
 
@@ -60,8 +63,9 @@ async def game_interface(request: Request, game_id: str):
     
     if game_id not in game_engine.games:
         return templates.TemplateResponse(
+            request,
             "error.html",
-            {"request": request, "message": "Game not found"}
+            {"message": "Game not found"}
         )
     
     game_state = game_engine.games[game_id]
@@ -91,8 +95,9 @@ async def game_interface(request: Request, game_id: str):
     }
     
     return templates.TemplateResponse(
+        request,
         "game.html",
-        {"request": request, "game": game_dict}
+        {"game": game_dict}
     )
 
 
@@ -158,14 +163,15 @@ async def game_room(
         "game_room_url": game_room_url,
         "share_links": share_links
     }
-    return templates.TemplateResponse("game_room.html", context)
+    return templates.TemplateResponse(request, "game_room.html", context)
 
 @app.get("/game")
 async def game_lobby(request: Request):
     """Game lobby page."""
     return templates.TemplateResponse(
+        request,
         "game_lobby.html",
-        {"request": request, "title": "Game Lobby"}
+        {"title": "Game Lobby"}
     )
 
 
@@ -173,8 +179,9 @@ async def game_lobby(request: Request):
 async def deck_library(request: Request):
     """Deck library page that lists saved decks."""
     return templates.TemplateResponse(
+        request,
         "deck_library.html",
-        {"request": request, "title": "Deck Library"}
+        {"title": "Deck Library"}
     )
 
 
@@ -182,8 +189,9 @@ async def deck_library(request: Request):
 async def deck_manager(request: Request):
     """Deck builder page."""
     return templates.TemplateResponse(
+        request,
         "deck_manager.html",
-        {"request": request, "title": "Deck Builder"}
+        {"title": "Deck Builder"}
     )
 
 
@@ -191,8 +199,9 @@ async def deck_manager(request: Request):
 async def draft_lobby(request: Request):
     """Draft lobby page."""
     return templates.TemplateResponse(
+        request,
         "draft_lobby.html",
-        {"request": request, "title": "Draft Lobby"}
+        {"title": "Draft Lobby"}
     )
 
 @app.get("/draft/{room_id}")
@@ -203,13 +212,15 @@ async def draft_room(request: Request, room_id: str):
     room = engine.get_draft_room(room_id)
     if not room:
         return templates.TemplateResponse(
+            request,
             "error.html",
-            {"request": request, "message": "Draft room not found"}
+            {"message": "Draft room not found"}
         )
     room_payload = jsonable_encoder(room)
     return templates.TemplateResponse(
+        request,
         "draft_room.html",
-        {"request": request, "room": room_payload}
+        {"room": room_payload}
     )
 
 
@@ -218,9 +229,9 @@ async def format_stats(request: Request):
     """Format statistics dashboard."""
     stats = get_format_statistics()
     return templates.TemplateResponse(
+        request,
         "format_stats.html",
         {
-            "request": request,
             "title": "Formats & Arena Coverage",
             "stats": stats,
         }
