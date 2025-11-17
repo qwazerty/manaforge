@@ -200,6 +200,14 @@ class WebSocketManager {
                 ) {
                     UIActionHistory.mergeStateEntries(newGameState.action_history);
                 }
+                if (
+                    newGameState &&
+                    Array.isArray(newGameState.chat_log) &&
+                    typeof UIBattleChat !== 'undefined' &&
+                    typeof UIBattleChat.loadChatLog === 'function'
+                ) {
+                    UIBattleChat.loadChatLog(newGameState.chat_log);
+                }
                 break;
                 
             case 'game_action_start':
@@ -242,7 +250,16 @@ class WebSocketManager {
                 }
 
                 if (senderName !== localName) {
-                    UINotifications.addChatMessage(senderName, message.message);
+                    if (
+                        typeof UIBattleChat !== 'undefined' &&
+                        UIBattleChat &&
+                        typeof UIBattleChat.addMessage === 'function'
+                    ) {
+                        UIBattleChat.addMessage(senderName, message.message, {
+                            timestamp: message.timestamp,
+                            origin: 'remote'
+                        });
+                    }
                 }
                 break;
             }
@@ -360,13 +377,12 @@ class WebSocketManager {
      * Add chat message to chat container
      */
     static addChatMessage(player, message) {
-        const chatContainer = document.getElementById('chat-messages');
-        if (chatContainer) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'mb-2';
-            messageDiv.innerHTML = `<strong>${player}:</strong> ${message}`;
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+        if (
+            typeof UIBattleChat !== 'undefined' &&
+            UIBattleChat &&
+            typeof UIBattleChat.addMessage === 'function'
+        ) {
+            UIBattleChat.addMessage(player, message, { origin: 'legacy' });
         }
     }
 

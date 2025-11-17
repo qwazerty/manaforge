@@ -66,44 +66,26 @@ class UINotifications {
      * Add chat message
      */
     static addChatMessage(sender, message) {
-        
-        const chatArea = document.getElementById('chat-messages');
-        if (!chatArea) return;
-
-        this._removeChatPlaceholder(chatArea);
-        
-        const displaySender = this._formatChatSender(sender);
-        const messageElement = this.createChatMessageElement(displaySender, message);        
-        chatArea.appendChild(messageElement);
-        chatArea.scrollTop = chatArea.scrollHeight;
+        if (
+            typeof UIBattleChat !== 'undefined' &&
+            UIBattleChat &&
+            typeof UIBattleChat.addMessage === 'function'
+        ) {
+            UIBattleChat.addMessage(sender, message, { origin: 'legacy' });
+        }
     }
 
     /**
      * Load chat messages from persisted state.
      */
     static loadChatLog(logEntries = []) {
-        const chatArea = document.getElementById('chat-messages');
-        if (!chatArea) {
-            return;
+        if (
+            typeof UIBattleChat !== 'undefined' &&
+            UIBattleChat &&
+            typeof UIBattleChat.loadChatLog === 'function'
+        ) {
+            UIBattleChat.loadChatLog(logEntries);
         }
-
-        chatArea.innerHTML = '';
-
-        if (!Array.isArray(logEntries) || logEntries.length === 0) {
-            chatArea.appendChild(this.createChatPlaceholder());
-            return;
-        }
-
-        for (const entry of logEntries) {
-            const rawSender = entry.player || entry.sender || 'Unknown';
-            const sender = this._formatChatSender(rawSender);
-            const text = entry.message || '';
-            const messageElement = this.createChatMessageElement(sender, text);
-            messageElement.dataset.timestamp = entry.timestamp ? String(entry.timestamp) : '';
-            chatArea.appendChild(messageElement);
-        }
-
-        chatArea.scrollTop = chatArea.scrollHeight;
     }
 
     /**
@@ -175,30 +157,6 @@ class UINotifications {
         notification.className = `notification ${this.NOTIFICATION_TYPES[type] || this.NOTIFICATION_TYPES.info}`;
         notification.innerHTML = this.generateNotificationHTML(message, type);
         return notification;
-    }
-
-    /**
-     * Create chat message element
-     */
-    static createChatMessageElement(sender, message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'chat-message';
-        messageElement.innerHTML = `
-            <span class="chat-sender">${this.escapeHtml(sender)}:</span>
-            <span class="chat-text">${this.escapeHtml(message)}</span>
-        `;
-        return messageElement;
-    }
-
-    static createChatPlaceholder() {
-        const placeholder = document.createElement('div');
-        placeholder.dataset.chatPlaceholder = 'true';
-        placeholder.className = 'text-arena-text-dim text-center py-4';
-        placeholder.innerHTML = `
-            <span class="text-2xl block mb-2">⚔️</span>
-            <p>Battle chat ready</p>
-        `;
-        return placeholder;
     }
 
     /**
@@ -295,47 +253,7 @@ class UINotifications {
         return div.innerHTML;
     }
 
-    static _removeChatPlaceholder(container) {
-        const placeholder = container.querySelector('[data-chat-placeholder]');
-        if (placeholder) {
-            placeholder.remove();
-            return;
-        }
-
-        const legacyPlaceholder = container.querySelector('.text-arena-text-dim');
-        if (legacyPlaceholder && legacyPlaceholder.parentElement === container) {
-            legacyPlaceholder.remove();
-        }
-    }
-
-    static _formatChatSender(sender) {
-        if (
-            typeof GameCore !== 'undefined' &&
-            GameCore &&
-            typeof GameCore.getPlayerDisplayName === 'function'
-        ) {
-            const resolved = GameCore.getPlayerDisplayName(sender);
-            if (resolved) {
-                return resolved;
-            }
-        }
-
-        if (!sender) {
-            return 'Unknown';
-        }
-
-        if (typeof sender === 'string') {
-            const match = sender
-                .toLowerCase()
-                .match(/player\s*(\d+)/);
-            if (match) {
-                return `Player ${match[1]}`;
-            }
-            return sender;
-        }
-
-        return String(sender);
-    }
+    // Chat helpers removed: Battle chat now handled by UIBattleChat.
 }
 
 window.UINotifications = UINotifications;

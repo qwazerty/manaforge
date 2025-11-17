@@ -1,57 +1,70 @@
-
 /**
  * ManaForge Game Chat Module
- * Handles chat functionality
+ * Handles chat messaging helpers and WebSocket dispatch.
  */
 const GameChat = {
-    sendChatMessage: function(event) {
-        console.log('📝 sendChatMessage called');
-        event.preventDefault(); // Prevent the form submission
-
-        const input = document.getElementById('chat-input');
-        const message = input.value.trim();
-
-        console.log('📝 Message input:', message);
-
-        if (!message) {
-            console.log('❌ Empty message, aborting');
-            return;
+    /**
+     * Send a chat message through the active WebSocket connection.
+     */
+    sendMessage(messageText, options = {}) {
+        const trimmed = (messageText || '').trim();
+        if (!trimmed) {
+            return { success: false, error: 'empty_message' };
         }
 
-        if (!window.GameCore || !window.GameUI) {
-            console.error('❌ GameCore or GameUI not available');
-            return;
+        if (
+            !window.GameCore ||
+            typeof window.GameCore.getSelectedPlayer !== 'function'
+        ) {
+            console.error('GameCore not available, cannot send chat message');
+            return { success: false, error: 'game_not_ready' };
         }
 
-        // Retrieve the current player's name
-        const currentPlayer = window.GameCore.getSelectedPlayer();
-        const playerName = GameChat._resolveSenderName(currentPlayer);
+        const senderInfo = this.getLocalPlayerInfo();
+        const playerName = options.playerName || senderInfo.name;
+        const timestamp = typeof options.timestamp === 'number'
+            ? options.timestamp
+            : Date.now();
 
-        console.log('👤 Player name:', playerName);
-
-        // Optimistically add the message to the UI
-        window.GameUI.addChatMessage(playerName, message);
-
-        // Send over WebSocket
-        if (window.websocket && window.websocket.readyState === WebSocket.OPEN) {
-            console.log('📡 Sending via WebSocket');
-            window.websocket.send(JSON.stringify({
-                type: 'chat',
-                player: playerName,
-                message: message,
-                timestamp: Date.now()
-            }));
-        } else {
-            console.warn('WebSocket not connected, message not sent');
-            window.GameUI.showNotification('Chat not available (WebSocket disconnected)', 'warning');
+        if (!window.websocket || window.websocket.readyState !== WebSocket.OPEN) {
+            console.warn('WebSocket not connected, chat message not sent');
+            if (
+                window.GameUI &&
+                typeof window.GameUI.showNotification === 'function'
+            ) {
+                window.GameUI.showNotification(
+                    'Chat not available (WebSocket disconnected)',
+                    'warning'
+                );
+            }
+            return { success: false, error: 'WebSocket disconnected' };
         }
 
-        // Clear the input field
-        input.value = '';
-        console.log('✅ Message sent, input cleared');
+        window.websocket.send(JSON.stringify({
+            type: 'chat',
+            player: playerName,
+            message: trimmed,
+            timestamp
+        }));
+
+        return { success: true };
     },
 
-    _resolveSenderName: function(playerKey) {
+    /**
+     * Resolve the current local player's info.
+     */
+    getLocalPlayerInfo() {
+        const playerKey = window.GameCore && typeof window.GameCore.getSelectedPlayer === 'function'
+            ? window.GameCore.getSelectedPlayer()
+            : 'player1';
+        const playerName = this._resolveSenderName(playerKey);
+        return {
+            id: playerKey,
+            name: playerName
+        };
+    },
+
+    _resolveSenderName(playerKey) {
         if (!playerKey) {
             return 'Unknown';
         }
@@ -69,7 +82,7 @@ const GameChat = {
         return this._formatSeatFallback(playerKey);
     },
 
-    _formatSeatFallback: function(playerKey) {
+    _formatSeatFallback(playerKey) {
         if (!playerKey) {
             return 'Unknown';
         }

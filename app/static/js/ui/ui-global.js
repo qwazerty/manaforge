@@ -51,7 +51,15 @@ Object.assign(window.GameUI, {
     
     showNotification: (message, type) => UINotifications.showNotification(message, type),
     showAutoRefreshIndicator: (message, type) => UINotifications.showAutoRefreshIndicator(message, type),
-    addChatMessage: (sender, message) => UINotifications.addChatMessage(sender, message),
+    addChatMessage: (sender, message) => {
+        if (
+            typeof UIBattleChat !== 'undefined' &&
+            UIBattleChat &&
+            typeof UIBattleChat.addMessage === 'function'
+        ) {
+            UIBattleChat.addMessage(sender, message, { origin: 'legacy' });
+        }
+    },
     
     refreshAllUI: function() {
         try {
