@@ -1,3 +1,7 @@
+##########
+# Stage 1
+##########
+
 FROM node:20-bullseye AS frontend-builder
 WORKDIR /app
 
@@ -11,16 +15,19 @@ COPY tools ./tools
 RUN npm run build:css
 RUN npm run build:svelte
 
+##########
+# Stage 2
+##########
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN useradd -m -s /bin/sh user
+# Install system dependencies and create runtime user
 RUN apt-get update && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
+RUN useradd -m -s /bin/sh user
 
-# Install Python dependencies
+# Install Python dependencies as root so globally available
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -31,8 +38,8 @@ COPY --from=frontend-builder /app/app/static/js/ui/components app/static/js/ui/c
 
 # Expose port
 EXPOSE 8000
+USER user
 
 # Run the application
 # Default command runs uvicorn without dev reload
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-USER user
