@@ -77,23 +77,28 @@
             {#if hasMessages}
                 {#each messages as message (message.id)}
                     <div
-                        class={`chat-message-entry rounded border border-arena-accent/20 p-2 ${
+                        class={`chat-message-entry rounded px-2 py-1 ${
                             message.origin === 'local'
                                 ? 'bg-arena-surface/70'
                                 : 'bg-arena-surface/40'
                         }`}
                     >
-                        <div class="flex items-center justify-between text-[0.7rem] text-arena-text-dim mb-1">
-                            <span class="font-semibold text-arena-accent">
-                                {message.sender || 'Unknown'}
-                            </span>
+                        <div class="flex items-start gap-3 text-[0.75rem]">
+                            <div class="flex-1 min-w-0 text-arena-text text-sm leading-snug">
+                                <span class="font-semibold text-arena-accent">
+                                    {message.sender || 'Unknown'}
+                                </span>
+                                {' '}
+                                <span class="whitespace-pre-line break-words">
+                                    {message.message}
+                                </span>
+                            </div>
                             {#if message.timestamp}
-                                <span>{formatTime(message.timestamp)}</span>
+                                <span class="text-arena-text-dim text-[0.7rem] shrink-0">
+                                    {formatTime(message.timestamp)}
+                                </span>
                             {/if}
                         </div>
-                        <p class="text-arena-text break-words leading-snug whitespace-pre-line">
-                            {message.message}
-                        </p>
                         {#if message.error}
                             <div class="text-xs text-red-400 mt-1">
                                 {message.error}
