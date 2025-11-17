@@ -7,6 +7,9 @@ class UIActionHistory {
     static MAX_ENTRIES = 5000;
     static entries = [];
     static entrySignatures = new Set();
+    static _actionHistoryComponent = null;
+    static _actionHistoryTarget = null;
+    static _previewHandlers = null;
 
     /**
      * Add an entry to the action history.
@@ -196,216 +199,148 @@ class UIActionHistory {
     // ===== RENDERING =====
 
     static _render() {
-        const container = document.getElementById('action-history');
-        if (!container) {
+        const component = this._ensureActionHistoryComponent();
+        if (!component) {
             return;
         }
 
-        container.innerHTML = '';
-
-        if (this.entries.length === 0) {
-            const placeholder = document.createElement('div');
-            placeholder.dataset.placeholder = 'true';
-            placeholder.className = 'action-history-empty text-center';
-            placeholder.textContent = 'No actions yet';
-            container.appendChild(placeholder);
-            return;
+        try {
+            component.$set(this._buildComponentProps());
+        } catch (error) {
+            console.error('Failed to update action history component', error);
         }
-
-        const fragment = document.createDocumentFragment();
-        let lastTurnKey = null;
-        for (const entry of [...this.entries].reverse()) {
-            const turnKey = this._buildTurnKey(entry);
-            if (turnKey && turnKey !== lastTurnKey) {
-                fragment.appendChild(this._createTurnSeparator(entry));
-                lastTurnKey = turnKey;
-            }
-            fragment.appendChild(this._createEntryElement(entry));
-        }
-        container.appendChild(fragment);
     }
 
-    static _createEntryElement(entry) {
-        const entryElement = document.createElement('div');
-        entryElement.className = 'action-history-entry';
+    static _buildComponentProps() {
+        return {
+            entries: Array.isArray(this.entries) ? [...this.entries] : [],
+            panelIcon: '📜',
+            panelTitle: 'Action History',
+            previewHandlers: this._getCardPreviewHandlers()
+        };
+    }
 
-        const header = document.createElement('div');
-        header.className = 'action-history-header';
-
-        const playerSpan = document.createElement('span');
-        playerSpan.className = 'action-history-player';
-        playerSpan.textContent = entry.player;
-        header.appendChild(playerSpan);
-
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'action-history-time';
-        timeSpan.textContent = this._formatTime(entry.timestamp);
-        header.appendChild(timeSpan);
-
-        const statusSpan = document.createElement('span');
-        statusSpan.className = `action-history-status ${entry.success ? 'success' : 'failure'}`;
-        statusSpan.textContent = entry.success ? 'Success' : 'Failed';
-        header.appendChild(statusSpan);
-
-        entryElement.appendChild(header);
-
-        const actionSpan = document.createElement('div');
-        actionSpan.className = 'action-history-action';
-        actionSpan.textContent = entry.displayAction || entry.action;
-        entryElement.appendChild(actionSpan);
-
-        if (entry.details.length > 0) {
-            for (const detail of entry.details) {
-                const detailRow = document.createElement('div');
-                detailRow.className = 'action-history-detail';
-
-                const hasAssignments =
-                    Array.isArray(detail.assignmentList) &&
-                    detail.assignmentList.length > 0;
-                const hasCardList =
-                    Array.isArray(detail.cardList) && detail.cardList.length > 0;
-                const hasSingleCard =
-                    detail.cardInfo && !hasAssignments && !hasCardList;
-
-                const shouldShowLabel =
-                    detail.label &&
-                    detail.hideLabel !== true &&
-                    !hasAssignments &&
-                    !hasCardList &&
-                    !(hasSingleCard && detail.label.toLowerCase() === 'card');
-
-                if (shouldShowLabel) {
-                    const labelSpan = document.createElement('span');
-                    labelSpan.textContent = `${detail.label}: `;
-                    labelSpan.style.fontWeight = '600';
-                    detailRow.appendChild(labelSpan);
-                }
-
-                if (hasAssignments) {
-                    const assignmentsContainer = document.createElement('div');
-                    assignmentsContainer.className = 'action-history-card-assignments';
-
-                    detail.assignmentList.forEach((assignment, assignmentIndex) => {
-                        if (assignmentIndex > 0) {
-                            assignmentsContainer.appendChild(
-                                this._createInlineSeparator()
-                            );
-                        }
-
-                        const assignmentRow = document.createElement('span');
-                        assignmentRow.className = 'action-history-card-assignment';
-
-                        const sourceWrapper = document.createElement('span');
-                        sourceWrapper.className = 'action-history-card-assignment-source';
-                        if (assignment.source) {
-                            const sourceButton = this._buildCardPreviewButton(
-                                assignment.source.displayName,
-                                assignment.source.cardInfo,
-                                assignment.source.displayName
-                            );
-                            if (sourceButton) {
-                                sourceWrapper.appendChild(sourceButton);
-                            }
-                        } else if (assignment.sourceFallback) {
-                            const sourceText = document.createElement('span');
-                            sourceText.className = 'action-history-card-assignment-source-text';
-                            sourceText.textContent = assignment.sourceFallback;
-                            sourceWrapper.appendChild(sourceText);
-                        }
-                        assignmentRow.appendChild(sourceWrapper);
-
-                        if (
-                            (assignment.targets && assignment.targets.length > 0) ||
-                            (assignment.targetFallbacks && assignment.targetFallbacks.length > 0)
-                        ) {
-                            const arrow = document.createElement('span');
-                            arrow.className = 'action-history-card-assignment-arrow';
-                            arrow.textContent = '→';
-                            assignmentRow.appendChild(arrow);
-
-                            const targetsWrapper = document.createElement('span');
-                            targetsWrapper.className = 'action-history-card-assignment-targets';
-
-                            if (assignment.targets && assignment.targets.length > 0) {
-                                assignment.targets.forEach((cardItem, targetIndex) => {
-                                    if (targetIndex > 0) {
-                                        targetsWrapper.appendChild(
-                                            this._createInlineSeparator(' / ')
-                                        );
-                                    }
-                                    const targetButton = this._buildCardPreviewButton(
-                                        cardItem.displayName,
-                                        cardItem.cardInfo,
-                                        cardItem.displayName
-                                    );
-                                    if (targetButton) {
-                                        targetsWrapper.appendChild(targetButton);
-                                    }
-                                });
-                            }
-
-                            if (assignment.targetFallbacks && assignment.targetFallbacks.length > 0) {
-                                const fallbackSpan = document.createElement('span');
-                                fallbackSpan.className = 'action-history-card-assignment-targets-text';
-                                fallbackSpan.textContent = assignment.targetFallbacks.join(', ');
-                                targetsWrapper.appendChild(fallbackSpan);
-                            }
-
-                            assignmentRow.appendChild(targetsWrapper);
-                        }
-
-                        assignmentsContainer.appendChild(assignmentRow);
-                    });
-
-                    detailRow.appendChild(assignmentsContainer);
-                } else if (hasCardList) {
-                    const listContainer = document.createElement('div');
-                    listContainer.className = 'action-history-card-list';
-
-                    detail.cardList.forEach((cardItem, index) => {
-                        if (index > 0) {
-                            listContainer.appendChild(this._createInlineSeparator());
-                        }
-
-                        const fallbackText = cardItem.displayName || `Card ${index + 1}`;
-                        const button = this._buildCardPreviewButton(
-                            cardItem.displayName,
-                            cardItem.cardInfo,
-                            fallbackText
-                        );
-                        if (button) {
-                            listContainer.appendChild(button);
-                        }
-                    });
-
-                    detailRow.appendChild(listContainer);
-
-                    if (detail.extraValues && detail.extraValues.length > 0) {
-                        const extraSpan = document.createElement('span');
-                        extraSpan.className = 'action-history-detail-extra';
-                        extraSpan.textContent = detail.extraValues.join(', ');
-                        detailRow.appendChild(extraSpan);
-                    }
-                } else if (hasSingleCard) {
-                    const button = this._buildCardPreviewButton(
-                        detail.cardInfo.name || detail.value,
-                        detail.cardInfo,
-                        detail.value
-                    );
-                    if (button) {
-                        detailRow.appendChild(button);
-                    }
-                } else {
-                    const valueSpan = document.createElement('span');
-                    valueSpan.textContent = detail.value;
-                    detailRow.appendChild(valueSpan);
-                }
-
-                entryElement.appendChild(detailRow);
-            }
+    static _ensureActionHistoryComponent() {
+        if (typeof document === 'undefined') {
+            return null;
         }
 
-        return entryElement;
+        if (typeof ActionHistoryComponent === 'undefined') {
+            return null;
+        }
+
+        const container = document.getElementById('action-history-panel');
+        if (!container) {
+            this._destroyActionHistoryComponent();
+            return null;
+        }
+
+        if (this._actionHistoryComponent && this._actionHistoryTarget === container) {
+            return this._actionHistoryComponent;
+        }
+
+        this._destroyActionHistoryComponent();
+
+        try {
+            container.innerHTML = '';
+            this._actionHistoryComponent = new ActionHistoryComponent.default({
+                target: container,
+                props: this._buildComponentProps()
+            });
+            this._actionHistoryTarget = container;
+        } catch (error) {
+            console.error('Failed to initialize action history component', error);
+            this._actionHistoryComponent = null;
+            this._actionHistoryTarget = null;
+        }
+
+        return this._actionHistoryComponent;
+    }
+
+    static _destroyActionHistoryComponent() {
+        if (this._actionHistoryComponent) {
+            try {
+                this._actionHistoryComponent.$destroy();
+            } catch (error) {
+                console.error('Failed to destroy action history component', error);
+            }
+        }
+        this._actionHistoryComponent = null;
+        this._actionHistoryTarget = null;
+    }
+
+    static _getCardPreviewHandlers() {
+        if (!this._previewHandlers) {
+            this._previewHandlers = {
+                show: (event, cardInfo, fallbackValue = '', element = null) =>
+                    this._handleCardPreviewShow(event, cardInfo, fallbackValue, element),
+                move: (event) => this._handleCardPreviewMove(event),
+                hide: () => this._handleCardPreviewHide()
+            };
+        }
+        return this._previewHandlers;
+    }
+
+    static _handleCardPreviewShow(event, cardInfo, fallbackValue = '', element = null) {
+        const previewInfo =
+            cardInfo ||
+            this._buildPreviewInfoFromFallback(fallbackValue);
+
+        if (!previewInfo) {
+            return;
+        }
+
+        if (
+            typeof GameCards === 'undefined' ||
+            typeof GameCards.showCardPreview !== 'function'
+        ) {
+            return;
+        }
+
+        const payload = this._resolveCardPreviewPayload(previewInfo, fallbackValue);
+        if (!payload) {
+            return;
+        }
+
+        const pointerEvent = this._ensurePointerEvent(event, element);
+        GameCards.showCardPreview(
+            payload.cardId,
+            payload.cardName,
+            payload.previewImage,
+            pointerEvent,
+            payload.info
+        );
+    }
+
+    static _handleCardPreviewMove(event) {
+        if (
+            typeof GameCards === 'undefined' ||
+            typeof GameCards.positionCardPreview !== 'function'
+        ) {
+            return;
+        }
+
+        if (
+            !event ||
+            typeof event.clientX !== 'number' ||
+            typeof event.clientY !== 'number'
+        ) {
+            return;
+        }
+
+        const preview = document.getElementById('card-preview-modal');
+        if (preview) {
+            GameCards.positionCardPreview(preview, event);
+        }
+    }
+
+    static _handleCardPreviewHide() {
+        if (
+            typeof GameCards !== 'undefined' &&
+            typeof GameCards._closeActiveCardPreview === 'function'
+        ) {
+            GameCards._closeActiveCardPreview();
+        }
     }
 
     // ===== DETAIL PREPARATION =====
@@ -1463,46 +1398,6 @@ class UIActionHistory {
         return null;
     }
 
-    // ===== CARD PREVIEW UI HELPERS =====
-
-    static _buildCardPreviewButton(displayName, cardInfo, fallbackValue = '') {
-        if (
-            !displayName &&
-            !fallbackValue &&
-            !cardInfo
-        ) {
-            return null;
-        }
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'action-history-card-link';
-        const content = displayName || fallbackValue || 'Card';
-        button.textContent = content;
-
-        this._attachCardPreviewHover(button, cardInfo, fallbackValue || content);
-        return button;
-    }
-
-    static _createInlineSeparator(text = ' | ') {
-        const separator = document.createElement('span');
-        separator.className = 'action-history-card-separator';
-        separator.textContent = text;
-        return separator;
-    }
-
-    static _createTurnSeparator(entry) {
-        const separator = document.createElement('div');
-        separator.className = 'action-history-turn-separator';
-
-        const text = document.createElement('span');
-        text.className = 'action-history-turn-text';
-        text.textContent = this._formatTurnLabel(entry);
-
-        separator.appendChild(text);
-        return separator;
-    }
-
     static _buildTurnKey(entry) {
         if (!entry || typeof entry.turn !== 'number' || Number.isNaN(entry.turn)) {
             return null;
@@ -1538,80 +1433,6 @@ class UIActionHistory {
         }
 
         return parts.join(' • ');
-    }
-
-    static _attachCardPreviewHover(element, cardInfo, fallbackValue = '') {
-        if (!element) {
-            return;
-        }
-
-        const previewInfo =
-            cardInfo ||
-            this._buildPreviewInfoFromFallback(fallbackValue);
-
-        if (!previewInfo) {
-            return;
-        }
-
-        const showPreview = (event) => {
-            if (
-                typeof GameCards === 'undefined' ||
-                typeof GameCards.showCardPreview !== 'function'
-            ) {
-                return;
-            }
-
-            const payload = this._resolveCardPreviewPayload(previewInfo, fallbackValue);
-            if (!payload) {
-                return;
-            }
-
-            const pointerEvent = this._ensurePointerEvent(event, element);
-            GameCards.showCardPreview(
-                payload.cardId,
-                payload.cardName,
-                payload.previewImage,
-                pointerEvent,
-                payload.info
-            );
-        };
-
-        const movePreview = (event) => {
-            if (
-                typeof GameCards === 'undefined' ||
-                typeof GameCards.positionCardPreview !== 'function'
-            ) {
-                return;
-            }
-
-            if (
-                !event ||
-                typeof event.clientX !== 'number' ||
-                typeof event.clientY !== 'number'
-            ) {
-                return;
-            }
-
-            const preview = document.getElementById('card-preview-modal');
-            if (preview) {
-                GameCards.positionCardPreview(preview, event);
-            }
-        };
-
-        const closePreview = () => {
-            if (
-                typeof GameCards !== 'undefined' &&
-                typeof GameCards._closeActiveCardPreview === 'function'
-            ) {
-                GameCards._closeActiveCardPreview();
-            }
-        };
-
-        element.addEventListener('mouseenter', showPreview);
-        element.addEventListener('focus', showPreview);
-        element.addEventListener('mousemove', movePreview);
-        element.addEventListener('mouseleave', closePreview);
-        element.addEventListener('blur', closePreview);
     }
 
     static _resolveCardPreviewPayload(cardInfo, fallbackValue = '') {
