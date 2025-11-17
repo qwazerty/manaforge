@@ -177,14 +177,14 @@ function syncPersistentUi(state, { force = false } = {}) {
     }
 
     if (
-        typeof UINotifications !== 'undefined' &&
-        typeof UINotifications.loadChatLog === 'function'
+        typeof UIBattleChat !== 'undefined' &&
+        typeof UIBattleChat.loadChatLog === 'function'
     ) {
         if (Object.prototype.hasOwnProperty.call(state, 'chat_log')) {
             const chatEntries = Array.isArray(state.chat_log)
                 ? state.chat_log
                 : [];
-            UINotifications.loadChatLog(chatEntries);
+            UIBattleChat.loadChatLog(chatEntries);
         }
     }
 
@@ -311,6 +311,13 @@ async function refreshGameData() {
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
                 GameUI.showAutoRefreshIndicator('🔄 HTTP Update');
+                if (
+                    Array.isArray(gameState.chat_log) &&
+                    typeof UIBattleChat !== 'undefined' &&
+                    typeof UIBattleChat.loadChatLog === 'function'
+                ) {
+                    UIBattleChat.loadChatLog(gameState.chat_log);
+                }
                 // Notify combat system of phase change
                 if (oldPhase !== newPhase && window.GameCombat && typeof window.GameCombat.onPhaseChange === 'function') {
                     window.GameCombat.onPhaseChange(newPhase);
