@@ -23,8 +23,8 @@ start_cmd() {
 	PIDS+=($!)
 }
 
-start_cmd "tailwind watcher" npm run dev:css
-start_cmd "svelte watcher" npm run dev:svelte
 start_cmd "backend" docker compose -f docker-compose-dev.yml up --build
+start_cmd "svelte watcher" npm run dev:svelte
+start_cmd "tailwind watcher" npm run dev:css
 
 wait "${PIDS[@]}"

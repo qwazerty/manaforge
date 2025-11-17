@@ -25,10 +25,7 @@ const compileComponent = async (fileName) => {
 
 const compiled = compile(source, {
     filename: path.relative(process.cwd(), inputPath),
-    dev: false,
-    compatibility: {
-        componentApi: 4
-    }
+    dev: false
 });
 
     await fs.writeFile(jsOutputPath, compiled.js.code, 'utf8');
