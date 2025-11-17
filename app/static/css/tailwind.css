@@ -2637,15 +2637,19 @@
     /* Non-clickable stack spell (for strict mode when player cast it) */
     .stack-spell.not-clickable {
         cursor: not-allowed;
-        opacity: 0.7;
     }
 
     .stack-spell.not-clickable:hover {
         transform: none;
     }
 
+    .stack-spell.not-clickable .stack-card-container {
+        border-color: #22c55e;
+        box-shadow: none;
+    }
+
     .stack-spell.not-clickable .stack-card-image {
-        opacity: 0.8;
+        opacity: 1;
     }
 
     .stack-spell.not-clickable:hover .stack-card-image {
@@ -2661,7 +2665,8 @@
         overflow: hidden;
         background: #1e293b;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 2px solid #ef4444;
+        box-shadow: none;
     }
 
     .stack-card-image {
