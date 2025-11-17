@@ -1,5 +1,5 @@
 <script>
-    import { onMount, onDestroy, afterUpdate } from 'svelte';
+    import { onMount, onDestroy, afterUpdate, createEventDispatcher } from 'svelte';
 
     export let stack = [];
     export let visible = false;
@@ -14,6 +14,10 @@
     let dragOffsetX = 0;
     let dragOffsetY = 0;
     let previousVisible = false;
+    let appearState = 'hidden';
+    let hideTimer = null;
+    const dispatch = createEventDispatcher();
+    const APPEAR_DURATION = 0;
 
     const getSelectedPlayer = () => {
         if (typeof GameCore === 'undefined' || typeof GameCore.getSelectedPlayer !== 'function') {
@@ -160,6 +164,38 @@
         positionPanel(left, top);
     };
 
+    const clampPanelToViewport = () => {
+        if (!panelEl) {
+            return;
+        }
+        const rect = panelEl.getBoundingClientRect();
+        positionPanel(rect.left, rect.top);
+    };
+
+    const refreshPanelPosition = () => {
+        if (!panelEl || !visible) {
+            return;
+        }
+        if (panelEl.dataset.userMoved === 'true') {
+            clampPanelToViewport();
+        } else {
+            positionRelativeToBoard();
+        }
+    };
+
+    let refreshScheduled = false;
+
+    const schedulePanelRefresh = () => {
+        if (refreshScheduled) {
+            return;
+        }
+        refreshScheduled = true;
+        requestAnimationFrame(() => {
+            refreshScheduled = false;
+            refreshPanelPosition();
+        });
+    };
+
     const onMouseMove = (event) => {
         if (!isDragging) {
             return;
@@ -255,10 +291,73 @@
         stopDragging();
     };
 
+    let resizeListenerAttached = false;
+
+    const handleResize = () => {
+        if (!panelEl || !visible) {
+            return;
+        }
+        schedulePanelRefresh();
+    };
+
+    const attachResizeListener = () => {
+        if (resizeListenerAttached || typeof window === 'undefined') {
+            return;
+        }
+        window.addEventListener('resize', handleResize);
+        resizeListenerAttached = true;
+    };
+
+    const detachResizeListener = () => {
+        if (!resizeListenerAttached || typeof window === 'undefined') {
+            return;
+        }
+        window.removeEventListener('resize', handleResize);
+        resizeListenerAttached = false;
+    };
+
+    const startShowAnimation = () => {
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+        if (appearState === 'visible' || appearState === 'entering') {
+            return;
+        }
+        appearState = 'entering';
+        requestAnimationFrame(() => {
+            if (!visible) {
+                return;
+            }
+            appearState = 'visible';
+            schedulePanelRefresh();
+        });
+    };
+
+    const startHideAnimation = () => {
+        if (appearState === 'hidden' || appearState === 'hiding') {
+            return;
+        }
+        appearState = 'hiding';
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+        }
+        hideTimer = setTimeout(() => {
+            if (visible) {
+                return;
+            }
+            appearState = 'hidden';
+            dispatch('afterHide');
+        }, APPEAR_DURATION);
+    };
+
     onMount(() => {
         setupDragHandlers();
+        attachResizeListener();
+        refreshPanelPosition();
         return () => {
             teardownDragHandlers();
+            detachResizeListener();
         };
     });
 
@@ -268,24 +367,29 @@
 
     onDestroy(() => {
         teardownDragHandlers();
+        detachResizeListener();
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+        }
     });
 
     $: stackItems = Array.isArray(stack) ? stack.filter(Boolean) : [];
     $: stackCount = stackItems.length;
 
     $: if (panelEl) {
-        panelEl.classList.toggle('hidden', !visible);
         panelEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
         if (!visible) {
             delete panelEl.dataset.userMoved;
             panelEl.classList.remove('stack-popup-dragging');
-        } else if (!previousVisible && panelEl.dataset.userMoved !== 'true') {
-            requestAnimationFrame(() => {
-                if (panelEl && panelEl.dataset.userMoved !== 'true') {
-                    positionRelativeToBoard();
-                }
-            });
+        } else if (!previousVisible) {
+            schedulePanelRefresh();
         }
+    }
+
+    $: if (visible) {
+        startShowAnimation();
+    } else {
+        startHideAnimation();
     }
 
     $: previousVisible = visible;
@@ -295,7 +399,7 @@
     bind:this={panelEl}
     id="stack-popup"
     class="stack-popup"
-    class:hidden={!visible}
+    data-appear={appearState}
     role="dialog"
     aria-label="Stack"
     aria-hidden={visible ? 'false' : 'true'}>

@@ -10,6 +10,7 @@ class UIRenderersTemplates {
     static _actionPanelTarget = null;
     static _stackPopupComponent = null;
     static _stackPopupTarget = null;
+    static _stackPopupAfterHideUnsub = null;
     // ===== MAIN RENDERING METHODS =====
     
     /**
@@ -720,13 +721,20 @@ class UIRenderersTemplates {
      * Update stack overlay visibility and content
      */
     static _updateStackOverlay(stack, gameState = null) {
-        const component = this._ensureStackPopupComponent();
-        if (!component) {
+        const safeStack = Array.isArray(stack) ? stack : [];
+        const visible = safeStack.length > 0;
+
+        if (!visible && !this._stackPopupComponent) {
             return;
         }
 
-        const safeStack = Array.isArray(stack) ? stack : [];
-        const visible = safeStack.length > 0;
+        const component = visible
+            ? this._ensureStackPopupComponent()
+            : this._stackPopupComponent;
+
+        if (!component) {
+            return;
+        }
 
         try {
             component.$set({
@@ -765,6 +773,12 @@ class UIRenderersTemplates {
                 }
             });
             this._stackPopupTarget = target;
+            if (this._stackPopupAfterHideUnsub) {
+                this._stackPopupAfterHideUnsub();
+            }
+            this._stackPopupAfterHideUnsub = this._stackPopupComponent.$on('afterHide', () => {
+                this._destroyStackPopupComponent();
+            });
         } catch (error) {
             console.error('Failed to initialize stack popup', error);
             target.remove();
@@ -773,6 +787,31 @@ class UIRenderersTemplates {
         }
 
         return this._stackPopupComponent;
+    }
+
+    static _destroyStackPopupComponent() {
+        if (!this._stackPopupComponent) {
+            return;
+        }
+        if (this._stackPopupAfterHideUnsub) {
+            const unsubscribe = this._stackPopupAfterHideUnsub;
+            this._stackPopupAfterHideUnsub = null;
+            try {
+                unsubscribe();
+            } catch (error) {
+                console.warn('Failed to detach stack popup listener', error);
+            }
+        }
+        try {
+            this._stackPopupComponent.$destroy();
+        } catch (error) {
+            console.error('Failed to destroy stack popup', error);
+        }
+        if (this._stackPopupTarget) {
+            this._stackPopupTarget.remove();
+        }
+        this._stackPopupComponent = null;
+        this._stackPopupTarget = null;
     }
 
     static _updateRevealOverlay(gameState) {
