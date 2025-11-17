@@ -40,15 +40,9 @@ npm install
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Alternatively, run the existing Compose stack with `DEV_MODE=dev` so the entrypoint installs the tooling and starts the watchers before Uvicorn:
-
-```bash
-DEV_MODE=dev docker compose up --build
-```
-
 You can override the listener address via the `HOST` and `PORT` environment variables if needed.
 
-> ℹ️ The Docker build uses a Node-based stage to run `npm ci` and `npm run build:css`, so every container image ships with the freshly generated Tailwind bundle. For local development outside of Docker, keep running `npm run dev:css` as needed.
+> ℹ️ The Docker build uses a Node-based stage to run `npm ci`, `npm run build:css`, and `npm run build:svelte`, so every container image ships with fresh frontend bundles. For local development outside of Docker, keep running the `dev:*` npm scripts as needed.
 
 ### Building Frontend Styles
 

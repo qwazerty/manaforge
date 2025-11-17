@@ -24,12 +24,6 @@ RUN apt-get update && apt-get upgrade -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Node.js for dev mode
-RUN apt-get update && apt-get install -y curl ca-certificates gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy application code
 COPY . .
 COPY --from=frontend-builder /app/app/static/css/dist/manaforge.css app/static/css/dist/manaforge.css
@@ -39,6 +33,6 @@ COPY --from=frontend-builder /app/app/static/js/ui/components app/static/js/ui/c
 EXPOSE 8000
 
 # Run the application
-ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Default command runs uvicorn without dev reload
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 USER user
