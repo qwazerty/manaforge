@@ -60,8 +60,9 @@
         }
     });
 
-    const hasMessages = $derived(() => Array.isArray(messages) && messages.length > 0);
-    const hasStatus = $derived(() => typeof statusText === 'string' && statusText.trim().length > 0);
+    const normalizedMessages = () => (Array.isArray(messages) ? messages : []);
+    const hasMessages = () => normalizedMessages().length > 0;
+    const hasStatus = () => typeof statusText === 'string' && statusText.trim().length > 0;
 </script>
 
 <div class="arena-card rounded-lg p-4 flex flex-col h-[26rem] overflow-hidden" id="battle-chat-panel-card">
@@ -75,8 +76,8 @@
             class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"
             bind:this={chatMessagesElement}
         >
-            {#if hasMessages}
-                {#each messages as message (message.id)}
+            {#if hasMessages()}
+                {#each normalizedMessages() as message (message.id)}
                     <div
                         class={`chat-message-entry rounded px-2 py-1 ${
                             message.origin === 'local'
@@ -115,7 +116,7 @@
             {/if}
         </div>
 
-        <form onsubmit={handleSubmit} class="flex items-center gap-2 pt-1">
+        <form onsubmit={handleSubmit} class="flex items-center border-t border-arena-accent/30 gap-2 pt-3">
             <input
                 type="text"
                 placeholder={placeholderText}
@@ -132,7 +133,7 @@
             </button>
         </form>
 
-        {#if hasStatus}
+        {#if hasStatus()}
             <div class="text-xs text-yellow-300">
                 {statusText}
             </div>
