@@ -144,8 +144,6 @@ class UICardOverlap {
                 this.applyOverlapToAllZones();
             }, 250);
         });
-
-        console.log('UICardOverlap initialized');
     }
 
     /**

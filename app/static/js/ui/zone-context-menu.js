@@ -57,8 +57,6 @@ class ZoneContextMenu {
                 this.closeMenu();
             }
         });
-
-        console.log('Zone context menus initialized');
     }
 
     /**
@@ -217,8 +215,6 @@ class ZoneContextMenu {
      * Execute context menu action
      */
     static executeAction(zoneName, actionType, isOpponent = false) {
-        console.log(`Executing ${actionType} on ${zoneName} (opponent: ${isOpponent})`);
-        
         this.closeMenu();
 
         // Extract base zone name
@@ -266,10 +262,8 @@ class ZoneContextMenu {
         if (isOpponent) return; // Can't mulligan for opponent
         if (window.GameActions && window.GameActions.performGameAction) {
             window.GameActions.performGameAction('mulligan');
-            UINotifications.showNotification('Performing a mulligan...', 'info');
         } else {
             console.warn('GameActions not available for mulligan');
-            UINotifications.showNotification('Mulligan action not available', 'error');
         }
     }
 
@@ -281,10 +275,8 @@ class ZoneContextMenu {
         const amount = 1;
         if (window.GameActions && window.GameActions.performGameAction) {
             window.GameActions.performGameAction('scry', { amount: amount });
-            UINotifications.showNotification(`Scrying ${amount}...`, 'info');
         } else {
             console.warn('GameActions not available for scry');
-            UINotifications.showNotification('Scry action not available', 'error');
         }
     }
 
@@ -296,10 +288,8 @@ class ZoneContextMenu {
         const amount = 1;
         if (window.GameActions && window.GameActions.performGameAction) {
             window.GameActions.performGameAction('surveil', { amount: amount });
-            UINotifications.showNotification(`Surveiling ${amount}...`, 'info');
         } else {
             console.warn('GameActions not available for surveil');
-            UINotifications.showNotification('Surveil action not available', 'error');
         }
     }
 
@@ -310,10 +300,8 @@ class ZoneContextMenu {
         if (isOpponent) return;
         if (window.GameActions && typeof window.GameActions.millTopLibraryCard === 'function') {
             window.GameActions.millTopLibraryCard();
-            UINotifications.showNotification('Milling top card...', 'info');
         } else {
             console.warn('GameActions not available for mill');
-            UINotifications.showNotification('Mill action not available', 'error');
         }
     }
 
@@ -324,11 +312,8 @@ class ZoneContextMenu {
         if (window.GameActions && window.GameActions.drawCard) {
             // TODO: Add support for opponent draw card when needed
             window.GameActions.drawCard();
-            const playerType = isOpponent ? "opponent's" : "your";
-            UINotifications.showNotification(`Drawing card from ${playerType} library`, 'info');
         } else {
             console.warn('GameActions.drawCard not available');
-            UINotifications.showNotification('Draw card action not available', 'error');
         }
     }
 
@@ -340,11 +325,8 @@ class ZoneContextMenu {
         if (window.GameActions && window.GameActions.performGameAction) {
             // TODO: Add support for opponent shuffle when needed
             window.GameActions.performGameAction('shuffle_library');
-            const playerType = isOpponent ? "Opponent's" : "Your";
-            UINotifications.showNotification(`${playerType} library shuffled`, 'info');
         } else {
             console.warn('GameActions not available for shuffle');
-            UINotifications.showNotification('Shuffle action not available', 'error');
         }
     }
 
@@ -357,20 +339,16 @@ class ZoneContextMenu {
             if (window.ZoneManager && window.ZoneManager.showOpponentZoneModal) {
                 const modalZoneName = zoneName === 'deck' ? 'deck' : zoneName;
                 window.ZoneManager.showOpponentZoneModal(modalZoneName);
-                UINotifications.showNotification(`Viewing opponent's ${zoneName}...`, 'info');
             } else {
                 console.warn('ZoneManager.showOpponentZoneModal not available');
-                UINotifications.showNotification(`View opponent's ${zoneName} not available`, 'error');
             }
         } else {
             // Show player zone modal
             if (window.ZoneManager && window.ZoneManager.showZoneModal) {
                 const modalZoneName = zoneName === 'deck' ? 'deck' : zoneName;
                 window.ZoneManager.showZoneModal(modalZoneName);
-                UINotifications.showNotification(`Searching ${zoneName}...`, 'info');
             } else {
                 console.warn('ZoneManager not available for search');
-                UINotifications.showNotification(`Search ${zoneName} not available`, 'error');
             }
         }
     }

@@ -569,30 +569,6 @@ function playCardFromHand(cardId, uniqueId) {
     if (cardElement) {
         cardName = cardElement.getAttribute('data-card-name') || cardId;
     }
-
-    GameUI.logMessage(`Card played: ${cardName}`, 'info');
-}
-
-function changePlayer(playerType) {
-    GameCore.setSelectedPlayer(playerType);
-    GameUtils.setPlayerInUrl(playerType);
-
-    if (window.gameData && playerType !== 'spectator') {
-        window.gameData.playerId = playerType;
-    }
-
-    GameUI.updateRoleDisplay();
-    GameUI.generateGameBoard();
-    GameUI.generateActionPanel();
-    
-    // Reconnect WebSocket with new player type
-    const websocket = window.websocket;
-    if (websocket) {
-        websocket.close();
-    }
-    
-    GameSocket.initWebSocket();
-    GameUI.logMessage(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
 function clearTappedState(uniqueCardId) {
@@ -626,7 +602,6 @@ function changePhase(phaseId) {
     const phaseName = (typeof UIConfig !== 'undefined' && UIConfig.getPhaseDisplayName)
         ? UIConfig.getPhaseDisplayName(phaseId)
         : phaseId;
-    GameUI.logMessage(`Phase set to ${phaseName}`, 'info');
 }
 
 function tapCard(cardId, uniqueCardId) {
@@ -642,8 +617,6 @@ function tapCard(cardId, uniqueCardId) {
         const newTappedState = !isTapped;
         const cardName = cardElement.getAttribute('data-card-name') || cardId;
 
-        console.log(`🃏 Card ${cardName}: ${isTapped ? 'tapped' : 'untapped'} -> ${newTappedState ? 'tapped' : 'untapped'}`);
-
         cardElement.setAttribute('data-card-tapped', newTappedState.toString());
         cardElement.classList.toggle('tapped', newTappedState);
         cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
@@ -656,11 +629,9 @@ function tapCard(cardId, uniqueCardId) {
 
         performGameAction('tap_card', tapData);
         const actionText = newTappedState ? 'tapped' : 'untapped';
-        GameUI.logMessage(`${cardName} ${actionText}`, 'info');
     } else {
         console.warn(`🃏 Card element not found for cardId: ${cardId}, uniqueCardId: ${uniqueCardId}`);
         performGameAction('tap_card', { card_id: cardId, unique_id: uniqueCardId });
-        GameUI.logMessage(`Card tapped/untapped`, 'info');
     }
 }
 
@@ -723,7 +694,6 @@ function deleteToken(uniqueCardId, cardName = 'Token') {
 
     performGameAction('delete_token', { unique_id: uniqueCardId });
     const label = cardName || 'Token';
-    GameUI.logMessage(`${label} removed`, 'info');
 }
 
 function millTopLibraryCard() {
@@ -748,7 +718,6 @@ function millTopLibraryCard() {
             : [];
 
     if (!library.length) {
-        GameUI.logMessage('Library is empty', 'info');
         return;
     }
 
@@ -783,7 +752,6 @@ function moveAllHandToReveal() {
     const hand = Array.isArray(player?.hand) ? player.hand : [];
 
     if (hand.length === 0) {
-        GameUI.logMessage('Your hand is empty', 'info');
         return;
     }
 
@@ -795,8 +763,6 @@ function moveAllHandToReveal() {
             movedCount++;
         }
     });
-
-    GameUI.logMessage(`${movedCount} card${movedCount !== 1 ? 's' : ''} revealed from hand`, 'success');
 }
 
 function returnAllRevealToHand() {
@@ -818,7 +784,6 @@ function returnAllRevealToHand() {
     const revealZone = Array.isArray(player?.reveal_zone) ? player.reveal_zone : [];
 
     if (revealZone.length === 0) {
-        GameUI.logMessage('No cards in reveal zone', 'info');
         return;
     }
 
@@ -830,8 +795,6 @@ function returnAllRevealToHand() {
             movedCount++;
         }
     });
-
-    GameUI.logMessage(`${movedCount} card${movedCount !== 1 ? 's' : ''} returned to hand`, 'success');
 }
 
 function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
@@ -853,7 +816,6 @@ function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
 
     const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
     const cardName = cardElement?.getAttribute('data-card-name') || cardId;
-    GameUI.logMessage(`${cardName} duplicated`, 'success');
 }
 
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
@@ -873,7 +835,6 @@ function resolveStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.logMessage(`Resolving spell ${cardId}`, 'info');
 }
 
 function counterStackSpell(cardId, stackIndex) {
@@ -881,7 +842,6 @@ function counterStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.logMessage(`Spell countered`, 'info');
 }
 
 function copyStackSpell(cardId, stackIndex) {
@@ -889,7 +849,6 @@ function copyStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.logMessage(`Spell copied`, 'info');
 }
 
 function drawCard() {
@@ -903,8 +862,6 @@ function drawCard() {
             deckPreview.classList.remove('animate-card-draw');
         }, 1000);
     }
-    
-    GameUI.logMessage(`Card drawn`, 'info');
 }
 
 function untapAll() {
@@ -933,8 +890,6 @@ function untapAll() {
             untappedCount++;
         }
     });
-    
-    GameUI.logMessage(`All permanents untapped (${untappedCount} cards)`, 'success');
 }
 
 function modifyLife(playerId, amount) {
@@ -969,9 +924,7 @@ function modifyPlayerCounter(playerId, counterType, amount) {
     });
 
     const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
-    const tone = parsedAmount > 0 ? 'success' : 'warning';
     const signed = parsedAmount > 0 ? `+${parsedAmount}` : `${parsedAmount}`;
-    GameUI.logMessage(`${playerId}: ${formattedType} ${signed}`, tone);
 }
 
 function setPlayerCounter(playerId, counterType, value) {
@@ -999,7 +952,6 @@ function setPlayerCounter(playerId, counterType, value) {
     const message = parsedValue <= 0
         ? `Removed ${formattedType} counters`
         : `${formattedType} set to ${parsedValue}`;
-    GameUI.logMessage(`${playerId}: ${message}`, 'info');
 }
 
 function adjustCommanderTax(playerId, amount) {
@@ -1010,8 +962,6 @@ function adjustCommanderTax(playerId, amount) {
     });
 
     const signedAmount = amount > 0 ? `+${amount}` : `${amount}`;
-    const tone = amount > 0 ? 'info' : 'warning';
-    GameUI.logMessage(`${playerId}: Commander tax ${signedAmount}`, tone);
 }
 
 function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayerId = null) {
@@ -1058,7 +1008,6 @@ function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayer
         reveal_zone: 'reveal zone'
     };
     const zoneLabel = zoneLabels[baseSourceZone] || 'zone';
-    GameUI.logMessage(`Playing opponent's card from ${zoneLabel}`, 'info');
 }
 
 // Export actions module functionality
@@ -1066,7 +1015,6 @@ window.GameActions = {
     performGameAction,
     performHttpGameAction,
     playCardFromHand,
-    changePlayer,
     changePhase,
     clearTappedState,
     clearTargetedState,
@@ -1159,8 +1107,6 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
             }
         }
     }
-
-    GameUI.logMessage(`Card moved to ${targetZone}`, 'info');
 
     if (callback) {
         callback();

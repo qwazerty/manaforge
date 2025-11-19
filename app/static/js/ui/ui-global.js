@@ -8,6 +8,8 @@ window.GameUI = window.GameUI || {};
 
 // Global UI utilities
 Object.assign(window.GameUI, {
+    _logBuffer: [],
+
     /**
      * Toggle fullscreen mode
      */
@@ -34,7 +36,6 @@ Object.assign(window.GameUI, {
             // Alpine.js reactive data can be added here if needed
             init() {
                 // This runs when Alpine.js initializes the component
-                console.log('Game interface Alpine.js component initialized');
             }
         };
     },
@@ -48,9 +49,42 @@ Object.assign(window.GameUI, {
     showZoneModal: (zoneName) => UIZonesManager.showZoneModal(zoneName),
     closeZoneModal: (zoneName) => UIZonesManager.closeZoneModal(zoneName),
     updateZoneCounts: () => UIZonesManager.updateZoneCounts(),
+
+    /**
+     * Lightweight logging shim now that notifications are gone
+     */
+    logMessage(message, level = 'info') {
+        const entry = {
+            message: typeof message === 'string' ? message : JSON.stringify(message),
+            level,
+            timestamp: Date.now()
+        };
+
+        if (!Array.isArray(this._logBuffer)) {
+            this._logBuffer = [];
+        }
+        this._logBuffer.push(entry);
+        if (this._logBuffer.length > 50) {
+            this._logBuffer.shift();
+        }
+
+        const logFn = level === 'error' ? console.error : level === 'warning' ? console.warn : console.log;
+        logFn.call(console, `[GameUI:${level}]`, entry.message);
+
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('gameui:log', { detail: entry }));
+        }
+
+        return entry;
+    },
+
+    getRecentLogs(count = 10) {
+        if (!Array.isArray(this._logBuffer) || this._logBuffer.length === 0) {
+            return [];
+        }
+        return this._logBuffer.slice(-count);
+    },
     
-    showNotification: (message, type) => UINotifications.showNotification(message, type),
-    showAutoRefreshIndicator: (message, type) => UINotifications.showAutoRefreshIndicator(message, type),
     addChatMessage: (sender, message) => {
         if (
             typeof UIBattleChat !== 'undefined' &&
@@ -69,14 +103,8 @@ Object.assign(window.GameUI, {
             this.generateActionPanel();
             this.updateZoneCounts();
             
-            if (typeof UINotifications !== 'undefined') {
-                UINotifications.showSuccessFeedback('UI refreshed successfully');
-            }
         } catch (error) {
             console.error('Error refreshing UI:', error);
-            if (typeof UINotifications !== 'undefined') {
-                UINotifications.showErrorFeedback('Failed to refresh UI', error);
-            }
         }
     }
 });
@@ -99,6 +127,5 @@ window.generateActionPanel = () => window.GameUI.generateActionPanel();
 window.showZoneModal = (zoneName) => window.GameUI.showZoneModal(zoneName);
 window.closeZoneModal = (zoneName) => window.GameUI.closeZoneModal(zoneName);
 window.updateZoneCounts = () => window.GameUI.updateZoneCounts();
-window.showNotification = (message, type) => window.GameUI.showNotification(message, type);
-window.showAutoRefreshIndicator = (message, type) => window.GameUI.showAutoRefreshIndicator(message, type);
 window.addChatMessage = (sender, message) => window.GameUI.addChatMessage(sender, message);
+window.logMessage = (message, level) => window.GameUI.logMessage(message, level);

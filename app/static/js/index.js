@@ -5,8 +5,6 @@
 
 // Homepage functionality
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('ManaForge homepage loaded');
-    
     // Add smooth scroll behavior for internal links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {

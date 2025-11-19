@@ -193,8 +193,6 @@ function syncPersistentUi(state, { force = false } = {}) {
 
 // ===== INITIALIZATION FUNCTION =====
 async function initializeGame() {
-    console.log('ManaForge Game Interface initializing...');
-    
     // Initialize game ID from template data
     if (window.gameData) {
         gameId = window.gameData.gameId;
@@ -263,7 +261,6 @@ async function loadGameState() {
         }
         
         gameState = await response.json();
-        console.log('Initial game state loaded:', gameState);
 
         syncPersistentUi(gameState, { force: true });
         
@@ -306,11 +303,9 @@ async function refreshGameData() {
                 gameState = newGameState;
                 const newPhase = gameState?.phase;
                 
-                console.log('Game state updated:', gameState);
                 GameUI.generateLeftArea();
                 GameUI.generateGameBoard();
                 GameUI.generateActionPanel();
-                GameUI.showAutoRefreshIndicator('🔄 HTTP Update');
                 if (
                     Array.isArray(gameState.chat_log) &&
                     typeof UIBattleChat !== 'undefined' &&
@@ -376,14 +371,12 @@ document.addEventListener('DOMContentLoaded', function() {
         window.GameUtils && 
         window.GameCards) {
         
-        console.log('ManaForge game modules loaded successfully');
         // Initialize the game asynchronously
         window.GameCore.initializeGame();
         
         // Initialize combat system if available
         if (window.GameCombat && typeof window.GameCombat.init === 'function') {
             window.GameCombat.init();
-            console.log('Combat system initialized');
         }
     } else {
         console.error('Some ManaForge game modules failed to load');

@@ -12,7 +12,7 @@ The CSS for ManaForge has been consolidated to improve maintainability, performa
 -   **`game-players.css`**: Styles for the player and opponent information displays (life, mana, etc.).
 -   **`game-responsive.css`**: Contains all media queries and responsive adjustments for different screen sizes, particularly for 1080p height optimization.
 -   **`game-stack.css`**: Styles for the game stack where spells and abilities are placed.
--   *(Migrated)* Shared UI elements such as context menus, notifications, and action history now live in the Tailwind component layer (`tailwind.css`) and ship inside `dist/manaforge.css`.
+-   *(Migrated)* Shared UI elements such as context menus and action history now live in the Tailwind component layer (`tailwind.css`) and ship inside `dist/manaforge.css`.
 
 ### Loading Mechanism
 

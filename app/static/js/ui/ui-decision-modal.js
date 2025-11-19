@@ -95,14 +95,8 @@ class UIDecisionModal {
             typeof GameActions.performGameAction === 'function'
         ) {
             GameActions.performGameAction('resolve_temporary_zone', { decisions });
-            if (typeof UINotifications !== 'undefined') {
-                UINotifications.showNotification(`Resolving ${this._currentActionType}...`, 'info');
-            }
         } else {
             console.error('[UIDecisionModal] GameActions.performGameAction unavailable');
-            if (typeof UINotifications !== 'undefined') {
-                UINotifications.showNotification('Unable to resolve cards', 'error');
-            }
         }
         this.close();
     }
@@ -119,9 +113,6 @@ class UIDecisionModal {
             });
         } else {
             console.error('[UIDecisionModal] Unable to add card, GameActions missing');
-            if (typeof UINotifications !== 'undefined') {
-                UINotifications.showNotification('Action could not be performed.', 'error');
-            }
         }
     }
 }

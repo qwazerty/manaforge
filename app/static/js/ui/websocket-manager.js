@@ -30,8 +30,6 @@ class WebSocketManager {
             this.websocket = new WebSocket(wsUrl);
             
             this.websocket.onopen = (event) => {
-                console.log('WebSocket connected as', currentSelectedPlayer);
-                UINotifications.showAutoRefreshIndicator('🔗 Connected', 'success');
                 
                 this.websocket.send(JSON.stringify({
                     type: 'player_joined',
@@ -55,11 +53,9 @@ class WebSocketManager {
             
             this.websocket.onclose = (event) => {
                 console.warn('WebSocket disconnected', { code: event.code, reason: event.reason });
-                UINotifications.showAutoRefreshIndicator('🔌 Disconnected', 'warning');
                 
                 setTimeout(() => {
                     if (this.isPageVisible) {
-                        console.log('Attempting to reconnect WebSocket...');
                         this.initWebSocket();
                     }
                 }, 3000);
@@ -67,12 +63,10 @@ class WebSocketManager {
             
             this.websocket.onerror = (error) => {
                 console.error('WebSocket error:', error, 'readyState:', this.websocket?.readyState);
-                UINotifications.showAutoRefreshIndicator('❌ Connection Error', 'error');
             };
             
         } catch (error) {
             console.error('Failed to initialize WebSocket:', error);
-            UINotifications.showAutoRefreshIndicator('❌ WebSocket Init Failed', 'error');
         }
     }
 
@@ -109,7 +103,6 @@ class WebSocketManager {
                 actionData,
                 readyState: this.websocket ? this.websocket.readyState : 'no-connection'
             });
-            UINotifications.showNotification('WebSocket not connected', 'error');
         }
     }
 
@@ -184,7 +177,6 @@ class WebSocketManager {
                     
                     if (actionResult && actionResult.action === 'tap_card') {
                         const result = actionResult;
-                        console.log(`🃏 WebSocket: Tap action completed for ${result.player}`);
                     }
                 }
 
@@ -215,14 +207,12 @@ class WebSocketManager {
                 
             case 'game_action_failed':
                 console.error('WebSocket action failed', message);
-                UINotifications.showNotification(`Action failed: ${message.error}`, 'error');
                 
                 WebSocketManager._recordActionFailure(message.action, message.error, message.player);
                 break;
                 
             case 'action_error':
                 console.error('WebSocket reported action error', message);
-                UINotifications.showNotification(`Error: ${message.message}`, 'error');
                 
                 WebSocketManager._recordActionFailure(message.action, message.message, message.player);
                 break;
@@ -266,15 +256,15 @@ class WebSocketManager {
                 
             case 'player_status':
                 const action = message.action === 'joined' ? 'joined' : 'left';
-                UINotifications.showNotification(`${message.player} ${action} (${message.connected_players} connected)`);
+                console.info(`${message.player} ${action} (${message.connected_players} connected)`);
                 break;
                 
             case 'connection_established':
-                UINotifications.showNotification(`Connected to game as ${message.player_id} (${message.connected_players} players online)`);
+                console.info(`Connected to game as ${message.player_id} (${message.connected_players} players online)`);
                 break;
                 
             case 'state_sync':
-                UINotifications.showAutoRefreshIndicator(`🔄 Sync by ${message.requested_by}`, 'success');
+                console.info(`State sync requested by ${message.requested_by}`);
                 break;
                 
             case 'ping':
@@ -287,12 +277,10 @@ class WebSocketManager {
                 break;
                 
             case 'pong':
-                console.log('Received pong from server');
                 break;
                 
             case 'error':
                 console.error('WebSocket server error message received', message);
-                UINotifications.showNotification(`Server error: ${message.message}`, 'error');
                 
                 WebSocketManager._recordActionFailure('server_error', message.message);
                 break;
@@ -329,29 +317,6 @@ class WebSocketManager {
         };
         
         this.sendGameAction(action, message);
-        console.log('🎮 Sent action:', message);
-    }
-
-    /**
-     * Show notification (fallback)
-     */
-    static showNotification(message, type = 'info') {
-        if (typeof UINotifications !== 'undefined') {
-            UINotifications.showNotification(message, type);
-        } else {
-            console.log(`[${type}] ${message}`);
-        }
-    }
-
-    /**
-     * Show game action notification
-     */
-    static showGameAction(player, action, card = null) {
-        const message = card ? 
-            `${player} ${action} ${card.name}` : 
-            `${player} ${action}`;
-        
-        this.showNotification(message, 'info');
     }
 
     /**
@@ -556,7 +521,6 @@ class WebSocketManager {
         }
 
         if (stepChanged) {
-            console.log('Combat: step transition detected', newCombatState.step, 'expected:', newCombatState.expected_player);
             if (newCombatState.step === 'declare_attackers') {
                 if (!newCombatState.expected_player || newCombatState.expected_player === currentPlayer) {
                     setTimeout(() => {
@@ -586,7 +550,6 @@ class WebSocketManager {
         if (actionResult && (actionResult.action === 'preview_attackers' || actionResult.action === 'preview_blockers')) {
             this._applyCombatAnimations(newGameState);
         } else if (actionResult && actionResult.action === 'declare_attackers') {
-            console.log('Combat: Attackers declared via WebSocket');
             this._applyCombatAnimations(newGameState);
             
             // Start blocker declaration for defending player
@@ -596,7 +559,6 @@ class WebSocketManager {
             const isDefendingPlayer = currentPlayerIndex !== activePlayerIndex;
             
             if (isDefendingPlayer) {
-                console.log('Starting blocker declaration mode for defending player');
                 setTimeout(() => {
                     if (window.GameCombat && typeof window.GameCombat.startDefenseStep === 'function') {
                         window.GameCombat.startDefenseStep();
@@ -604,7 +566,6 @@ class WebSocketManager {
                 }, 200);
             }
         } else if (actionResult && actionResult.action === 'declare_blockers') {
-            console.log('Combat: Blockers declared via WebSocket');
             this._applyCombatAnimations(newGameState);
         } else {
             // Fallback: detect changes in attacking/blocking status
@@ -612,7 +573,6 @@ class WebSocketManager {
             const newAttackers = this._getAttackingCreatures(newGameState);
             
             if (newAttackers.length > oldAttackers.length) {
-                console.log('Combat: New attackers detected via state comparison');
                 this._applyCombatAnimations(newGameState);
                 
                 // Start blocker declaration for defending player
@@ -634,7 +594,6 @@ class WebSocketManager {
             const newBlockers = this._getBlockingCreatures(newGameState);
             
             if (newBlockers.length > oldBlockers.length) {
-                console.log('Combat: New blockers detected via state comparison');
                 this._applyCombatAnimations(newGameState);
             }
         }
@@ -764,8 +723,6 @@ window.GameSocket = {
 // Arena core compatibility
 window.connectWebSocket = (id) => WebSocketManager.connectWebSocket(id);
 window.sendGameAction = (action, cardId, extraData) => WebSocketManager.sendArenaGameAction(action, cardId, extraData);
-window.showNotification = (message, type) => WebSocketManager.showNotification(message, type);
-window.showGameAction = (player, action, card) => WebSocketManager.showGameAction(player, action, card);
 window.playCard = (cardId) => WebSocketManager.playCard(cardId);
 window.addChatMessage = (player, message) => WebSocketManager.addChatMessage(player, message);
 

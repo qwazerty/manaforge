@@ -5,11 +5,9 @@
 
 // Error page functionality
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Error page loaded');
-    
+
     // Auto-redirect to home after 30 seconds of inactivity
     let redirectTimer = setTimeout(() => {
-        showNotification('Returning to the home plane...', 'info');
         setTimeout(() => {
             window.location.href = '/';
         }, 2000);
@@ -18,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cancel redirect if user interacts
     function cancelRedirect() {
         clearTimeout(redirectTimer);
-        console.log('Auto-redirect cancelled due to user interaction');
     }
     
     document.addEventListener('click', cancelRedirect);
@@ -78,8 +75,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add keyboard shortcut to return home (Escape key)
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
-            console.log('Escape key pressed, returning to home');
-            showNotification('Returning to home plane...', 'info');
             setTimeout(() => {
                 window.location.href = '/';
             }, 1000);
@@ -89,7 +84,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Show a helpful tip after 10 seconds
     setTimeout(() => {
         if (document.hasFocus()) {
-            showNotification('💡 Press Escape to quickly return home', 'info');
         }
     }, 10000);
 });
