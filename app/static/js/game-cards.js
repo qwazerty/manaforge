@@ -555,6 +555,7 @@ const GameCards = {
         const hasReadOnlyOption = options && Object.prototype.hasOwnProperty.call(options, 'readOnly');
         const readOnly = hasReadOnlyOption ? Boolean(options.readOnly) : spectatorView;
         const allowInteractions = !readOnly;
+        const disableContextMenu = Boolean(options && options.disableContextMenu);
 
         let onClickAction = '';
         if (allowInteractions && (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield')) {
@@ -575,7 +576,8 @@ const GameCards = {
         const dropAttr = allowInteractions ? dropAttributes : '';
         const dragStartAttr = allowInteractions ? 'ondragstart="GameCards.handleDragStart(event, this)"' : '';
         const dragEndAttr = allowInteractions ? 'ondragend="GameCards.handleDragEnd(event, this)"' : '';
-        const contextMenuAttr = allowInteractions ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
+        const allowCardContextMenu = allowInteractions && !disableContextMenu;
+        const contextMenuAttr = allowCardContextMenu ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
         
         // Apply transform for attacking creatures, keeping rotation when tapped
         const attackingStyle = visualState.styleText;

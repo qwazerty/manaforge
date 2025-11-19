@@ -993,7 +993,7 @@ class UIZonesManager {
         const cardsArray = Array.isArray(cards) ? cards : [];
         const baseZone = popupKey.replace('opponent_', '');
         const isCommanderPopup = baseZone === 'commander';
-        const allowEmptyDisplay = baseZone === 'reveal';
+        const allowEmptyDisplay = ['reveal', 'graveyard', 'exile', 'deck'].includes(baseZone);
 
         if (!cardsArray.length && !isCommanderPopup && !allowEmptyDisplay) {
             elements.panel.classList.add('hidden');

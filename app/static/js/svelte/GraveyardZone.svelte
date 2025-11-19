@@ -7,22 +7,25 @@
         onClick = null
     } = $props();
 
-    const stackMarkup = $derived(() => {
-        if (cards.length === 0) {
+    const normalizedCards = () => (Array.isArray(cards) ? cards : []);
+
+    const stackMarkup = () => {
+        const cardList = normalizedCards();
+        if (cardList.length === 0) {
             return '';
         }
 
-        const stackLayers = Math.min(5, Math.max(1, cards.length));
-        const topCards = cards.slice(-stackLayers);
+        const stackLayers = Math.min(5, Math.max(1, cardList.length));
+        const topCards = cardList.slice(-stackLayers);
 
-        return topCards.map((card) => {
+        return topCards.map((card, index) => {
             return `
                 <div class="graveyard-card-layer">
-                    ${GameCards.renderCardWithLoadingState(card, 'card-front-mini', true, 'graveyard')}
+                    ${GameCards.renderCardWithLoadingState(card, 'card-front-mini', true, 'graveyard', false, index, null, { disableContextMenu: true })}
                 </div>
             `;
         }).join('');
-    });
+    };
 
     function handleClick(event) {
         if (typeof onClick === 'function') {
@@ -44,7 +47,7 @@
             </div>
         {:else}
             {@html stackMarkup()}
-            <div class="graveyard-click-overlay">
+            <div class="graveyard-click-overlay" style="pointer-events: none;">
                 <span class="zone-view-hint">
                     {@html overlayHtml}
                 </span>
