@@ -400,17 +400,6 @@ const GameCards = {
         const isTargeted = Boolean(card?.targeted);
         const isAttacking = Boolean(card?.attacking);
         const isBlocking = Boolean(card?.blocking);
-        const normalizedZone = typeof zone === 'string'
-            ? zone.replace('opponent_', '').toLowerCase()
-            : '';
-        const battlefieldZones = new Set(['battlefield', 'creatures', 'support', 'permanents', 'lands']);
-        const stackZones = new Set(['stack']);
-        const showBattlefieldState = battlefieldZones.has(normalizedZone);
-        const showStackTargeting = stackZones.has(normalizedZone);
-        const displayTapped = showBattlefieldState && isTapped;
-        const displayAttacking = showBattlefieldState && isAttacking;
-        const displayBlocking = showBattlefieldState && isBlocking;
-        const displayTargeted = (showBattlefieldState || showStackTargeting) && isTargeted;
         const gameState = (typeof GameCore !== 'undefined' && typeof GameCore.getGameState === 'function')
             ? GameCore.getGameState()
             : null;
@@ -425,33 +414,33 @@ const GameCards = {
         const frontendCombatMode = typeof GameCombat !== 'undefined' ? GameCombat.combatMode : null;
         const isDeclaringAttackers =
             combatStep === 'declare_attackers' || frontendCombatMode === 'declaring_attackers';
-        const isPendingBlocker = showBattlefieldState && Object.prototype.hasOwnProperty.call(
+        const isPendingBlocker = Object.prototype.hasOwnProperty.call(
             pendingBlockers,
             card?.unique_id
         );
 
         const suppressTappedVisual =
             inCombatPhase &&
-            displayTapped &&
-            (displayAttacking || displayBlocking || isPendingBlocker) &&
+            isTapped &&
+            (isAttacking || isBlocking || isPendingBlocker) &&
             isDeclaringAttackers;
 
         const classes = {
-            tapped: displayTapped && !suppressTappedVisual,
-            combatTapped: inCombatPhase && displayAttacking && displayTapped,
-            targeted: displayTargeted,
-            attacking: displayAttacking,
-            blocking: displayBlocking
+            tapped: isTapped && !suppressTappedVisual,
+            combatTapped: inCombatPhase && isAttacking && isTapped,
+            targeted: isTargeted,
+            attacking: isAttacking,
+            blocking: isBlocking
         };
 
         let transformValue = '';
-        if (displayAttacking) {
+        if (isAttacking) {
             const transforms = [];
             const translateY = isOpponent ? 20 : -20;
             if (translateY !== 0) {
                 transforms.push(`translateY(${translateY}px)`);
             }
-            if (displayTapped && !suppressTappedVisual) {
+            if (isTapped && !suppressTappedVisual) {
                 transforms.push('rotate(90deg)');
             }
             if (transforms.length) {
