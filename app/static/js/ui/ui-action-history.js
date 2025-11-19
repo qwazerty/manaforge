@@ -280,6 +280,14 @@ class UIActionHistory {
         this._actionHistoryTarget = null;
     }
 
+    /**
+     * Request a UI refresh for the action history panel.
+     * Useful when the container is re-rendered by another framework.
+     */
+    static refreshPanel() {
+        this._render();
+    }
+
     static _getCardPreviewHandlers() {
         if (!this._previewHandlers) {
             this._previewHandlers = {
