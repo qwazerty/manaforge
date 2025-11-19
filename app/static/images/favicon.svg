@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="ManaForge logo">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0a0e1a" />
+            <stop offset="100%" stop-color="#1f2432" />
+        </linearGradient>
+        <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#f8e0a0" />
+            <stop offset="100%" stop-color="#c9aa71" />
+        </linearGradient>
+    </defs>
+    <rect width="64" height="64" rx="16" fill="url(#bg)" />
+    <path d="M16 46V18h6l10 14 10-14h6v28h-6V29.5L32 42l-10-12.5V46z" fill="url(#accent)" />
+    <circle cx="32" cy="32" r="25" fill="none" stroke="#9d7c3f" stroke-width="2" opacity="0.6" />
+</svg>
