@@ -42,16 +42,19 @@
     };
 
     const normalizedPhase = $derived(() => currentPhase || 'begin');
-    const activeIndex = $derived(() => Math.max(
-        (phases || []).findIndex((phase) => phase.id === normalizedPhase),
-        0
-    ));
+    let timelinePhases = $state([]);
 
-    const timelinePhases = $derived(() => {
-        const normalized = normalizedPhase;
+    $effect(() => {
+        const phaseList = Array.isArray(phases) ? phases : [];
+        const normalized = normalizedPhase();
         const readOnly = readOnlyPhases;
 
-        return (phases || []).map((phase, index) => {
+        const activeIndex = Math.max(
+            phaseList.findIndex((phase) => phase.id === normalized),
+            0
+        );
+
+        timelinePhases = phaseList.map((phase, index) => {
             const isCurrent = phase.id === normalized;
             const timelineState = index < activeIndex
                 ? 'completed'
@@ -117,7 +120,6 @@
             </div>
         </div>
     </div>
-
     {#if timelinePhases.length}
         <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
             <div class="grid grid-cols-7 gap-1">
