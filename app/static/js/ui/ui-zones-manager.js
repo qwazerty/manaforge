@@ -181,7 +181,7 @@ class UIZonesManager {
     /**
      * Display custom life input field for personalized adjustments.
      */
-    static openCustomLifeInput(playerId, direction = 1) {
+    static openCustomLifeInput(playerId, direction = 1, anchorElement = null) {
         const container = document.getElementById(`life-custom-input-${playerId}`);
         const label = document.getElementById(`life-custom-input-label-${playerId}`);
         const input = document.getElementById(`life-custom-value-${playerId}`);
@@ -195,6 +195,33 @@ class UIZonesManager {
             ? 'Add custom amount'
             : 'Remove custom amount';
         container.classList.remove('hidden');
+        container.dataset.anchor = '';
+
+        const panelWidth = container.offsetWidth || 320;
+        const panelHeight = container.offsetHeight || 220;
+        const popoverPosition = (typeof UIUtils !== 'undefined' && typeof UIUtils.calculateAnchorPosition === 'function')
+            ? UIUtils.calculateAnchorPosition(anchorElement, {
+                preferredAnchor: anchorElement ? 'bottom-left' : 'center',
+                panelWidth,
+                panelHeight,
+                horizontalOffset: 0,
+                verticalOffset: 8
+            })
+            : null;
+
+        if (popoverPosition) {
+            container.style.position = 'fixed';
+            container.style.top = `${popoverPosition.top}px`;
+            container.style.left = `${popoverPosition.left}px`;
+            container.style.transform = this._resolveAnchorTransform(popoverPosition.anchor);
+            container.dataset.anchor = popoverPosition.anchor || '';
+        } else {
+            container.style.removeProperty('position');
+            container.style.removeProperty('top');
+            container.style.removeProperty('left');
+            container.style.transform = '';
+        }
+
         input.value = '';
         input.focus();
     }
@@ -235,9 +262,33 @@ class UIZonesManager {
 
         container.classList.add('hidden');
         container.dataset.direction = '';
+        container.dataset.anchor = '';
+        container.style.removeProperty('position');
+        container.style.removeProperty('top');
+        container.style.removeProperty('left');
+        container.style.removeProperty('transform');
         if (input) {
             input.value = '';
         }
+    }
+
+    static _resolveAnchorTransform(anchor = 'center') {
+        const normalized = typeof anchor === 'string' ? anchor.toLowerCase() : 'center';
+        let translateX = '-50%';
+        if (normalized.includes('left')) {
+            translateX = '0';
+        } else if (normalized.includes('right')) {
+            translateX = '-100%';
+        }
+
+        let translateY = '-50%';
+        if (normalized.includes('top')) {
+            translateY = '0';
+        } else if (normalized.includes('bottom')) {
+            translateY = '-100%';
+        }
+
+        return `translate(${translateX}, ${translateY})`;
     }
 
     /**
@@ -971,7 +1022,7 @@ class UIZonesManager {
                         negativeControls: config.negativeControls,
                         positiveControls: config.positiveControls,
                         hasCustomLifeControls: config.hasCustomLifeControls,
-                        countersHtml: config.countersHtml,
+                        counters: config.counters,
                         manageButton: config.manageButton || null
                     }
                 });

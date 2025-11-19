@@ -83,7 +83,9 @@ class ZoneData {
         const lifeValue = typeof safeData.life === 'number'
             ? safeData.life
             : parseInt(safeData.life || 20, 10) || 20;
-        const countersHtml = UIPlayerCounters.renderCounterBadges(safeData, playerId);
+        const counters = (typeof UIPlayerCounters !== 'undefined' && typeof UIPlayerCounters.getBadgeEntries === 'function')
+            ? UIPlayerCounters.getBadgeEntries(safeData, playerId)
+            : [];
         const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
         const manageButton = {
             label: 'Counters',
@@ -93,7 +95,10 @@ class ZoneData {
                 'bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/50 hover:border-indigo-300',
                 'text-indigo-100 hover:text-white transition-all duration-200'
             ].join(' '),
-            onClick: () => UIPlayerCounters.openCounterManager(playerId)
+            onClick: (event) => UIPlayerCounters.openCounterManager(
+                playerId,
+                event?.currentTarget || event?.target || null
+            )
         };
         const toControlConfig = (control, index) => {
             const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
@@ -104,7 +109,11 @@ class ZoneData {
                     label: control.label,
                     title: direction > 0 ? 'Add custom amount' : 'Remove custom amount',
                     className: classes,
-                    onClick: () => UIZonesManager.openCustomLifeInput(playerId, direction)
+                    onClick: (event) => UIZonesManager.openCustomLifeInput(
+                        playerId,
+                        direction,
+                        event?.currentTarget || event?.target || null
+                    )
                 };
             }
             const value = typeof control.value === 'number' ? control.value : 0;
@@ -138,7 +147,7 @@ class ZoneData {
         return {
             life: lifeValue,
             playerId,
-            countersHtml,
+            counters,
             manageButton,
             negativeControls,
             positiveControls,

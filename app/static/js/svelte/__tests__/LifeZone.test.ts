@@ -8,7 +8,9 @@ describe('LifeZone', () => {
         render(LifeZone, {
             props: {
                 life: 18,
-                countersHtml: '<div data-testid="custom-counter">Poison: 3</div>',
+                counters: [
+                    { type: 'poison', amount: 3, icon: '☠️', label: 'Poison' }
+                ],
                 negativeControls: [
                     { id: 'neg-1', label: '-1', className: 'btn-neg', title: 'Lose 1 life' }
                 ],
@@ -19,7 +21,8 @@ describe('LifeZone', () => {
         });
 
         expect(screen.getByText(/18/)).toBeTruthy();
-        expect(screen.getByTestId('custom-counter').textContent).toContain('Poison: 3');
+        expect(screen.getByText('Poison')).toBeTruthy();
+        expect(screen.getByText('3')).toBeTruthy();
         expect(screen.getByRole('button', { name: '-1' })).toBeTruthy();
         expect(screen.getByRole('button', { name: '+1' })).toBeTruthy();
     });
