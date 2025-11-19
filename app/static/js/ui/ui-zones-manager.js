@@ -301,6 +301,7 @@ class UIZonesManager {
             if (elements?.panel) {
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
+                elements.panel.dataset.appear = 'hidden';
             }
         });
     }
@@ -397,6 +398,7 @@ class UIZonesManager {
                 }
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
+                elements.panel.dataset.appear = 'hidden';
                 delete elements.panel.dataset.userMoved;
             }
             return;
@@ -998,6 +1000,7 @@ class UIZonesManager {
         if (!cardsArray.length && !isCommanderPopup && !allowEmptyDisplay) {
             elements.panel.classList.add('hidden');
             elements.panel.setAttribute('aria-hidden', 'true');
+            elements.panel.dataset.appear = 'hidden';
             delete elements.panel.dataset.userMoved;
             return;
         }
@@ -1008,6 +1011,7 @@ class UIZonesManager {
         elements.body.innerHTML = this._generateZonePopupContent(cardsArray, popupKey, isOpponent, ownerId, zoneInfo);
         elements.panel.classList.remove('hidden');
         elements.panel.setAttribute('aria-hidden', 'false');
+        elements.panel.dataset.appear = 'visible';
 
         if (typeof UIRenderersTemplates !== 'undefined' &&
             typeof UIRenderersTemplates._calculateRevealPopupWidth === 'function') {
@@ -1051,6 +1055,9 @@ class UIZonesManager {
 
         if (this._zonePopupElements.has(popupKey)) {
             const existing = this._zonePopupElements.get(popupKey);
+            if (existing?.panel && !document.body.contains(existing.panel)) {
+                document.body.appendChild(existing.panel);
+            }
             if (typeof UIRenderersTemplates !== 'undefined') {
                 UIRenderersTemplates._ensurePopupSearchElements(existing?.panel);
                 UIRenderersTemplates._initializePopupSearch(existing?.panel);
@@ -1077,6 +1084,7 @@ class UIZonesManager {
         panel.dataset.zonePopupKey = popupKey;
         panel.dataset.zoneOwner = isOpponent ? 'opponent' : 'player';
         panel.dataset.persistent = zoneInfo && zoneInfo.persistent ? 'true' : 'false';
+        panel.dataset.appear = 'hidden';
 
         const closeButtonHtml = zoneInfo && zoneInfo.persistent
             ? ''

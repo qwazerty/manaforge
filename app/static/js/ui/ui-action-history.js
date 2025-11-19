@@ -67,6 +67,7 @@ class UIActionHistory {
         entry.displayAction = this._buildActionTitle(entry);
 
         this._enrichCardDetails(entry, context);
+        this._applyActionSpecificDetailOverrides(entry);
 
         if (this._shouldSkipActionEntry(rawAction, entry)) {
             return;
@@ -853,6 +854,164 @@ class UIActionHistory {
                 detail.value = this._formatCardName(detail.value);
             }
         });
+    }
+
+    static _applyActionSpecificDetailOverrides(entry) {
+        if (!entry) {
+            return;
+        }
+
+        const moveContext = this._resolveHandToLibraryMoveContext(entry);
+        if (!moveContext) {
+            return;
+        }
+
+        this._removeCardDetailsFromEntry(entry);
+        this._mergeDeckPositionIntoTargetZone(
+            entry,
+            moveContext.deckPosition,
+            moveContext.targetZone
+        );
+    }
+
+    static _resolveHandToLibraryMoveContext(entry) {
+        if (!entry) {
+            return null;
+        }
+
+        const action = entry.rawAction || entry.action;
+        if (!action || String(action).toLowerCase() !== 'move_card') {
+            return null;
+        }
+
+        const payload = entry?.context?.payload || {};
+        const sourceZone =
+            payload.source_zone ??
+            payload?.additional_data?.source_zone ??
+            this._resolveDetailValue(entry, ['Source Zone', 'Source zone']);
+        const targetZone =
+            payload.target_zone ??
+            payload?.additional_data?.target_zone ??
+            this._resolveDetailValue(entry, ['Target Zone', 'Target zone']);
+        const deckPosition =
+            payload.deck_position ??
+            payload?.additional_data?.deck_position ??
+            this._resolveDetailValue(entry, ['Deck Position', 'Deck position']);
+
+        const normalizedSource = sourceZone
+            ? String(sourceZone).trim().toLowerCase()
+            : '';
+        const normalizedTarget = targetZone
+            ? String(targetZone).trim().toLowerCase()
+            : '';
+        const normalizedDeck = deckPosition
+            ? String(deckPosition).trim().toLowerCase()
+            : '';
+
+        const isHandToLibrary =
+            normalizedSource === 'hand' && normalizedTarget === 'library';
+        const isTopOrBottom =
+            normalizedDeck === 'top' || normalizedDeck === 'bottom';
+
+        if (!isHandToLibrary || !isTopOrBottom) {
+            return null;
+        }
+
+        return {
+            sourceZone: sourceZone || normalizedSource || 'hand',
+            targetZone: targetZone || normalizedTarget || 'library',
+            deckPosition: normalizedDeck
+        };
+    }
+
+    static _removeCardDetailsFromEntry(entry) {
+        if (!entry || !Array.isArray(entry.details)) {
+            return;
+        }
+
+        entry.details = entry.details
+            .map((detail) => {
+                if (!detail) {
+                    return null;
+                }
+                const label = detail.label
+                    ? String(detail.label).toLowerCase()
+                    : '';
+                const isCardDetail =
+                    label === 'card' || Boolean(detail.cardRef || detail.cardInfo);
+                return isCardDetail ? null : detail;
+            })
+            .filter(Boolean);
+
+        if (Array.isArray(entry.cardRefs) && entry.cardRefs.length > 0) {
+            entry.cardRefs = [];
+        }
+    }
+
+    static _mergeDeckPositionIntoTargetZone(entry, deckPosition, fallbackZone) {
+        if (!entry || !Array.isArray(entry.details) || !deckPosition) {
+            return;
+        }
+
+        const normalizedDeck = String(deckPosition).trim().toLowerCase();
+        if (!normalizedDeck) {
+            return;
+        }
+
+        const targetDetail = entry.details.find(
+            (detail) =>
+                detail?.label &&
+                String(detail.label).toLowerCase() === 'target zone'
+        );
+
+        const currentValue = targetDetail?.value || fallbackZone || 'library';
+        const normalizedZone = currentValue
+            ? String(currentValue).trim().toLowerCase()
+            : 'library';
+        const combined = `${normalizedDeck} ${normalizedZone}`.trim();
+
+        if (targetDetail) {
+            targetDetail.value = combined;
+        } else {
+            entry.details.push({
+                label: 'Target Zone',
+                value: combined
+            });
+        }
+
+        entry.details = entry.details.filter((detail) => {
+            if (!detail?.label) {
+                return true;
+            }
+            return String(detail.label).toLowerCase() !== 'deck position';
+        });
+    }
+
+    static _resolveDetailValue(entry, labels) {
+        if (!entry || !Array.isArray(entry.details) || !labels) {
+            return null;
+        }
+
+        const targetLabels = Array.isArray(labels) ? labels : [labels];
+        const normalizedLookup = targetLabels
+            .map((label) => String(label).toLowerCase())
+            .filter((label) => label.length > 0);
+
+        if (normalizedLookup.length === 0) {
+            return null;
+        }
+
+        for (const detail of entry.details) {
+            if (!detail?.label) {
+                continue;
+            }
+            const normalizedLabel = String(detail.label).toLowerCase();
+            if (normalizedLookup.includes(normalizedLabel)) {
+                return detail.value ?? null;
+            }
+        }
+
+        return null;
     }
 
     // ===== CARD RESOLUTION HELPERS =====
