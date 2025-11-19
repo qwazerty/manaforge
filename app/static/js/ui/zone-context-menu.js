@@ -169,6 +169,7 @@ class ZoneContextMenu {
                 `).join('')}
             </div>
         `;
+        menu.dataset.zone = menuConfig.baseZoneName || zoneName;
         return menu;
     }
 

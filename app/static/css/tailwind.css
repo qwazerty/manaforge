@@ -1579,6 +1579,10 @@
         color: #d2b48c;
     }
 
+    .zone-context-menu[data-zone="graveyard"] {
+        overflow: hidden;
+    }
+
     .zone-context-menu[data-zone="graveyard"] .zone-context-menu-header {
         background: rgba(75, 0, 130, 0.3);
         border-bottom-color: rgba(75, 0, 130, 0.5);
@@ -1587,6 +1591,10 @@
     .zone-context-menu[data-zone="graveyard"] .zone-context-menu-action:hover {
         background: rgba(75, 0, 130, 0.2);
         color: #dda0dd;
+    }
+
+    .zone-context-menu[data-zone="exile"] {
+        overflow: hidden;
     }
 
     .zone-context-menu[data-zone="exile"] .zone-context-menu-header {
