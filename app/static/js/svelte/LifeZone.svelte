@@ -5,20 +5,40 @@
         negativeControls = [],
         positiveControls = [],
         hasCustomLifeControls = false,
-        countersHtml = '',
+        counters = [],
         manageButton = null
     } = $props();
 
-    const handleControlClick = (control) => {
+    const handleControlClick = (event, control) => {
+        if (event && typeof event.stopPropagation === 'function') {
+            event.stopPropagation();
+        }
         if (control && typeof control.onClick === 'function') {
-            control.onClick();
+            control.onClick(event);
         }
     };
 
-    const handleManageClick = () => {
-        if (manageButton && typeof manageButton.onClick === 'function') {
-            manageButton.onClick();
+    const handleManageClick = (event) => {
+        if (event && typeof event.stopPropagation === 'function') {
+            event.stopPropagation();
         }
+        if (manageButton && typeof manageButton.onClick === 'function') {
+            manageButton.onClick(event);
+        }
+    };
+
+    const chipClass = [
+        'player-counter-chip inline-flex items-center gap-2',
+        'bg-green-500/20 border border-green-500/50 text-green-300 py-1 px-2 rounded text-xs font-semibold'
+    ].join(' ');
+
+    const formatCounterLabel = (entry) => {
+        const source = entry?.label || entry?.type;
+        if (!source) {
+            return 'Compteur';
+        }
+        const text = String(source);
+        return text.charAt(0).toUpperCase() + text.slice(1);
     };
 </script>
 
@@ -36,7 +56,7 @@
                     type="button"
                     class={control.className}
                     title={control.title}
-                    onclick={() => handleControlClick(control)}>
+                    onclick={(event) => handleControlClick(event, control)}>
                     {control.label}
                 </button>
             {/each}
@@ -47,7 +67,7 @@
                     type="button"
                     class={control.className}
                     title={control.title}
-                    onclick={() => handleControlClick(control)}>
+                    onclick={(event) => handleControlClick(event, control)}>
                     {control.label}
                 </button>
             {/each}
@@ -84,7 +104,21 @@
     {/if}
 
     <div class="player-counter-section">
-        {@html countersHtml}
+        {#if counters && counters.length}
+            <div class="player-counter-badges flex flex-wrap gap-2">
+                {#each counters as counter, index (counter.type || index)}
+                    <span class={chipClass}>
+                        {#if counter.icon}
+                            <span class="text-base">{counter.icon}</span>
+                        {/if}
+                        <span class="uppercase tracking-wide text-[10px] text-white/70">
+                            {formatCounterLabel(counter)}
+                        </span>
+                        <span class="font-semibold text-white">{counter.amount}</span>
+                    </span>
+                {/each}
+            </div>
+        {/if}
         {#if manageButton}
             <button
                 type="button"

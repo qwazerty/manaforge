@@ -2,180 +2,149 @@
  * Manage player-level counters (poison, charge, etc.)
  */
 class UIPlayerCounters {
-    static renderCounterBadges(playerData = {}, playerId = null) {
-        const entries = this._getCounterEntries(playerData);
-        const chipClass = [
-            'player-counter-chip inline-flex items-center gap-2',
-            UIConfig?.CSS_CLASSES?.button?.life?.green ||
-                'bg-green-500/20 border border-green-500/50 text-green-300 py-1 px-2 rounded text-xs font-semibold'
-        ].join(' ');
+    static _modalComponent = null;
+    static _modalTarget = null;
+    static _modalPlayerId = null;
+    static _modalPosition = null;
 
-        return `
-            <div class="player-counter-badges flex flex-wrap gap-2">
-                ${entries.map(([type, amount]) => {
-                    const icon = this._getCounterIcon(type);
-                    const label = this._formatCounterLabel(type);
-                    return `
-                        <span class="${chipClass}">
-                            ${icon ? `<span class="text-base">${icon}</span>` : ''}
-                            <span class="uppercase tracking-wide text-[10px] text-white/70">${label}</span>
-                            <span class="font-semibold text-white">${amount}</span>
-                        </span>
-                    `;
-                }).join('')}
-            </div>
-        `;
+    static getBadgeEntries(playerData = {}) {
+        return this._getCounterEntries(playerData).map(([type, amount]) => ({
+            type,
+            amount,
+            label: this._formatCounterLabel(type),
+            icon: this._getCounterIcon(type)
+        }));
     }
 
-    static openCounterManager(playerId) {
+    static openCounterManager(playerId, anchorElement = null) {
         if (!playerId) {
             return;
         }
 
-        const existing = document.getElementById('player-counter-modal');
-        if (existing) {
-            existing.remove();
+        const component = this._ensureModalComponent();
+        if (!component) {
+            return;
         }
 
-        const playerData = this._findPlayerData(playerId);
-        const displayName = (typeof GameCore !== 'undefined' && typeof GameCore.getPlayerDisplayName === 'function')
-            ? GameCore.getPlayerDisplayName(playerId, playerId)
-            : playerId;
-
-        const modal = document.createElement('div');
-        modal.id = 'player-counter-modal';
-        modal.dataset.playerId = playerId;
-        modal.className = 'counter-modal';
-        modal.innerHTML = `
-            <div class="counter-modal-content max-w-xl w-full">
-                <div class="counter-modal-header">
-                    <h3>Compteurs - ${this._escape(displayName)}</h3>
-                    <button class="counter-modal-close" onclick="UIPlayerCounters.closeModal()">&times;</button>
-                </div>
-                <div class="counter-modal-body">
-                    ${this._generateModalBody(playerData, playerId)}
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
+        this._modalPlayerId = playerId;
+        this._modalPosition = this._calculatePopoverPosition(anchorElement);
+        component.$set(this._buildModalProps(playerId, true, this._modalPosition));
     }
 
     static closeModal() {
-        const modal = document.getElementById('player-counter-modal');
-        if (modal) {
-            modal.remove();
+        const component = this._ensureModalComponent();
+        if (component) {
+            component.$set({ open: false });
         }
+        this._modalPlayerId = null;
+        this._modalPosition = null;
     }
 
-    static addCounterFromModal(playerId) {
-        const typeInput = document.getElementById(`player-counter-type-${playerId}`);
-        const amountInput = document.getElementById(`player-counter-amount-${playerId}`);
-
-        if (!typeInput || !amountInput) {
+    static refreshModal(playerId = null) {
+        if (!this._modalComponent || !this._modalPlayerId) {
             return;
         }
-
-        const counterType = typeInput.value.trim();
-        const amount = parseInt(amountInput.value, 10) || 1;
-        if (!counterType) {
-            GameUI.showNotification('Indiquer un type de compteur', 'warning');
+        const targetId = playerId || this._modalPlayerId;
+        if (targetId !== this._modalPlayerId) {
             return;
         }
-
-        GameActions.modifyPlayerCounter(playerId, counterType, amount);
-        setTimeout(() => this.refreshModal(playerId), 200);
+        this._modalComponent.$set(this._buildModalProps(targetId, true, this._modalPosition));
     }
 
-    static modifyCounter(playerId, counterType, delta) {
+    static _ensureModalComponent() {
+        if (typeof document === 'undefined') {
+            return null;
+        }
+        if (typeof PlayerCounterModalComponent === 'undefined') {
+            console.error('[UIPlayerCounters] PlayerCounterModalComponent is not available');
+            return null;
+        }
+        if (!this._modalTarget) {
+            this._modalTarget = document.createElement('div');
+            this._modalTarget.id = 'player-counter-modal-root';
+            document.body.appendChild(this._modalTarget);
+        }
+        if (!this._modalComponent) {
+            const mount = typeof PlayerCounterModalComponent.mount === 'function'
+                ? PlayerCounterModalComponent.mount
+                : null;
+            if (!mount) {
+                console.error('[UIPlayerCounters] PlayerCounterModalComponent.mount missing');
+                return null;
+            }
+            this._modalComponent = mount(PlayerCounterModalComponent.default, {
+                target: this._modalTarget,
+                props: { open: false }
+            });
+        }
+        return this._modalComponent;
+    }
+
+    static _buildModalProps(playerId, open = false, positionOverride = null) {
+        const playerData = this._findPlayerData(playerId);
+        const counters = this.getBadgeEntries(playerData);
+        const { addButtonClass, decrementButtonClass, incrementButtonClass, resetButtonClass } = this._getButtonClasses();
+        const position = positionOverride || this._calculatePopoverPosition();
+
+        return {
+            open,
+            playerId,
+            playerName: this._getPlayerDisplayName(playerId),
+            counters,
+            amountInputMin: 1,
+            amountInputStep: 1,
+            addButtonClass,
+            decrementButtonClass,
+            incrementButtonClass,
+            resetButtonClass,
+            position,
+            onClose: () => this.closeModal(),
+            onModify: (type, delta) => this._handleModify(playerId, type, delta),
+            onRemove: (type) => this._handleRemove(playerId, type),
+            onAdd: (type, amount) => this._handleAdd(playerId, type, amount)
+        };
+    }
+
+    static _calculatePopoverPosition(anchorElement = null) {
+        if (!UIUtils || typeof UIUtils.calculateAnchorPosition !== 'function') {
+            return { top: 200, left: 200, anchor: 'center' };
+        }
+
+        return UIUtils.calculateAnchorPosition(anchorElement, {
+            preferredAnchor: anchorElement ? 'bottom-left' : 'center',
+            panelWidth: 420,
+            panelHeight: 460,
+            verticalOffset: 4,
+            horizontalOffset: 4
+        });
+    }
+
+    static _handleModify(playerId, counterType, delta) {
+        if (!playerId || !counterType || !Number.isFinite(delta)) {
+            return;
+        }
         GameActions.modifyPlayerCounter(playerId, counterType, delta);
         setTimeout(() => this.refreshModal(playerId), 200);
     }
 
-    static removeCounter(playerId, counterType) {
+    static _handleRemove(playerId, counterType) {
+        if (!playerId || !counterType) {
+            return;
+        }
         GameActions.setPlayerCounter(playerId, counterType, 0);
         setTimeout(() => this.refreshModal(playerId), 200);
     }
 
-    static refreshModal(playerId = null) {
-        const modal = document.getElementById('player-counter-modal');
-        if (!modal) {
+    static _handleAdd(playerId, counterType, amount) {
+        const normalizedType = typeof counterType === 'string' ? counterType.trim() : '';
+        if (!playerId || !normalizedType) {
+            GameUI.showNotification('Indiquer un type de compteur', 'warning');
             return;
         }
-        const targetPlayerId = playerId || modal.dataset.playerId;
-        if (!targetPlayerId) {
-            return;
-        }
-
-        const body = modal.querySelector('.counter-modal-body');
-        if (!body) {
-            return;
-        }
-
-        const playerData = this._findPlayerData(targetPlayerId);
-        body.innerHTML = this._generateModalBody(playerData, targetPlayerId);
-    }
-
-    static _generateModalBody(playerData, playerId) {
-        const entries = this._getCounterEntries(playerData);
-        const listHtml = entries.length
-            ? `
-                <div class="space-y-2">
-                    ${entries.map(([type, amount]) => {
-                        const icon = this._getCounterIcon(type);
-                        const label = this._formatCounterLabel(type);
-                        const jsType = JSON.stringify(type);
-                        return `
-                            <div class="flex items-center justify-between border border-arena-accent/30 rounded-lg px-3 py-2 bg-arena-surface/70">
-                                <div class="flex items-center gap-3">
-                                    ${icon ? `<span class="text-xl">${icon}</span>` : ''}
-                                    <div>
-                                        <div class="text-sm font-semibold text-arena-text">${label}</div>
-                                        <div class="text-xs text-arena-muted">${this._escape(type)}</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        class="${UIConfig?.CSS_CLASSES?.button?.life?.red || ''}"
-                                        onclick='UIPlayerCounters.modifyCounter(${JSON.stringify(playerId)}, ${jsType}, -1)'>-</button>
-                                    <span class="text-lg font-bold text-arena-accent">${amount}</span>
-                                    <button
-                                        type="button"
-                                        class="${UIConfig?.CSS_CLASSES?.button?.life?.green || ''}"
-                                        onclick='UIPlayerCounters.modifyCounter(${JSON.stringify(playerId)}, ${jsType}, 1)'>+</button>
-                                    <button
-                                        type="button"
-                                        class="${UIConfig?.CSS_CLASSES?.button?.secondary || ''} text-xs px-3 py-2"
-                                        onclick='UIPlayerCounters.removeCounter(${JSON.stringify(playerId)}, ${jsType})'>Reinitialiser</button>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `
-            : '<p class="text-sm text-arena-muted">Aucun compteur pour ce joueur.</p>';
-
-        return `
-            <section class="player-counter-manager">
-                <h4 class="text-sm font-semibold uppercase tracking-wide text-arena-muted mb-2">Compteurs actifs</h4>
-                ${listHtml}
-            </section>
-            <section class="player-counter-manager mt-4">
-                <h4 class="text-sm font-semibold uppercase tracking-wide text-arena-muted mb-2">Ajouter un compteur</h4>
-                <div class="grid gap-2">
-                    <input type="text" id="player-counter-type-${playerId}" class="w-full rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text" placeholder="Poison, charge..." maxlength="30">
-                    <div class="flex gap-2">
-                        <input type="number" id="player-counter-amount-${playerId}" class="w-24 rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text" value="1" min="1" step="1">
-                        <button
-                            type="button"
-                            class="${UIConfig?.CSS_CLASSES?.button?.life?.green || ''} w-full text-center uppercase tracking-wide"
-                            onclick='UIPlayerCounters.addCounterFromModal(${JSON.stringify(playerId)})'>Ajouter</button>
-                    </div>
-                </div>
-            </section>
-        `;
+        const parsedAmount = parseInt(amount, 10);
+        const safeAmount = Number.isFinite(parsedAmount) && parsedAmount !== 0 ? parsedAmount : 1;
+        GameActions.modifyPlayerCounter(playerId, normalizedType, safeAmount);
+        setTimeout(() => this.refreshModal(playerId), 200);
     }
 
     static _findPlayerData(playerId) {
@@ -195,6 +164,17 @@ class UIPlayerCounters {
         return Object.entries(counters)
             .filter(([, value]) => Number(value) > 0)
             .sort(([a], [b]) => a.localeCompare(b));
+    }
+
+    static _getButtonClasses() {
+        const buttonConfig = UIConfig?.CSS_CLASSES?.button || {};
+        const life = buttonConfig.life || {};
+        return {
+            addButtonClass: `${life.green || 'bg-green-500/20 border border-green-500/50 text-green-200 rounded px-3 py-2 text-xs font-semibold'} w-full text-center uppercase tracking-wide`,
+            decrementButtonClass: life.red || 'bg-red-500/20 border border-red-500/50 text-red-200 rounded px-2 py-1 text-xs font-semibold',
+            incrementButtonClass: life.green || 'bg-green-500/20 border border-green-500/50 text-green-200 rounded px-2 py-1 text-xs font-semibold',
+            resetButtonClass: `${buttonConfig.secondary || 'bg-arena-surface border border-arena-accent/30 text-arena-text rounded'} text-xs px-3 py-2`
+        };
     }
 
     static _formatCounterLabel(counterType) {
@@ -219,11 +199,14 @@ class UIPlayerCounters {
         return null;
     }
 
-    static _escape(value) {
-        if (typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function') {
-            return GameUtils.escapeHtml(value);
+    static _getPlayerDisplayName(playerId) {
+        if (
+            typeof GameCore !== 'undefined' &&
+            typeof GameCore.getPlayerDisplayName === 'function'
+        ) {
+            return GameCore.getPlayerDisplayName(playerId, playerId);
         }
-        return value;
+        return playerId;
     }
 }
 

@@ -19,6 +19,116 @@ class UIUtils {
     }
 
     /**
+     * Calculate anchor position for contextual popovers.
+     */
+    static calculateAnchorPosition(anchorElement = null, options = {}) {
+        const {
+            preferredAnchor = 'center',
+            panelWidth = 380,
+            panelHeight = 320,
+            viewportPadding = 16,
+            horizontalOffset = 0,
+            verticalOffset = 8
+        } = options || {};
+
+        const normalizeAnchor = (anchorValue) => {
+            const normalized = typeof anchorValue === 'string'
+                ? anchorValue.toLowerCase()
+                : '';
+            if (!normalized || normalized === 'center') {
+                return { vertical: 'center', horizontal: 'center' };
+            }
+            const parts = normalized.split('-');
+            const verticalOptions = ['top', 'bottom', 'center'];
+            const horizontalOptions = ['left', 'right', 'center'];
+            let vertical = parts.find((part) => verticalOptions.includes(part)) || 'bottom';
+            let horizontal = parts.find((part) => horizontalOptions.includes(part) && part !== vertical) || 'center';
+            if (!horizontalOptions.includes(horizontal)) {
+                horizontal = 'center';
+            }
+            return { vertical, horizontal };
+        };
+
+        const clamp = (value, min, max) => {
+            if (Number.isNaN(value)) {
+                return min;
+            }
+            if (Number.isNaN(min) || Number.isNaN(max)) {
+                return value;
+            }
+            const normalizedMin = Math.min(min, max);
+            const normalizedMax = Math.max(min, max);
+            return Math.min(Math.max(value, normalizedMin), normalizedMax);
+        };
+
+        if (typeof window === 'undefined') {
+            return { top: 200, left: 200, anchor: preferredAnchor || 'center' };
+        }
+
+        const scrollX = window.scrollX || window.pageXOffset || 0;
+        const scrollY = window.scrollY || window.pageYOffset || 0;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        let top = scrollY + viewportHeight / 2;
+        let left = scrollX + viewportWidth / 2;
+        const { vertical, horizontal } = normalizeAnchor(preferredAnchor);
+        let resolvedAnchor = (vertical === 'center' && horizontal === 'center')
+            ? 'center'
+            : `${vertical}-${horizontal}`;
+
+        if (anchorElement && typeof anchorElement.getBoundingClientRect === 'function') {
+            const rect = anchorElement.getBoundingClientRect();
+            if (vertical === 'top') {
+                top = scrollY + rect.top - verticalOffset;
+            } else if (vertical === 'bottom') {
+                top = scrollY + rect.bottom + verticalOffset;
+            } else {
+                top = scrollY + rect.top + rect.height / 2;
+            }
+
+            if (horizontal === 'left') {
+                left = scrollX + rect.left + horizontalOffset;
+            } else if (horizontal === 'right') {
+                left = scrollX + rect.right - horizontalOffset;
+            } else {
+                left = scrollX + rect.left + rect.width / 2;
+            }
+        }
+
+        // Clamp horizontal position based on anchor orientation
+        if (horizontal === 'center') {
+            const minLeft = scrollX + viewportPadding + panelWidth / 2;
+            const maxLeft = scrollX + viewportWidth - viewportPadding - panelWidth / 2;
+            left = clamp(left, minLeft, maxLeft);
+        } else if (horizontal === 'left') {
+            const minLeft = scrollX + viewportPadding;
+            const maxLeft = scrollX + viewportWidth - viewportPadding - panelWidth;
+            left = clamp(left, minLeft, maxLeft);
+        } else if (horizontal === 'right') {
+            const minLeft = scrollX + viewportPadding + panelWidth;
+            const maxLeft = scrollX + viewportWidth - viewportPadding;
+            left = clamp(left, minLeft, maxLeft);
+        }
+
+        // Clamp vertical position based on anchor orientation
+        if (vertical === 'center') {
+            const minTop = scrollY + viewportPadding + panelHeight / 2;
+            const maxTop = scrollY + viewportHeight - viewportPadding - panelHeight / 2;
+            top = clamp(top, minTop, maxTop);
+        } else if (vertical === 'top') {
+            const minTop = scrollY + viewportPadding;
+            const maxTop = scrollY + viewportHeight - viewportPadding - panelHeight;
+            top = clamp(top, minTop, maxTop);
+        } else if (vertical === 'bottom') {
+            const minTop = scrollY + viewportPadding + panelHeight;
+            const maxTop = scrollY + viewportHeight - viewportPadding;
+            top = clamp(top, minTop, maxTop);
+        }
+
+        return { top, left, anchor: resolvedAnchor };
+    }
+
+    /**
      * Generate HTML button element
      */
     static generateButton(onclick, classes, title, content, disabled = false) {
