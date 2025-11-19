@@ -23,12 +23,18 @@ const compileComponent = async (fileName) => {
     const bundlePath = path.join(COMPONENT_DIR, `${baseName}.bundle.js`);
     const source = await fs.readFile(inputPath, 'utf8');
 
-const compiled = compile(source, {
-    filename: path.relative(process.cwd(), inputPath),
-    dev: false
-});
+    const compiled = compile(source, {
+        filename: path.relative(process.cwd(), inputPath),
+        dev: false,
+        runes: true,
+        accessors: true,
+        compatibility: {
+            componentApi: 5
+        }
+    });
 
-    await fs.writeFile(jsOutputPath, compiled.js.code, 'utf8');
+    const code = `${compiled.js.code}\nimport { createClassComponent } from 'svelte/legacy';\n\nexport function mount(component, options = {}) {\n    if (!component) {\n        throw new Error('mount requires a Svelte component');\n    }\n    if (!options.target) {\n        throw new Error('mount requires a target element');\n    }\n    return createClassComponent({\n        component,\n        ...options\n    });\n}\n\nexport function unmount(instance) {\n    if (instance && typeof instance.$destroy === 'function') {\n        instance.$destroy();\n    }\n}`;
+    await fs.writeFile(jsOutputPath, code, 'utf8');
 
     const globalName = sanitizeGlobalName(baseName);
     const command = [

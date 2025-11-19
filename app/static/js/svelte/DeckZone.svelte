@@ -1,11 +1,13 @@
 <script>
-    export let cardsRemaining = 0;
-    export let deckClass = '';
-    export let zoneIdentifier = '';
-    export let overlayText = '';
-    export let onClick = null;
+    let {
+        cardsRemaining = 0,
+        deckClass = '',
+        zoneIdentifier = '',
+        overlayText = '',
+        onClick = null
+    } = $props();
 
-    const generateStack = () => {
+    const stackCards = $derived(() => {
         if (cardsRemaining === 0) {
             return '';
         }
@@ -16,9 +18,7 @@
                 <div class="card-back-mini"></div>
             </div>
         `).join('');
-    };
-
-    $: stackCards = generateStack();
+    });
 
     function handleClick(event) {
         if (typeof onClick === 'function') {
@@ -29,16 +29,24 @@
 
 <div class="deck-zone-stack-wrapper w-full flex flex-col items-center">
     {#if cardsRemaining === 0}
-        <div class={deckClass} data-zone-context={zoneIdentifier} on:click={handleClick}>
+        <button
+            type="button"
+            class={deckClass}
+            data-zone-context={zoneIdentifier}
+            onclick={handleClick}>
             {@html UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
-        </div>
+        </button>
     {:else}
-        <div class={deckClass} data-zone-context={zoneIdentifier} on:click={handleClick}>
-            {@html stackCards}
+        <button
+            type="button"
+            class={deckClass}
+            data-zone-context={zoneIdentifier}
+            onclick={handleClick}>
+            {@html stackCards()}
             <div class="deck-click-overlay">
                 <span class="draw-hint">{overlayText}</span>
             </div>
-        </div>
+        </button>
     {/if}
     <div class="deck-cards-count mt-2">
         <span class="cards-remaining">{cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''}</span>

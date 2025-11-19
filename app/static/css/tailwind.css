@@ -1040,6 +1040,9 @@
         @apply relative cursor-pointer transition-transform duration-200 ease-out;
         width: var(--zone-stack-width);
         height: var(--zone-stack-height);
+        padding: 0;
+        border: none;
+        background: transparent;
     }
 
     .deck-card-layer,
@@ -1051,6 +1054,8 @@
         height: var(--zone-stack-height);
         background: var(--color-arena-surface);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        top: 0;
+        left: 0;
     }
 
     /* Recreate DeckZone.svelte stack offsets purely via CSS */
@@ -1150,6 +1155,8 @@
         @apply absolute overflow-hidden rounded-lg;
         width: var(--zone-card-width);
         height: var(--zone-card-height);
+        top: 0;
+        left: 0;
         z-index: 5;
     }
 

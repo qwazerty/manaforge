@@ -1,8 +1,10 @@
 <script>
-    export let entries = [];
-    export let panelIcon = '📜';
-    export let panelTitle = 'Action History';
-    export let previewHandlers = null;
+    let {
+        entries = [],
+        panelIcon = '📜',
+        panelTitle = 'Action History',
+        previewHandlers = null
+    } = $props();
 
     const callHistoryHelper = (method, ...args) => {
         if (
@@ -160,8 +162,8 @@
         return hasTargets || hasFallbacks;
     };
 
-    $: segments = getSegments(entries || []);
-    $: hasEntries = segments.some((segment) => segment.type === 'entry');
+    const segments = $derived(() => getSegments(entries || []));
+    const hasEntries = $derived(() => segments.some((segment) => segment.type === 'entry'));
 </script>
 
 <div class="arena-card rounded-lg p-4 flex flex-col h-[34rem]">
@@ -213,11 +215,11 @@
                                                                 <button
                                                                     type="button"
                                                                     class="action-history-card-link"
-                                                                    on:mouseenter={(event) => triggerPreviewShow(event, assignment.source)}
-                                                                    on:focus={(event) => triggerPreviewShow(event, assignment.source)}
-                                                                    on:mousemove={triggerPreviewMove}
-                                                                    on:mouseleave={triggerPreviewHide}
-                                                                    on:blur={triggerPreviewHide}>
+                                                                    onmouseenter={(event) => triggerPreviewShow(event, assignment.source)}
+                                                                    onfocus={(event) => triggerPreviewShow(event, assignment.source)}
+                                                                    onmousemove={triggerPreviewMove}
+                                                                    onmouseleave={triggerPreviewHide}
+                                                                    onblur={triggerPreviewHide}>
                                                                     {assignment.source.displayName}
                                                                 </button>
                                                             {:else if assignment.sourceFallback}
@@ -238,11 +240,11 @@
                                                                             <button
                                                                                 type="button"
                                                                                 class="action-history-card-link"
-                                                                                on:mouseenter={(event) => triggerPreviewShow(event, target)}
-                                                                                on:focus={(event) => triggerPreviewShow(event, target)}
-                                                                                on:mousemove={triggerPreviewMove}
-                                                                                on:mouseleave={triggerPreviewHide}
-                                                                                on:blur={triggerPreviewHide}>
+                                                                                onmouseenter={(event) => triggerPreviewShow(event, target)}
+                                                                                onfocus={(event) => triggerPreviewShow(event, target)}
+                                                                                onmousemove={triggerPreviewMove}
+                                                                                onmouseleave={triggerPreviewHide}
+                                                                                onblur={triggerPreviewHide}>
                                                                                 {target.displayName}
                                                                             </button>
                                                                         {/if}
@@ -268,11 +270,11 @@
                                                         <button
                                                             type="button"
                                                             class="action-history-card-link"
-                                                            on:mouseenter={(event) => triggerPreviewShow(event, cardItem)}
-                                                            on:focus={(event) => triggerPreviewShow(event, cardItem)}
-                                                            on:mousemove={triggerPreviewMove}
-                                                            on:mouseleave={triggerPreviewHide}
-                                                            on:blur={triggerPreviewHide}>
+                                                            onmouseenter={(event) => triggerPreviewShow(event, cardItem)}
+                                                            onfocus={(event) => triggerPreviewShow(event, cardItem)}
+                                                            onmousemove={triggerPreviewMove}
+                                                            onmouseleave={triggerPreviewHide}
+                                                            onblur={triggerPreviewHide}>
                                                             {cardItem.displayName || `Card ${cardIndex + 1}`}
                                                         </button>
                                                     {/if}
@@ -287,11 +289,11 @@
                                             <button
                                                 type="button"
                                                 class="action-history-card-link"
-                                                on:mouseenter={(event) => triggerPreviewShow(event, { cardInfo: detail.cardInfo, displayName: detail.cardInfo.name || detail.value })}
-                                                on:focus={(event) => triggerPreviewShow(event, { cardInfo: detail.cardInfo, displayName: detail.cardInfo.name || detail.value })}
-                                                on:mousemove={triggerPreviewMove}
-                                                on:mouseleave={triggerPreviewHide}
-                                                on:blur={triggerPreviewHide}>
+                                                onmouseenter={(event) => triggerPreviewShow(event, { cardInfo: detail.cardInfo, displayName: detail.cardInfo.name || detail.value })}
+                                                onfocus={(event) => triggerPreviewShow(event, { cardInfo: detail.cardInfo, displayName: detail.cardInfo.name || detail.value })}
+                                                onmousemove={triggerPreviewMove}
+                                                onmouseleave={triggerPreviewHide}
+                                                onblur={triggerPreviewHide}>
                                                 {detail.cardInfo.name || detail.value || 'Card'}
                                             </button>
                                         {:else}

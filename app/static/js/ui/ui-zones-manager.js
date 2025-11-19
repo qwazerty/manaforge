@@ -834,7 +834,13 @@ class UIZonesManager {
             }
             try {
                 element.innerHTML = '';
-                new DeckZoneComponent.default({
+                const mount = typeof DeckZoneComponent.mount === 'function'
+                    ? DeckZoneComponent.mount
+                    : null;
+                if (!mount) {
+                    throw new Error('DeckZoneComponent.mount is not available');
+                }
+                mount(DeckZoneComponent.default, {
                     target: element,
                     props: {
                         cardsRemaining: config.cardsRemaining,
@@ -868,7 +874,13 @@ class UIZonesManager {
             }
             try {
                 element.innerHTML = '';
-                new GraveyardZoneComponent.default({
+                const mount = typeof GraveyardZoneComponent.mount === 'function'
+                    ? GraveyardZoneComponent.mount
+                    : null;
+                if (!mount) {
+                    throw new Error('GraveyardZoneComponent.mount is not available');
+                }
+                mount(GraveyardZoneComponent.default, {
                     target: element,
                     props: {
                         cards: config.graveyardArray,
@@ -902,7 +914,13 @@ class UIZonesManager {
             }
             try {
                 element.innerHTML = '';
-                new ExileZoneComponent.default({
+                const mount = typeof ExileZoneComponent.mount === 'function'
+                    ? ExileZoneComponent.mount
+                    : null;
+                if (!mount) {
+                    throw new Error('ExileZoneComponent.mount is not available');
+                }
+                mount(ExileZoneComponent.default, {
                     target: element,
                     props: {
                         cards: config.exileArray,
@@ -937,7 +955,13 @@ class UIZonesManager {
             }
             try {
                 element.innerHTML = '';
-                new LifeZoneComponent.default({
+                const mount = typeof LifeZoneComponent.mount === 'function'
+                    ? LifeZoneComponent.mount
+                    : null;
+                if (!mount) {
+                    throw new Error('LifeZoneComponent.mount is not available');
+                }
+                mount(LifeZoneComponent.default, {
                     target: element,
                     props: {
                         life: config.life,

@@ -1,11 +1,13 @@
 <script>
-    export let life = 20;
-    export let playerId = '';
-    export let negativeControls = [];
-    export let positiveControls = [];
-    export let hasCustomLifeControls = false;
-    export let countersHtml = '';
-    export let manageButton = null;
+    let {
+        life = 20,
+        playerId = '',
+        negativeControls = [],
+        positiveControls = [],
+        hasCustomLifeControls = false,
+        countersHtml = '',
+        manageButton = null
+    } = $props();
 
     const handleControlClick = (control) => {
         if (control && typeof control.onClick === 'function') {
@@ -34,7 +36,7 @@
                     type="button"
                     class={control.className}
                     title={control.title}
-                    on:click={() => handleControlClick(control)}>
+                    onclick={() => handleControlClick(control)}>
                     {control.label}
                 </button>
             {/each}
@@ -45,7 +47,7 @@
                     type="button"
                     class={control.className}
                     title={control.title}
-                    on:click={() => handleControlClick(control)}>
+                    onclick={() => handleControlClick(control)}>
                     {control.label}
                 </button>
             {/each}
@@ -68,13 +70,13 @@
                 <button
                     type="button"
                     class="flex-1 px-3 py-2 rounded-lg bg-emerald-500/30 border border-emerald-400/60 text-emerald-50 text-sm"
-                    on:click={() => UIZonesManager.submitCustomLifeInput(playerId)}>
+                    onclick={() => UIZonesManager.submitCustomLifeInput(playerId)}>
                     Confirm
                 </button>
                 <button
                     type="button"
                     class="flex-1 px-3 py-2 rounded-lg bg-arena-surface-light border border-arena-accent/30 text-arena-text text-sm"
-                    on:click={() => UIZonesManager.cancelCustomLifeInput(playerId)}>
+                    onclick={() => UIZonesManager.cancelCustomLifeInput(playerId)}>
                     Cancel
                 </button>
             </div>
@@ -88,7 +90,7 @@
                 type="button"
                 class={manageButton.className}
                 title={manageButton.title}
-                on:click={handleManageClick}>
+                onclick={handleManageClick}>
                 {manageButton.label}
             </button>
         {/if}

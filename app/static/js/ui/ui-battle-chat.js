@@ -206,7 +206,13 @@ class UIBattleChat {
         this._destroyComponent();
         try {
             container.innerHTML = '';
-            this._component = new BattleChatComponent.default({
+            const mount = typeof BattleChatComponent.mount === 'function'
+                ? BattleChatComponent.mount
+                : null;
+            if (!mount) {
+                throw new Error('BattleChatComponent.mount is not available');
+            }
+            this._component = mount(BattleChatComponent.default, {
                 target: container,
                 props: this._buildProps()
             });
@@ -223,7 +229,11 @@ class UIBattleChat {
     static _destroyComponent() {
         if (this._component) {
             try {
-                this._component.$destroy();
+                if (typeof BattleChatComponent?.unmount === 'function') {
+                    BattleChatComponent.unmount(this._component);
+                } else if (typeof this._component.$destroy === 'function') {
+                    this._component.$destroy();
+                }
             } catch (error) {
                 console.error('Failed to destroy battle chat component', error);
             }

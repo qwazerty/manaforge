@@ -1,11 +1,14 @@
 <script>
-    import { onMount, onDestroy, afterUpdate, createEventDispatcher } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
 
-    export let stack = [];
-    export let visible = false;
-    export let gameState = null;
-    export let panelTitle = 'Stack';
-    export let panelIcon = '📜';
+    let {
+        stack = [],
+        visible = false,
+        gameState = null,
+        panelTitle = 'Stack',
+        panelIcon = '📜',
+        afterHide = null
+    } = $props();
 
     let panelEl = null;
     let dragHandle = null;
@@ -14,9 +17,8 @@
     let dragOffsetX = 0;
     let dragOffsetY = 0;
     let previousVisible = false;
-    let appearState = 'hidden';
+    let appearState = $state('hidden');
     let hideTimer = null;
-    const dispatch = createEventDispatcher();
     const APPEAR_DURATION = 0;
 
     const getSelectedPlayer = () => {
@@ -83,6 +85,14 @@
         }
         resolveStackSpell(card);
         event?.stopPropagation();
+    };
+
+    const handleSpellKeydown = (event, card) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+        event.preventDefault();
+        handleSpellClick(event, card);
     };
 
     const handleCardDragStart = (event, card) => {
@@ -347,7 +357,9 @@
                 return;
             }
             appearState = 'hidden';
-            dispatch('afterHide');
+            if (typeof afterHide === 'function') {
+                afterHide();
+            }
         }, APPEAR_DURATION);
     };
 
@@ -361,7 +373,10 @@
         };
     });
 
-    afterUpdate(() => {
+    $effect(() => {
+        if (!panelEl || !dragHandle) {
+            return;
+        }
         setupDragHandlers();
     });
 
@@ -373,26 +388,33 @@
         }
     });
 
-    $: stackItems = Array.isArray(stack) ? stack.filter(Boolean) : [];
-    $: stackCount = stackItems.length;
+    const stackItems = $derived(() => Array.isArray(stack) ? stack.filter(Boolean) : []);
+    const stackCount = $derived(() => stackItems.length);
 
-    $: if (panelEl) {
+    $effect(() => {
+        if (!panelEl) {
+            return;
+        }
+
         panelEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
+
         if (!visible) {
             delete panelEl.dataset.userMoved;
             panelEl.classList.remove('stack-popup-dragging');
         } else if (!previousVisible) {
             schedulePanelRefresh();
         }
-    }
+    });
 
-    $: if (visible) {
-        startShowAnimation();
-    } else {
-        startHideAnimation();
-    }
+    $effect(() => {
+        if (visible) {
+            startShowAnimation();
+        } else {
+            startHideAnimation();
+        }
 
-    $: previousVisible = visible;
+        previousVisible = visible;
+    });
 </script>
 
 <div
@@ -415,8 +437,10 @@
         <div class="stack-container">
             <div
                 class="stack-content"
-                on:dragover={handleStackDragOver}
-                on:drop={handleStackDrop}>
+                role="list"
+                aria-label="Stack Spells"
+                ondragover={handleStackDragOver}
+                ondrop={handleStackDrop}>
                 {#if stackItems.length === 0}
                     <div class="stack-empty">
                         <div class="text-2xl mb-2">📚</div>
@@ -441,10 +465,13 @@
                                 data-card-data={JSON.stringify(card)}
                                 data-stack-index={index}
                                 draggable={canDragCard(card)}
-                                on:click={(event) => handleSpellClick(event, card)}
-                                on:dragstart={(event) => handleCardDragStart(event, card)}
-                                on:dragend={handleCardDragEnd}
-                                on:contextmenu={handleContextMenu}>
+                                role="button"
+                                tabindex="0"
+                                onclick={(event) => handleSpellClick(event, card)}
+                                ondragstart={(event) => handleCardDragStart(event, card)}
+                                ondragend={handleCardDragEnd}
+                                oncontextmenu={handleContextMenu}
+                                onkeydown={(event) => handleSpellKeydown(event, card)}>
                                 <div class="stack-card-container">
                                     {#if getCardImage(card)}
                                         <img

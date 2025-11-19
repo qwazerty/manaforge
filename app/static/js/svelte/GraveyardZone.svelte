@@ -1,11 +1,13 @@
 <script>
-    export let cards = [];
-    export let zoneIdentifier = '';
-    export let cardsRemaining = 0;
-    export let overlayHtml = 'View<br>All';
-    export let onClick = null;
+    let {
+        cards = [],
+        zoneIdentifier = '',
+        cardsRemaining = 0,
+        overlayHtml = 'View<br>All',
+        onClick = null
+    } = $props();
 
-    const renderLayers = () => {
+    const stackMarkup = $derived(() => {
         if (cards.length === 0) {
             return '';
         }
@@ -20,9 +22,7 @@
                 </div>
             `;
         }).join('');
-    };
-
-    $: stackMarkup = renderLayers();
+    });
 
     function handleClick(event) {
         if (typeof onClick === 'function') {
@@ -32,23 +32,25 @@
 </script>
 
 <div class="graveyard-zone-stack flex flex-col items-center w-full">
-    <div class="graveyard-cards-stack" data-zone-context={zoneIdentifier} on:click={handleClick}>
+    <button
+        type="button"
+        class="graveyard-cards-stack"
+        data-zone-context={zoneIdentifier}
+        onclick={handleClick}>
         {#if cards.length === 0}
             <div class="graveyard-empty">
                 <span>⚰️</span>
                 <div class="zone-empty-text">Empty</div>
             </div>
         {:else}
-            <div class="relative w-full">
-                {@html stackMarkup}
-                <div class="graveyard-click-overlay">
-                    <span class="zone-view-hint">
-                        {@html overlayHtml}
-                    </span>
-                </div>
+            {@html stackMarkup()}
+            <div class="graveyard-click-overlay">
+                <span class="zone-view-hint">
+                    {@html overlayHtml}
+                </span>
             </div>
         {/if}
-    </div>
+    </button>
     <div class="graveyard-cards-count mt-2">
         <span class="cards-remaining">{cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''}</span>
     </div>

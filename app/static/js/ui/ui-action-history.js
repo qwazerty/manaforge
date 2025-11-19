@@ -243,7 +243,13 @@ class UIActionHistory {
 
         try {
             container.innerHTML = '';
-            this._actionHistoryComponent = new ActionHistoryComponent.default({
+            const mount = typeof ActionHistoryComponent.mount === 'function'
+                ? ActionHistoryComponent.mount
+                : null;
+            if (!mount) {
+                throw new Error('ActionHistoryComponent.mount is not available');
+            }
+            this._actionHistoryComponent = mount(ActionHistoryComponent.default, {
                 target: container,
                 props: this._buildComponentProps()
             });
@@ -260,7 +266,11 @@ class UIActionHistory {
     static _destroyActionHistoryComponent() {
         if (this._actionHistoryComponent) {
             try {
-                this._actionHistoryComponent.$destroy();
+                if (typeof ActionHistoryComponent?.unmount === 'function') {
+                    ActionHistoryComponent.unmount(this._actionHistoryComponent);
+                } else if (typeof this._actionHistoryComponent.$destroy === 'function') {
+                    this._actionHistoryComponent.$destroy();
+                }
             } catch (error) {
                 console.error('Failed to destroy action history component', error);
             }
