@@ -11,6 +11,8 @@ class UIRenderersTemplates {
     static _stackPopupComponent = null;
     static _stackPopupTarget = null;
     static _stackPopupAfterHideUnsub = null;
+    static _gameArenaComponent = null;
+    static _gameArenaTarget = null;
     // ===== MAIN RENDERING METHODS =====
     
     /**
@@ -49,120 +51,169 @@ class UIRenderersTemplates {
      * Render left sidebar
      */
     static renderLeftArea() {
-        const gameState = GameCore.getGameState();
-        const stackContainer = document.getElementById('stack-area');
-        
-        if (!this._validateContainer(stackContainer, 'Left sidebar container')) return;
-        if (!this._validateGameState(gameState)) return;
-
-        try {
-            const { controlledIdx, opponentIdx, players } = this._getPlayerIndices(gameState);
-            const opponent = players[opponentIdx] || {};
-            const player = players[controlledIdx] || {};
-            const opponentName = this._getPlayerDisplayName(opponent, this._getSeatFallbackName(opponentIdx));
-            const playerName = this._getPlayerDisplayName(player, this._getSeatFallbackName(controlledIdx));
-            
-            stackContainer.innerHTML = `
-                <!-- Opponent Card Zones -->
-                <div class="arena-card rounded-lg p-3 mb-3">
-                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>${opponentName}
-                    </h4>
-                    ${this.generateCardZones(opponent, true, opponentIdx)}
-                </div>
-
-                <!-- Game Actions Panel -->
-                <div id="action-panel" class="arena-card rounded-lg p-4 mb-3"></div>
-
-                <!-- Player's Card Zones -->
-                <div class="arena-card rounded-lg p-3 mb-3">
-                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>${playerName}
-                    </h4>
-                    ${this.generateCardZones(player, false, controlledIdx)}
-                </div>
-            `;
-
-            this.renderActionPanel();
-            UIZonesManager.hydrateSvelteZones();
-        } catch (error) {
-            this._renderError(stackContainer, 'Error loading stack', error.message);
-        }
+        this.renderGameArena();
     }
 
     /**
      * Render game board
      */
     static renderGameBoard() {
+        this.renderGameArena();
+    }
+
+    static renderGameArena() {
         const gameState = GameCore.getGameState();
-        const gameBoardContainer = document.getElementById('game-board');
-        
-        if (!this._validateContainer(gameBoardContainer, 'Game board container')) return;
-        if (!this._validateGameState(gameState)) return;
+        this._renderGameArenaWithState(gameState);
+    }
 
-        try {
-            const { controlledIdx, opponentIdx, players, activePlayer } = this._getPlayerIndices(gameState);
-            
-            this._preloadCardImages(players);
-            
-            gameBoardContainer.innerHTML = `
-                ${this._renderOpponentArea(players[opponentIdx], opponentIdx, activePlayer)}
-                ${this._renderPlayerArea(players[controlledIdx], controlledIdx, activePlayer)}
+    static _renderGameArenaWithState(gameState) {
+        const arenaContainer = document.getElementById('game-arena-root');
+        if (!this._validateContainer(arenaContainer, 'Game arena container')) {
+            this._destroyGameArenaComponent();
+            return false;
+        }
+        if (!this._validateGameState(gameState)) {
+            this._destroyGameArenaComponent();
+            arenaContainer.innerHTML = `
+                <div class="text-center py-4 text-arena-text-dim text-sm">
+                    Waiting for game state...
+                </div>
             `;
-            gameBoardContainer.dataset.boardHydrated = 'true';
+            return false;
+        }
 
-            // Apply card overlap after DOM is updated
-            if (window.UICardOverlap) {
-                requestAnimationFrame(() => {
-                    window.UICardOverlap.applyOverlapToAllZones();
-                });
+        const props = {
+            gameState,
+            selectedPlayer: GameCore.getSelectedPlayer()
+        };
+
+        this._renderGameArenaSvelte(arenaContainer, props);
+
+        this._scheduleActionPanelRender();
+        this._scheduleZoneHydration();
+        this._scheduleSidebarHydration();
+
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        this._preloadCardImages(players);
+        this._updateRevealOverlay(gameState);
+        this._ensureCommanderPopups(gameState);
+
+        if (window.UICardOverlap) {
+            requestAnimationFrame(() => {
+                window.UICardOverlap.applyOverlapToAllZones();
+            });
+        }
+
+        return true;
+    }
+
+    static _scheduleActionPanelRender() {
+        const render = () => {
+            try {
+                this.renderActionPanel();
+            } catch (error) {
+                console.error('[UIRenderersTemplates] Failed to render action panel', error);
             }
+        };
 
-            this._updateRevealOverlay(gameState);
-            this._ensureCommanderPopups(gameState);
-        } catch (error) {
-            this._renderError(gameBoardContainer, 'Error Loading Game Board', error.message);
-            this._updateRevealOverlay(null);
-            this._ensureCommanderPopups(null);
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(render);
+        } else {
+            render();
         }
     }
 
-    static updateGameBoard(gameState, previousGameState = null) {
-        const gameBoardContainer = document.getElementById('game-board');
-        if (!this._validateContainer(gameBoardContainer, 'Game board container')) return false;
-        if (!this._validateGameState(gameState)) return false;
-        if (gameBoardContainer.dataset.boardHydrated !== 'true') {
-            return false;
+    static _scheduleZoneHydration() {
+        if (typeof UIZonesManager?.hydrateSvelteZones !== 'function') {
+            return;
+        }
+        const hydrate = () => {
+            try {
+                UIZonesManager.hydrateSvelteZones();
+            } catch (error) {
+                console.error('[UIRenderersTemplates] Failed to hydrate zones', error);
+            }
+        };
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(hydrate);
+        } else {
+            hydrate();
+        }
+    }
+
+    static _scheduleSidebarHydration() {
+        const hydrateSidebar = () => {
+            try {
+                if (
+                    typeof UIActionHistory !== 'undefined' &&
+                    typeof UIActionHistory.refreshPanel === 'function'
+                ) {
+                    UIActionHistory.refreshPanel();
+                } else if (
+                    typeof UIActionHistory !== 'undefined' &&
+                    typeof UIActionHistory._render === 'function'
+                ) {
+                    UIActionHistory._render();
+                }
+            } catch (error) {
+                console.error('[UIRenderersTemplates] Failed to refresh action history', error);
+            }
+
+            try {
+                if (
+                    typeof UIBattleChat !== 'undefined' &&
+                    typeof UIBattleChat.render === 'function'
+                ) {
+                    UIBattleChat.render();
+                }
+            } catch (error) {
+                console.error('[UIRenderersTemplates] Failed to refresh battle chat', error);
+            }
+        };
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(hydrateSidebar);
+        } else {
+            hydrateSidebar();
+        }
+    }
+
+    static _renderGameArenaSvelte(container, props) {
+        if (typeof GameArenaComponent === 'undefined') {
+            container.innerHTML = `
+                <div class="arena-card rounded-xl p-6 text-center">
+                    <h3 class="text-red-400 font-bold mb-2">⚠️ Game Arena</h3>
+                    <p class="text-arena-text-dim">Unable to load the arena component.</p>
+                </div>
+            `;
+            return;
         }
 
-        try {
-            const { controlledIdx, opponentIdx, players, activePlayer } = this._getPlayerIndices(gameState);
-            const previousPlayers = Array.isArray(previousGameState?.players) ? previousGameState.players : [];
+        if (!this._gameArenaComponent || this._gameArenaTarget !== container) {
+            this._destroyGameArenaComponent();
+            container.innerHTML = '';
 
-            this._updatePlayerAreaBattlefield(
-                players[controlledIdx],
-                previousPlayers[controlledIdx],
-                controlledIdx,
-                false
-            );
-            this._updatePlayerAreaBattlefield(
-                players[opponentIdx],
-                previousPlayers[opponentIdx],
-                opponentIdx,
-                true
-            );
-            this._updatePlayerHandZone(players[controlledIdx], previousPlayers[controlledIdx], controlledIdx);
-            this._updateOpponentHandZone(players[opponentIdx], previousPlayers[opponentIdx], opponentIdx);
-            this._updatePlayerZoneActiveState('player', activePlayer === controlledIdx);
-            this._updatePlayerZoneActiveState('opponent', activePlayer === opponentIdx);
+            const mount = typeof GameArenaComponent.mount === 'function'
+                ? GameArenaComponent.mount
+                : null;
 
-            this._updateRevealOverlay(gameState);
-            this._ensureCommanderPopups(gameState);
-            return true;
-        } catch (error) {
-            console.error('Incremental game board update failed', error);
-            return false;
+            if (!mount) {
+                console.error('GameArenaComponent.mount is not available');
+                return;
+            }
+
+            this._gameArenaComponent = mount(GameArenaComponent.default, {
+                target: container,
+                props
+            });
+            this._gameArenaTarget = container;
+        } else if (typeof this._gameArenaComponent.$set === 'function') {
+            this._gameArenaComponent.$set(props);
         }
+    }
+
+    static updateGameBoard(gameState) {
+        return this._renderGameArenaWithState(gameState || GameCore.getGameState());
     }
 
     /**
@@ -240,6 +291,18 @@ class UIRenderersTemplates {
             }
             this._actionPanelComponent = null;
             this._actionPanelTarget = null;
+        }
+    }
+
+    static _destroyGameArenaComponent() {
+        if (this._gameArenaComponent) {
+            if (typeof GameArenaComponent?.unmount === 'function') {
+                GameArenaComponent.unmount(this._gameArenaComponent);
+            } else if (typeof this._gameArenaComponent.$destroy === 'function') {
+                this._gameArenaComponent.$destroy();
+            }
+            this._gameArenaComponent = null;
+            this._gameArenaTarget = null;
         }
     }
 

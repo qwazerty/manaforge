@@ -392,15 +392,7 @@ class WebSocketManager {
      * Refresh game UI components
      */
     static _refreshGameUI(previousGameState = null) {
-        UIRenderersTemplates.renderLeftArea();
-        const boardUpdated = UIRenderersTemplates.updateGameBoard(
-            GameCore.getGameState(),
-            previousGameState
-        );
-        if (!boardUpdated) {
-            UIRenderersTemplates.renderGameBoard();
-        }
-        UIRenderersTemplates.renderActionPanel();
+        UIRenderersTemplates.renderGameArena();
         
         // Update zone counts and previews
         UIZonesManager.updateZoneCounts();
