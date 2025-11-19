@@ -595,6 +595,31 @@ function changePlayer(playerType) {
     GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
+// Remove transient combat/tap visuals so cards reset cleanly when changing zones.
+function resetCardVisualState(cardElement) {
+    if (!cardElement) {
+        return;
+    }
+
+    const transientClasses = [
+        'tapped',
+        'combat-tapped',
+        'attacking-creature',
+        'blocking-creature',
+        'can-attack',
+        'can-block',
+        'selected-blocker'
+    ];
+    transientClasses.forEach(className => cardElement.classList.remove(className));
+
+    ['transform', 'box-shadow', 'opacity', 'pointer-events'].forEach(property => {
+        cardElement.style.removeProperty(property);
+    });
+
+    delete cardElement.dataset.pendingAttacker;
+    delete cardElement.dataset.pendingBlocker;
+}
+
 function clearTappedState(uniqueCardId) {
     if (!uniqueCardId) {
         return;
@@ -603,6 +628,8 @@ function clearTappedState(uniqueCardId) {
     if (!cardElement) {
         return;
     }
+
+    resetCardVisualState(cardElement);
     cardElement.classList.remove('tapped');
     cardElement.setAttribute('data-card-tapped', 'false');
 }
