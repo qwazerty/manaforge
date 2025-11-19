@@ -389,7 +389,7 @@
     });
 
     const stackItems = $derived(() => Array.isArray(stack) ? stack.filter(Boolean) : []);
-    const stackCount = $derived(() => stackItems.length);
+    const stackCount = $derived(() => stackItems().length);
 
     $effect(() => {
         if (!panelEl) {
@@ -429,7 +429,7 @@
         <div class="stack-popup-title">
             <span class="stack-popup-icon">{panelIcon}</span>
             <span class="stack-popup-label">{panelTitle}</span>
-            <span class="stack-popup-count">{stackCount}</span>
+            <span class="stack-popup-count">{stackCount()}</span>
         </div>
     </div>
 
@@ -441,7 +441,7 @@
                 aria-label="Stack Spells"
                 ondragover={handleStackDragOver}
                 ondrop={handleStackDrop}>
-                {#if stackItems.length === 0}
+                {#if stackItems().length === 0}
                     <div class="stack-empty">
                         <div class="text-2xl mb-2">📚</div>
                         <div>The stack is empty</div>
@@ -450,7 +450,7 @@
                         </div>
                     </div>
                 {:else}
-                    {#each stackItems as card, index}
+                    {#each stackItems() as card, index}
                         {#if card}
                             <div
                                 class={`stack-spell${card.targeted ? ' targeted' : ''}${isSpellClickable(card) ? '' : ' not-clickable'}`}
