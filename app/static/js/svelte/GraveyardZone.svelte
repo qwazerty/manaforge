@@ -1,4 +1,6 @@
 <script>
+    import { onMount } from 'svelte';
+
     let {
         cards = [],
         zoneIdentifier = '',
@@ -6,6 +8,7 @@
         overlayHtml = 'View<br>All',
         onClick = null
     } = $props();
+    let graveyardButton = null;
 
     const normalizedCards = () => (Array.isArray(cards) ? cards : []);
 
@@ -32,10 +35,45 @@
             onClick(event);
         }
     }
+
+    const attachContextMenu = () => {
+        if (
+            !graveyardButton ||
+            !zoneIdentifier ||
+            typeof window === 'undefined' ||
+            !window.ZoneContextMenu ||
+            typeof window.ZoneContextMenu.attachToZone !== 'function'
+        ) {
+            return;
+        }
+        if (graveyardButton.dataset.zoneMenuAttached === 'true') {
+            return;
+        }
+        window.ZoneContextMenu.attachToZone(graveyardButton, zoneIdentifier);
+        graveyardButton.classList.add('zone-context-menu-enabled');
+        graveyardButton.dataset.zoneMenuAttached = 'true';
+    };
+
+    onMount(() => {
+        attachContextMenu();
+    });
+
+    $effect(() => {
+        const identifier = zoneIdentifier;
+        if (!identifier || !graveyardButton) {
+            return;
+        }
+        if (graveyardButton.dataset.zoneIdentifier !== identifier) {
+            graveyardButton.dataset.zoneMenuAttached = '';
+        }
+        graveyardButton.dataset.zoneIdentifier = identifier;
+        attachContextMenu();
+    });
 </script>
 
 <div class="graveyard-zone-stack flex flex-col items-center w-full">
     <button
+        bind:this={graveyardButton}
         type="button"
         class="graveyard-cards-stack"
         data-zone-context={zoneIdentifier}

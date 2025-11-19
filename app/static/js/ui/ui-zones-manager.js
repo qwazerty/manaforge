@@ -238,8 +238,8 @@ class UIZonesManager {
 
         const rawAmount = Math.abs(parseInt(input.value, 10));
         if (!rawAmount) {
-            if (window.GameUI && typeof GameUI.showNotification === 'function') {
-                GameUI.showNotification('Enter a valid amount', 'warning');
+            if (window.GameUI && typeof GameUI.logMessage === 'function') {
+                GameUI.logMessage('Enter a valid amount', 'warning');
             }
             input.focus();
             return;

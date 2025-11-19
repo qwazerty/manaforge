@@ -1,4 +1,6 @@
 <script>
+    import { onMount } from 'svelte';
+
     let {
         cards = [],
         zoneIdentifier = '',
@@ -7,6 +9,7 @@
         topCard = null,
         onClick = null
     } = $props();
+    let exileButton = null;
 
     const stackMarkup = $derived(() => {
         if (cards.length === 0) {
@@ -27,10 +30,45 @@
             onClick(event);
         }
     }
+
+    const attachContextMenu = () => {
+        if (
+            !exileButton ||
+            !zoneIdentifier ||
+            typeof window === 'undefined' ||
+            !window.ZoneContextMenu ||
+            typeof window.ZoneContextMenu.attachToZone !== 'function'
+        ) {
+            return;
+        }
+        if (exileButton.dataset.zoneMenuAttached === 'true') {
+            return;
+        }
+        window.ZoneContextMenu.attachToZone(exileButton, zoneIdentifier);
+        exileButton.classList.add('zone-context-menu-enabled');
+        exileButton.dataset.zoneMenuAttached = 'true';
+    };
+
+    onMount(() => {
+        attachContextMenu();
+    });
+
+    $effect(() => {
+        const identifier = zoneIdentifier;
+        if (!identifier || !exileButton) {
+            return;
+        }
+        if (exileButton.dataset.zoneIdentifier !== identifier) {
+            exileButton.dataset.zoneMenuAttached = '';
+        }
+        exileButton.dataset.zoneIdentifier = identifier;
+        attachContextMenu();
+    });
 </script>
 
 <div class="exile-zone-stack flex flex-col items-center w-full">
     <button
+        bind:this={exileButton}
         type="button"
         class="exile-stack"
         data-zone-context={zoneIdentifier}
