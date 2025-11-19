@@ -1127,8 +1127,6 @@ const GameCards = {
         const jsCardZone = JSON.stringify(cardZone || 'unknown');
         const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
 
-        console.log(`🃏 Context menu for: ${cardName} (Zone: ${cardZone}, Tapped: ${isTapped}, UniqueID: ${uniqueCardId}, Opponent: ${isOpponent})`);
-
         const existingMenu = document.getElementById('card-context-menu');
         if (existingMenu) {
             existingMenu.remove();
@@ -1269,10 +1267,6 @@ const GameCards = {
                 card_id: cardId,
                 targeted: isTargeted
             });
-
-            const cardName = cardElement.getAttribute('data-card-name');
-            const actionText = isTargeted ? 'targeted' : 'untargeted';
-            GameUI.logMessage(`${cardName} ${actionText}`, 'info');
         }
     },
 
@@ -1488,14 +1482,8 @@ const GameCards = {
 
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
-            const cardName = cardElement.getAttribute('data-card-name');
-            GameUI.logMessage(`${cardName} flipped`, 'info');
-
             const socket = window.websocket;
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                // Updates arrive automatically via the active WebSocket
-                console.log('Card flip processed, interface will update via WebSocket');
-            } else {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
                 console.warn('Card flip processed without active WebSocket; UI may require manual sync.');
             }
         }
@@ -1774,7 +1762,6 @@ const GameCards = {
         });
 
         input.value = '';
-        GameUI.logMessage(`Added keyword "${keyword}"`, 'success');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1791,7 +1778,6 @@ const GameCards = {
             keyword: keyword
         });
 
-        GameUI.logMessage(`Removed keyword "${keyword}"`, 'info');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1815,7 +1801,6 @@ const GameCards = {
             card_type: selectedType
         });
 
-        GameUI.logMessage(`Added ${selectedType} override`, 'success');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1832,7 +1817,6 @@ const GameCards = {
             card_type: cardType
         });
 
-        GameUI.logMessage(`Removed ${cardType} override`, 'info');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1845,7 +1829,6 @@ const GameCards = {
             card_type: null
         });
 
-        GameUI.logMessage('Custom types reset', 'success');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1875,8 +1858,6 @@ const GameCards = {
             counter_type: counterType,
             amount: amount
         });
-
-        GameUI.logMessage(`Added ${amount} ${counterType} counter(s)`, 'success');
 
         if (customInput) {
             customInput.value = '';
@@ -1922,7 +1903,6 @@ const GameCards = {
         });
 
         this.closeCounterModal();
-        GameUI.logMessage(`Removed all ${counterType} counters`, 'info');
     },
 
     generatePowerToughnessManager: function(cardData, uniqueCardId, cardId) {
@@ -2025,7 +2005,6 @@ const GameCards = {
         }
 
         GameActions.performGameAction('set_power_toughness', payload);
-        GameUI.logMessage('Power/Toughness updated', 'success');
 
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
@@ -2044,8 +2023,6 @@ const GameCards = {
         const toughnessInput = document.getElementById(`pt-toughness-input-${uniqueCardId}`);
         if (powerInput) powerInput.value = '';
         if (toughnessInput) toughnessInput.value = '';
-
-        GameUI.logMessage('Power/Toughness reset to base values', 'info');
 
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);

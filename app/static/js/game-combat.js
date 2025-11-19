@@ -134,16 +134,6 @@ const GameCombat = {
         const activePlayerData = players[activePlayerIndex];
         const hasAttackers = activePlayerData?.battlefield?.some(card => card.attacking) || false;
         
-        console.log('🎯 Combat Step Check:', {
-            phase: gameState.phase,
-            isActivePlayer,
-            hasAttackers,
-            combatStep,
-            expectedPlayer,
-            activePlayerIndex,
-            currentPlayerIndex
-        });
-        
         if (combatStep && combatStep !== 'none') {
             if (combatStep === 'declare_attackers') {
                 if (!expectedPlayer || expectedPlayer === currentPlayer) {
@@ -177,11 +167,9 @@ const GameCombat = {
      * Start the Attack Step - active player declares attackers
      */
     startAttackStep() {
-        console.log('⚔️ Starting Attack Step');
         
         const gameState = GameCore.getGameState();
         if (!gameState || gameState.phase !== 'attack') {
-            console.log('❌ Not in attack phase');
             return;
         }
         
@@ -190,16 +178,13 @@ const GameCombat = {
         const currentPlayerIndex = currentPlayer === 'player2' ? 1 : 0;
         const combatState = gameState.combat_state || {};
         if (combatState.expected_player && combatState.expected_player !== currentPlayer) {
-            console.log('❌ Not the expected player for declare attackers');
             return;
         }
         if (combatState.step && combatState.step !== 'declare_attackers' && combatState.step !== 'none') {
-            console.log(`⚠️ Combat state is ${combatState.step}, skipping attacker mode`);
             return;
         }
         
         if (currentPlayerIndex !== activePlayerIndex) {
-            console.log('❌ Not the active player');
             return;
         }
         
@@ -211,18 +196,15 @@ const GameCombat = {
             setTimeout(() => this.applyPendingAttackerVisuals(combatState.pending_attackers), 50);
         }
         this.highlightValidAttackers();
-        GameUI.logMessage('Select creatures to attack, then confirm', 'info');
     },
     
     /**
      * Start the Defense Step - defending player declares blockers
      */
     startDefenseStep() {
-        console.log('🛡️ Starting Defense Step');
         
         const gameState = GameCore.getGameState();
         if (!gameState || gameState.phase !== 'block') {
-            console.log('❌ Not in block phase');
             return;
         }
         
@@ -231,16 +213,13 @@ const GameCombat = {
         const currentPlayerIndex = currentPlayer === 'player2' ? 1 : 0;
         const combatState = gameState.combat_state || {};
         if (combatState.expected_player && combatState.expected_player !== currentPlayer) {
-            console.log('❌ Not the expected player for declare blockers');
             return;
         }
         if (combatState.step && combatState.step !== 'declare_blockers') {
-            console.log(`⚠️ Combat state is ${combatState.step}, skipping blocker mode`);
             return;
         }
         
         if (currentPlayerIndex === activePlayerIndex) {
-            console.log('❌ Active player cannot block');
             return;
         }
         
@@ -261,11 +240,8 @@ const GameCombat = {
         
         this.highlightValidBlockers();
 
-        if (attackingCreatures.length === 0) {
-            GameUI.logMessage('No attackers - click Confirm to continue', 'info');
-        } else {
+        if (attackingCreatures.length > 0) {
             this.highlightAttackers();
-            GameUI.logMessage('Click blocker, then attacker to assign', 'info');
         }
     },
     
@@ -315,24 +291,19 @@ const GameCombat = {
     /**
      * Confirm attackers - end Attack Step and move to Defense Step
      */
-    confirmAttackers() {
-        console.log('=== CONFIRM ATTACKERS ===');
-        
+    confirmAttackers() {        
         const gameState = GameCore.getGameState();
         if (!gameState || gameState.phase !== 'attack') {
-            console.log('❌ Not in attack phase');
             GameUI.logMessage('Not in attack phase', 'error');
             return;
         }
         const combatState = gameState.combat_state || {};
         if (combatState.step && combatState.step !== 'declare_attackers') {
-            console.log(`⚠️ Cannot confirm attackers during ${combatState.step}`);
             GameUI.logMessage('Waiting for combat progression', 'warning');
             return;
         }
         
         const attackingCreatures = Array.from(this.attackers);
-        console.log(`⚔️ Declaring ${attackingCreatures.length} attackers:`, attackingCreatures);
         
         // Send declare_attackers action
         GameActions.performGameAction('declare_attackers', {
@@ -358,12 +329,6 @@ const GameCombat = {
 
         this.combatMode = null;
         this.clearHighlights();
-        
-        const count = attackingCreatures.length;
-        GameUI.logMessage(
-            count === 0 ? 'No attackers declared' : `${count} attacker(s) declared`,
-            'info'
-        );
 
         this.lastSyncedAttackersPayload = null;
     },
@@ -371,24 +336,19 @@ const GameCombat = {
     /**
      * Confirm blockers - end Defense Step and continue combat
      */
-    confirmBlockers() {
-        console.log('=== CONFIRM BLOCKERS ===');
-        
+    confirmBlockers() {        
         const gameState = GameCore.getGameState();
         if (!gameState || gameState.phase !== 'block') {
-            console.log('❌ Not in block phase');
             GameUI.logMessage('Not in block phase', 'error');
             return;
         }
         const combatState = gameState.combat_state || {};
         if (combatState.step && combatState.step !== 'declare_blockers') {
-            console.log(`⚠️ Cannot confirm blockers during ${combatState.step}`);
             GameUI.logMessage('Waiting for combat progression', 'warning');
             return;
         }
         
         const blockingAssignments = Object.fromEntries(this.blockers);
-        console.log(`🛡️ Declaring ${this.blockers.size} blockers:`, blockingAssignments);
         
         // Send declare_blockers action
         GameActions.performGameAction('declare_blockers', {
@@ -398,12 +358,6 @@ const GameCombat = {
         this.combatMode = null;
         this.clearHighlights();
         this.clearArrows();
-        
-        const count = this.blockers.size;
-        GameUI.logMessage(
-            count === 0 ? 'No blockers declared' : `${count} blocker(s) declared`,
-            'info'
-        );
 
         this.lastSyncedBlockersPayload = null;
     },
@@ -439,7 +393,6 @@ const GameCombat = {
         }
 
         if (!cardElement.classList.contains('is-attacker')) {
-            GameUI.logMessage('Select a blocker, then click an attacker to assign', 'info');
             return;
         }
 
@@ -469,7 +422,6 @@ const GameCombat = {
         
         this.selectedBlocker = uniqueId;
         cardElement.classList.add('selected-blocker');
-        GameUI.logMessage('Now click an attacker to block', 'info');
     },
     
     /**
@@ -492,9 +444,6 @@ const GameCombat = {
             this.syncPendingBlockers();
             this.selectedBlocker = null;
             this.updateCombatUI();
-            if (window.GameUI && typeof GameUI.logMessage === 'function') {
-                GameUI.logMessage('Blocking assignment cleared', 'info');
-            }
             return;
         }
 
@@ -736,7 +685,6 @@ const GameCombat = {
         this.clearArrows();
         this.syncPendingAttackers(true);
         this.syncPendingBlockers(true);
-        GameUI.logMessage('Combat action cancelled', 'info');
     },
     
     /**
@@ -917,7 +865,6 @@ const GameCombat = {
     },
 
     _cleanupCombatVisuals() {
-        console.log('🧹 Cleaning up combat state');
         this.combatMode = null;
         this.attackers.clear();
         this.blockers.clear();
@@ -941,7 +888,6 @@ const GameCombat = {
 
         if (window.GameUI && typeof window.GameUI.refreshGameState === 'function') {
             setTimeout(() => {
-                console.log('♻️ Re-rendering cards to remove combat animations');
                 window.GameUI.refreshGameState();
             }, 100);
         }
@@ -951,7 +897,6 @@ const GameCombat = {
      * Handle phase changes during combat windows
      */
     onPhaseChange(newPhase) {
-        console.log(`🔄 Phase changed to: ${newPhase}`);
         const normalizedPhase = (newPhase || '').toLowerCase();
 
         const gameState = GameCore.getGameState();
@@ -967,22 +912,14 @@ const GameCombat = {
 
         if (normalizedPhase === 'attack') {
             if (isActivePlayer) {
-                console.log('⚔️ Active player - starting Attack Step');
                 setTimeout(() => this.startAttackStep(), 100);
-            } else {
-                console.log('👁️ Waiting for opponent to declare attackers');
-                GameUI.logMessage('Opponent is declaring attackers...', 'info');
             }
             return;
         }
 
         if (normalizedPhase === 'block') {
             if (!isActivePlayer) {
-                console.log('🛡️ Defender - starting Defense Step');
                 setTimeout(() => this.startDefenseStep(), 100);
-            } else {
-                console.log('👁️ Waiting for opponent to confirm blockers');
-                GameUI.logMessage('Opponent is declaring blockers...', 'info');
             }
             return;
         }

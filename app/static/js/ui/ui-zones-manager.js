@@ -507,7 +507,7 @@ class UIZonesManager {
      * Show card details
      */
     static showCardDetails(cardId, zoneName) {
-        UINotifications.showNotification(`Card details: ${cardId}`, 'info');
+        console.info(`Card details requested for ${cardId} in ${zoneName}`);
     }
 
     /**
@@ -693,10 +693,10 @@ class UIZonesManager {
                     positionIndex
                 );
             } else {
-                UINotifications.showNotification('Card movement not implemented on the backend.', 'warning');
+                console.warn('Card movement not implemented on the backend.');
             }
         } catch (e) {
-            UINotifications.showNotification('Error during card drop.', 'error');
+            console.error('Error during card drop.', e);
         }
     }
 

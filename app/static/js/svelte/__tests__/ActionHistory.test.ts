@@ -26,9 +26,6 @@ describe('ActionHistory', () => {
             }
         });
 
-        // eslint-disable-next-line no-console
-        console.log('captured state', (component as any).$capture_state?.());
-
         expect(await screen.findByText('No actions yet')).toBeTruthy();
         expect(document.querySelector('[data-placeholder="true"]')).not.toBeNull();
     });

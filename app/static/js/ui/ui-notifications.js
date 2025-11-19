@@ -24,8 +24,6 @@ class UINotifications {
             return;
         }
 
-        console.log(`[${type}] ${message}`);
-
         const notification = this.createNotificationElement(message, type);
         const notificationsArea = this.getNotificationsArea();
         

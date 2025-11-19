@@ -431,24 +431,12 @@ class CardSearchModal {
             });
 
             if (response.ok) {
-                // Show success notification
-                if (typeof UINotifications !== 'undefined') {
-                    const tokenText = isToken ? ' (token)' : '';
-                    const zoneName = isToken ? 'le champ de bataille' : this.getZoneDisplayName(this.targetZone);
-                    UINotifications.showNotification(
-                        `✅ ${card.name}${tokenText} added to ${zoneName}`,
-                        'success'
-                    );
-                }
                 this.hide();
             } else {
                 throw new Error('Failed to add card');
             }
         } catch (error) {
             console.error('Error adding card:', error);
-            if (typeof UINotifications !== 'undefined') {
-                UINotifications.showNotification('❌ Error adding the card', 'error');
-            }
         }
     }
 
