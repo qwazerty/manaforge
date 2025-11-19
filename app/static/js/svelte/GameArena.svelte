@@ -378,7 +378,8 @@
 
 <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 flex-grow h-full">
     <div class="xl:col-span-1" id="stack-area">
-        {#if sidebarData() as sidebar}
+        {#if sidebarData()}
+            {@const sidebar = sidebarData()}
             {#if sidebar.opponent}
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
@@ -394,7 +395,10 @@
                                         {/if}
                                         <span>{zone.label?.title || zone.key}</span>
                                     </div>
-                                    <svelte:component this={zone.component} {...zone.props} />
+                                    {#if zone.component}
+                                        {@const ZoneComponent = zone.component}
+                                        <ZoneComponent {...zone.props} />
+                                    {/if}
                                 </div>
                             {/each}
                         </div>
@@ -423,7 +427,10 @@
                                         {/if}
                                         <span>{zone.label?.title || zone.key}</span>
                                     </div>
-                                    <svelte:component this={zone.component} {...zone.props} />
+                                    {#if zone.component}
+                                        {@const ZoneComponent = zone.component}
+                                        <ZoneComponent {...zone.props} />
+                                    {/if}
                                 </div>
                             {/each}
                         </div>
@@ -443,7 +450,8 @@
     </div>
 
     <div class="xl:col-span-2" id="game-board" data-board-hydrated={boardHydrated()}>
-        {#if boardData() as board}
+        {#if boardData()}
+            {@const board = boardData()}
             {#if board.opponent}
                 <div
                     class={`arena-card rounded-lg mb-3 p-3 compact-zones ${board.opponent.isActive ? 'opponent-zone-active-turn' : ''}`}
@@ -462,12 +470,14 @@
                         {#each board.opponent.battlefieldZones as zone (zone.key)}
                             <div
                                 class={zone.zoneClass}
+                                role="region"
+                                aria-label={`${zone.playerRole} ${zone.key} zone`}
                                 data-battlefield-zone={zone.key}
                                 data-zone-owner={zone.ownerId}
                                 data-player-role={zone.playerRole}
-                                on:dragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                on:dragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                on:drop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                                ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                                ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
                                 <div
                                     class={zone.contentClass}
                                     data-card-count={zone.cardCount}
@@ -490,12 +500,14 @@
                         {#each board.player.battlefieldZones as zone (zone.key)}
                             <div
                                 class={zone.zoneClass}
+                                role="region"
+                                aria-label={`${zone.playerRole} ${zone.key} zone`}
                                 data-battlefield-zone={zone.key}
                                 data-zone-owner={zone.ownerId}
                                 data-player-role={zone.playerRole}
-                                on:dragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                on:dragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                on:drop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                                ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                                ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
                                 <div
                                     class={zone.contentClass}
                                     data-card-count={zone.cardCount}
@@ -509,11 +521,13 @@
 
                     <div
                         class="hand-zone-content zone-content"
+                        role="region"
+                        aria-label="player hand zone"
                         data-card-count={board.player.hand.cardCount}
                         data-zone-type="hand"
                         data-player-owner={board.player.ownerId}
-                        on:dragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                        on:drop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                        ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                        ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
                         {@html board.player.hand.html}
                     </div>
                 </div>
