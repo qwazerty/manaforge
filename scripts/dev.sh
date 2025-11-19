@@ -45,7 +45,7 @@ wait_for_port() {
 
 start_cmd "backend" docker compose -f docker-compose-dev.yml up --build -d
 wait_for_port 8000
-start_cmd "svelte watcher" npm run dev:svelte
-start_cmd "tailwind watcher" npm run dev:css
+start_cmd "svelte watcher" corepack pnpm run dev:svelte
+start_cmd "tailwind watcher" corepack pnpm run dev:css
 
 wait "${PIDS[@]}"
