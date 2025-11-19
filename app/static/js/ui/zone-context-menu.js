@@ -133,15 +133,19 @@ class ZoneContextMenu {
      * Close active context menu
      */
     static closeMenu() {
-        if (this.activeMenu) {
-            this.activeMenu.classList.remove('active');
-            setTimeout(() => {
-                if (this.activeMenu && this.activeMenu.parentNode) {
-                    this.activeMenu.parentNode.removeChild(this.activeMenu);
-                }
-                this.activeMenu = null;
-            }, 200);
+        if (!this.activeMenu) {
+            return;
         }
+
+        const menuToClose = this.activeMenu;
+        this.activeMenu = null;
+        menuToClose.classList.remove('active');
+
+        setTimeout(() => {
+            if (menuToClose.parentNode) {
+                menuToClose.parentNode.removeChild(menuToClose);
+            }
+        }, 200);
     }
 
     /**
