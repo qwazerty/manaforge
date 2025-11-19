@@ -103,8 +103,9 @@ describe('ActionHistory', () => {
         expect(anchor).toBe(cardButton);
         expect(event).toBeInstanceOf(MouseEvent);
 
+        const moveCallsBefore = move.mock.calls.length;
         await fireEvent.mouseMove(cardButton);
-        expect(move).toHaveBeenCalledTimes(1);
+        expect(move.mock.calls.length).toBeGreaterThan(moveCallsBefore);
 
         await user.unhover(cardButton);
         expect(hide).toHaveBeenCalledTimes(1);

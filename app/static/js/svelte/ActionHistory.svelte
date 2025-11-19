@@ -162,8 +162,9 @@
         return hasTargets || hasFallbacks;
     };
 
-    const segments = $derived(() => getSegments(entries || []));
-    const hasEntries = $derived(() => segments.some((segment) => segment.type === 'entry'));
+    const normalizedEntries = () => (Array.isArray(entries) ? entries : []);
+    const segments = () => getSegments(normalizedEntries());
+    const hasEntries = () => segments().some((segment) => segment.type === 'entry');
 </script>
 
 <div class="arena-card rounded-lg p-4 flex flex-col h-[34rem]">
@@ -172,8 +173,8 @@
         <h3 class="font-magic font-semibold text-arena-accent">{panelTitle}</h3>
     </div>
     <div id="action-history" class="action-history-list mt-3">
-        {#if hasEntries}
-            {#each segments as segment (segment.id)}
+        {#if hasEntries()}
+            {#each segments() as segment (segment.id)}
                 {#if segment.type === 'turn'}
                     <div class="action-history-turn-separator">
                         <span class="action-history-turn-text">{segment.label}</span>
