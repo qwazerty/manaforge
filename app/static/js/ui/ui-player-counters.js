@@ -138,7 +138,7 @@ class UIPlayerCounters {
     static _handleAdd(playerId, counterType, amount) {
         const normalizedType = typeof counterType === 'string' ? counterType.trim() : '';
         if (!playerId || !normalizedType) {
-            GameUI.showNotification('Indiquer un type de compteur', 'warning');
+            GameUI.logMessage('Indiquer un type de compteur', 'warning');
             return;
         }
         const parsedAmount = parseInt(amount, 10);

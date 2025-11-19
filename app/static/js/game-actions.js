@@ -408,7 +408,7 @@ function recordActionFailure(actionType, message, data = null, playerOverride = 
 function performGameAction(actionType, actionData = {}) {
    const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
-        GameUI.showNotification('Spectators cannot perform actions', 'error');
+        GameUI.logMessage('Spectators cannot perform actions', 'error');
         return;
     }
     
@@ -536,18 +536,18 @@ async function performHttpGameAction(actionType, actionData = {}) {
                 recordActionHistory(actionType, true, actionData, null, currentSelectedPlayer);
             } else {
                 const errorMessage = result.error || 'Action failed';
-                GameUI.showNotification(`Action failed: ${errorMessage}`, 'error');
+                GameUI.logMessage(`Action failed: ${errorMessage}`, 'error');
                 recordActionFailure(actionType, errorMessage, actionData, currentSelectedPlayer);
             }
         } else {
             const errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-            GameUI.showNotification(`Error: ${errorMessage}`, 'error');
+            GameUI.logMessage(`Error: ${errorMessage}`, 'error');
             recordActionFailure(actionType, errorMessage, actionData, currentSelectedPlayer);
         }
         
     } catch (error) {
         console.error('HTTP action error:', error);
-        GameUI.showNotification(`Error: ${error.message}`, 'error');
+        GameUI.logMessage(`Error: ${error.message}`, 'error');
         recordActionFailure(actionType, error.message, actionData, currentSelectedPlayer);
     }
 }
@@ -570,7 +570,7 @@ function playCardFromHand(cardId, uniqueId) {
         cardName = cardElement.getAttribute('data-card-name') || cardId;
     }
 
-    GameUI.showNotification(`Card played: ${cardName}`, 'info');
+    GameUI.logMessage(`Card played: ${cardName}`, 'info');
 }
 
 function changePlayer(playerType) {
@@ -592,7 +592,7 @@ function changePlayer(playerType) {
     }
     
     GameSocket.initWebSocket();
-    GameUI.showNotification(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
+    GameUI.logMessage(`Switched to ${playerType === 'spectator' ? 'spectator' : 'player ' + playerType.slice(-1)}`, 'info');
 }
 
 function clearTappedState(uniqueCardId) {
@@ -626,7 +626,7 @@ function changePhase(phaseId) {
     const phaseName = (typeof UIConfig !== 'undefined' && UIConfig.getPhaseDisplayName)
         ? UIConfig.getPhaseDisplayName(phaseId)
         : phaseId;
-    GameUI.showNotification(`Phase set to ${phaseName}`, 'info');
+    GameUI.logMessage(`Phase set to ${phaseName}`, 'info');
 }
 
 function tapCard(cardId, uniqueCardId) {
@@ -656,11 +656,11 @@ function tapCard(cardId, uniqueCardId) {
 
         performGameAction('tap_card', tapData);
         const actionText = newTappedState ? 'tapped' : 'untapped';
-        GameUI.showNotification(`${cardName} ${actionText}`, 'info');
+        GameUI.logMessage(`${cardName} ${actionText}`, 'info');
     } else {
         console.warn(`🃏 Card element not found for cardId: ${cardId}, uniqueCardId: ${uniqueCardId}`);
         performGameAction('tap_card', { card_id: cardId, unique_id: uniqueCardId });
-        GameUI.showNotification(`Card tapped/untapped`, 'info');
+        GameUI.logMessage(`Card tapped/untapped`, 'info');
     }
 }
 
@@ -717,25 +717,25 @@ function sendToBottomLibrary(cardId, sourceZone, uniqueCardId = null, callback =
 
 function deleteToken(uniqueCardId, cardName = 'Token') {
     if (!uniqueCardId) {
-        GameUI.showNotification('Token not found', 'error');
+        GameUI.logMessage('Token not found', 'error');
         return;
     }
 
     performGameAction('delete_token', { unique_id: uniqueCardId });
     const label = cardName || 'Token';
-    GameUI.showNotification(`${label} removed`, 'info');
+    GameUI.logMessage(`${label} removed`, 'info');
 }
 
 function millTopLibraryCard() {
     const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
-        GameUI.showNotification('Spectators cannot mill cards', 'error');
+        GameUI.logMessage('Spectators cannot mill cards', 'error');
         return;
     }
 
     const gameState = GameCore.getGameState();
     if (!gameState || !Array.isArray(gameState.players)) {
-        GameUI.showNotification('Unable to access game state', 'error');
+        GameUI.logMessage('Unable to access game state', 'error');
         return;
     }
 
@@ -748,7 +748,7 @@ function millTopLibraryCard() {
             : [];
 
     if (!library.length) {
-        GameUI.showNotification('Library is empty', 'info');
+        GameUI.logMessage('Library is empty', 'info');
         return;
     }
 
@@ -757,7 +757,7 @@ function millTopLibraryCard() {
     const uniqueId = topCard?.unique_id;
 
     if (!cardId || !uniqueId) {
-        GameUI.showNotification('Unable to identify the top card', 'error');
+        GameUI.logMessage('Unable to identify the top card', 'error');
         return;
     }
 
@@ -767,13 +767,13 @@ function millTopLibraryCard() {
 function moveAllHandToReveal() {
     const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
-        GameUI.showNotification('Spectators cannot perform actions', 'error');
+        GameUI.logMessage('Spectators cannot perform actions', 'error');
         return;
     }
 
     const gameState = GameCore.getGameState();
     if (!gameState || !gameState.players) {
-        GameUI.showNotification('Unable to access game state', 'error');
+        GameUI.logMessage('Unable to access game state', 'error');
         return;
     }
 
@@ -783,7 +783,7 @@ function moveAllHandToReveal() {
     const hand = Array.isArray(player?.hand) ? player.hand : [];
 
     if (hand.length === 0) {
-        GameUI.showNotification('Your hand is empty', 'info');
+        GameUI.logMessage('Your hand is empty', 'info');
         return;
     }
 
@@ -796,19 +796,19 @@ function moveAllHandToReveal() {
         }
     });
 
-    GameUI.showNotification(`${movedCount} card${movedCount !== 1 ? 's' : ''} revealed from hand`, 'success');
+    GameUI.logMessage(`${movedCount} card${movedCount !== 1 ? 's' : ''} revealed from hand`, 'success');
 }
 
 function returnAllRevealToHand() {
     const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
-        GameUI.showNotification('Spectators cannot perform actions', 'error');
+        GameUI.logMessage('Spectators cannot perform actions', 'error');
         return;
     }
 
     const gameState = GameCore.getGameState();
     if (!gameState || !gameState.players) {
-        GameUI.showNotification('Unable to access game state', 'error');
+        GameUI.logMessage('Unable to access game state', 'error');
         return;
     }
 
@@ -818,7 +818,7 @@ function returnAllRevealToHand() {
     const revealZone = Array.isArray(player?.reveal_zone) ? player.reveal_zone : [];
 
     if (revealZone.length === 0) {
-        GameUI.showNotification('No cards in reveal zone', 'info');
+        GameUI.logMessage('No cards in reveal zone', 'info');
         return;
     }
 
@@ -831,7 +831,7 @@ function returnAllRevealToHand() {
         }
     });
 
-    GameUI.showNotification(`${movedCount} card${movedCount !== 1 ? 's' : ''} returned to hand`, 'success');
+    GameUI.logMessage(`${movedCount} card${movedCount !== 1 ? 's' : ''} returned to hand`, 'success');
 }
 
 function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
@@ -853,7 +853,7 @@ function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
 
     const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
     const cardName = cardElement?.getAttribute('data-card-name') || cardId;
-    GameUI.showNotification(`${cardName} duplicated`, 'success');
+    GameUI.logMessage(`${cardName} duplicated`, 'success');
 }
 
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
@@ -873,7 +873,7 @@ function resolveStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.showNotification(`Resolving spell ${cardId}`, 'info');
+    GameUI.logMessage(`Resolving spell ${cardId}`, 'info');
 }
 
 function counterStackSpell(cardId, stackIndex) {
@@ -881,7 +881,7 @@ function counterStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.showNotification(`Spell countered`, 'info');
+    GameUI.logMessage(`Spell countered`, 'info');
 }
 
 function copyStackSpell(cardId, stackIndex) {
@@ -889,7 +889,7 @@ function copyStackSpell(cardId, stackIndex) {
         card_id: cardId,
         stack_index: parseInt(stackIndex) || 0
     });
-    GameUI.showNotification(`Spell copied`, 'info');
+    GameUI.logMessage(`Spell copied`, 'info');
 }
 
 function drawCard() {
@@ -904,7 +904,7 @@ function drawCard() {
         }, 1000);
     }
     
-    GameUI.showNotification(`Card drawn`, 'info');
+    GameUI.logMessage(`Card drawn`, 'info');
 }
 
 function untapAll() {
@@ -934,7 +934,7 @@ function untapAll() {
         }
     });
     
-    GameUI.showNotification(`All permanents untapped (${untappedCount} cards)`, 'success');
+    GameUI.logMessage(`All permanents untapped (${untappedCount} cards)`, 'success');
 }
 
 function modifyLife(playerId, amount) {
@@ -944,7 +944,7 @@ function modifyLife(playerId, amount) {
     });
     
     const actionText = amount > 0 ? `+${amount} life` : `${amount} life`;
-    GameUI.showNotification(`${playerId}: ${actionText}`, amount > 0 ? 'success' : 'warning');
+    GameUI.logMessage(`${playerId}: ${actionText}`, amount > 0 ? 'success' : 'warning');
 }
 
 function modifyPlayerCounter(playerId, counterType, amount) {
@@ -954,11 +954,11 @@ function modifyPlayerCounter(playerId, counterType, amount) {
     const parsedAmount = parseInt(amount, 10);
 
     if (!normalizedType) {
-        GameUI.showNotification('Counter type required', 'warning');
+        GameUI.logMessage('Counter type required', 'warning');
         return;
     }
     if (Number.isNaN(parsedAmount) || parsedAmount === 0) {
-        GameUI.showNotification('Invalid counter value', 'warning');
+        GameUI.logMessage('Invalid counter value', 'warning');
         return;
     }
 
@@ -971,7 +971,7 @@ function modifyPlayerCounter(playerId, counterType, amount) {
     const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
     const tone = parsedAmount > 0 ? 'success' : 'warning';
     const signed = parsedAmount > 0 ? `+${parsedAmount}` : `${parsedAmount}`;
-    GameUI.showNotification(`${playerId}: ${formattedType} ${signed}`, tone);
+    GameUI.logMessage(`${playerId}: ${formattedType} ${signed}`, tone);
 }
 
 function setPlayerCounter(playerId, counterType, value) {
@@ -981,11 +981,11 @@ function setPlayerCounter(playerId, counterType, value) {
     const parsedValue = parseInt(value, 10);
 
     if (!normalizedType) {
-        GameUI.showNotification('Counter type required', 'warning');
+        GameUI.logMessage('Counter type required', 'warning');
         return;
     }
     if (Number.isNaN(parsedValue)) {
-        GameUI.showNotification('Invalid counter value', 'warning');
+        GameUI.logMessage('Invalid counter value', 'warning');
         return;
     }
 
@@ -999,7 +999,7 @@ function setPlayerCounter(playerId, counterType, value) {
     const message = parsedValue <= 0
         ? `Removed ${formattedType} counters`
         : `${formattedType} set to ${parsedValue}`;
-    GameUI.showNotification(`${playerId}: ${message}`, 'info');
+    GameUI.logMessage(`${playerId}: ${message}`, 'info');
 }
 
 function adjustCommanderTax(playerId, amount) {
@@ -1011,7 +1011,7 @@ function adjustCommanderTax(playerId, amount) {
 
     const signedAmount = amount > 0 ? `+${amount}` : `${amount}`;
     const tone = amount > 0 ? 'info' : 'warning';
-    GameUI.showNotification(`${playerId}: Commander tax ${signedAmount}`, tone);
+    GameUI.logMessage(`${playerId}: Commander tax ${signedAmount}`, tone);
 }
 
 function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayerId = null) {
@@ -1020,12 +1020,12 @@ function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayer
         : null;
 
     if (!currentPlayer || !['player1', 'player2'].includes(currentPlayer)) {
-        GameUI.showNotification('Select a player seat to play opponent cards', 'warning');
+        GameUI.logMessage('Select a player seat to play opponent cards', 'warning');
         return;
     }
 
     if (!cardId || !uniqueCardId) {
-        GameUI.showNotification('Unable to identify the selected card', 'error');
+        GameUI.logMessage('Unable to identify the selected card', 'error');
         return;
     }
 
@@ -1058,7 +1058,7 @@ function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayer
         reveal_zone: 'reveal zone'
     };
     const zoneLabel = zoneLabels[baseSourceZone] || 'zone';
-    GameUI.showNotification(`Playing opponent's card from ${zoneLabel}`, 'info');
+    GameUI.logMessage(`Playing opponent's card from ${zoneLabel}`, 'info');
 }
 
 // Export actions module functionality
@@ -1160,7 +1160,7 @@ function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosit
         }
     }
 
-    GameUI.showNotification(`Card moved to ${targetZone}`, 'info');
+    GameUI.logMessage(`Card moved to ${targetZone}`, 'info');
 
     if (callback) {
         callback();

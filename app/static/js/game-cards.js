@@ -1272,7 +1272,7 @@ const GameCards = {
 
             const cardName = cardElement.getAttribute('data-card-name');
             const actionText = isTargeted ? 'targeted' : 'untargeted';
-            GameUI.showNotification(`${cardName} ${actionText}`, 'info');
+            GameUI.logMessage(`${cardName} ${actionText}`, 'info');
         }
     },
 
@@ -1489,7 +1489,7 @@ const GameCards = {
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
             const cardName = cardElement.getAttribute('data-card-name');
-            GameUI.showNotification(`${cardName} flipped`, 'info');
+            GameUI.logMessage(`${cardName} flipped`, 'info');
 
             const socket = window.websocket;
             if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1763,7 +1763,7 @@ const GameCards = {
 
         const keyword = input.value.trim();
         if (!keyword.length) {
-            GameUI.showNotification('Enter a keyword to add', 'warning');
+            GameUI.logMessage('Enter a keyword to add', 'warning');
             return;
         }
 
@@ -1774,7 +1774,7 @@ const GameCards = {
         });
 
         input.value = '';
-        GameUI.showNotification(`Added keyword "${keyword}"`, 'success');
+        GameUI.logMessage(`Added keyword "${keyword}"`, 'success');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1791,7 +1791,7 @@ const GameCards = {
             keyword: keyword
         });
 
-        GameUI.showNotification(`Removed keyword "${keyword}"`, 'info');
+        GameUI.logMessage(`Removed keyword "${keyword}"`, 'info');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1805,7 +1805,7 @@ const GameCards = {
 
         const selectedType = select.value;
         if (!selectedType) {
-            GameUI.showNotification('Select a type to add', 'warning');
+            GameUI.logMessage('Select a type to add', 'warning');
             return;
         }
 
@@ -1815,7 +1815,7 @@ const GameCards = {
             card_type: selectedType
         });
 
-        GameUI.showNotification(`Added ${selectedType} override`, 'success');
+        GameUI.logMessage(`Added ${selectedType} override`, 'success');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1832,7 +1832,7 @@ const GameCards = {
             card_type: cardType
         });
 
-        GameUI.showNotification(`Removed ${cardType} override`, 'info');
+        GameUI.logMessage(`Removed ${cardType} override`, 'info');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1845,7 +1845,7 @@ const GameCards = {
             card_type: null
         });
 
-        GameUI.showNotification('Custom types reset', 'success');
+        GameUI.logMessage('Custom types reset', 'success');
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
         }, 150);
@@ -1865,7 +1865,7 @@ const GameCards = {
         const amount = parseInt(amountInput.value, 10) || 1;
 
         if (!counterType) {
-            GameUI.showNotification('Select or enter a counter type', 'warning');
+            GameUI.logMessage('Select or enter a counter type', 'warning');
             return;
         }
 
@@ -1876,7 +1876,7 @@ const GameCards = {
             amount: amount
         });
 
-        GameUI.showNotification(`Added ${amount} ${counterType} counter(s)`, 'success');
+        GameUI.logMessage(`Added ${amount} ${counterType} counter(s)`, 'success');
 
         if (customInput) {
             customInput.value = '';
@@ -1922,7 +1922,7 @@ const GameCards = {
         });
 
         this.closeCounterModal();
-        GameUI.showNotification(`Removed all ${counterType} counters`, 'info');
+        GameUI.logMessage(`Removed all ${counterType} counters`, 'info');
     },
 
     generatePowerToughnessManager: function(cardData, uniqueCardId, cardId) {
@@ -2020,12 +2020,12 @@ const GameCards = {
                 toughness: normalizedToughness
             };
         } catch (error) {
-            GameUI.showNotification(error.message, 'error');
+            GameUI.logMessage(error.message, 'error');
             return;
         }
 
         GameActions.performGameAction('set_power_toughness', payload);
-        GameUI.showNotification('Power/Toughness updated', 'success');
+        GameUI.logMessage('Power/Toughness updated', 'success');
 
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);
@@ -2045,7 +2045,7 @@ const GameCards = {
         if (powerInput) powerInput.value = '';
         if (toughnessInput) toughnessInput.value = '';
 
-        GameUI.showNotification('Power/Toughness reset to base values', 'info');
+        GameUI.logMessage('Power/Toughness reset to base values', 'info');
 
         setTimeout(() => {
             this.showCounterModal(uniqueCardId, cardId);

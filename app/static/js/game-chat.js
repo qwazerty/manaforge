@@ -30,9 +30,9 @@ const GameChat = {
             console.warn('WebSocket not connected, chat message not sent');
             if (
                 window.GameUI &&
-                typeof window.GameUI.showNotification === 'function'
+                typeof window.GameUI.logMessage === 'function'
             ) {
-                window.GameUI.showNotification(
+                window.GameUI.logMessage(
                     'Chat not available (WebSocket disconnected)',
                     'warning'
                 );

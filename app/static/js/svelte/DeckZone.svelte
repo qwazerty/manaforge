@@ -1,4 +1,6 @@
 <script>
+    import { onMount } from 'svelte';
+
     let {
         cardsRemaining = 0,
         deckClass = '',
@@ -6,6 +8,42 @@
         overlayText = '',
         onClick = null
     } = $props();
+    let deckButton = null;
+
+    const attachContextMenu = () => {
+        if (
+            !deckButton ||
+            !zoneIdentifier ||
+            typeof window === 'undefined' ||
+            !window.ZoneContextMenu ||
+            typeof window.ZoneContextMenu.attachToZone !== 'function'
+        ) {
+            return;
+        }
+        if (deckButton.dataset.zoneMenuAttached === 'true') {
+            return;
+        }
+        window.ZoneContextMenu.attachToZone(deckButton, zoneIdentifier);
+        deckButton.classList.add('zone-context-menu-enabled');
+        deckButton.dataset.zoneMenuAttached = 'true';
+    };
+
+    onMount(() => {
+        attachContextMenu();
+    });
+
+    $effect(() => {
+        // Re-attach if the zone identifier changes or the element remounts
+        const currentIdentifier = zoneIdentifier;
+        if (!currentIdentifier || !deckButton) {
+            return;
+        }
+        if (deckButton.dataset.zoneIdentifier !== currentIdentifier) {
+            deckButton.dataset.zoneMenuAttached = '';
+        }
+        deckButton.dataset.zoneIdentifier = currentIdentifier;
+        attachContextMenu();
+    });
 
     const stackCards = $derived(() => {
         if (cardsRemaining === 0) {
@@ -30,6 +68,7 @@
 <div class="deck-zone-stack-wrapper w-full flex flex-col items-center">
     {#if cardsRemaining === 0}
         <button
+            bind:this={deckButton}
             type="button"
             class={deckClass}
             data-zone-context={zoneIdentifier}
@@ -38,6 +77,7 @@
         </button>
     {:else}
         <button
+            bind:this={deckButton}
             type="button"
             class={deckClass}
             data-zone-context={zoneIdentifier}
