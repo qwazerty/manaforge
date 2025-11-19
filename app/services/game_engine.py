@@ -1403,6 +1403,11 @@ class SimpleGameEngine:
                 f"{source_zone_name} for player {source_player_id}"
             )
 
+        moved_off_battlefield = source_zone_name == "battlefield"
+        if moved_off_battlefield:
+            card_found.attacking = False
+            card_found.blocking = None
+
         owner_locked_zones = {"graveyard", "exile", "library"}
         if destination_zone_name in owner_locked_zones and card_found.owner_id:
             try:
