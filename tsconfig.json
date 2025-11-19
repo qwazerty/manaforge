@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "allowJs": true,
+        "checkJs": false,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "strict": false,
+        "baseUrl": ".",
+        "paths": {
+            "@svelte/*": ["app/static/js/svelte/*"],
+            "@ui/*": ["app/static/js/ui/*"],
+            "@static/*": ["app/static/js/*"]
+        },
+        "types": ["vitest/globals"]
+    },
+    "include": [
+        "app/static/js/**/*.ts",
+        "app/static/js/**/*.svelte",
+        "app/static/js/**/*.js",
+        "setupTests.ts",
+        "vitest.config.mts"
+    ]
+}

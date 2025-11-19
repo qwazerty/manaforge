@@ -212,19 +212,32 @@ class UIRenderersTemplates {
         if (!this._actionPanelComponent || this._actionPanelTarget !== container) {
             this._destroyActionPanelComponent();
             container.innerHTML = '';
-            this._actionPanelComponent = new ActionPanelComponent.default({
+
+            const mount = typeof ActionPanelComponent.mount === 'function'
+                ? ActionPanelComponent.mount
+                : null;
+            if (!mount) {
+                console.error('ActionPanelComponent.mount is not available');
+                return;
+            }
+
+            this._actionPanelComponent = mount(ActionPanelComponent.default, {
                 target: container,
                 props
             });
             this._actionPanelTarget = container;
-        } else {
+        } else if (typeof this._actionPanelComponent.$set === 'function') {
             this._actionPanelComponent.$set(props);
         }
     }
 
     static _destroyActionPanelComponent() {
         if (this._actionPanelComponent) {
-            this._actionPanelComponent.$destroy();
+            if (typeof ActionPanelComponent?.unmount === 'function') {
+                ActionPanelComponent.unmount(this._actionPanelComponent);
+            } else if (typeof this._actionPanelComponent.$destroy === 'function') {
+                this._actionPanelComponent.$destroy();
+            }
             this._actionPanelComponent = null;
             this._actionPanelTarget = null;
         }
@@ -764,7 +777,14 @@ class UIRenderersTemplates {
         document.body.appendChild(target);
 
         try {
-            this._stackPopupComponent = new StackPopupComponent.default({
+            const mount = typeof StackPopupComponent.mount === 'function'
+                ? StackPopupComponent.mount
+                : null;
+            if (!mount) {
+                throw new Error('StackPopupComponent.mount is not available');
+            }
+
+            this._stackPopupComponent = mount(StackPopupComponent.default, {
                 target,
                 props: {
                     stack: [],
@@ -776,9 +796,13 @@ class UIRenderersTemplates {
             if (this._stackPopupAfterHideUnsub) {
                 this._stackPopupAfterHideUnsub();
             }
-            this._stackPopupAfterHideUnsub = this._stackPopupComponent.$on('afterHide', () => {
-                this._destroyStackPopupComponent();
-            });
+            if (typeof this._stackPopupComponent.$on === 'function') {
+                this._stackPopupAfterHideUnsub = this._stackPopupComponent.$on('afterHide', () => {
+                    this._destroyStackPopupComponent();
+                });
+            } else {
+                this._stackPopupAfterHideUnsub = null;
+            }
         } catch (error) {
             console.error('Failed to initialize stack popup', error);
             target.remove();
@@ -803,7 +827,11 @@ class UIRenderersTemplates {
             }
         }
         try {
-            this._stackPopupComponent.$destroy();
+            if (typeof StackPopupComponent?.unmount === 'function') {
+                StackPopupComponent.unmount(this._stackPopupComponent);
+            } else if (typeof this._stackPopupComponent.$destroy === 'function') {
+                this._stackPopupComponent.$destroy();
+            }
         } catch (error) {
             console.error('Failed to destroy stack popup', error);
         }

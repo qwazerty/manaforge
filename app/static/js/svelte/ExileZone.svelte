@@ -1,12 +1,14 @@
 <script>
-    export let cards = [];
-    export let zoneIdentifier = '';
-    export let cardsRemaining = 0;
-    export let overlayHtml = 'View<br>All';
-    export let topCard = null;
-    export let onClick = null;
+    let {
+        cards = [],
+        zoneIdentifier = '',
+        cardsRemaining = 0,
+        overlayHtml = 'View<br>All',
+        topCard = null,
+        onClick = null
+    } = $props();
 
-    const renderStack = () => {
+    const stackMarkup = $derived(() => {
         if (cards.length === 0) {
             return '';
         }
@@ -18,9 +20,7 @@
                 </div>
             `;
         }).join('');
-    };
-
-    $: stackMarkup = renderStack();
+    });
 
     function handleClick(event) {
         if (typeof onClick === 'function') {
@@ -30,14 +30,18 @@
 </script>
 
 <div class="exile-zone-stack flex flex-col items-center w-full">
-    <div class="exile-stack" data-zone-context={zoneIdentifier} on:click={handleClick}>
+    <button
+        type="button"
+        class="exile-stack"
+        data-zone-context={zoneIdentifier}
+        onclick={handleClick}>
         {#if cardsRemaining === 0}
             <div class="exile-empty">
                 <span>🌌</span>
                 <div class="zone-empty-text">Empty</div>
             </div>
         {:else}
-            {@html stackMarkup}
+            {@html stackMarkup()}
             {#if topCard}
                 <div class="exile-top-card">
                     {@html GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
@@ -49,7 +53,7 @@
                 </span>
             </div>
         {/if}
-    </div>
+    </button>
     <div class="exile-cards-count mt-2">
         <span class="cards-remaining">{cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''}</span>
     </div>

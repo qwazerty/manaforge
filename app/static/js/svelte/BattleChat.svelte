@@ -1,16 +1,16 @@
 <script>
-    import { afterUpdate } from 'svelte';
+    let {
+        panelIcon = '💬',
+        panelTitle = 'Battle Chat',
+        messages = [],
+        placeholderText = 'Type your message...',
+        sendButtonLabel = 'Send',
+        sendDisabled = false,
+        statusText = '',
+        onSend = null
+    } = $props();
 
-    export let panelIcon = '💬';
-    export let panelTitle = 'Battle Chat';
-    export let messages = [];
-    export let placeholderText = 'Type your message...';
-    export let sendButtonLabel = 'Send';
-    export let sendDisabled = false;
-    export let statusText = '';
-    export let onSend = null;
-
-    let inputValue = '';
+    let inputValue = $state('');
     let chatMessagesElement = null;
     let previousMessageCount = 0;
 
@@ -45,11 +45,12 @@
         });
     };
 
-    afterUpdate(() => {
+    $effect(() => {
         if (!Array.isArray(messages)) {
             previousMessageCount = 0;
             return;
         }
+
         if (
             chatMessagesElement &&
             messages.length !== previousMessageCount
@@ -59,8 +60,8 @@
         }
     });
 
-    $: hasMessages = Array.isArray(messages) && messages.length > 0;
-    $: hasStatus = typeof statusText === 'string' && statusText.trim().length > 0;
+    const hasMessages = $derived(() => Array.isArray(messages) && messages.length > 0);
+    const hasStatus = $derived(() => typeof statusText === 'string' && statusText.trim().length > 0);
 </script>
 
 <div class="arena-card rounded-lg p-4 flex flex-col h-[26rem] overflow-hidden" id="battle-chat-panel-card">
@@ -114,7 +115,7 @@
             {/if}
         </div>
 
-        <form on:submit|preventDefault={handleSubmit} class="flex items-center gap-2 pt-1">
+        <form onsubmit={handleSubmit} class="flex items-center gap-2 pt-1">
             <input
                 type="text"
                 placeholder={placeholderText}

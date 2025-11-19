@@ -86,7 +86,7 @@ class ZoneData {
         const countersHtml = UIPlayerCounters.renderCounterBadges(safeData, playerId);
         const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
         const manageButton = {
-            label: '⚙️ Counters',
+            label: 'Counters',
             title: 'Manage player counters',
             className: [
                 'w-full flex items-center justify-center gap-2 text-xs font-semibold px-3 py-2 rounded',

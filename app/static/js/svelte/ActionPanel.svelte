@@ -1,31 +1,35 @@
 <script>
-    export let headerIcon = '⚡';
-    export let headerTitle = 'Game Actions';
-    export let spectatorMode = false;
-    export let gameInfo = { turn: 1, active: '-', priority: '-' };
-    export let phases = [];
-    export let currentPhase = 'begin';
-    export let readOnlyPhases = false;
-    export let phaseModeLabel = 'Strict';
-    export let passButton = null;
-    export let searchButton = null;
-    export let quickButtons = [];
-    export let spectatorInfo = {
-        icon: '👁️',
-        title: 'Spectator Mode',
-        message: 'Game controls are disabled while you are watching.'
-    };
-    export let phaseClickHandler = null;
+    let {
+        headerIcon = '⚡',
+        headerTitle = 'Game Actions',
+        spectatorMode = false,
+        gameInfo = { turn: 1, active: '-', priority: '-' },
+        phases = [],
+        currentPhase = 'begin',
+        readOnlyPhases = false,
+        phaseModeLabel = 'Strict',
+        passButton = null,
+        searchButton = null,
+        quickButtons = [],
+        spectatorInfo = {
+            icon: '👁️',
+            title: 'Spectator Mode',
+            message: 'Game controls are disabled while you are watching.'
+        },
+        phaseClickHandler = null
+    } = $props();
 
     const handlePrimaryButtonClick = (button) => {
-        if (!button || button.disabled) return;
+        if (!button || button.disabled) {
+            return;
+        }
         if (typeof button.onClick === 'function') {
             button.onClick();
         }
     };
 
     const handlePhaseClick = (phase) => {
-        if (!phase || !phase.isInteractive || !phaseClickHandler) {
+        if (!phase || !phase.isInteractive || typeof phaseClickHandler !== 'function') {
             return;
         }
         phaseClickHandler(phase.id);
@@ -37,49 +41,55 @@
         return `${button.className || ''}${disabledClasses}`;
     };
 
-    $: normalizedPhase = currentPhase || 'begin';
-    $: activeIndex = Math.max(
+    const normalizedPhase = $derived(() => currentPhase || 'begin');
+    const activeIndex = $derived(() => Math.max(
         (phases || []).findIndex((phase) => phase.id === normalizedPhase),
         0
-    );
-    $: timelinePhases = (phases || []).map((phase, index) => {
-        const isCurrent = phase.id === normalizedPhase;
-        const timelineState = index < activeIndex
-            ? 'completed'
-            : (isCurrent ? 'current' : 'upcoming');
+    ));
 
-        let stateClasses = '';
-        if (timelineState === 'current') {
-            stateClasses = 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 shadow';
-        } else if (timelineState === 'completed') {
-            stateClasses = readOnlyPhases
-                ? 'text-green-300 border border-green-500/20'
-                : 'text-green-200 border border-green-500/30';
-        } else {
-            stateClasses = 'text-arena-text-dim border border-transparent';
-        }
+    const timelinePhases = $derived(() => {
+        const normalized = normalizedPhase;
+        const readOnly = readOnlyPhases;
 
-        let interactionClasses = readOnlyPhases || isCurrent
-            ? 'cursor-default'
-            : 'cursor-pointer';
+        return (phases || []).map((phase, index) => {
+            const isCurrent = phase.id === normalized;
+            const timelineState = index < activeIndex
+                ? 'completed'
+                : (isCurrent ? 'current' : 'upcoming');
 
-        if (!readOnlyPhases && !isCurrent) {
-            interactionClasses += timelineState === 'completed'
-                ? ' hover:border-green-400/50 hover:text-green-100'
-                : ' hover:text-arena-text hover:border-yellow-500/30';
-        }
+            let stateClasses = '';
+            if (timelineState === 'current') {
+                stateClasses = 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 shadow';
+            } else if (timelineState === 'completed') {
+                stateClasses = readOnly
+                    ? 'text-green-300 border border-green-500/20'
+                    : 'text-green-200 border border-green-500/30';
+            } else {
+                stateClasses = 'text-arena-text-dim border border-transparent';
+            }
 
-        return {
-            ...phase,
-            timelineState,
-            isCurrent,
-            isInteractive: !readOnlyPhases && !isCurrent,
-            stateClasses,
-            interactionClasses
-        };
+            let interactionClasses = readOnly || isCurrent
+                ? 'cursor-default'
+                : 'cursor-pointer';
+
+            if (!readOnly && !isCurrent) {
+                interactionClasses += timelineState === 'completed'
+                    ? ' hover:border-green-400/50 hover:text-green-100'
+                    : ' hover:text-arena-text hover:border-yellow-500/30';
+            }
+
+            return {
+                ...phase,
+                timelineState,
+                isCurrent,
+                isInteractive: !readOnly && !isCurrent,
+                stateClasses,
+                interactionClasses
+            };
+        });
     });
 
-    $: hasQuickButtons = Array.isArray(quickButtons) && quickButtons.length > 0;
+    const hasQuickButtons = $derived(() => Array.isArray(quickButtons) && quickButtons.length > 0);
 </script>
 
 <div>
@@ -112,13 +122,14 @@
         <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
             <div class="grid grid-cols-7 gap-1">
                 {#each timelinePhases as phase (phase.id)}
-                    <div
+                    <button
+                        type="button"
                         class={`text-center py-2 px-1 rounded transition-all duration-200 ${phase.stateClasses} ${phase.interactionClasses}`}
                         title={`${phase.name} Phase`}
-                        on:click={() => handlePhaseClick(phase)}>
+                        onclick={() => handlePhaseClick(phase)}>
                         <div class="text-lg mb-1 leading-none">{phase.icon}</div>
                         <div class="text-xs font-medium leading-tight">{phase.name}</div>
-                    </div>
+                    </button>
                 {/each}
             </div>
         </div>
@@ -142,7 +153,7 @@
                     class={combineButtonClasses(passButton)}
                     title={passButton.title}
                     disabled={passButton.disabled}
-                    on:click={() => handlePrimaryButtonClick(passButton)}>
+                    onclick={() => handlePrimaryButtonClick(passButton)}>
                     {passButton.label}
                 </button>
             </div>
@@ -155,7 +166,7 @@
                     class={combineButtonClasses(searchButton)}
                     title={searchButton.title}
                     disabled={searchButton.disabled}
-                    on:click={() => handlePrimaryButtonClick(searchButton)}>
+                    onclick={() => handlePrimaryButtonClick(searchButton)}>
                     {searchButton.label}
                 </button>
             </div>
@@ -169,7 +180,7 @@
                         class={combineButtonClasses(button)}
                         title={button.title}
                         disabled={button.disabled}
-                        on:click={() => handlePrimaryButtonClick(button)}>
+                        onclick={() => handlePrimaryButtonClick(button)}>
                         {button.label}
                     </button>
                 {/each}
