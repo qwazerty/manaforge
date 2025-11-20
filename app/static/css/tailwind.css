@@ -1713,7 +1713,7 @@
     }
 
     .zone-item {
-        @apply relative flex items-center justify-center cursor-pointer transition-all duration-200;
+        @apply relative flex flex-col items-stretch justify-start cursor-pointer transition-all duration-200;
         min-height: 70px;
     }
 

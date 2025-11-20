@@ -42,7 +42,7 @@
     };
 </script>
 
-<div class="life-zone-container p-4">
+<div class="life-zone-container">
     <div class="life-total-wrapper">
         <div class="text-2xl font-bold text-red-400 life-total-display">
             ❤️ {life}
