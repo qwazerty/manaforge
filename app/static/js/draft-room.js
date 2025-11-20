@@ -103,18 +103,17 @@
                     roomName: room.name || currentRoomMeta.roomName
                 };
                 const me = room.players.find(p => p.id === playerId);
-                const packContainer = document.getElementById('current-pack');
 
                 if (me) {
                     if (me.has_picked_card) {
-                        packContainer.innerHTML = `<div class="col-span-full text-center text-arena-text-dim p-8">Waiting for other players to pick...</div>`;
-                        packContainer.classList.add('opacity-50', 'pointer-events-none');
-                        document.getElementById('confirm-pick-button').disabled = true;
+                        setPackWaitingState('Waiting for other players to pick...');
                     } else {
-                        packContainer.classList.remove('opacity-50', 'pointer-events-none');
+                        selectedCardId = null;
+                        isSubmittingPick = false;
                         if (room.state.toLowerCase() === 'drafting' && me.current_pack.length === 0) {
-                             packContainer.innerHTML = `<div class="col-span-full text-center text-arena-text-dim p-8">Waiting for next pack...</div>`;
+                             setPackWaitingState('Waiting for next pack...');
                         } else {
+                            resetPackInteractivity();
                             renderPack(me.current_pack);
                         }
                     }
@@ -136,12 +135,9 @@
                     addBotButton.style.display = 'none';
                     const fillBotsButton = document.getElementById('fill-bots-button');
                     fillBotsButton.style.display = 'none';
-                    const confirmPickButton = document.getElementById('confirm-pick-button');
-                    confirmPickButton.style.display = 'block';
                 } else if (room.state.toLowerCase() === 'completed') {
                     // Hide drafting elements and show completion message
                     document.getElementById('current-pack-container').style.display = 'none';
-                    document.getElementById('confirm-pick-button').style.display = 'none';
                     document.getElementById('draft-complete-message').classList.remove('hidden');
                     document.getElementById('export-container').classList.remove('hidden');
                 }
@@ -150,6 +146,7 @@
     }
 
     let selectedCardId = null;
+    let isSubmittingPick = false;
 
     function renderPack(pack) {
         const packContainer = document.getElementById('current-pack');
@@ -303,24 +300,44 @@
         }).join('');
     }
 
-    function selectCard(cardUniqueId) {
-        if (selectedCardId) {
-            document.getElementById(`card-${selectedCardId}`).classList.remove('ring-2', 'ring-yellow-400');
+    function setPackWaitingState(message) {
+        const packContainer = document.getElementById('current-pack');
+        if (!packContainer) {
+            return;
         }
-        selectedCardId = cardUniqueId;
-        document.getElementById(`card-${selectedCardId}`).classList.add('ring-2', 'ring-yellow-400');
-        document.getElementById('confirm-pick-button').disabled = false;
+        packContainer.innerHTML = `<div class="col-span-full text-center text-arena-text-dim p-8">${message}</div>`;
+        packContainer.classList.add('opacity-50', 'pointer-events-none');
     }
 
-    function pickCard() {
-        if (selectedCardId) {
-            websocket.send(JSON.stringify({
-                type: 'pick_card',
-                card_unique_id: selectedCardId
-            }));
-            selectedCardId = null;
-            document.getElementById('confirm-pick-button').disabled = true;
+    function resetPackInteractivity() {
+        const packContainer = document.getElementById('current-pack');
+        if (!packContainer) {
+            return;
         }
+        packContainer.classList.remove('opacity-50', 'pointer-events-none');
+    }
+
+    function selectCard(cardUniqueId) {
+        if (!cardUniqueId || isSubmittingPick || !websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        if (selectedCardId && selectedCardId !== cardUniqueId) {
+            const previousSelection = document.getElementById(`card-${selectedCardId}`);
+            if (previousSelection) {
+                previousSelection.classList.remove('ring-2', 'ring-yellow-400');
+            }
+        }
+        selectedCardId = cardUniqueId;
+        const selectedElement = document.getElementById(`card-${selectedCardId}`);
+        if (selectedElement) {
+            selectedElement.classList.add('ring-2', 'ring-yellow-400');
+        }
+        isSubmittingPick = true;
+        websocket.send(JSON.stringify({
+            type: 'pick_card',
+            card_unique_id: selectedCardId
+        }));
+        setPackWaitingState('Waiting for other players to pick...');
     }
 
     function exportDecklist(event) {
@@ -556,8 +573,6 @@
     document.getElementById('fill-bots-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'fill_bots' }));
     });
-    document.getElementById('confirm-pick-button').addEventListener('click', pickCard);
-    document.getElementById('confirm-pick-button').style.display = 'none';
     document.getElementById('start-draft-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'start_draft' }));
     });
