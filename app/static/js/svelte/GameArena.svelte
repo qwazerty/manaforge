@@ -265,7 +265,7 @@
         const cards = Array.isArray(playerData?.hand) ? playerData.hand : [];
         if (isOpponent) {
             const isSpectatorView = playerSelection === 'spectator';
-            const placeholderSize = cards.length || 7;
+            const placeholderSize = cards.length;
             return {
                 cardCount: isSpectatorView ? cards.length : placeholderSize,
                 mode: isSpectatorView ? 'spectator' : 'hidden',
@@ -409,8 +409,11 @@
         ).join('');
     }
 
-    function generateOpponentHand(handSize = 7) {
-        const count = Number.isFinite(handSize) && handSize > 0 ? handSize : 7;
+    function generateOpponentHand(handSize = 0) {
+        const count = Number.isFinite(handSize) && handSize > 0 ? handSize : 0;
+        if (count === 0) {
+            return '';
+        }
         return Array.from({ length: count }).map((_, index) => `
             <div class="card-back opponent-hand-card"
                  data-card-id="opponent-card-${index}"

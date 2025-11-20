@@ -678,8 +678,12 @@ class UIRenderersTemplates {
     /**
      * Generate opponent's hidden hand
      */
-    static generateOpponentHand(handSize = 7) {
-        return Array(handSize).fill().map((_, index) => `
+    static generateOpponentHand(handSize = 0) {
+        const count = Number.isFinite(handSize) && handSize > 0 ? handSize : 0;
+        if (count === 0) {
+            return '';
+        }
+        return Array(count).fill().map((_, index) => `
             <div class="card-back opponent-hand-card" 
                  data-card-id="opponent-card-${index}" 
                  style="width: 60px; height: 84px; ${UIUtils.createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
@@ -1515,7 +1519,7 @@ class UIRenderersTemplates {
             return;
         }
 
-        const placeholderSize = hand.length || 7;
+        const placeholderSize = Math.max(hand.length, 0);
         if (
             Number(container.dataset.cardCount) === placeholderSize &&
             container.dataset.handMode === 'hidden'
@@ -1567,7 +1571,7 @@ class UIRenderersTemplates {
      */
     static _renderOpponentArea(opponent, opponentIdx, activePlayer) {
         const actualHandSize = Array.isArray(opponent?.hand) ? opponent.hand.length : 0;
-        const placeholderHandSize = actualHandSize || 7;
+        const placeholderHandSize = Math.max(actualHandSize, 0);
         const isOpponentActiveTurn = activePlayer === opponentIdx;
         const activeTurnClass = isOpponentActiveTurn ? 'opponent-zone-active-turn' : '';
         const isSpectatorView =
