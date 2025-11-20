@@ -197,3 +197,45 @@ def test_set_custom_type_override_and_clear():
     )
     engine._set_custom_type(state, clear_action)
     assert card.custom_types == []
+
+
+def test_move_card_sends_attachments_to_owner_reveal_zone():
+    engine = SimpleGameEngine()
+    state = _build_game_state()
+
+    host = _build_card(unique_id="host-card", card_type=CardType.CREATURE)
+    host.owner_id = "player1"
+    aura = _build_card(unique_id="aura-card", card_type=CardType.ENCHANTMENT)
+    aura.owner_id = "player1"
+    aura.attached_to = host.unique_id
+    stolen_equipment = _build_card(unique_id="equip-card", card_type=CardType.ARTIFACT)
+    stolen_equipment.owner_id = "player2"
+    stolen_equipment.attached_to = host.unique_id
+
+    state.players[0].battlefield.extend([host, aura, stolen_equipment])
+
+    action = GameAction(
+        player_id="player1",
+        action_type="move_card",
+        additional_data={
+            "unique_id": host.unique_id,
+            "source_zone": "battlefield",
+            "target_zone": "graveyard"
+        }
+    )
+
+    engine._move_card(state, action, "battlefield", "graveyard")
+
+    assert any(card.unique_id == host.unique_id for card in state.players[0].graveyard)
+    assert not any(
+        card.unique_id in {aura.unique_id, stolen_equipment.unique_id}
+        for card in state.players[0].graveyard
+    )
+    assert all(card.unique_id != host.unique_id for card in state.players[0].battlefield)
+
+    assert any(card.unique_id == aura.unique_id for card in state.players[0].reveal_zone)
+    assert any(
+        card.unique_id == stolen_equipment.unique_id
+        for card in state.players[1].reveal_zone
+    )
+    assert all(card.attached_to is None for card in state.players[0].reveal_zone + state.players[1].reveal_zone)

@@ -917,7 +917,9 @@ class UIRenderersTemplates {
         players.forEach((player, index) => {
             const playerId = player?.id || `player${index + 1}`;
             const playerName = player?.name || `Player ${index + 1}`;
-            const revealCards = Array.isArray(player?.reveal_zone) ? player.reveal_zone : [];
+            const revealCards = Array.isArray(player?.reveal_zone)
+                ? player.reveal_zone
+                : (Array.isArray(player?.reveal) ? player.reveal : []);
             const elements = this._getRevealPopupElements(playerId, playerName);
             if (!elements) {
                 return;
@@ -933,6 +935,7 @@ class UIRenderersTemplates {
             if (!revealCards.length) {
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
+                elements.panel.dataset.appear = 'hidden';
                 delete elements.panel.dataset.userMoved;
                 return;
             }
@@ -942,6 +945,7 @@ class UIRenderersTemplates {
             elements.titleLabel.textContent = `Reveal - ${playerName}`;
             elements.panel.classList.remove('hidden');
             elements.panel.setAttribute('aria-hidden', 'false');
+            elements.panel.dataset.appear = 'visible';
 
             const computedWidth = this._calculateRevealPopupWidth(revealCards.length);
             if (computedWidth) {
@@ -959,6 +963,7 @@ class UIRenderersTemplates {
             if (!seen.has(playerId)) {
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
+                elements.panel.dataset.appear = 'hidden';
                 delete elements.panel.dataset.userMoved;
             }
         });

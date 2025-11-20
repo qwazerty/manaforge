@@ -7,7 +7,7 @@ import random
 import asyncio
 import uuid
 import time
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
     GamePhase, CombatState, CombatStep, CardType, GameSetupStatus,
@@ -661,6 +661,8 @@ class SimpleGameEngine:
             "create_token": self._create_token,
             "duplicate_card": self._duplicate_card,
             "delete_token": self._delete_token,
+            "attach_card": self._attach_card,
+            "detach_card": self._detach_card,
         }
 
         if action.action_type in action_map:
@@ -1343,6 +1345,60 @@ class SimpleGameEngine:
         
         action_text = "tapped" if card_found.tapped else "untapped"
         print(f"Player {action.player_id} {action_text} {card_found.name}")
+
+    def _extract_attachment_chain(
+        self, zone_cards: List[Card], host_unique_id: str
+    ) -> List[Card]:
+        """Remove and return all attachments (recursively) for a given host."""
+        collected: List[Card] = []
+        index = 0
+        while index < len(zone_cards):
+            candidate = zone_cards[index]
+            if candidate.attached_to == host_unique_id:
+                removed = zone_cards.pop(index)
+                collected.append(removed)
+                collected.extend(self._extract_attachment_chain(zone_cards, removed.unique_id))
+                continue
+            index += 1
+        return collected
+
+    def _normalize_attachment_orders(
+        self, zone_cards: List[Card], host_unique_id: str
+    ) -> None:
+        """Compact attachment_order values for a host based on current battlefield order."""
+        order = 0
+        for card in zone_cards:
+            if card.attached_to == host_unique_id:
+                card.attachment_order = order
+                order += 1
+
+    def _find_battlefield_card(
+        self, game_state: GameState, unique_id: str
+    ) -> Optional[Tuple[Player, List[Card], int]]:
+        """Return (player, battlefield, index) for a card unique_id if present on any battlefield."""
+        if unique_id is None:
+            return None
+        normalized_id = str(unique_id)
+        for player in game_state.players:
+            battlefield = self._get_zone_list(game_state, player, "battlefield")
+            for idx, card in enumerate(battlefield):
+                if str(card.unique_id) == normalized_id:
+                    return player, battlefield, idx
+        return None
+
+    def _prepare_card_for_destination(
+        self, card: Card, destination_zone_name: str
+    ) -> None:
+        """Clear transient state when a card leaves the battlefield."""
+        normalized_destination = self._normalize_zone_name(destination_zone_name)
+        if normalized_destination != "battlefield":
+            card.attacking = False
+            card.blocking = None
+            card.attached_to = None
+            card.attachment_order = None
+        if normalized_destination in ["graveyard", "exile", "library", "reveal_zone", "commander_zone"]:
+            card.tapped = False
+            card.targeted = False
     
     def _move_card(
         self,
@@ -1382,6 +1438,8 @@ class SimpleGameEngine:
                 position_index = None
 
         card_found = None
+        attachments_to_move: List[Card] = []
+        source_zone_list = None
 
         if source_zone_name == "stack":
             for i, spell in enumerate(game_state.stack):
@@ -1389,9 +1447,7 @@ class SimpleGameEngine:
                     card_found = game_state.stack.pop(i)
                     break
         else:
-            source_zone_list = self._get_zone_list(
-                game_state, source_player, source_zone_name
-            )
+            source_zone_list = self._get_zone_list(game_state, source_player, source_zone_name)
             for i, card in enumerate(source_zone_list):
                 if card.unique_id == unique_id:
                     card_found = source_zone_list.pop(i)
@@ -1403,10 +1459,19 @@ class SimpleGameEngine:
                 f"{source_zone_name} for player {source_player_id}"
             )
 
+        previous_host_id = card_found.attached_to
+        if source_zone_name == "battlefield" and source_zone_list is not None:
+            attachments_to_move = self._extract_attachment_chain(
+                source_zone_list, unique_id
+            )
+
         moved_off_battlefield = source_zone_name == "battlefield"
         if moved_off_battlefield:
             card_found.attacking = False
             card_found.blocking = None
+            for attachment in attachments_to_move:
+                attachment.attacking = False
+                attachment.blocking = None
 
         owner_locked_zones = {"graveyard", "exile", "library"}
         if destination_zone_name in owner_locked_zones and card_found.owner_id:
@@ -1417,35 +1482,69 @@ class SimpleGameEngine:
             except ValueError:
                 pass
 
-        if destination_zone_name == "stack":
-            game_state.stack.append(card_found)
-            self._update_priority_from_stack(game_state)
-        else:
-            destination_zone_list = self._get_zone_list(
-                game_state, destination_player, destination_zone_name
-            )
-            
-            if destination_zone_name in ["graveyard", "exile", "library", "reveal_zone", "commander_zone"]:
-                card_found.tapped = False
-                card_found.targeted = False
-            
-            if (
-                destination_zone_name == "library" and
-                "deck_position" in action.additional_data
-            ):
-                if action.additional_data["deck_position"] == "bottom":
-                    destination_zone_list.append(card_found)
-                else:
-                    destination_zone_list.insert(0, card_found)
-            elif (
-                position_index is not None and
-                isinstance(position_index, int) and
-                0 <= position_index <= len(destination_zone_list)
-            ):
-                destination_zone_list.insert(position_index, card_found)
+        # If the host leaves the battlefield, push its attachments to their owners' reveal zones.
+        if (
+            source_zone_name == "battlefield"
+            and destination_zone_name != "battlefield"
+            and attachments_to_move
+        ):
+            for attachment in attachments_to_move:
+                attachment_owner_id = attachment.owner_id or action.player_id
+                try:
+                    reveal_owner = self._get_player(game_state, attachment_owner_id)
+                except ValueError:
+                    reveal_owner = destination_player
+                reveal_zone = self._get_zone_list(
+                    game_state,
+                    reveal_owner,
+                    "reveal_zone"
+                )
+                self._prepare_card_for_destination(attachment, "reveal_zone")
+                reveal_zone.append(attachment)
+            attachments_to_move = []
+
+        destination_zone_list = self._get_zone_list(
+            game_state, destination_player, destination_zone_name
+        )
+
+        if destination_zone_name != "battlefield":
+            self._prepare_card_for_destination(card_found, destination_zone_name)
+            for attachment in attachments_to_move:
+                self._prepare_card_for_destination(attachment, destination_zone_name)
+
+        def insert_card_with_attachments(insert_at: int) -> None:
+            destination_zone_list.insert(insert_at, card_found)
+            next_index = insert_at + 1
+            for attachment in attachments_to_move:
+                destination_zone_list.insert(next_index, attachment)
+                next_index += 1
+
+        if (
+            destination_zone_name == "library" and
+            "deck_position" in action.additional_data
+        ):
+            if action.additional_data["deck_position"] == "bottom":
+                insert_card_with_attachments(len(destination_zone_list))
             else:
-                destination_zone_list.append(card_found)
-        
+                insert_card_with_attachments(0)
+        elif (
+            position_index is not None and
+            isinstance(position_index, int) and
+            0 <= position_index <= len(destination_zone_list)
+        ):
+            insert_card_with_attachments(position_index)
+        else:
+            insert_card_with_attachments(len(destination_zone_list))
+
+        if destination_zone_name == "stack":
+            self._update_priority_from_stack(game_state)
+
+        if destination_zone_name == "battlefield" and attachments_to_move:
+            self._normalize_attachment_orders(destination_zone_list, card_found.unique_id)
+
+        if previous_host_id and source_zone_name == "battlefield" and source_zone_list is not None:
+            self._normalize_attachment_orders(source_zone_list, previous_host_id)
+
         print(
             f"Card {card_found.name} moved from {source_zone_name} "
             f"(player {source_player_id}) to {destination_zone_name} "
@@ -1500,6 +1599,8 @@ class SimpleGameEngine:
         duplicated_card.unique_id = uuid.uuid4().hex
         duplicated_card.tapped = False
         duplicated_card.targeted = False
+        duplicated_card.attached_to = None
+        duplicated_card.attachment_order = None
 
         if duplicated_card.counters:
             duplicated_card.counters = dict(duplicated_card.counters)
@@ -1510,6 +1611,116 @@ class SimpleGameEngine:
         print(
             f"Player {action.player_id} duplicated {original_card.name} on the battlefield"
         )
+
+    def _attach_card(self, game_state: GameState, action: GameAction) -> None:
+        """Attach a battlefield card to a new host."""
+        unique_id = action.additional_data.get("unique_id")
+        host_unique_id = action.additional_data.get("host_unique_id")
+        raw_order = action.additional_data.get("attachment_order")
+
+        if not unique_id:
+            raise ValueError("unique_id is required for attach_card action")
+        if not host_unique_id:
+            raise ValueError("host_unique_id is required for attach_card action")
+        if unique_id == host_unique_id:
+            raise ValueError("Cannot attach a card to itself")
+        unique_id = str(unique_id)
+        host_unique_id = str(host_unique_id)
+
+        source_loc = self._find_battlefield_card(game_state, unique_id)
+        host_loc = self._find_battlefield_card(game_state, host_unique_id)
+
+        if source_loc is None:
+            raise ValueError(f"Card with unique_id {unique_id} not found on any battlefield")
+        if host_loc is None:
+            raise ValueError(f"Host card with unique_id {host_unique_id} not found on any battlefield")
+
+        source_player, source_battlefield, target_index = source_loc
+        host_player, host_battlefield, _ = host_loc
+
+        card_to_attach = source_battlefield.pop(target_index)
+        child_attachments = self._extract_attachment_chain(source_battlefield, unique_id)
+
+        # If source and host are the same battlefield, removal might have shifted the host index.
+        host_index = next(
+            (idx for idx, card in enumerate(host_battlefield) if card.unique_id == host_unique_id),
+            None
+        )
+        if host_index is None:
+            raise ValueError(f"Host card with unique_id {host_unique_id} disappeared during attach operation")
+
+        previous_host = card_to_attach.attached_to
+        existing_attachments = [card for card in host_battlefield if card.attached_to == host_unique_id]
+        resolved_order = len(existing_attachments)
+        if raw_order is not None:
+            try:
+                resolved_order = max(0, min(int(raw_order), len(existing_attachments)))
+            except (ValueError, TypeError):
+                resolved_order = len(existing_attachments)
+
+        card_to_attach.attached_to = host_unique_id
+        card_to_attach.attachment_order = resolved_order
+
+        # Insert after the host's existing attachments up to the resolved order.
+        insert_index = host_index + 1
+        seen = 0
+        while insert_index < len(host_battlefield) and seen < resolved_order:
+            if host_battlefield[insert_index].attached_to == host_unique_id:
+                seen += 1
+            insert_index += 1
+
+        group = [card_to_attach] + child_attachments
+        host_battlefield[insert_index:insert_index] = group
+
+        self._normalize_attachment_orders(host_battlefield, host_unique_id)
+        if previous_host and previous_host != host_unique_id:
+            prev_host_loc = self._find_battlefield_card(game_state, previous_host)
+            if prev_host_loc:
+                _, prev_battlefield, _ = prev_host_loc
+                self._normalize_attachment_orders(prev_battlefield, previous_host)
+
+    def _detach_card(self, game_state: GameState, action: GameAction) -> None:
+        """Detach a card from its current host, keeping it on the battlefield."""
+        unique_id = action.additional_data.get("unique_id")
+        if not unique_id:
+            raise ValueError("unique_id is required for detach_card action")
+        unique_id = str(unique_id)
+
+        target_loc = self._find_battlefield_card(game_state, unique_id)
+        if target_loc is None:
+            raise ValueError(f"Card with unique_id {unique_id} not found on any battlefield")
+
+        owner_player, battlefield, target_index = target_loc
+        target_card = battlefield[target_index]
+        if not target_card:
+            raise ValueError(f"Card with unique_id {unique_id} disappeared during detach operation")
+
+        previous_host = target_card.attached_to
+
+        # Remove the card and any attachments that are chained to it.
+        removed_card = battlefield.pop(target_index)
+        child_attachments = self._extract_attachment_chain(battlefield, unique_id)
+
+        # Clear attachment metadata on the detached card and its attachment chain.
+        for card in [removed_card] + child_attachments:
+            card.attached_to = None
+            card.attachment_order = None
+
+        # Normalize the previous host's attachments on the source battlefield.
+        if previous_host:
+            self._normalize_attachment_orders(battlefield, previous_host)
+
+        group = [removed_card] + child_attachments
+
+        # Move detached card (and attachments) to the owner's reveal zone, regardless of who detached it.
+        owner_id = removed_card.owner_id or action.player_id
+        try:
+            destination_player = self._get_player(game_state, owner_id)
+        except ValueError:
+            destination_player = self._get_player(game_state, action.player_id)
+
+        reveal_zone = self._get_zone_list(game_state, destination_player, "reveal_zone")
+        reveal_zone.extend(group)
 
     def _get_zone_list(
         self, game_state: GameState, player: Player, zone_name: str

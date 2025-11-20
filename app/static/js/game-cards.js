@@ -12,6 +12,14 @@ const GameCards = {
     _boundHoverMouseOver: null,
     _boundHoverMouseOut: null,
     _boundHoverMouseMove: null,
+    _lastContextPosition: null,
+    _attachmentSelection: null,
+    _attachmentTargets: [],
+    _boundAttachmentClickHandler: null,
+    _boundAttachmentKeydownHandler: null,
+    _boundCloseAttachmentClick: null,
+    _boundAttachmentMenuClose: null,
+    _boundAttachmentMenuKeydown: null,
     keywordDescriptions: {
         "adapt":{"name":"Adapt","description":"If this creature has no +1/+1 counters on it, put N +1/+1 counters on it."},
         "adventure":{"name":"Adventure","description":"You may cast the Adventure half first; later you may cast the creature from exile."},
@@ -544,6 +552,17 @@ const GameCards = {
         const dataCardType = GameUtils.escapeHtml(primaryCardType || '');
         const dataCardOwner = GameUtils.escapeHtml(ownerId || '');
         const dataCardController = GameUtils.escapeHtml(controllerId || '');
+        const attachmentHostId = card.attached_to || card.attachedTo || '';
+        const parsedAttachmentOrder = (() => {
+            const raw = card?.attachment_order ?? card?.attachmentOrder;
+            if (Number.isFinite(raw)) {
+                return raw;
+            }
+            const parsed = parseInt(raw, 10);
+            return Number.isFinite(parsed) ? parsed : null;
+        })();
+        const dataAttachmentHost = GameUtils.escapeHtml(attachmentHostId || '');
+        const dataAttachmentOrder = parsedAttachmentOrder !== null ? parsedAttachmentOrder : '';
         const searchIndex = GameUtils.escapeHtml(this.buildSearchIndex(card));
         const jsCardId = JSON.stringify(cardId || '');
         const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
@@ -556,6 +575,8 @@ const GameCards = {
         const readOnly = hasReadOnlyOption ? Boolean(options.readOnly) : spectatorView;
         const allowInteractions = !readOnly;
         const disableContextMenu = Boolean(options && options.disableContextMenu);
+        const disableDrag = Boolean(options && options.disableDrag);
+        const allowDrag = allowInteractions && !disableDrag;
 
         let onClickAction = '';
         if (allowInteractions && (zone === 'creatures' || zone === 'support' || zone === 'permanents' || zone === 'lands' || zone === 'battlefield')) {
@@ -573,14 +594,27 @@ const GameCards = {
         const dropAttributes = enableDrop
             ? `ondragover="UIZonesManager.handleZoneDragOver(event)" ondragleave="UIZonesManager.handleZoneDragLeave(event)" ondrop="UIZonesManager.handleZoneDrop(event, '${zoneAttr}')"`
             : '';
-        const dropAttr = allowInteractions ? dropAttributes : '';
-        const dragStartAttr = allowInteractions ? 'ondragstart="GameCards.handleDragStart(event, this)"' : '';
-        const dragEndAttr = allowInteractions ? 'ondragend="GameCards.handleDragEnd(event, this)"' : '';
+        const dropAttr = allowDrag ? dropAttributes : '';
+        const dragStartAttr = allowDrag ? 'ondragstart="GameCards.handleDragStart(event, this)"' : '';
+        const dragEndAttr = allowDrag ? 'ondragend="GameCards.handleDragEnd(event, this)"' : '';
         const allowCardContextMenu = allowInteractions && !disableContextMenu;
         const contextMenuAttr = allowCardContextMenu ? 'oncontextmenu="GameCards.showCardContextMenu(event, this); return false;"' : '';
         
         // Apply transform for attacking creatures, keeping rotation when tapped
-        const attackingStyle = visualState.styleText;
+        let combinedTransform = visualState.transformValue || '';
+        if (options && options.offsetTransform) {
+            combinedTransform = combinedTransform
+                ? `${combinedTransform} ${options.offsetTransform}`
+                : options.offsetTransform;
+        }
+        const styleParts = [];
+        if (combinedTransform) {
+            styleParts.push(`transform: ${combinedTransform};`);
+        }
+        if (options && options.inlineStyle) {
+            styleParts.push(String(options.inlineStyle));
+        }
+        const inlineStyleText = styleParts.join(' ');
 
         // Generate counters display
         const countersHtml = this.generateCountersHtml(card);
@@ -597,14 +631,16 @@ const GameCards = {
                 data-card-type="${dataCardType}"
                 data-card-owner="${dataCardOwner}"
                 data-card-controller="${dataCardController}"
+                data-attached-to="${dataAttachmentHost}"
+                data-attachment-order="${dataAttachmentOrder}"
                 data-card-tapped="${stateFlags.isTapped}"
                 data-card-targeted="${stateFlags.isTargeted}"
                 data-card-search="${searchIndex}"
                 data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
                 data-is-opponent="${isOpponent}"
                 data-readonly="${readOnly}"
-                style="${attackingStyle}"
-                draggable="${allowInteractions ? 'true' : 'false'}"
+                style="${inlineStyleText}"
+                draggable="${allowDrag ? 'true' : 'false'}"
                 ${dragStartAttr}
                 ${dropAttr}
                 ${onClickAction}
@@ -630,6 +666,63 @@ const GameCards = {
                         ${powerToughnessHtml}
                     </div>
                 `}
+            </div>
+        `;
+    },
+
+    renderCardWithAttachments: function(card, attachments = [], zone = 'battlefield', isOpponent = false, playerId = null) {
+        const hostHtml = this.renderCardWithLoadingState(
+            card,
+            'card-battlefield',
+            true,
+            zone,
+            isOpponent,
+            null,
+            playerId
+        );
+        const normalizedAttachments = Array.isArray(attachments) ? attachments : [];
+        const hostId = card?.unique_id || card?.uniqueId || '';
+        const safeHostId = GameUtils.escapeHtml(hostId || '');
+        const visibleAttachments = normalizedAttachments.slice(0, 4);
+        const overflowCount = normalizedAttachments.length - visibleAttachments.length;
+        const offsetStep = 15;
+        const offsetPadding = normalizedAttachments.length
+            ? (normalizedAttachments.length * offsetStep) + 20
+            : 0;
+        const groupStyle = offsetPadding
+            ? `style="padding-bottom:${offsetPadding}px; padding-right:${offsetPadding}px;"`
+            : '';
+        const attachmentHtml = visibleAttachments.map((attachment, index) => {
+            return this.renderCardWithLoadingState(
+                attachment,
+                UIConfig?.CSS_CLASSES?.card?.attachment || 'card-attachment',
+                true,
+                zone,
+                isOpponent,
+                index,
+                playerId,
+                { disableDrag: true }
+            );
+        }).join('');
+        const overflowBadge = overflowCount > 0
+            ? `<div class="card-attachment-overflow">+${overflowCount}</div>`
+            : '';
+        const attachmentsSection = normalizedAttachments.length
+            ? `<div class="card-attachment-pile">
+                    ${attachmentHtml}
+                    ${overflowBadge}
+               </div>`
+            : '';
+
+        return `
+            <div class="card-attachment-group"
+                 data-attachment-host="${safeHostId}"
+                 data-attachment-count="${normalizedAttachments.length}"
+                 ${groupStyle}>
+                <div class="card-host">
+                    ${hostHtml}
+                </div>
+                ${attachmentsSection}
             </div>
         `;
     },
@@ -1095,6 +1188,11 @@ const GameCards = {
         this._closeActiveCardPreview();
         this._hoveredCardElement = null;
         this._hoverPreviewPointerEvent = null;
+        this._lastContextPosition = {
+            x: event?.clientX || 0,
+            y: event?.clientY || 0
+        };
+        this.cancelAttachmentSelection();
 
         const cardId = cardElement.getAttribute('data-card-id');
         const cardName = cardElement.getAttribute('data-card-name');
@@ -1104,6 +1202,10 @@ const GameCards = {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
         const isTargeted = cardElement.classList.contains('targeted');
+        const attachedTo = cardElement.getAttribute('data-attached-to') || '';
+        const hasAttachmentHost = Boolean(attachedTo && attachedTo.trim().length);
+        const attachmentChildren = Array.from(document.querySelectorAll(`[data-attached-to="${uniqueCardId}"]`));
+        const hasAttachments = attachmentChildren.length > 0;
         let normalizedZone = (cardZone || '').toLowerCase();
         if (normalizedZone.startsWith('opponent_')) {
             normalizedZone = normalizedZone.replace('opponent_', '');
@@ -1177,6 +1279,14 @@ const GameCards = {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.tapCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">${tapIcon}</span> ${tapAction}</div>`;
 
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.duplicateCard(${jsCardId}, ${jsUniqueCardId}, ${jsCardZone})`)}"><span class="icon">🪄</span> Duplicate</div>`;
+
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.startAttachmentSelection(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">🧲</span> Attach to other card</div>`;
+                if (hasAttachments) {
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showAttachmentsModal(${jsUniqueCardId}, ${jsCardName})`)}"><span class="icon">👁️</span> Show attached cards</div>`;
+                }
+                if (hasAttachmentHost) {
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.detachCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">🔓</span> Detach</div>`;
+                }
 
                 const counterIcon = '🔢';
                 menuHTML += `<div class="card-context-menu-divider"></div>`;
@@ -1301,6 +1411,297 @@ const GameCards = {
         this._hoverPreviewPointerEvent = null;
     },
 
+    _getAttachmentsFromState: function(hostUniqueId) {
+        if (
+            typeof GameCore === 'undefined' ||
+            typeof GameCore.getGameState !== 'function'
+        ) {
+            return [];
+        }
+        const state = GameCore.getGameState();
+        const players = Array.isArray(state?.players) ? state.players : [];
+        const collector = (cards, hostId, acc = []) => {
+            const normalizeOrder = (value) => {
+                const parsed = parseInt(value, 10);
+                return Number.isFinite(parsed) ? parsed : null;
+            };
+            const list = cards
+                .filter((c) => (c?.attached_to || c?.attachedTo) === hostId)
+                .sort((a, b) => {
+                    const orderA = normalizeOrder(a?.attachment_order ?? a?.attachmentOrder);
+                    const orderB = normalizeOrder(b?.attachment_order ?? b?.attachmentOrder);
+                    if (orderA !== null && orderB !== null && orderA !== orderB) {
+                        return orderA - orderB;
+                    }
+                    return 0;
+                });
+            list.forEach((card) => {
+                acc.push(card);
+                collector(cards, card?.unique_id || card?.uniqueId, acc);
+            });
+            return acc;
+        };
+        for (const player of players) {
+            const battlefield = Array.isArray(player?.battlefield) ? player.battlefield : [];
+            const attachments = collector(battlefield, hostUniqueId, []);
+            if (attachments.length) {
+                return attachments;
+            }
+        }
+        return [];
+    },
+
+    showAttachmentsModal: function(hostUniqueId, hostName = 'Attached Cards') {
+        if (!hostUniqueId) {
+            return;
+        }
+
+        const attachmentsFromState = this._getAttachmentsFromState(hostUniqueId);
+        const domAttachments = Array.from(document.querySelectorAll(`[data-attached-to="${hostUniqueId}"]`));
+        const attachments = attachmentsFromState.length
+            ? attachmentsFromState
+            : domAttachments.map((el) => {
+                try {
+                    const parsed = JSON.parse(el.getAttribute('data-card-data') || '{}');
+                    const zoneAttr = el.getAttribute('data-card-zone') || 'battlefield';
+                    return {
+                        ...parsed,
+                        card_zone: parsed.card_zone || zoneAttr,
+                        zone: parsed.zone || zoneAttr,
+                        name: parsed.name || el.getAttribute('data-card-name') || parsed.id || 'Card'
+                    };
+                } catch (_err) {
+                    return null;
+                }
+            }).filter(Boolean);
+        if (!attachments.length) {
+            return;
+        }
+
+        // Remove any existing attachment modal
+        this.closeAttachmentsModal();
+
+        const modal = document.createElement('div');
+        modal.id = 'attachment-popup';
+        modal.className = 'stack-popup attachment-popup';
+        modal.dataset.appear = 'visible';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', 'Attached Cards');
+
+        const countLabel = attachments.length;
+        const itemsHtml = attachments.map((cardData, index) => {
+            const zone = cardData?.zone || cardData?.card_zone || 'battlefield';
+            const ownerId = cardData?.owner_id || cardData?.ownerId || '';
+            const controllerId = cardData?.controller_id || cardData?.controllerId || ownerId;
+            const cardId = cardData?.id || cardData?.card_id || cardData?.name || '';
+            const uniqueId = cardData?.unique_id || cardData?.uniqueId || '';
+            const cardName = cardData?.name || 'Card';
+            const imageUrl = (typeof GameCards.getSafeImageUrl === 'function')
+                ? GameCards.getSafeImageUrl(cardData)
+                : (cardData?.image_url || cardData?.image || '');
+            const safeName = GameUtils.escapeHtml(cardName);
+            const safeImage = GameUtils.escapeHtml(imageUrl || '');
+            const serialized = GameUtils.escapeHtml(JSON.stringify(cardData));
+
+            return `
+                <div class="stack-spell"
+                     data-card-id="${GameUtils.escapeHtml(cardId)}"
+                     data-card-unique-id="${GameUtils.escapeHtml(uniqueId)}"
+                     data-card-name="${safeName}"
+                     data-card-image="${safeImage}"
+                     data-card-zone="${GameUtils.escapeHtml(zone)}"
+                     data-card-owner="${GameUtils.escapeHtml(ownerId)}"
+                     data-card-controller="${GameUtils.escapeHtml(controllerId)}"
+                     data-card-data='${serialized}'
+                     draggable="true"
+                     ondragstart="GameCards.handleDragStart(event, this)"
+                     ondragend="GameCards.handleDragEnd(event, this)"
+                     oncontextmenu="GameCards.handleAttachmentModalContextMenu(event, this); return false;">
+                    <div class="stack-card-container">
+                        ${safeImage
+                            ? `<img src="${safeImage}" alt="${safeName}" class="stack-card-image" />`
+                            : `<div class="stack-card-fallback"></div>`}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        modal.innerHTML = `
+            <div class="stack-popup-header" data-draggable-handle>
+                <div class="stack-popup-title">
+                    <span class="stack-popup-icon">📎</span>
+                    <span class="stack-popup-label">${GameUtils.escapeHtml(hostName)}</span>
+                    <span class="stack-popup-count">${countLabel}</span>
+                </div>
+                <button class="counter-modal-close" onclick="GameCards.closeAttachmentsModal()" aria-label="Close attachments">&times;</button>
+            </div>
+            <div class="stack-popup-body">
+                <div class="stack-container">
+                    <div class="stack-content" role="list" aria-label="Attached Cards">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const clampPosition = (left, top) => {
+            const padding = 12;
+            const rect = modal.getBoundingClientRect();
+            const maxX = window.innerWidth - rect.width - padding;
+            const maxY = window.innerHeight - rect.height - padding;
+            const clampedLeft = Math.min(Math.max(left, padding), Math.max(maxX, padding));
+            const clampedTop = Math.min(Math.max(top, padding), Math.max(maxY, padding));
+            modal.style.left = `${clampedLeft}px`;
+            modal.style.top = `${clampedTop}px`;
+        };
+
+        const pointer = this._lastContextPosition;
+        const modalRect = modal.getBoundingClientRect();
+        const fallbackLeft = Math.max(16, window.innerWidth - (modalRect.width || 360) - 32);
+        const fallbackTop = Math.max(24, (window.innerHeight - (modalRect.height || 240)) / 2);
+        const initialLeft = pointer ? pointer.x + 12 : fallbackLeft;
+        const initialTop = pointer ? pointer.y + 12 : fallbackTop;
+        clampPosition(initialLeft, initialTop);
+
+        const dragHandle = modal.querySelector('[data-draggable-handle]');
+        let dragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        const onMouseDown = (event) => {
+            dragging = true;
+            modal.classList.add('stack-popup-dragging');
+            offsetX = event.clientX - modal.getBoundingClientRect().left;
+            offsetY = event.clientY - modal.getBoundingClientRect().top;
+            event.preventDefault();
+        };
+
+        const onMouseMove = (event) => {
+            if (!dragging) return;
+            clampPosition(event.clientX - offsetX, event.clientY - offsetY);
+        };
+
+        const onMouseUp = () => {
+            if (!dragging) return;
+            dragging = false;
+            modal.classList.remove('stack-popup-dragging');
+        };
+
+        if (dragHandle) {
+            dragHandle.addEventListener('mousedown', onMouseDown);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+
+        modal._attachmentDragCleanup = () => {
+            if (dragHandle) dragHandle.removeEventListener('mousedown', onMouseDown);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        if (!this._boundCloseAttachmentClick) {
+            this._boundCloseAttachmentClick = (event) => {
+                if (event.target === modal) {
+                    this.closeAttachmentsModal();
+                }
+            };
+        }
+        modal.addEventListener('click', this._boundCloseAttachmentClick);
+    },
+
+    handleAttachmentModalContextMenu: function(event, element = null) {
+        event.preventDefault();
+        event.stopPropagation();
+        const cardElement = element || event.currentTarget || event.target.closest('[data-card-unique-id]');
+        if (!cardElement) {
+            return false;
+        }
+
+        const cardId = cardElement.getAttribute('data-card-id');
+        const uniqueId = cardElement.getAttribute('data-card-unique-id');
+        if (!cardId || !uniqueId) {
+            return false;
+        }
+
+        this.closeAttachmentContextMenu();
+
+        const menu = document.createElement('div');
+        menu.id = 'attachment-context-menu';
+        menu.className = 'card-context-menu';
+
+        const detachItem = document.createElement('div');
+        detachItem.className = 'card-context-menu-item';
+        detachItem.innerHTML = '<span class="icon">🔓</span> Detach';
+        detachItem.onclick = () => {
+            if (typeof GameActions !== 'undefined' && typeof GameActions.detachCard === 'function') {
+                GameActions.detachCard(cardId, uniqueId);
+            }
+            this.closeAttachmentContextMenu();
+            this.closeAttachmentsModal();
+        };
+
+        menu.appendChild(detachItem);
+
+        const pointerX = event.clientX || 0;
+        const pointerY = event.clientY || 0;
+        menu.style.left = `${pointerX}px`;
+        menu.style.top = `${pointerY}px`;
+
+        document.body.appendChild(menu);
+        this._lastContextPosition = { x: pointerX, y: pointerY };
+
+        if (!this._boundAttachmentMenuClose) {
+            this._boundAttachmentMenuClose = (evt) => {
+                if (!menu.contains(evt.target)) {
+                    this.closeAttachmentContextMenu();
+                }
+            };
+        }
+
+        if (!this._boundAttachmentMenuKeydown) {
+            this._boundAttachmentMenuKeydown = (evt) => {
+                if (evt.key === 'Escape') {
+                    this.closeAttachmentContextMenu();
+                }
+            };
+        }
+
+        document.addEventListener('click', this._boundAttachmentMenuClose, true);
+        document.addEventListener('keydown', this._boundAttachmentMenuKeydown);
+
+        return false;
+    },
+
+    closeAttachmentContextMenu: function() {
+        const existing = document.getElementById('attachment-context-menu');
+        if (existing) {
+            existing.remove();
+        }
+        if (this._boundAttachmentMenuClose) {
+            document.removeEventListener('click', this._boundAttachmentMenuClose, true);
+        }
+        if (this._boundAttachmentMenuKeydown) {
+            document.removeEventListener('keydown', this._boundAttachmentMenuKeydown);
+        }
+    },
+
+    closeAttachmentsModal: function() {
+        const modal = document.getElementById('attachment-popup');
+        if (modal) {
+            if (this._boundCloseAttachmentClick) {
+                modal.removeEventListener('click', this._boundCloseAttachmentClick);
+            }
+            if (typeof modal._attachmentDragCleanup === 'function') {
+                modal._attachmentDragCleanup();
+            }
+            modal.remove();
+        }
+        this.closeAttachmentContextMenu();
+        this._closeActiveCardPreview();
+    },
+
     // Add properties to store bound references
     _boundHandleCardPreviewClick: null,
     _boundHandleCardPreviewKeydown: null,
@@ -1326,6 +1727,99 @@ const GameCards = {
         }
         if (this._boundHandleCardPreviewKeydown) {
             document.removeEventListener('keydown', this._boundHandleCardPreviewKeydown);
+        }
+    },
+
+    startAttachmentSelection: function(cardId, uniqueCardId) {
+        this._closeActiveCardPreview();
+        this.closeContextMenu();
+        this.cancelAttachmentSelection();
+
+        const sourceElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        const sourceOwner = sourceElement ? sourceElement.getAttribute('data-card-owner') : null;
+
+        const candidates = Array.from(
+            document.querySelectorAll('.battlefield-zone [data-card-unique-id]')
+        ).filter((el) => {
+            const uid = el.getAttribute('data-card-unique-id');
+            return uid && uid !== uniqueCardId;
+        });
+
+        if (!candidates.length) {
+            console.warn('[GameCards] No valid attachment targets found.');
+            return;
+        }
+
+        this._attachmentSelection = {
+            cardId,
+            uniqueId: uniqueCardId,
+            owner: sourceOwner
+        };
+        this._attachmentTargets = candidates;
+        candidates.forEach((el) => el.classList.add('attachment-targetable'));
+
+        if (!this._boundAttachmentClickHandler) {
+            this._boundAttachmentClickHandler = this.handleAttachmentTargetClick.bind(this);
+        }
+        if (!this._boundAttachmentKeydownHandler) {
+            this._boundAttachmentKeydownHandler = this.handleAttachmentKeydown.bind(this);
+        }
+
+        document.addEventListener('click', this._boundAttachmentClickHandler, true);
+        document.addEventListener('keydown', this._boundAttachmentKeydownHandler);
+    },
+
+    handleAttachmentTargetClick: function(event) {
+        if (!this._attachmentSelection) {
+            return;
+        }
+
+        const targetElement = event.target.closest('[data-card-unique-id]');
+        if (!targetElement) {
+            this.cancelAttachmentSelection();
+            return;
+        }
+
+        const targetUniqueId = targetElement.getAttribute('data-card-unique-id');
+        if (!targetUniqueId || targetUniqueId === this._attachmentSelection.uniqueId) {
+            this.cancelAttachmentSelection();
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (typeof GameActions !== 'undefined' && typeof GameActions.attachCard === 'function') {
+            const targetCardId = targetElement.getAttribute('data-card-id');
+            GameActions.attachCard(
+                this._attachmentSelection.cardId,
+                this._attachmentSelection.uniqueId,
+                targetCardId,
+                targetUniqueId
+            );
+        }
+
+        this.cancelAttachmentSelection();
+    },
+
+    handleAttachmentKeydown: function(event) {
+        if (event.key === 'Escape') {
+            this.cancelAttachmentSelection();
+        }
+    },
+
+    cancelAttachmentSelection: function() {
+        if (this._attachmentTargets && this._attachmentTargets.length) {
+            this._attachmentTargets.forEach((el) => el.classList.remove('attachment-targetable'));
+        }
+        this._attachmentTargets = [];
+        this._attachmentSelection = null;
+
+        if (this._boundAttachmentClickHandler) {
+            document.removeEventListener('click', this._boundAttachmentClickHandler, true);
+        }
+        if (this._boundAttachmentKeydownHandler) {
+            document.removeEventListener('keydown', this._boundAttachmentKeydownHandler);
         }
     },
 
@@ -1501,9 +1995,13 @@ const GameCards = {
             uniqueCardId
         }));
         // Optionally: add visual feedback
-        cardElement.classList.add('dragging');
+        const dragHandle = cardElement.closest('.card-attachment-group') || cardElement;
+        dragHandle.classList.add('dragging');
+        if (dragHandle !== cardElement) {
+            cardElement.classList.add('dragging');
+        }
         event.dataTransfer.effectAllowed = 'move';
-        GameCards.draggedCardElement = cardElement;
+        GameCards.draggedCardElement = dragHandle;
     },
 
     /**
@@ -1531,9 +2029,13 @@ const GameCards = {
         if (!cardElement) return;
         
         cardElement.classList.remove('dragging');
+        const dragHandle = cardElement.closest('.card-attachment-group') || cardElement;
+        if (dragHandle && dragHandle !== cardElement) {
+            dragHandle.classList.remove('dragging');
+        }
         cardElement.style.removeProperty('opacity');
         cardElement.style.removeProperty('pointer-events');
-        if (GameCards.draggedCardElement === cardElement) {
+        if (GameCards.draggedCardElement === cardElement || GameCards.draggedCardElement === dragHandle) {
             GameCards.draggedCardElement = null;
         }
     },
