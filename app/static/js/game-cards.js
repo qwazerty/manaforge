@@ -248,8 +248,24 @@ const GameCards = {
         "will of the council":{"name":"Will of the council","description":"Players vote for outcomes; the vote result determines the effect."},
         "wither":{"name":"Wither","description":"This creature deals damage to creatures in the form of -1/-1 counters."},
     },
+    isFaceDownCard: function(card) {
+        if (!card) return false;
+        const name = (card.name || '').toLowerCase();
+        const typeLine = (card.type_line || card.typeLine || '').toLowerCase();
+        const setCode = (card.set || card.set_code || card.setCode || '').toLowerCase();
+        const explicitFlag = card.face_down || card.is_face_down || card.faceDown;
+        const manifestOrMorphToken = name === 'manifest' || name === 'morph' || (typeLine.includes('manifest') && card.is_token);
+        const mentionsFaceDown = typeLine.includes('face-down') || typeLine.includes('face down');
+        const isMueFaceDown = setCode === 'mue';
+        return Boolean(explicitFlag || manifestOrMorphToken || mentionsFaceDown || isMueFaceDown);
+    },
+
     getSafeImageUrl: function(card) {
-        if (!card || !card.image_url) return null;
+        if (!card) return null;
+
+        const fallbackBackImage = '/static/images/card-back.jpg';
+        const isFaceDown = this.isFaceDownCard(card);
+        const baseImage = card.image_url || card.image;
         
         // Allow back-face images for double-faced cards
         if (card.is_double_faced && card.card_faces && card.card_faces.length > 1) {
@@ -259,9 +275,16 @@ const GameCards = {
             }
         }
         
-        // For single-faced cards, skip generic "/back/" images
-        if (card.image_url.includes("/back/") && !card.is_double_faced) return null;
-        return card.image_url;
+        if (!baseImage) {
+            return isFaceDown ? fallbackBackImage : null;
+        }
+
+        // For single-faced cards, skip generic "/back/" images unless it's an intentional face-down card
+        if (baseImage.includes("/back/") && !card.is_double_faced) {
+            return isFaceDown ? baseImage : null;
+        }
+
+        return baseImage;
     },
 
 

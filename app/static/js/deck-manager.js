@@ -607,18 +607,23 @@
             entryEl.dataset.entryId = entry.id;
             entryEl.dataset.cardId = card.id || '';
             entryEl.dataset.cardName = card.name || '';
-            entryEl.dataset.cardImage = card.image_url || '';
+            const resolvedImageUrl = (window.GameCards && typeof GameCards.getSafeImageUrl === 'function')
+                ? GameCards.getSafeImageUrl(card)
+                : (card.image_url || card.image);
+
+            entryEl.dataset.cardImage = resolvedImageUrl || '';
             entryEl.dataset.cardData = JSON.stringify(card);
 
             const type = this.formatCardType(card.card_type);
             const manaCost = card.mana_cost || '—';
             const escapeHtml = window.GameUtils?.escapeHtml || ((value) => value);
             const safeName = escapeHtml(card.name || 'Unknown card');
-            const safeImage = escapeHtml(card.image_url || '');
+            const safeImage = escapeHtml(resolvedImageUrl || '');
+            const hasImage = Boolean(resolvedImageUrl);
 
             entryEl.innerHTML = `
                 <div class="card-visual relative rounded-xl overflow-hidden shadow-lg bg-arena-surface/40">
-                        ${card.image_url
+                        ${hasImage
                             ? `<img src="${safeImage}" alt="${safeName}" class="deck-card-image select-none">`
                         : `
                                 <div class="w-full h-48 flex flex-col items-center justify-center bg-arena-surface/80 text-center text-sm px-4 text-arena-muted">
