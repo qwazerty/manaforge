@@ -45,6 +45,12 @@
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
     const READY_EVENT_NAME = 'manaforge:deck-manager-ready';
+    const LAND_HINTS = Object.freeze({
+        draft: Object.freeze({ recommendation: '17 lands' }),
+        duel_commander: Object.freeze({ recommendation: '37-38 lands' }),
+        commander_multi: Object.freeze({ recommendation: '36-38 lands' }),
+        default60: Object.freeze({ recommendation: '24 lands' })
+    });
     const BASIC_LAND_PRESETS = Object.freeze({
         plains: Object.freeze({
             id: '4069fb4a-8ee1-41ef-ab93-39a8cc58e0e5',
@@ -672,6 +678,7 @@
             if (!container) return;
             container.innerHTML = '';
             const entries = Object.entries(typeCounts).filter(([, count]) => count > 0);
+            const landHint = this.getLandHintForFormat(this.state?.format);
 
             if (!entries.length) {
                 const span = document.createElement('span');
@@ -683,8 +690,17 @@
 
             entries.forEach(([type, count]) => {
                 const badge = document.createElement('div');
-                badge.className = 'px-3 py-2 rounded-lg bg-arena-surface border border-arena-accent/20 text-sm flex items-center gap-2';
+                badge.className = 'px-3 py-2 rounded-lg bg-arena-surface border border-arena-accent/20 text-sm flex items-center gap-2 flex-wrap';
                 badge.innerHTML = `<span class="font-semibold">${count}</span><span>${TYPE_LABELS[type] || this.formatCardType(type)}</span>`;
+
+                const isLand = /\bland\b/.test(type);
+                if (isLand && landHint) {
+                    const hint = document.createElement('span');
+                    hint.className = 'text-xs text-arena-text-dim bg-arena-accent/10 border border-arena-accent/20 px-2 py-1 rounded-full flex items-center gap-1';
+                    hint.innerHTML = `💡 <span>${landHint.recommendation}</span>`;
+                    badge.appendChild(hint);
+                }
+
                 container.appendChild(badge);
             });
         },
@@ -1006,6 +1022,20 @@
             const label = TYPE_LABELS[normalized];
             if (label) return label;
             return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+        },
+
+        getLandHintForFormat(format) {
+            const normalized = (format || '').toLowerCase();
+            if (normalized === 'draft') {
+                return LAND_HINTS.draft;
+            }
+            if (normalized === 'duel_commander') {
+                return LAND_HINTS.duel_commander;
+            }
+            if (normalized === 'commander_multi') {
+                return LAND_HINTS.commander_multi;
+            }
+            return LAND_HINTS.default60;
         },
 
         generateEntryId(cardId) {

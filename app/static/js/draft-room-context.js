@@ -22,7 +22,8 @@
     window.MANAFORGE_DECK_CONTEXT = {
         deckId,
         deckName: `Draft - ${resolvedSetName} - ${resolvedRoomName}`,
-        format: 'standard',
+        format: 'draft',
+        forceDeckFormat: true,
         persistEmpty: true,
         suppressUrlUpdates: true
     };
