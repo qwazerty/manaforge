@@ -146,38 +146,6 @@ class WebSocketManager {
                         this._refreshGameUI(oldGameState);
                     }
 
-                    // Surface reveal zone only for the owner whose card is in reveal after a detach.
-                    if (
-                        actionResult &&
-                        actionResult.action === 'detach_card' &&
-                        typeof UIZonesManager !== 'undefined'
-                    ) {
-                        const ownerId = actionResult.owner_id || null;
-                        const players = Array.isArray(newGameState?.players) ? newGameState.players : [];
-                        const ownerPlayer = ownerId
-                            ? players.find((p) => p?.id === ownerId)
-                            : null;
-                        const revealZone = Array.isArray(ownerPlayer?.reveal_zone) ? ownerPlayer.reveal_zone : [];
-                        const hasOwnerCard = revealZone.some((card) => {
-                            const cardOwner = card?.owner_id || card?.ownerId;
-                            return ownerId ? cardOwner === ownerId : Boolean(cardOwner);
-                        });
-
-                        if (revealZone.length && (hasOwnerCard || !ownerId)) {
-                            const selectedPlayer = typeof GameCore?.getSelectedPlayer === 'function'
-                                ? GameCore.getSelectedPlayer()
-                                : null;
-                            const isOwnerSelected = selectedPlayer && selectedPlayer !== 'spectator' && ownerId === selectedPlayer;
-                            const method = isOwnerSelected ? 'showZoneModal' : 'showOpponentZoneModal';
-
-                            if (typeof UIZonesManager[method] === 'function') {
-                                setTimeout(() => {
-                                    UIZonesManager[method]('reveal');
-                                }, 100);
-                            }
-                        }
-                    }
-
                     const oldPhase = oldGameState?.phase;
                     const newPhase = newGameState?.phase;
                     if (
