@@ -194,6 +194,11 @@ class UIUtils {
     static filterCardsByType(cards, zoneName) {
         if (!cards || !Array.isArray(cards)) return [];
 
+        const workingSet = cards.filter((card) => {
+            const hostId = card?.attached_to || card?.attachedTo;
+            return !hostId;
+        });
+
         const normalizeTypeText = (card) => {
             if (!card) return '';
 
@@ -231,17 +236,17 @@ class UIUtils {
         };
 
         if (zoneName === 'lands') {
-            return cards.filter(card => {
+            return workingSet.filter(card => {
                 const typeText = normalizeTypeText(card);
                 return typeText.includes('land');
             });
         } else if (zoneName === 'creatures') {
-            return cards.filter(card => {
+            return workingSet.filter(card => {
                 const typeText = normalizeTypeText(card);
                 return typeText.includes('creature');
             });
         } else if (zoneName === 'support') {
-            return cards.filter(card => {
+            return workingSet.filter(card => {
                 const typeText = normalizeTypeText(card);
                 const isCreature = typeText.includes('creature');
                 const isLand = typeText.includes('land');
@@ -249,7 +254,7 @@ class UIUtils {
                 return hasSupportType && !isCreature && !isLand;
             });
         }
-        return cards;
+        return workingSet;
     }
 
     /**

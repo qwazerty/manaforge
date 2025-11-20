@@ -474,7 +474,7 @@
         border: none;
         font-size: 1.5rem;
         cursor: pointer;
-        color: #1a1a2e;
+        color: #f8fafc;
         padding: 0;
         width: 30px;
         height: 30px;
@@ -486,7 +486,7 @@
     }
 
     .counter-modal-close:hover {
-        background: rgba(26, 26, 46, 0.2);
+        background: rgba(248, 250, 252, 0.12);
     }
 
     .counter-modal-body {
@@ -1557,7 +1557,7 @@
 
     /* Battlefield layout (migrated from game-battlefield.css) */
     .battlefield-layout {
-        @apply grid items-stretch justify-items-stretch my-2 gap-x-1 gap-x-1 gap-y-1;
+        @apply grid items-stretch justify-items-stretch gap-x-1 gap-x-1 gap-y-1;
         grid-template-columns: minmax(50%, 1fr) fit-content(50%);
         grid-template-rows: auto auto;
         grid-template-areas:
@@ -1581,9 +1581,9 @@
 
     .battlefield-zone .zone-content {
         @apply min-h-0;
-        max-height: none;
+        max-height: none !important;
         overflow-x: auto;
-        overflow-y: hidden;
+        overflow-y: visible;
     }
 
     .battlefield-zone.zone-drag-over {
@@ -1652,7 +1652,7 @@
     .creatures-zone-content,
     .support-zone-content,
     .lands-zone-content {
-        @apply flex flex-nowrap items-start overflow-x-auto overflow-y-hidden;
+        @apply flex flex-nowrap items-start overflow-x-auto overflow-y-visible;
         gap: 6px;
         padding: 6px;
     }
@@ -1854,8 +1854,6 @@
     .card-mini.tapped,
     .card-battlefield.tapped {
         transform: rotate(90deg);
-        opacity: 0.7;
-        filter: brightness(0.8);
     }
 
     .card-mini.combat-tapped,
@@ -1872,7 +1870,6 @@
     .card-mini.tapped:hover,
     .card-battlefield.tapped:hover {
         transform: rotate(90deg) scale(1.1);
-        opacity: 0.85;
     }
 
     .card-back {
@@ -1974,6 +1971,156 @@
 
     .card-back-1080:hover {
         transform: scale(1.05);
+    }
+
+    .card-attachment-group {
+        position: relative;
+        display: inline-block;
+        padding: 0;
+    }
+
+    .card-attachment-group .card-host {
+        position: relative;
+        z-index: 20;
+    }
+
+    .card-attachment-pile {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .card-attachment {
+        width: 130px;
+        height: 182px;
+        border-radius: 0.5em;
+        position: absolute;
+        pointer-events: auto;
+    }
+
+    .card-attachment:hover {
+        opacity: 1;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55);
+        z-index: 12;
+    }
+
+    .card-attachment:nth-child(1) {
+        transform: translate(20px, 20px);
+        z-index: 14;
+    }
+
+    .card-attachment:nth-child(2) {
+        transform: translate(40px, 40px);
+        z-index: 13;
+    }
+
+    .card-attachment:nth-child(3) {
+        transform: translate(60px, 60px);
+        z-index: 12;
+    }
+
+    .card-attachment:nth-child(4) {
+        transform: translate(80px, 80px);
+        z-index: 11;
+    }
+
+    .card-attachment img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .card-attachment-overflow {
+        position: absolute;
+        bottom: -10px;
+        right: -10px;
+        min-width: 42px;
+        height: 32px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.92));
+        border: 1px solid rgba(201, 170, 113, 0.6);
+        color: #e2e8f0;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+        z-index: 30;
+        pointer-events: none;
+    }
+
+    .card-attachment-group[data-attachment-count="0"] .card-attachment-pile {
+        display: none;
+    }
+
+    .attachment-targetable {
+        outline: 2px dashed rgba(201, 170, 113, 0.7);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 2px rgba(201, 170, 113, 0.15);
+        cursor: crosshair;
+    }
+
+    .attachment-modal-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .attachment-modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        position: relative;
+    }
+
+    .attachment-modal-name {
+        font-size: 0.85rem;
+        color: #e5e7eb;
+        text-align: center;
+    }
+
+    .attachment-modal-card {
+        position: relative;
+        inset: auto;
+        width: 140px;
+        height: 200px;
+        transform: none;
+        top: auto;
+        left: auto;
+        z-index: auto;
+        pointer-events: auto;
+        /* box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); */
+    }
+
+    .attachment-popup {
+        width: min(440px, 95vw);
+        max-height: 95vh;
+        overflow: visible;
+    }
+
+    .attachment-popup .stack-popup-header {
+        justify-content: space-between;
+    }
+
+    .attachment-popup .stack-popup-body {
+        overflow: visible;
+        max-height: none;
+    }
+
+    .card-attachment-modal {
+        position: relative;
+        inset: auto;
+        width: 110px;
+        height: 160px;
+        transform: none !important;
+        top: auto !important;
+        left: auto !important;
+        z-index: auto !important;
+        pointer-events: auto;
     }
 
     /* ===== Game UI (migrated from game-ui.css) ===== */
@@ -3029,7 +3176,8 @@
         }
 
         .game-container-1080 .card-mini,
-        .game-container-1080 .card-battlefield {
+        .game-container-1080 .card-battlefield,
+        .game-container-1080 .card-attachment {
             width: 110px !important;
             height: 153px !important;
         }

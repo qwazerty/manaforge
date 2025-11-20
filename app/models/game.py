@@ -91,6 +91,14 @@ class Card(BaseModel):
     blocking: Optional[str] = Field(
         default=None, description="Unique ID of the attacker this creature is blocking"
     )
+    attached_to: Optional[str] = Field(
+        default=None,
+        description="Unique ID of the host card this permanent is attached to"
+    )
+    attachment_order: Optional[int] = Field(
+        default=None,
+        description="Ordering index among attachments on the host card"
+    )
     custom_keywords: List[str] = Field(
         default_factory=list,
         description="Player-added keywords displayed directly on the card overlay"

@@ -282,6 +282,54 @@
         };
     }
 
+    function getCardUniqueId(card) {
+        if (!card) {
+            return null;
+        }
+        return card.unique_id || card.uniqueId || null;
+    }
+
+    function buildAttachmentsMap(cards = []) {
+        const indexLookup = new Map();
+        cards.forEach((card, index) => {
+            const uid = getCardUniqueId(card);
+            if (uid) {
+                indexLookup.set(uid, index);
+            }
+        });
+
+        const attachments = new Map();
+        const parseOrder = (value) => {
+            const parsed = parseInt(value, 10);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        cards.forEach((card) => {
+            const hostId = card?.attached_to || card?.attachedTo;
+            if (!hostId) {
+                return;
+            }
+            const list = attachments.get(hostId) || [];
+            list.push(card);
+            attachments.set(hostId, list);
+        });
+
+        attachments.forEach((list, hostId) => {
+            list.sort((a, b) => {
+                const orderA = parseOrder(a?.attachment_order ?? a?.attachmentOrder);
+                const orderB = parseOrder(b?.attachment_order ?? b?.attachmentOrder);
+                if (orderA !== null && orderB !== null && orderA !== orderB) {
+                    return orderA - orderB;
+                }
+                const idxA = indexLookup.get(getCardUniqueId(a)) ?? 0;
+                const idxB = indexLookup.get(getCardUniqueId(b)) ?? 0;
+                return idxA - idxB;
+            });
+        });
+
+        return attachments;
+    }
+
     function buildBattlefieldZones(battlefieldCards, ownerId, isOpponent) {
         const cards = Array.isArray(battlefieldCards) ? battlefieldCards : [];
         const sanitizedOwner = typeof GameUtils?.escapeHtml === 'function'
@@ -289,13 +337,30 @@
             : ownerId;
         const playerRole = isOpponent ? 'opponent' : 'player';
         const zoneNames = ['lands', 'creatures', 'support'];
+        const attachmentsByHost = buildAttachmentsMap(cards);
+        const hostCards = cards.filter((card) => !card?.attached_to && !card?.attachedTo);
 
         return zoneNames.map((zoneName) => {
             const filteredCards = typeof UIUtils?.filterCardsByType === 'function'
-                ? UIUtils.filterCardsByType(cards, zoneName)
-                : cards;
-            const cardCount = filteredCards.length;
+                ? UIUtils.filterCardsByType(hostCards, zoneName)
+                : hostCards;
+            const cardCount = filteredCards.reduce((count, card) => {
+                const uid = getCardUniqueId(card);
+                const attachments = uid ? (attachmentsByHost.get(uid) || []) : [];
+                return count + 1 + attachments.length;
+            }, 0);
             const cardsHtml = filteredCards.map((card) => {
+                const uid = getCardUniqueId(card);
+                const cardAttachments = uid ? (attachmentsByHost.get(uid) || []) : [];
+                if (typeof GameCards?.renderCardWithAttachments === 'function') {
+                    return GameCards.renderCardWithAttachments(
+                        card,
+                        cardAttachments,
+                        zoneName,
+                        isOpponent,
+                        ownerId
+                    );
+                }
                 return GameCards.renderCardWithLoadingState(
                     card,
                     'card-battlefield',

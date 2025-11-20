@@ -511,6 +511,8 @@ async function performHttpGameAction(actionType, actionData = {}) {
             case 'set_custom_type':
             case 'modify_player_counter':
             case 'set_player_counter':
+            case 'attach_card':
+            case 'detach_card':
                 endpoint = `/api/v1/games/${gameId}/action`;
                 requestData = {
                     action_type: actionType,
@@ -818,6 +820,32 @@ function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
     const cardName = cardElement?.getAttribute('data-card-name') || cardId;
 }
 
+function attachCard(cardId, uniqueCardId, hostCardId, hostUniqueCardId) {
+    if (!uniqueCardId || !hostUniqueCardId) {
+        console.warn('Attach action requires both source and host unique IDs');
+        return;
+    }
+
+    performGameAction('attach_card', {
+        card_id: cardId,
+        unique_id: uniqueCardId,
+        host_card_id: hostCardId,
+        host_unique_id: hostUniqueCardId
+    });
+}
+
+function detachCard(cardId, uniqueCardId) {
+    if (!uniqueCardId) {
+        console.warn('Detach action requires a unique card identifier');
+        return;
+    }
+
+    performGameAction('detach_card', {
+        card_id: cardId,
+        unique_id: uniqueCardId
+    });
+}
+
 function updateCardTappedState(cardId, tapped, uniqueCardId = null) {
     const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
@@ -1040,6 +1068,8 @@ window.GameActions = {
     playOpponentCardFromZone,
     moveCard,
     duplicateCard,
+    attachCard,
+    detachCard,
     moveAllHandToReveal,
     returnAllRevealToHand
 };

@@ -506,6 +506,102 @@ async def handle_move_card(
 
 
 @action_registry.register(
+    "attach_card",
+    required_fields=["unique_id", "host_unique_id"]
+)
+async def handle_attach_card(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle attaching one battlefield card to another."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for attach_card"
+        )
+
+    unique_id = request.get("unique_id")
+    host_unique_id = request.get("host_unique_id")
+    attachment_order = request.get("attachment_order")
+    card_id = request.get("card_id")
+    host_card_id = request.get("host_card_id")
+
+    if not unique_id:
+        raise HTTPException(status_code=400, detail="unique_id is required")
+    if not host_unique_id:
+        raise HTTPException(status_code=400, detail="host_unique_id is required")
+    if unique_id == host_unique_id:
+        raise HTTPException(status_code=400, detail="Cannot attach a card to itself")
+
+    additional_data: Dict[str, Any] = {
+        "unique_id": unique_id,
+        "host_unique_id": host_unique_id
+    }
+    broadcast_data: Dict[str, Any] = {
+        "unique_id": unique_id,
+        "host_unique_id": host_unique_id
+    }
+
+    if attachment_order is not None:
+        additional_data["attachment_order"] = attachment_order
+        broadcast_data["attachment_order"] = attachment_order
+    if card_id:
+        additional_data["card_id"] = card_id
+        broadcast_data["card_id"] = card_id
+    if host_card_id:
+        additional_data["host_card_id"] = host_card_id
+        broadcast_data["host_card_id"] = host_card_id
+
+    return {
+        "card_id": card_id,
+        "additional_data": additional_data,
+        "broadcast_data": broadcast_data
+    }
+
+
+@action_registry.register(
+    "detach_card",
+    required_fields=["unique_id"]
+)
+async def handle_detach_card(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle detaching a card from its current host."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for detach_card"
+        )
+
+    unique_id = request.get("unique_id")
+    card_id = request.get("card_id")
+    if not unique_id:
+        raise HTTPException(status_code=400, detail="unique_id is required")
+
+    owner_id = None
+    # Try to resolve owner from current battlefield state before the detach.
+    for player in current_state.players:
+        for card in getattr(player, "battlefield", []):
+            if card.unique_id == unique_id:
+                owner_id = card.owner_id or player.id
+                break
+        if owner_id:
+            break
+
+    additional_data: Dict[str, Any] = {"unique_id": unique_id}
+    broadcast_data: Dict[str, Any] = {"unique_id": unique_id}
+
+    if card_id:
+        additional_data["card_id"] = card_id
+        broadcast_data["card_id"] = card_id
+    if owner_id:
+        broadcast_data["owner_id"] = owner_id
+
+    return {
+        "card_id": card_id,
+        "additional_data": additional_data,
+        "broadcast_data": broadcast_data
+    }
+
+
+@action_registry.register(
     "duplicate_card",
     required_fields=["card_id", "unique_id"]
 )

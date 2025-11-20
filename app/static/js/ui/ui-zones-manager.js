@@ -644,8 +644,18 @@ class UIZonesManager {
             let positionIndex = null;
             if (container) {
                 const draggedElement = window.GameCards ? GameCards.draggedCardElement : null;
-                const allCards = Array.from(container.querySelectorAll('[data-card-unique-id]'));
-                const filteredCards = draggedElement ? allCards.filter(card => card !== draggedElement) : allCards;
+                const groupHandle = draggedElement && typeof draggedElement.closest === 'function'
+                    ? draggedElement.closest('.card-attachment-group')
+                    : null;
+                const activeDragged = groupHandle || draggedElement;
+
+                let renderedCards = Array.from(container.querySelectorAll('.card-attachment-group'));
+                if (!renderedCards.length) {
+                    renderedCards = Array.from(container.querySelectorAll('[data-card-unique-id]'))
+                        .filter((el) => !el.closest('.card-attachment-pile'));
+                }
+
+                const filteredCards = activeDragged ? renderedCards.filter(card => card !== activeDragged) : renderedCards;
                 const pointerAxis = event.clientX;
                 const pointerAxisY = event.clientY;
                 const isHorizontal = container.scrollWidth >= container.scrollHeight;
@@ -671,13 +681,13 @@ class UIZonesManager {
                 }
 
                 if (
-                    draggedElement &&
+                    activeDragged &&
                     data.cardZone === targetZone &&
-                    container.contains(draggedElement) &&
+                    container.contains(activeDragged) &&
                     positionIndex !== null
                 ) {
                     const referenceCard = filteredCards[positionIndex] || null;
-                    container.insertBefore(draggedElement, referenceCard);
+                    container.insertBefore(activeDragged, referenceCard);
                 }
             }
 
@@ -737,11 +747,20 @@ class UIZonesManager {
 
         const { cardId, cardZone, uniqueCardId } = dragData;
         const draggedElement = (typeof GameCards !== 'undefined' ? GameCards.draggedCardElement : null) || document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
+        const groupHandle = draggedElement && typeof draggedElement.closest === 'function'
+            ? draggedElement.closest('.card-attachment-group')
+            : null;
+        const activeDragged = groupHandle || draggedElement;
 
         let positionIndex = null;
         if (container) {
-            const allCards = Array.from(container.querySelectorAll('[data-card-unique-id]'));
-            const filteredCards = draggedElement ? allCards.filter(card => card !== draggedElement) : allCards;
+            let renderedCards = Array.from(container.querySelectorAll('.card-attachment-group'));
+            if (!renderedCards.length) {
+                renderedCards = Array.from(container.querySelectorAll('[data-card-unique-id]'))
+                    .filter((el) => !el.closest('.card-attachment-pile'));
+            }
+
+            const filteredCards = activeDragged ? renderedCards.filter(card => card !== activeDragged) : renderedCards;
             const pointerAxisX = event.clientX;
             const pointerAxisY = event.clientY;
             const isHorizontal = container.scrollWidth >= container.scrollHeight;
@@ -758,10 +777,10 @@ class UIZonesManager {
 
             if (filteredCards.length === 0) {
                 positionIndex = 0;
-                if (draggedElement) {
+                if (activeDragged) {
                     removePlaceholders();
-                    container.appendChild(draggedElement);
-                    draggedElement.setAttribute('data-card-zone', targetZone);
+                    container.appendChild(activeDragged);
+                    activeDragged.setAttribute('data-card-zone', targetZone);
                 }
             } else {
                 let insertIndex = filteredCards.length;
@@ -780,16 +799,16 @@ class UIZonesManager {
                 insertIndex = Math.max(0, Math.min(insertIndex, filteredCards.length));
                 positionIndex = insertIndex;
 
-                if (draggedElement) {
+                if (activeDragged) {
                     removePlaceholders();
                     const referenceCard = filteredCards[insertIndex] || null;
-                    container.insertBefore(draggedElement, referenceCard);
-                    draggedElement.setAttribute('data-card-zone', targetZone);
+                    container.insertBefore(activeDragged, referenceCard);
+                    activeDragged.setAttribute('data-card-zone', targetZone);
                 }
             }
 
             if (container.dataset) {
-                const cardCount = container.querySelectorAll('[data-card-unique-id]').length;
+                const cardCount = renderedCards.length || container.querySelectorAll('[data-card-unique-id]').length;
                 container.dataset.cardCount = String(cardCount);
             }
         }
@@ -821,11 +840,17 @@ class UIZonesManager {
         if (!playerData) return { playerData: null, zone: [], playerIndex: null };
 
         const pureZoneName = zoneName.replace('opponent_', '');
-        const normalizedZoneName = pureZoneName === 'commander' ? 'commander_zone' : pureZoneName;
+        const normalizedZoneName = (() => {
+            if (pureZoneName === 'commander') return 'commander_zone';
+            if (pureZoneName === 'reveal') return 'reveal_zone';
+            return pureZoneName;
+        })();
 
         let zone = [];
         if (normalizedZoneName === 'deck') {
             zone = playerData.library || playerData.deck || [];
+        } else if (normalizedZoneName === 'reveal_zone') {
+            zone = playerData.reveal_zone || playerData.reveal || [];
         } else {
             zone = playerData[normalizedZoneName] || [];
         }
