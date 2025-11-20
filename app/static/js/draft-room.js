@@ -6,7 +6,11 @@
     let websocket;
     const DECK_MANAGER_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
     let cachedDraftedCards = [];
-    let currentRoomMeta = { setName: draftMeta.setName || '', roomName: draftMeta.roomName || '' };
+    let currentRoomMeta = {
+        setName: draftMeta.setName || '',
+        roomName: draftMeta.roomName || '',
+        draftType: draftMeta.draftType || ''
+    };
     const playerListElement = document.getElementById('player-list');
     const deckManagerContext = window.MANAFORGE_DECK_CONTEXT || null;
     const deckManagerLink = document.getElementById('draft-open-deck-builder');
@@ -14,6 +18,7 @@
         latestCards: [],
         ready: false
     };
+    let sealedSyncNotified = false;
 
     if (!roomId) {
         console.warn('Draft room metadata missing; skipping draft room setup.');
@@ -44,6 +49,21 @@
             .replace(/'/g, '&#39;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
+    }
+
+    function normalizeDraftType(rawValue) {
+        return (rawValue || '').toString().toLowerCase();
+    }
+
+    function getDraftLabelPrefix() {
+        const normalized = normalizeDraftType(currentRoomMeta.draftType);
+        if (normalized === 'sealed') {
+            return 'Sealed';
+        }
+        if (normalized === 'cube') {
+            return 'Cube Draft';
+        }
+        return 'Draft';
     }
 
     function buildCardPreviewAttributes(card) {
@@ -100,8 +120,11 @@
                 const room = data.room_state;
                 currentRoomMeta = {
                     setName: room.set_name || currentRoomMeta.setName,
-                    roomName: room.name || currentRoomMeta.roomName
+                    roomName: room.name || currentRoomMeta.roomName,
+                    draftType: room.draft_type || currentRoomMeta.draftType
                 };
+                const roomDraftType = normalizeDraftType(currentRoomMeta.draftType);
+                const isSealedDraft = roomDraftType === 'sealed';
                 const me = room.players.find(p => p.id === playerId);
 
                 if (me) {
@@ -122,7 +145,13 @@
                 renderPlayerList(room);
 
                 const packHeader = document.getElementById('pack-header');
-                packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
+                if (packHeader) {
+                    if (isSealedDraft && (room.state || '').toLowerCase() === 'completed') {
+                        packHeader.innerText = 'Sealed pool generated';
+                    } else {
+                        packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
+                    }
+                }
 
                 const hideSetupButtons = () => {
                     const startButton = document.getElementById('start-draft-button');
@@ -133,18 +162,32 @@
                     if (fillBotsButton) fillBotsButton.style.display = 'none';
                 };
 
-                if (room.state.toLowerCase() === 'drafting') {
+                const roomState = (room.state || '').toLowerCase();
+                if (roomState === 'drafting') {
                     const loadingIndicator = document.querySelector('.fixed.inset-0');
                     if (loadingIndicator) {
                         loadingIndicator.remove();
                     }
                     hideSetupButtons();
-                } else if (room.state.toLowerCase() === 'completed') {
+                } else if (roomState === 'completed') {
                     // Hide drafting elements and show completion message
                     hideSetupButtons();
                     document.getElementById('current-pack-container').style.display = 'none';
-                    document.getElementById('draft-complete-message').classList.remove('hidden');
+                    const completionMessage = document.getElementById('draft-complete-message');
+                    if (completionMessage) {
+                        completionMessage.classList.remove('hidden');
+                        const heading = completionMessage.querySelector('h2');
+                        const body = completionMessage.querySelector('p');
+                        if (isSealedDraft) {
+                            if (heading) heading.textContent = 'Sealed Pool Ready!';
+                            if (body) body.textContent = 'All six boosters have been added to your deck builder below.';
+                        }
+                    }
                     document.getElementById('export-container').classList.remove('hidden');
+                    if (isSealedDraft && !sealedSyncNotified) {
+                        showDraftStatus('Sealed pool synced to Deck Manager.', 'success');
+                        sealedSyncNotified = true;
+                    }
                 }
             }
         };
@@ -549,7 +592,7 @@
             }
 
             const deckPayload = {
-                name: `${currentRoomMeta.setName || currentRoomMeta.roomName || 'ManaForge'} Draft Deck`,
+                name: `${getDraftLabelPrefix()} - ${currentRoomMeta.setName || currentRoomMeta.roomName || 'ManaForge'}`,
                 format: 'draft',
                 cards: Array.from(grouped.values()),
                 commanders: []

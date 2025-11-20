@@ -325,10 +325,6 @@ class UIRenderersTemplates {
             players[activePlayerIndex],
             this._getSeatFallbackName(activePlayerIndex)
         );
-        const priorityPlayerName = this._getPlayerDisplayName(
-            players[priorityPlayerIndex],
-            this._getSeatFallbackName(priorityPlayerIndex)
-        );
 
         const props = {
             headerIcon: '⚡',
@@ -336,8 +332,7 @@ class UIRenderersTemplates {
             spectatorMode,
             gameInfo: {
                 turn: currentTurn,
-                active: activePlayerName,
-                priority: priorityPlayerName
+                active: activePlayerName
             },
             phases: Array.isArray(UIConfig?.GAME_PHASES)
                 ? UIConfig.GAME_PHASES.map((phase) => ({ ...phase }))
@@ -700,11 +695,9 @@ class UIRenderersTemplates {
         const currentPhase = gameState.phase || 'begin';
         const phaseDisplay = UIConfig.getPhaseDisplayName(currentPhase);
         const players = Array.isArray(gameState.players) ? gameState.players : [];
-        const priorityIndex = typeof gameState.priority_player === 'number' ? gameState.priority_player : 0;
-        const priorityName = this._getPlayerDisplayName(players[priorityIndex], this._getSeatFallbackName(priorityIndex));
 
         return `
-            <div class="grid grid-cols-3 gap-4 text-center">
+            <div class="grid grid-cols-2 gap-4 text-center">
                 <div class="bg-yellow-500/20 rounded-lg p-3">
                     <div class="text-yellow-300 font-semibold">Turn</div>
                     <div class="text-2xl font-bold">${currentTurn}</div>
@@ -712,10 +705,6 @@ class UIRenderersTemplates {
                 <div class="bg-blue-500/20 rounded-lg p-3">
                     <div class="text-blue-300 font-semibold">Phase</div>
                     <div class="text-lg font-bold">${phaseDisplay}</div>
-                </div>
-                <div class="bg-purple-500/20 rounded-lg p-3">
-                    <div class="text-purple-300 font-semibold">Priority</div>
-                    <div class="text-lg font-bold">${priorityName}</div>
                 </div>
             </div>
         `;

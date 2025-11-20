@@ -13,7 +13,20 @@
         if (!draftModeSelect) {
             draftModeSelect = document.getElementById('draftMode');
         }
-        return !draftModeSelect || draftModeSelect.value === 'set';
+        if (!draftModeSelect) {
+            return true;
+        }
+        return draftModeSelect.value === 'set' || draftModeSelect.value === 'sealed';
+    }
+
+    function getSelectedDraftType() {
+        if (!draftModeSelect) {
+            draftModeSelect = document.getElementById('draftMode');
+        }
+        const mode = draftModeSelect ? draftModeSelect.value : 'set';
+        if (mode === 'cube') return 'cube';
+        if (mode === 'sealed') return 'sealed';
+        return 'booster_draft';
     }
 
     function updateDraftModeUI() {
@@ -41,6 +54,13 @@
             draftModeSelect.addEventListener('change', updateDraftModeUI);
         }
         updateDraftModeUI();
+    }
+
+    function formatDraftTypeLabel(rawType) {
+        const normalized = (rawType || '').toString().toLowerCase();
+        if (normalized === 'sealed') return 'Sealed';
+        if (normalized === 'cube') return 'Cube Draft';
+        return 'Draft';
     }
 
     async function ensureSetsLoaded() {
@@ -187,13 +207,15 @@
         const roomNameInput = document.getElementById('roomName');
         const roomName = roomNameInput ? roomNameInput.value : '';
         const mode = draftModeSelect ? draftModeSelect.value : 'set';
+        const draftType = getSelectedDraftType();
         const creatorId = `player-${Math.random().toString(36).substr(2, 9)}`;
         const payload = {
             name: roomName,
             creator_id: creatorId,
             set_code: '',
             set_name: '',
-            use_cube: mode === 'cube'
+            use_cube: mode === 'cube',
+            draft_type: draftType
         };
 
         if (mode === 'cube') {
@@ -260,15 +282,18 @@
             listDiv.innerHTML = `<p class="text-center text-arena-text-dim">No active draft rooms found.</p>`;
             return;
         }
-        listDiv.innerHTML = rooms.map(room => `
+        listDiv.innerHTML = rooms.map(room => {
+            const modeLabel = formatDraftTypeLabel(room.draft_type);
+            return `
             <div class="p-4 bg-arena-surface rounded-lg flex justify-between items-center">
                 <div>
                     <h3 class="font-bold text-lg">${room.name}</h3>
-                    <p class="text-sm text-arena-text-dim">${room.set_name} - ${room.players.length}/${room.max_players} players</p>
+                    <p class="text-sm text-arena-text-dim">${modeLabel} • ${room.set_name} - ${room.players.length}/${room.max_players} players</p>
                 </div>
                 <button onclick="joinDraftRoom('${room.id}')" class="arena-button px-4 py-2 rounded-lg">Join</button>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     async function joinDraftRoom(roomId) {
