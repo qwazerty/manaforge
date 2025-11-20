@@ -498,6 +498,7 @@
 
         render() {
             if (!this.state) return;
+            this.enforceSideboardPolicy();
             this.updateInputs();
             this.renderColumns();
             this.renderStats();
@@ -549,8 +550,12 @@
             if (!container) return;
             container.innerHTML = '';
             const showCommander = this.shouldShowCommanderColumn();
+            const showSideboard = this.isSideboardEnabled();
 
             COLUMN_CONFIG.forEach((column) => {
+                if (column.key === 'sideboard' && !showSideboard) {
+                    return;
+                }
                 const entries = this.getColumnEntries(column.key);
                 const columnEl = document.createElement('div');
                 columnEl.dataset.columnKey = column.key;
@@ -641,8 +646,13 @@
             if (this.elements.mainDeckCount) {
                 this.elements.mainDeckCount.textContent = stats.mainDeckTotal;
             }
+            const sideboardEnabled = this.isSideboardEnabled();
             if (this.elements.sideboardCount) {
-                this.elements.sideboardCount.textContent = stats.sideboardTotal;
+                this.elements.sideboardCount.textContent = sideboardEnabled ? stats.sideboardTotal : 0;
+                const sideboardCard = this.elements.sideboardCount.closest('.p-4');
+                if (sideboardCard) {
+                    sideboardCard.classList.toggle('hidden', !sideboardEnabled);
+                }
             }
             this.renderColorChips(stats.colors);
             this.renderTypeBreakdown(stats.typeCounts);
@@ -756,7 +766,7 @@
             const includeCommander = this.shouldShowCommanderColumn() || (this.state.columns.commander && this.state.columns.commander.length > 0);
             const mainColumns = includeCommander ? ['commander', ...MAIN_COLUMNS_BASE] : [...MAIN_COLUMNS_BASE];
             const mainEntries = this.getEntriesForColumns(mainColumns);
-            const sideEntries = this.getEntriesForColumns(['sideboard']);
+            const sideEntries = this.isSideboardEnabled() ? this.getEntriesForColumns(['sideboard']) : [];
 
             const typeCounts = {};
             const colors = {};
@@ -814,6 +824,10 @@
             return COMMANDER_FORMATS.has((this.state.format || '').toLowerCase());
         },
 
+        isSideboardEnabled() {
+            return !COMMANDER_FORMATS.has((this.state.format || '').toLowerCase());
+        },
+
         getColumnEntries(columnKey) {
             if (!this.state || !this.state.columns[columnKey]) {
                 return [];
@@ -835,6 +849,26 @@
                 });
             });
             return entries;
+        },
+
+        enforceSideboardPolicy() {
+            if (!this.state || this.isSideboardEnabled()) {
+                return;
+            }
+            const sideboardIds = Array.isArray(this.state.columns.sideboard) ? [...this.state.columns.sideboard] : [];
+            if (!sideboardIds.length) {
+                return;
+            }
+            this.state.columns.sideboard = [];
+            sideboardIds.forEach((entryId) => {
+                const entry = this.state.entries[entryId];
+                if (!entry || !entry.card) return;
+                const destination = this.resolveDefaultColumn(entry.card) || 'cmc1';
+                if (!Array.isArray(this.state.columns[destination])) {
+                    this.state.columns[destination] = [];
+                }
+                this.state.columns[destination].push(entryId);
+            });
         },
 
         handleDragStart(event) {
@@ -880,6 +914,10 @@
             const entryId = this.draggedEntryId || (event.dataTransfer && event.dataTransfer.getData('text/plain'));
             const targetColumn = columnEl.getAttribute('data-column-key');
             if (!entryId || !targetColumn) {
+                this.clearDragState();
+                return;
+            }
+            if (!this.isSideboardEnabled() && targetColumn === 'sideboard') {
                 this.clearDragState();
                 return;
             }
