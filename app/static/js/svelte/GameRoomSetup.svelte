@@ -206,6 +206,16 @@
 
     const deckControlsDisabled = () => deckSubmitDisabled();
 
+    const deckTextareaPlaceholder = [
+        'Paste your decklist here...',
+        '',
+        'Example:',
+        '4 Lightning Bolt',
+        '4 Grizzly Bears',
+        '12 Mountain',
+        '12 Forest'
+    ].join('\n');
+
     const deckTextareaClasses = () => [
         'w-full px-5 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none font-mono text-sm',
         deckControlsDisabled() ? 'opacity-70 cursor-not-allowed' : ''
@@ -1228,7 +1238,7 @@
                     id="decklistText"
                     rows="8"
                     class={deckTextareaClasses()}
-                    placeholder="Paste your decklist here...&#10;Example:&#10;4 Lightning Bolt&#10;4 Grizzly Bears&#10;12 Mountain&#10;12 Forest"
+                    placeholder={deckTextareaPlaceholder}
                     bind:value={deckText}
                     oninput={(event) => handleDeckTextInput(event.target.value)}
                     disabled={deckControlsDisabled()}
