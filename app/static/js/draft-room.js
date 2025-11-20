@@ -124,19 +124,24 @@
                 const packHeader = document.getElementById('pack-header');
                 packHeader.innerText = `Current Pack (Pack ${room.current_pack_number}, Pick ${room.current_pick_number})`;
 
+                const hideSetupButtons = () => {
+                    const startButton = document.getElementById('start-draft-button');
+                    const addBotButton = document.getElementById('add-bot-button');
+                    const fillBotsButton = document.getElementById('fill-bots-button');
+                    if (startButton) startButton.style.display = 'none';
+                    if (addBotButton) addBotButton.style.display = 'none';
+                    if (fillBotsButton) fillBotsButton.style.display = 'none';
+                };
+
                 if (room.state.toLowerCase() === 'drafting') {
                     const loadingIndicator = document.querySelector('.fixed.inset-0');
                     if (loadingIndicator) {
                         loadingIndicator.remove();
                     }
-                    const startButton = document.getElementById('start-draft-button');
-                    startButton.style.display = 'none';
-                    const addBotButton = document.getElementById('add-bot-button');
-                    addBotButton.style.display = 'none';
-                    const fillBotsButton = document.getElementById('fill-bots-button');
-                    fillBotsButton.style.display = 'none';
+                    hideSetupButtons();
                 } else if (room.state.toLowerCase() === 'completed') {
                     // Hide drafting elements and show completion message
+                    hideSetupButtons();
                     document.getElementById('current-pack-container').style.display = 'none';
                     document.getElementById('draft-complete-message').classList.remove('hidden');
                     document.getElementById('export-container').classList.remove('hidden');
@@ -545,7 +550,7 @@
 
             const deckPayload = {
                 name: `${currentRoomMeta.setName || currentRoomMeta.roomName || 'ManaForge'} Draft Deck`,
-                format: 'standard',
+                format: 'draft',
                 cards: Array.from(grouped.values()),
                 commanders: []
             };
