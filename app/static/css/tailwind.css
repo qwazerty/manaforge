@@ -194,7 +194,7 @@
     }
 
     .deck-column-stack .deck-card-entry {
-        margin-top: -8rem;
+        margin-top: -13rem;
         transition: transform 0.2s ease, filter 0.2s ease, margin-top 0.2s ease;
         position: relative;
     }
