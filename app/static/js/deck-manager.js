@@ -612,7 +612,7 @@
             const safeImage = escapeHtml(card.image_url || '');
 
             entryEl.innerHTML = `
-                <div class="card-visual relative rounded-xl overflow-hidden shadow-lg border border-arena-accent/40 bg-arena-surface/40">
+                <div class="card-visual relative rounded-xl overflow-hidden shadow-lg bg-arena-surface/40">
                         ${card.image_url
                             ? `<img src="${safeImage}" alt="${safeName}" class="deck-card-image select-none">`
                         : `
