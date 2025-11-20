@@ -454,12 +454,14 @@
                         <div class="card-zones-container">
                             {#each sidebar.opponent.zones as zone (zone.key)}
                                 <div class={`${zoneContainerClass} ${zone.key}-zone`}>
-                                    <div class="zone-label w-full flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wide text-arena-text-dim mb-2">
-                                        {#if zone.label?.icon}
-                                            <span class="text-base leading-none">{zone.label.icon}</span>
-                                        {/if}
-                                        <span>{zone.label?.title || zone.key}</span>
-                                    </div>
+                                    {#if zone.key !== 'life'}
+                                        <div class="zone-label w-full flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wide text-arena-text-dim mb-2">
+                                            {#if zone.label?.icon}
+                                                <span class="text-base leading-none">{zone.label.icon}</span>
+                                            {/if}
+                                            <span>{zone.label?.title || zone.key}</span>
+                                        </div>
+                                    {/if}
                                     {#if zone.component}
                                         {@const ZoneComponent = zone.component}
                                         <ZoneComponent {...zone.props} />
@@ -486,12 +488,14 @@
                         <div class="card-zones-container">
                             {#each sidebar.player.zones as zone (zone.key)}
                                 <div class={`${zoneContainerClass} ${zone.key}-zone`}>
-                                    <div class="zone-label w-full flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wide text-arena-text-dim mb-2">
-                                        {#if zone.label?.icon}
-                                            <span class="text-base leading-none">{zone.label.icon}</span>
-                                        {/if}
-                                        <span>{zone.label?.title || zone.key}</span>
-                                    </div>
+                                    {#if zone.key !== 'life'}
+                                        <div class="zone-label w-full flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wide text-arena-text-dim mb-2">
+                                            {#if zone.label?.icon}
+                                                <span class="text-base leading-none">{zone.label.icon}</span>
+                                            {/if}
+                                            <span>{zone.label?.title || zone.key}</span>
+                                        </div>
+                                    {/if}
                                     {#if zone.component}
                                         {@const ZoneComponent = zone.component}
                                         <ZoneComponent {...zone.props} />
