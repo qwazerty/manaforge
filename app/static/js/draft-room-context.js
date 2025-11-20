@@ -16,12 +16,18 @@
     const playerParamRaw = params.get('player') || 'local';
     const sanitizedPlayer = (playerParamRaw || 'local').replace(/[^a-zA-Z0-9_-]/g, '');
     const deckId = `draft_${roomData.id || 'room'}_${sanitizedPlayer || 'player'}`;
+    const draftTypeRaw = (roomData.draft_type || '').toString().toLowerCase();
+    const deckLabel = draftTypeRaw === 'sealed'
+        ? 'Sealed'
+        : draftTypeRaw === 'cube'
+            ? 'Cube Draft'
+            : 'Draft';
     const resolvedSetName = roomData.set_name || 'Set';
     const resolvedRoomName = roomData.name || 'Room';
 
     window.MANAFORGE_DECK_CONTEXT = {
         deckId,
-        deckName: `Draft - ${resolvedSetName} - ${resolvedRoomName}`,
+        deckName: `${deckLabel} - ${resolvedSetName} - ${resolvedRoomName}`,
         format: 'draft',
         forceDeckFormat: true,
         persistEmpty: true,
@@ -33,6 +39,7 @@
         roomName: roomData.name,
         setName: roomData.set_name,
         deckId,
-        playerParam: playerParamRaw
+        playerParam: playerParamRaw,
+        draftType: draftTypeRaw
     };
 })();

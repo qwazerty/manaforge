@@ -27,7 +27,8 @@ class DraftEngine:
         set_name: str,
         max_players: int,
         creator_id: str,
-        cube_settings: Optional[Dict[str, Any]] = None
+        cube_settings: Optional[Dict[str, Any]] = None,
+        draft_type: DraftType = DraftType.BOOSTER_DRAFT
     ) -> DraftRoom:
         """Creates a new draft room and adds the creator as Player 1."""
         room_id = f"draft-{uuid.uuid4().hex[:8]}"
@@ -35,9 +36,9 @@ class DraftEngine:
         cube_configuration: Optional[CubeConfiguration] = None
         normalized_set_code = (set_code or "").strip()
         normalized_set_name = (set_name or "").strip()
-        draft_type = DraftType.BOOSTER_DRAFT
+        resolved_draft_type = draft_type
 
-        if cube_settings.get("use_cube"):
+        if cube_settings.get("use_cube") or resolved_draft_type == DraftType.CUBE:
             cube_payload = await self.draft_service.load_cube_pool(
                 source_url=cube_settings.get("cube_url"),
                 raw_list=cube_settings.get("cube_list"),
@@ -58,10 +59,14 @@ class DraftEngine:
             )
             normalized_set_name = cube_configuration.name or normalized_set_name or "Custom Cube"
             normalized_set_code = cube_payload.get("set_code") or cube_configuration.cube_id or "cube"
-            draft_type = DraftType.CUBE
+            resolved_draft_type = DraftType.CUBE
         else:
             if not normalized_set_code:
-                raise ValueError("Set code is required for booster drafts.")
+                raise ValueError("Set code is required for sealed pools and booster drafts.")
+            if resolved_draft_type == DraftType.CUBE:
+                resolved_draft_type = DraftType.BOOSTER_DRAFT
+            if resolved_draft_type not in {DraftType.BOOSTER_DRAFT, DraftType.SEALED}:
+                resolved_draft_type = DraftType.BOOSTER_DRAFT
 
         room = DraftRoom(
             id=room_id,
@@ -69,7 +74,7 @@ class DraftEngine:
             set_code=normalized_set_code,
             set_name=normalized_set_name or normalized_set_code.upper(),
             max_players=max_players,
-            draft_type=draft_type,
+            draft_type=resolved_draft_type,
             cube_configuration=cube_configuration
         )
 
@@ -172,6 +177,17 @@ class DraftEngine:
             return
 
         room.state = DraftState.DRAFTING
+
+        if room.draft_type == DraftType.SEALED:
+            room.current_pack_number = 0
+            room.current_pick_number = 0
+            room.packs = []
+            for player in room.players:
+                player.current_pack = []
+                player.drafted_cards = await self._generate_sealed_pool(room.set_code, boosters=6)
+                player.has_picked_card = False
+            room.state = DraftState.COMPLETED
+            return
         
         # Generate 3 packs for each player
         packs_per_player = 3
@@ -275,6 +291,15 @@ class DraftEngine:
             player.has_picked_card = False
             
         room.current_pick_number += 1
+
+    async def _generate_sealed_pool(self, set_code: str, boosters: int = 6) -> List[Card]:
+        """Generate a sealed pool worth of boosters."""
+        pool: List[Card] = []
+        total_boosters = max(1, boosters)
+        for _ in range(total_boosters):
+            pack = await self.draft_service.generate_booster(set_code)
+            pool.extend(pack)
+        return pool
 
     async def _generate_cube_pack(self, room_id: str, size: int) -> List[Card]:
         """Draw a pack of cards from the cube pool."""

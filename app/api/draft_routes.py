@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import random
 
-from app.models.game import DraftRoom
+from app.models.game import DraftRoom, DraftType
 from app.services.card_service import CardService
 from app.services.draft_service import DraftService
 from app.services.draft_engine import DraftEngine
@@ -43,6 +43,7 @@ class CreateRoomRequest(BaseModel):
     cube_url: Optional[str] = None
     cube_list: Optional[str] = None
     cube_name: Optional[str] = None
+    draft_type: DraftType = DraftType.BOOSTER_DRAFT
 
 class PickCardRequest(BaseModel):
     player_id: str
@@ -66,6 +67,7 @@ async def create_draft_room(
             set_name=request.set_name,
             max_players=request.max_players,
             creator_id=request.creator_id,
+            draft_type=request.draft_type,
             cube_settings={
                 "use_cube": request.use_cube,
                 "cube_url": request.cube_url,
