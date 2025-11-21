@@ -85,7 +85,12 @@
                 min="1"
                 step="1"
                 class="w-full rounded-lg border border-arena-accent/30 bg-arena-surface-light px-3 py-2 text-sm text-arena-text"
-                placeholder="Amount" />
+                placeholder="Amount"
+                onkeydown={(e) => {
+                    if (e.key === 'Enter') {
+                        UIZonesManager.submitCustomLifeInput(playerId);
+                    }
+                }} />
             <div class="life-custom-actions">
                 <button
                     type="button"
