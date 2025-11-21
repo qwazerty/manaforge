@@ -240,7 +240,10 @@
                 basicLandsToggle: document.getElementById('deck-basic-lands-toggle'),
                 basicLandsPanel: document.getElementById('deck-basic-lands-panel'),
                 basicLandsClose: document.getElementById('deck-basic-lands-close'),
-                basicLandButtons: Array.from(document.querySelectorAll('[data-basic-land-add]'))
+                basicLandButtons: Array.from(document.querySelectorAll('[data-basic-land-add]')),
+                colorFilterSelect: document.getElementById('deck-filter-color'),
+                rarityFilterSelect: document.getElementById('deck-filter-rarity'),
+                sideSortSelect: document.getElementById('deck-side-sort')
             };
         },
 
@@ -288,6 +291,33 @@
                 this.elements.formatSelect.addEventListener('change', (event) => {
                     const nextFormat = (event.target.value || '').toLowerCase();
                     this.state.format = nextFormat;
+                    this.render();
+                    this.queueSave();
+                });
+            }
+
+            if (this.elements.colorFilterSelect) {
+                this.elements.colorFilterSelect.addEventListener('change', (event) => {
+                    const value = event.target.value || 'all';
+                    this.state.filters.color = value;
+                    this.render();
+                    this.queueSave();
+                });
+            }
+
+            if (this.elements.rarityFilterSelect) {
+                this.elements.rarityFilterSelect.addEventListener('change', (event) => {
+                    const value = event.target.value || 'all';
+                    this.state.filters.rarity = value;
+                    this.render();
+                    this.queueSave();
+                });
+            }
+
+            if (this.elements.sideSortSelect) {
+                this.elements.sideSortSelect.addEventListener('change', (event) => {
+                    const value = event.target.value || 'default';
+                    this.state.sorting.sideboard = value;
                     this.render();
                     this.queueSave();
                 });
@@ -368,7 +398,14 @@
                 deckName: 'Untitled Deck',
                 format: 'modern',
                 entries: {},
-                columns
+                columns,
+                filters: {
+                    color: 'all',
+                    rarity: 'all'
+                },
+                sorting: {
+                    sideboard: 'default'
+                }
             };
         },
 
@@ -414,6 +451,7 @@
             this.state = nextState;
             this.applyContextDefaults();
             this.ensureColumns();
+            this.ensureViewPreferences();
             const hadDeckId = Boolean(this.currentDeckId);
             this.ensureDeckIdentity();
             if (!hadDeckId) {
@@ -471,6 +509,21 @@
             });
             if (typeof this.state.entries !== 'object' || this.state.entries === null) {
                 this.state.entries = {};
+            }
+        },
+
+        ensureViewPreferences() {
+            if (!this.state.filters) {
+                this.state.filters = { color: 'all', rarity: 'all' };
+            } else {
+                this.state.filters.color = this.state.filters.color || 'all';
+                this.state.filters.rarity = this.state.filters.rarity || 'all';
+            }
+
+            if (!this.state.sorting) {
+                this.state.sorting = { sideboard: 'default' };
+            } else if (!this.state.sorting.sideboard) {
+                this.state.sorting.sideboard = 'default';
             }
         },
 
@@ -543,6 +596,15 @@
                     this.elements.formatSelect.value = this.state.format;
                 }
             }
+            if (this.elements.colorFilterSelect) {
+                this.elements.colorFilterSelect.value = this.state.filters?.color || 'all';
+            }
+            if (this.elements.rarityFilterSelect) {
+                this.elements.rarityFilterSelect.value = this.state.filters?.rarity || 'all';
+            }
+            if (this.elements.sideSortSelect) {
+                this.elements.sideSortSelect.value = this.state.sorting?.sideboard || 'default';
+            }
         },
 
         renderColumns() {
@@ -557,6 +619,8 @@
                     return;
                 }
                 const entries = this.getColumnEntries(column.key);
+                const filteredEntries = this.filterEntries(entries);
+                const visibleEntries = this.sortEntriesForColumn(filteredEntries, column.key);
                 const columnEl = document.createElement('div');
                 columnEl.dataset.columnKey = column.key;
                 columnEl.className = [
@@ -583,20 +647,120 @@
                 `;
 
                 const listEl = columnEl.querySelector('[data-card-list]');
-                if (!entries.length) {
+                if (!visibleEntries.length) {
                     const placeholder = document.createElement('div');
                     placeholder.className = 'text-center text-xs text-arena-muted border border-dashed border-arena-accent/30 rounded-lg py-6';
-                    placeholder.textContent = 'Drop cards here';
+                    if (!entries.length) {
+                        placeholder.textContent = 'Drop cards here';
+                    } else {
+                        placeholder.textContent = 'Aucune carte ne correspond aux filtres actifs.';
+                    }
                     listEl.appendChild(placeholder);
                 } else {
-                    entries.forEach((entry, entryIndex) => {
-                        const entryEl = this.renderEntry(entry, entryIndex, entries.length);
+                    visibleEntries.forEach((entry, entryIndex) => {
+                        const entryEl = this.renderEntry(entry, entryIndex, visibleEntries.length);
                         listEl.appendChild(entryEl);
                     });
                 }
 
                 container.appendChild(columnEl);
             });
+        },
+
+        filterEntries(entries = []) {
+            return entries.filter((entry) => this.passesFilters(entry?.card));
+        },
+
+        passesFilters(card = {}) {
+            const filters = this.state?.filters || {};
+            const colorFilter = filters.color || 'all';
+            const rarityFilter = filters.rarity || 'all';
+
+            if (colorFilter !== 'all' && !this.cardMatchesColor(card, colorFilter)) {
+                return false;
+            }
+
+            if (rarityFilter !== 'all') {
+                const rarity = String(card.rarity || '').toLowerCase();
+                if (rarity !== rarityFilter) {
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+        cardMatchesColor(card = {}, filter) {
+            const colors = Array.isArray(card.colors) ? card.colors : (Array.isArray(card.color_identity) ? card.color_identity : []);
+            const normalized = colors.map((c) => String(c || '').toUpperCase()).filter(Boolean);
+
+            if (filter === 'multi') {
+                return normalized.length > 1;
+            }
+
+            if (filter === 'C') {
+                return normalized.length === 0 || normalized.includes('C');
+            }
+
+            return normalized.includes(filter);
+        },
+
+        sortEntriesForColumn(entries = [], columnKey) {
+            if (!entries.length) {
+                return entries;
+            }
+
+            const sortMode = columnKey === 'sideboard'
+                ? (this.state?.sorting?.sideboard || 'default')
+                : 'default';
+
+            if (sortMode === 'default') {
+                return entries;
+            }
+
+            const sorted = [...entries];
+            if (sortMode === 'rarity') {
+                sorted.sort((a, b) => {
+                    const rarityA = this.getRarityWeight(a?.card);
+                    const rarityB = this.getRarityWeight(b?.card);
+                    if (rarityA !== rarityB) {
+                        return rarityA - rarityB;
+                    }
+                    return this.compareByName(a?.card, b?.card);
+                });
+            } else if (sortMode === 'cmc') {
+                sorted.sort((a, b) => {
+                    const cmcA = Number(a?.card?.cmc);
+                    const cmcB = Number(b?.card?.cmc);
+                    const safeA = Number.isFinite(cmcA) ? cmcA : Number.POSITIVE_INFINITY;
+                    const safeB = Number.isFinite(cmcB) ? cmcB : Number.POSITIVE_INFINITY;
+                    if (safeA !== safeB) {
+                        return safeA - safeB;
+                    }
+                    return this.compareByName(a?.card, b?.card);
+                });
+            }
+
+            return sorted;
+        },
+
+        getRarityWeight(card = {}) {
+            const rarityOrder = {
+                mythic: 0,
+                rare: 1,
+                uncommon: 2,
+                common: 3
+            };
+            const rarity = String(card.rarity || '').toLowerCase();
+            return Object.prototype.hasOwnProperty.call(rarityOrder, rarity) ? rarityOrder[rarity] : 99;
+        },
+
+        compareByName(cardA = {}, cardB = {}) {
+            const nameA = String(cardA.name || '').toLowerCase();
+            const nameB = String(cardB.name || '').toLowerCase();
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return 0;
         },
 
         renderEntry(entry, entryIndex = 0, totalEntries = 1) {
