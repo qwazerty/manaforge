@@ -11,8 +11,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-COPY app/static/css ./app/static/css
-COPY app/static/js/svelte ./app/static/js/svelte
+COPY app ./app
 COPY tools ./tools
 COPY tailwind.config.js ./tailwind.config.js
 

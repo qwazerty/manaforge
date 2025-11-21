@@ -632,14 +632,16 @@
                                     <span>${type}</span>
                                 </div>
                             `}
-                        <div class="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/80 text-white text-xs font-semibold pointer-events-none">
-                            ${entry.quantity}x
+                        <div class="absolute right-2 top-2 flex flex-col items-end gap-2">
+                            <div class="px-2 py-1 rounded-full bg-black/80 text-white text-xs font-semibold pointer-events-none">
+                                ${entry.quantity}x
+                            </div>
+                            <div class="deck-card-entry-controls flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button class="rounded-full bg-black/60 text-white text-xs" data-entry-action="increment" data-entry-id="${entry.id}" title="Increase quantity">+</button>
+                                <button class="rounded-full bg-black/60 text-white text-xs" data-entry-action="decrement" data-entry-id="${entry.id}" title="Decrease quantity">−</button>
+                                <button class="rounded-full bg-red-600/70 text-white text-xs" data-entry-action="remove" data-entry-id="${entry.id}" title="Remove card">✕</button>
+                            </div>
                         </div>
-                        <div class="deck-card-entry-controls absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button class="rounded-full bg-black/60 text-white text-xs" data-entry-action="increment" data-entry-id="${entry.id}" title="Increase quantity">+</button>
-                        <button class="rounded-full bg-black/60 text-white text-xs" data-entry-action="decrement" data-entry-id="${entry.id}" title="Decrease quantity">−</button>
-                        <button class="rounded-full bg-red-600/70 text-white text-xs" data-entry-action="remove" data-entry-id="${entry.id}" title="Remove card">✕</button>
-                    </div>
                 </div>
             `;
 
