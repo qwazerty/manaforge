@@ -563,7 +563,8 @@
                     'deck-column',
                     'flex',
                     'flex-col',
-                    'gap-3'
+                    'gap-3',
+                    `deck-column-${column.key}`
                 ].join(' ');
 
                 if (column.key === 'commander' && !showCommander && entries.length === 0) {

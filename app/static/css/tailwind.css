@@ -169,7 +169,7 @@
     #deck-columns {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-        align-items: flex-start;
+        align-items: stretch;
     }
 
     .deck-columns-panel {
@@ -181,6 +181,7 @@
         margin: 0 auto;
         padding-top: 0.75rem;
         position: relative;
+        height: 100%;
     }
 
     .deck-column-header {
@@ -197,6 +198,10 @@
         margin-top: -13rem;
         transition: transform 0.2s ease, filter 0.2s ease, margin-top 0.2s ease;
         position: relative;
+    }
+
+    .deck-column-sideboard .deck-column-stack .deck-card-entry {
+        margin-top: -14.5rem;
     }
 
     .deck-column-stack .deck-card-entry:first-child {
