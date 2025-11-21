@@ -651,6 +651,10 @@ class UIActionHistory {
             return true;
         }
 
+        if (normalized === 'resolve_temporary_zone') {
+            return true;
+        }
+
         if (normalized === 'flip_card') {
             return true;
         }
