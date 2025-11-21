@@ -120,7 +120,40 @@
                     <h2 class="font-magic text-2xl text-arena-accent">Deck layout</h2>
                     <p class="text-arena-text-dim text-sm">Drag & drop cards between columns. Hover to preview.</p>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="deck-filter-bar">
+                        <div class="deck-filter">
+                            <label for="deck-filter-color" class="deck-filter-label">Couleur</label>
+                            <select id="deck-filter-color" class="deck-filter-select">
+                                <option value="all">Toutes</option>
+                                <option value="W">White</option>
+                                <option value="U">Blue</option>
+                                <option value="B">Black</option>
+                                <option value="R">Red</option>
+                                <option value="G">Green</option>
+                                <option value="C">Colorless</option>
+                                <option value="multi">Multicolor</option>
+                            </select>
+                        </div>
+                        <div class="deck-filter">
+                            <label for="deck-filter-rarity" class="deck-filter-label">Rareté</label>
+                            <select id="deck-filter-rarity" class="deck-filter-select">
+                                <option value="all">Toutes</option>
+                                <option value="mythic">Mythique</option>
+                                <option value="rare">Rare</option>
+                                <option value="uncommon">Peu commune</option>
+                                <option value="common">Commune</option>
+                            </select>
+                        </div>
+                        <div class="deck-filter">
+                            <label for="deck-side-sort" class="deck-filter-label">Trier side</label>
+                            <select id="deck-side-sort" class="deck-filter-select">
+                                <option value="default">Ordre actuel</option>
+                                <option value="rarity">Rareté</option>
+                                <option value="cmc">CMC croissant</option>
+                            </select>
+                        </div>
+                    </div>
                     <button id="deck-basic-lands-toggle" type="button" class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                         <span>🌱</span>Add basic lands
                     </button>
