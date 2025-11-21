@@ -869,6 +869,15 @@ class UIActionHistory {
             return;
         }
 
+        const normalizedAction = entry.rawAction
+            ? String(entry.rawAction).toLowerCase()
+            : '';
+        if (normalizedAction === 'scry' || normalizedAction === 'surveil') {
+            entry.details = [];
+            entry.cardRefs = [];
+            return;
+        }
+
         const moveContext = this._resolveHandToLibraryMoveContext(entry);
         if (!moveContext) {
             return;
