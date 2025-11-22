@@ -21,6 +21,13 @@
             onclick="GameUI.toggleFullscreen()">
             ⛶
         </button>
+        <!-- Export Replay Button -->
+        <button id="export-replay-btn"
+            title="Export Replay"
+            class="absolute right-16 top-4 bg-arena-accent hover:bg-arena-accent-dark text-black px-3 py-2 rounded-lg shadow transition-colors focus:outline-none z-20"
+            onclick="GameCore.exportReplay()">
+            💾
+        </button>
         <div id="game-arena-root" class="flex-grow">
             <!-- GameArena.svelte will render the grid layout -->
         </div>

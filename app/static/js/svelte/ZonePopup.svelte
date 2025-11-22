@@ -23,10 +23,11 @@
     const allowCommanderDrop = $derived(() => isCommanderPopup() && allowCommanderControls && allowDrop);
     const effectiveAllowDrop = $derived(() => allowCommanderDrop() || (!isCommanderPopup() && allowDrop));
 
-    let searchQuery = '';
+    let searchQuery = $state('');
     let panelEl;
     let handleEl;
     let emptyStateEl;
+
 
     const handleClose = () => {
         if (persistent) {
@@ -79,6 +80,7 @@
         if (!effectiveAllowDrop()) {
             return;
         }
+        event.preventDefault();
         if (typeof UIZonesManager?.handlePopupDragOver === 'function') {
             UIZonesManager.handlePopupDragOver(event);
         }
@@ -97,6 +99,7 @@
         if (!effectiveAllowDrop()) {
             return;
         }
+        event.preventDefault();
         if (typeof UIZonesManager?.handlePopupDrop === 'function') {
             UIZonesManager.handlePopupDrop(event, baseZone);
         }
@@ -116,7 +119,7 @@
         }
     };
 
-    let draggableSetup = false;
+    let draggableSetup = $state(false);
 
     $effect(() => {
         // One-time draggable setup when DOM is ready
@@ -204,12 +207,13 @@
                 <div class="reveal-card-container commander-popup-card-container">
                     <div
                         class="reveal-card-list commander-popup-card-list"
+                        role="list"
                         data-zone-context={baseZone}
                         data-zone-owner={ownerId}
                         data-card-count={cardCount}
-                        ondragover|preventDefault={handleDragOver}
+                        ondragover={handleDragOver}
                         ondragleave={handleDragLeave}
-                        ondrop|preventDefault={handleDrop}>
+                        ondrop={handleDrop}>
                         {@html cardsHtml}
                     </div>
                 </div>
@@ -217,12 +221,13 @@
                 <div class="reveal-card-container commander-popup-card-container">
                     <div
                         class="reveal-card-list commander-popup-card-list commander-popup-card-list-empty"
+                        role="list"
                         data-zone-context={baseZone}
                         data-zone-owner={ownerId}
                         data-card-count="0"
-                        ondragover|preventDefault={handleDragOver}
+                        ondragover={handleDragOver}
                         ondragleave={handleDragLeave}
-                        ondrop|preventDefault={handleDrop}>
+                        ondrop={handleDrop}>
                         <div class="commander-popup-empty">
                             <span class="commander-popup-empty-icon">🧙</span>
                             <div>No commander assigned</div>
@@ -240,12 +245,13 @@
             <div class="reveal-card-container">
                 <div
                     class={`reveal-card-list zone-card-list${!hasCards() ? ' zone-card-list-empty' : ''}`}
+                    role="list"
                     data-zone-context={baseZone}
                     data-zone-owner={ownerId}
                     data-card-count={cardCount}
-                    ondragover|preventDefault={handleDragOver}
+                    ondragover={handleDragOver}
                     ondragleave={handleDragLeave}
-                    ondrop|preventDefault={handleDrop}>
+                    ondrop={handleDrop}>
                     {#if hasCards()}
                         {@html cardsHtml}
                     {:else}

@@ -30,6 +30,23 @@ class SimpleGameEngine:
         self.games: dict[str, GameState] = {}
         self.game_setups: dict[str, GameSetupStatus] = {}
         self._pending_decks: dict[str, dict[str, Deck]] = {}
+        self.replays: dict[str, List[Dict[str, Any]]] = {}
+
+    def _record_replay_step(self, game_id: str, action: Optional[GameAction], game_state: GameState) -> None:
+        """Record a step in the game replay timeline."""
+        if game_id not in self.replays:
+            self.replays[game_id] = []
+        
+        step = {
+            "timestamp": time.time(),
+            "state": game_state.model_dump(mode="json")
+        }
+        if action:
+            step["action"] = action.model_dump(mode="json")
+        else:
+            step["action"] = {"action_type": "initial_setup", "player_id": "system"}
+            
+        self.replays[game_id].append(step)
 
     def _set_phase(self, game_state: GameState, new_phase: GamePhase) -> None:
         """Centralized phase setter that manages combat transitions."""
@@ -530,6 +547,7 @@ class SimpleGameEngine:
         self.games[game_id] = game_state
         self._pending_decks.pop(game_id, None)
         self._log_phase_history_entry(game_state, GamePhase.BEGIN)
+        self._record_replay_step(game_id, None, game_state)
         return game_state
     
     def create_game(
@@ -564,6 +582,7 @@ class SimpleGameEngine:
         
         self.games[game_id] = game_state
         self._log_phase_history_entry(game_state, GamePhase.BEGIN)
+        self._record_replay_step(game_id, None, game_state)
         return game_state
     
     def create_game_player1(
@@ -588,6 +607,7 @@ class SimpleGameEngine:
         
         self.games[game_id] = game_state
         self._log_phase_history_entry(game_state, GamePhase.BEGIN)
+        self._record_replay_step(game_id, None, game_state)
         return game_state
 
     def join_game(self, game_id: str, player2_deck: Deck) -> GameState:
@@ -610,6 +630,7 @@ class SimpleGameEngine:
         self._draw_cards(player2, 7)
         
         game_state.players.append(player2)
+        self._record_replay_step(game_id, None, game_state)
         
         return game_state
     
@@ -687,6 +708,7 @@ class SimpleGameEngine:
         else:
             raise ValueError(f"Unknown action_type: {action.action_type}")
 
+        self._record_replay_step(game_id, action, game_state)
         return game_state
     
     def record_action_history(self, game_id: str, entry: Dict[str, Any]) -> None:

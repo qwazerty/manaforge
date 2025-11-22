@@ -4,6 +4,7 @@ Consolidated and optimized version with unified game action endpoint.
 """
 
 import uuid
+import time
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -801,3 +802,28 @@ async def list_available_actions() -> Dict[str, Any]:
         "actions": action_registry.list_actions(),
         "description": "Use POST /games/{game_id}/action with action_type parameter"
     }
+
+@router.get("/games/{game_id}/replay")
+async def get_game_replay(game_id: str) -> Dict[str, Any]:
+    """Get the full replay history for a game."""
+    if game_id in game_engine.replays:
+        return {
+            "game_id": game_id,
+            "timeline": game_engine.replays[game_id]
+        }
+    
+    # Fallback for games without recorded history (e.g. started before restart)
+    if game_id in game_engine.games:
+        current_state = game_engine.games[game_id]
+        # Create a synthetic single-step timeline
+        synthetic_step = {
+            "timestamp": time.time(),
+            "state": current_state.model_dump(mode="json"),
+            "action": {"action_type": "snapshot", "player_id": "system"}
+        }
+        return {
+            "game_id": game_id,
+            "timeline": [synthetic_step]
+        }
+
+    raise HTTPException(status_code=404, detail="Replay not found for this game")
