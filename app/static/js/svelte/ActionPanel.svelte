@@ -109,10 +109,21 @@
         const buttonConfig = (typeof UIConfig !== 'undefined' && UIConfig?.CSS_CLASSES?.button)
             ? UIConfig.CSS_CLASSES.button
             : null;
-        return buttonConfig?.passPhase
-            || buttonConfig?.primary
-            || 'arena-button px-4 py-2 rounded-lg font-semibold';
+        return buttonConfig?.primarySmall;
     });
+
+    const handleProgressClick = (event) => {
+        if (!replayControls || typeof replayControls.onSeek !== 'function') {
+            return;
+        }
+        const total = replayTotalSteps();
+        if (!total) return;
+        const rect = event.currentTarget?.getBoundingClientRect?.();
+        if (!rect || !rect.width) return;
+        const pct = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+        const target = Math.floor(pct * Math.max(total - 1, 0));
+        replayControls.onSeek(target);
+    };
 </script>
 
 <div>
@@ -154,52 +165,38 @@
     {#if spectatorMode}
         {#if replayControls}
             <div class="mt-4 p-4 border-t border-arena-border bg-arena-surface/50 rounded-lg shadow-inner flex flex-col gap-3">
-                <div class="flex items-center justify-between gap-3 flex-wrap">
-                    <div class="flex items-center gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+                    <button 
+                        class={`${replayButtonClass()} text-sm`}
+                        onclick={replayControls.onPrev}
+                        title="Previous Step"
+                        aria-label="Previous step">
+                        ⏮️ Prev
+                    </button>
+                    {#if replayControls.isPlaying}
                         <button 
                             class={`${replayButtonClass()} text-sm`}
-                            onclick={replayControls.onPrev}
-                            title="Previous Step"
-                            aria-label="Previous step">
-                            ⏮️ Prev
+                            onclick={replayControls.onPause}
+                            title="Pause"
+                            aria-label="Pause replay">
+                            ⏸️ Pause
                         </button>
-                        {#if replayControls.isPlaying}
-                            <button 
-                                class={`${replayButtonClass()} text-sm`}
-                                onclick={replayControls.onPause}
-                                title="Pause"
-                                aria-label="Pause replay">
-                                ⏸️ Pause
-                            </button>
-                        {:else}
-                            <button 
-                                class={`${replayButtonClass()} text-sm`}
-                                onclick={replayControls.onPlay}
-                                title="Play"
-                                aria-label="Play replay">
-                                ▶️ Play
-                            </button>
-                        {/if}
+                    {:else}
                         <button 
                             class={`${replayButtonClass()} text-sm`}
-                            onclick={replayControls.onNext}
-                            title="Next Step"
-                            aria-label="Next step">
-                            ⏭️ Next
+                            onclick={replayControls.onPlay}
+                            title="Play"
+                            aria-label="Play replay">
+                            ▶️ Play
                         </button>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-arena-text-dim font-medium">Speed</span>
-                        <select 
-                            class="replay-speed bg-arena-surface border border-arena-border rounded px-2 py-1 text-xs text-arena-text-primary focus:border-arena-accent focus:outline-none shadow-sm cursor-pointer"
-                            value={replayControls.speed}
-                            onchange={(e) => replayControls.onSpeedChange(parseInt(e.target.value))}>
-                            <option value="5000">5s</option>
-                            <option value="2000">2s</option>
-                            <option value="1000">1s</option>
-                        </select>
-                    </div>
+                    {/if}
+                    <button 
+                        class={`${replayButtonClass()} text-sm`}
+                        onclick={replayControls.onNext}
+                        title="Next Step"
+                        aria-label="Next step">
+                        ⏭️ Next
+                    </button>
                 </div>
 
                 <div class="flex items-center gap-3 flex-wrap">
@@ -208,7 +205,7 @@
                             <span>Step progress</span>
                             <span class="font-mono text-xs text-arena-text-primary">{replayCurrentStep() + 1}/{replayTotalSteps()}</span>
                         </div>
-                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden">
+                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden cursor-pointer" onclick={handleProgressClick}>
                             <div class="h-full bg-gradient-to-r from-arena-accent to-yellow-400 transition-all duration-300" style={`width: ${replayProgress()}%`}></div>
                         </div>
                     </div>
