@@ -92,16 +92,7 @@
         }
     }
 
-    const PHASES = (window.UIConfig && window.UIConfig.GAME_PHASES) ? window.UIConfig.GAME_PHASES : [
-        { id: 'begin', name: 'Begin', icon: '🌅' },
-        { id: 'main1', name: 'Main 1', icon: '☀️' },
-        { id: 'combat', name: 'Combat', icon: '⚔️' },
-        { id: 'attack', name: 'Attack', icon: '🗡️' },
-        { id: 'block', name: 'Block', icon: '🛡️' },
-        { id: 'damage', name: 'Damage', icon: '💥' },
-        { id: 'main2', name: 'Main 2', icon: '🌙' },
-        { id: 'end', name: 'End', icon: '🔚' }
-    ];
+    const PHASES = window.UIConfig.GAME_PHASES;
 
     function updateUI() {
         renderFrame();
