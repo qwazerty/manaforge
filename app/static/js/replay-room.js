@@ -107,6 +107,36 @@
         renderFrame();
     }
 
+    function getActivePlayerLabel(state) {
+        const players = Array.isArray(state?.players) ? state.players : [];
+        const rawActive = state?.active_player;
+        let activeIndex = typeof rawActive === 'number' ? rawActive : null;
+
+        if (activeIndex === null && typeof rawActive === 'string') {
+            const matchIndex = players.findIndex(
+                (p) =>
+                    p?.id === rawActive ||
+                    p?.key === rawActive ||
+                    p?.player_id === rawActive
+            );
+            activeIndex = matchIndex >= 0 ? matchIndex : null;
+        }
+
+        if (activeIndex !== null && players[activeIndex]) {
+            const name = (players[activeIndex]?.name || '').trim();
+            if (name) return name;
+        }
+
+        if (typeof rawActive === 'string' && rawActive.trim()) {
+            return rawActive;
+        }
+
+        if (activeIndex === 0) return 'Player 1';
+        if (activeIndex === 1) return 'Player 2';
+        if (activeIndex !== null) return `Player ${activeIndex + 1}`;
+        return 'Player';
+    }
+
     let mount;
     let unmount;
     let Component;
@@ -146,7 +176,7 @@
     function updateSubComponents(state) {
         if (actionPanelApp && typeof actionPanelApp.$set === 'function') {
             actionPanelApp.$set({
-                gameInfo: { turn: state.turn, active: state.active_player },
+                gameInfo: { turn: state.turn, active: getActivePlayerLabel(state) },
                 currentPhase: state.phase,
                 replayControls: getReplayControls()
             });
@@ -162,7 +192,7 @@
             const props = {
                 headerTitle: 'Replay Mode',
                 headerIcon: '📼',
-                gameInfo: { turn: state.turn, active: state.active_player },
+                gameInfo: { turn: state.turn, active: getActivePlayerLabel(state) },
                 phases: PHASES,
                 currentPhase: state.phase,
                 readOnlyPhases: true,
