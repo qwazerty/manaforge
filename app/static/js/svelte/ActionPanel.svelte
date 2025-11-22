@@ -104,6 +104,15 @@
 
         return Math.round((current / total) * 100);
     });
+
+    const replayButtonClass = $derived(() => {
+        const buttonConfig = (typeof UIConfig !== 'undefined' && UIConfig?.CSS_CLASSES?.button)
+            ? UIConfig.CSS_CLASSES.button
+            : null;
+        return buttonConfig?.passPhase
+            || buttonConfig?.primary
+            || 'arena-button px-4 py-2 rounded-lg font-semibold';
+    });
 </script>
 
 <div>
@@ -147,46 +156,36 @@
             <div class="mt-4 p-4 border-t border-arena-border bg-arena-surface/50 rounded-lg shadow-inner flex flex-col gap-3">
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     <div class="flex items-center gap-2">
-                        <div class="w-10 h-10 rounded-full bg-arena-accent/15 border border-arena-accent/30 text-arena-accent flex items-center justify-center text-lg shadow">
-                            🎞️
-                        </div>
-                        <div>
-                            <div class="text-[10px] uppercase tracking-[0.08em] text-arena-text-dim">Replay</div>
-                            <div class="text-sm font-semibold text-arena-text-primary">Spectator timeline</div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-2">
                         <button 
-                            class="arena-button w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-bg-dark/70 border border-arena-border hover:border-arena-accent/40"
+                            class={`${replayButtonClass()} text-sm`}
                             onclick={replayControls.onPrev}
                             title="Previous Step"
                             aria-label="Previous step">
-                            ⏮️
+                            ⏮️ Prev
                         </button>
                         {#if replayControls.isPlaying}
                             <button 
-                                class="arena-button w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-accent/80 text-arena-bg-dark shadow-lg"
+                                class={`${replayButtonClass()} text-sm`}
                                 onclick={replayControls.onPause}
                                 title="Pause"
                                 aria-label="Pause replay">
-                                ⏸️
+                                ⏸️ Pause
                             </button>
                         {:else}
                             <button 
-                                class="arena-button w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-accent text-arena-bg-dark shadow-lg"
+                                class={`${replayButtonClass()} text-sm`}
                                 onclick={replayControls.onPlay}
                                 title="Play"
                                 aria-label="Play replay">
-                                ▶️
+                                ▶️ Play
                             </button>
                         {/if}
                         <button 
-                            class="arena-button w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-bg-dark/70 border border-arena-border hover:border-arena-accent/40"
+                            class={`${replayButtonClass()} text-sm`}
                             onclick={replayControls.onNext}
                             title="Next Step"
                             aria-label="Next step">
-                            ⏭️
+                            ⏭️ Next
                         </button>
                     </div>
 
