@@ -1061,7 +1061,7 @@
             </div>
         </section>
 
-        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up mt-10">
             <div class="flex flex-wrap justify-between items-center gap-4">
                 <div>
                     <h2 class="font-magic text-2xl text-arena-accent">Deck layout</h2>
