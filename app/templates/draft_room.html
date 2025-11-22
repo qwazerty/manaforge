@@ -1,6 +1,6 @@
 {% extends "base_arena.html" %}
 
-{% block title %}Draft Room - {{ room.name }}{% endblock %}
+{% block title %}Limited Room - {{ room.name }}{% endblock %}
 
 {% block content %}
 <div id="draft-room-root" class="py-12 px-4" data-room='{{ room | tojson | e }}'>

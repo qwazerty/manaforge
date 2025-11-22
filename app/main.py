@@ -197,16 +197,16 @@ async def deck_manager(request: Request):
 
 @app.get("/draft")
 async def draft_lobby(request: Request):
-    """Draft lobby page."""
+    """Limited lobby page."""
     return templates.TemplateResponse(
         request,
         "draft_lobby.html",
-        {"title": "Draft Lobby"}
+        {"title": "Limited Lobby"}
     )
 
 @app.get("/draft/{room_id}")
 async def draft_room(request: Request, room_id: str):
-    """Draft room page."""
+    """Limited room page."""
     from app.api.draft_routes import get_draft_engine
     engine = get_draft_engine()
     room = engine.get_draft_room(room_id)
@@ -214,7 +214,7 @@ async def draft_room(request: Request, room_id: str):
         return templates.TemplateResponse(
             request,
             "error.html",
-            {"message": "Draft room not found"}
+            {"message": "Limited room not found"}
         )
     room_payload = jsonable_encoder(room)
     return templates.TemplateResponse(
