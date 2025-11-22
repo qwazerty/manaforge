@@ -24,27 +24,7 @@ start_cmd() {
 	PIDS+=($!)
 }
 
-wait_for_port() {
-	local port="$1"
-	local retries=30
-	local wait_seconds=2
-
-	for ((i=0; i<retries; i++)); do
-		if nc -z localhost "$port"; then
-			echo "[dev] port $port is available"
-			return 0
-		else
-			echo "[dev] waiting for port $port to be available..."
-			sleep "$wait_seconds"
-		fi
-	done
-
-	echo "[dev] timeout waiting for port $port"
-	return 1
-}
-
-start_cmd "backend" docker compose -f docker-compose-dev.yml up --build -d
-wait_for_port 8000
+start_cmd "backend" docker compose -f docker-compose-dev.yml up --build
 start_cmd "svelte watcher" corepack pnpm run dev:svelte
 start_cmd "tailwind watcher" corepack pnpm run dev:css
 

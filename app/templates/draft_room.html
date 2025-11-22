@@ -54,107 +54,7 @@
         </div>
 
         <!-- Draft Deck Builder -->
-        <section id="draft-deck-builder-panel" class="arena-card p-6 rounded-lg space-y-6 mt-10">
-            <div class="flex flex-wrap justify-between items-start gap-4">
-                <div>
-                    <h2 class="font-magic text-2xl text-arena-accent">Draft Deck Builder</h2>
-                    <p class="text-sm text-arena-text-dim">Each pick is added automatically. Drag cards between columns while everything auto-saves to your Deck Manager.</p>
-                </div>
-                <div class="flex flex-wrap gap-2 items-center">
-                    <button id="deck-basic-lands-toggle" type="button" class="arena-button px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2">
-                        <span>🌱</span>Add basic lands
-                    </button>
-                    <a id="draft-open-deck-builder" href="/decks/builder" class="arena-button px-5 py-2 rounded-lg font-semibold text-sm whitespace-nowrap">
-                        Open Full Deck Builder
-                    </a>
-                </div>
-            </div>
-            {% set basic_land_previews = [
-                {'key': 'plains', 'name': 'Plains', 'mana': 'White mana', 'image': 'https://cards.scryfall.io/normal/front/4/0/4069fb4a-8ee1-41ef-ab93-39a8cc58e0e5.jpg?1755290075'},
-                {'key': 'island', 'name': 'Island', 'mana': 'Blue mana', 'image': 'https://cards.scryfall.io/normal/front/a/2/a2e22347-f0cb-4cfd-88a3-4f46a16e4946.jpg?1755290097'},
-                {'key': 'swamp', 'name': 'Swamp', 'mana': 'Black mana', 'image': 'https://cards.scryfall.io/normal/front/f/0/f0b234d8-d6bb-48ec-8a4d-d8a570a69c62.jpg?1755290113'},
-                {'key': 'mountain', 'name': 'Mountain', 'mana': 'Red mana', 'image': 'https://cards.scryfall.io/normal/front/c/4/c44f81ca-f72f-445c-8901-3a894a2a47f9.jpg?1755290125'},
-                {'key': 'forest', 'name': 'Forest', 'mana': 'Green mana', 'image': 'https://cards.scryfall.io/normal/front/a/3/a305e44f-4253-4754-b83f-1e34103d77b0.jpg?1755290142'},
-                {'key': 'wastes', 'name': 'Wastes', 'mana': 'Colorless mana', 'image': 'https://cards.scryfall.io/normal/front/b/a/baf8f4f2-9f25-4cd2-8d78-1041e134aeac.jpg?1752945584'}
-            ] %}
-            <div id="deck-basic-lands-panel" class="hidden rounded-lg border border-arena-accent/20 bg-arena-surface/80 p-4 space-y-4">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <p class="text-sm text-arena-text">Tap a card to instantly add one copy to your deck. Each land goes straight into the Lands column.</p>
-                        <p class="text-xs text-arena-text-dim">Hover any art to reveal the add button.</p>
-                    </div>
-                    <button id="deck-basic-lands-close" type="button" class="text-sm text-arena-text-dim hover:text-arena-accent">Close ✕</button>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" aria-label="Basic lands gallery">
-                    {% for land in basic_land_previews %}
-                    <div class="group relative rounded-xl overflow-hidden border border-arena-accent/20 bg-black/40">
-                        <img src="{{ land.image }}" alt="{{ land.name }}" class="w-full" style="aspect-ratio: 2 / 3; object-fit: cover;">
-                        <button type="button" class="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/70 text-white text-sm font-semibold transition" data-basic-land-add="{{ land.key }}">
-                            Add {{ land.name }}
-                        </button>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="grid md:grid-cols-2 gap-4">
-                <div>
-                    <label for="deck-name-input" class="block text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">
-                        Deck name
-                    </label>
-                    <input
-                        type="text"
-                        id="deck-name-input"
-                        placeholder="Draft - {{ room.set_name or 'Set' }} - {{ room.name or 'Room' }}"
-                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
-                    >
-                </div>
-                <div>
-                    <label for="deck-format-select" class="block text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">
-                        Format
-                    </label>
-                    <select
-                        id="deck-format-select"
-                        class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
-                    >
-                        <option value="standard">Standard</option>
-                        <option value="modern">Modern</option>
-                        <option value="pioneer">Pioneer</option>
-                        <option value="pauper">Pauper</option>
-                        <option value="legacy">Legacy</option>
-                        <option value="vintage">Vintage</option>
-                        <option value="duel_commander">Duel Commander</option>
-                        <option value="commander_multi">Commander Multi</option>
-                        <option value="draft">Draft</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid md:grid-cols-4 gap-4">
-                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Main deck</p>
-                    <p id="deck-main-count" class="text-3xl font-bold text-arena-accent mt-1">0</p>
-                </div>
-                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Sideboard</p>
-                    <p id="deck-sideboard-count" class="text-3xl font-bold text-arena-text mt-1">0</p>
-                </div>
-                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Colors</p>
-                    <div id="deck-color-chips" class="flex flex-wrap gap-2 mt-2 text-sm"></div>
-                </div>
-                <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Mana curve</p>
-                    <div class="h-42 flex items-end" id="deck-mana-curve-bars"></div>
-                    <div class="flex justify-between text-xs text-arena-muted mt-2" id="deck-mana-curve-labels"></div>
-                </div>
-            </div>
-            <div>
-                <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Type counts</p>
-                <div id="deck-type-breakdown" class="flex flex-wrap gap-2"></div>
-            </div>
-            <div class="deck-columns-panel pb-2 space-y-4">
-                <div id="deck-columns"></div>
-            </div>
-        </section>
+        <div id="draft-deck-builder-root" class="mt-10"></div>
 
     </div>
 </div>
@@ -166,6 +66,7 @@
 <script src="{{ url_for('static', path='js/card-search.js') }}"></script>
 <script src="{{ url_for('static', path='js/deck-library.js') }}"></script>
 <script src="{{ url_for('static', path='js/draft-room-context.js') }}"></script>
-<script src="{{ url_for('static', path='js/deck-manager.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/components/DeckManager.bundle.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-draft-deck-manager.js') }}"></script>
 <script src="{{ url_for('static', path='js/draft-room.js') }}"></script>
 {% endblock %}
