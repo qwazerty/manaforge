@@ -22,7 +22,7 @@
         : draftTypeRaw === 'cube'
             ? 'Cube Draft'
             : 'Draft';
-    const resolvedSetName = roomData.set_name || 'Set';
+    const resolvedSetName = (roomData.set_name || '').toString().trim() || 'Set';
     const resolvedRoomName = roomData.name || 'Room';
 
     window.MANAFORGE_DECK_CONTEXT = {

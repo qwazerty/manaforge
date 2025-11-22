@@ -186,6 +186,7 @@
     let activeDropColumn = $state(null);
     let importText = $state('');
     let importUrl = $state('');
+    let suppressUrlUpdates = false;
 
     // Derived
     let stats = $derived(computeStats(state));
@@ -465,6 +466,9 @@
     }
 
     function updateDeckIdInUrl(deckId) {
+        if (typeof window === 'undefined' || suppressUrlUpdates) {
+            return;
+        }
         try {
             const url = new URL(window.location.href);
             if (!deckId) {
@@ -475,6 +479,26 @@
             window.history.replaceState({}, '', url.toString());
         } catch (error) {
             console.warn('Unable to update deck id in URL', error);
+        }
+    }
+
+    function applyDeckContext() {
+        if (typeof window === 'undefined' || !window.MANAFORGE_DECK_CONTEXT) {
+            return;
+        }
+        const context = window.MANAFORGE_DECK_CONTEXT;
+        suppressUrlUpdates = Boolean(context.suppressUrlUpdates);
+        if (context.deckId) {
+            currentDeckId = context.deckId;
+        }
+        if (context.deckName) {
+            state.deckName = context.deckName;
+        }
+        if (context.format) {
+            state.format = context.format;
+        }
+        if (context.forceDeckFormat && context.format) {
+            state.format = context.format;
         }
     }
 
@@ -871,6 +895,7 @@
         if (!embedded) {
             loadState();
         }
+        applyDeckContext();
         applyPendingImport();
         
         // Hook into global search modal
