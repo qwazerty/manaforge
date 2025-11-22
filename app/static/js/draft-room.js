@@ -81,6 +81,16 @@
         };
     }
 
+    function sortCardsByRarity(cards) {
+        const order = { mythic: 0, rare: 1, uncommon: 2, common: 3 };
+        return (Array.isArray(cards) ? [...cards] : []).sort((a, b) => {
+            const rankA = order[(a?.rarity || '').toLowerCase()] ?? 4;
+            const rankB = order[(b?.rarity || '').toLowerCase()] ?? 4;
+            if (rankA !== rankB) return rankA - rankB;
+            return 0;
+        });
+    }
+
     function initializeWebSocket() {
         if (!playerId) {
             alert("Player ID not found. Returning to lobby.");
@@ -198,7 +208,8 @@
 
     function renderPack(pack) {
         const packContainer = document.getElementById('current-pack');
-        packContainer.innerHTML = pack.map(card => {
+        const sortedPack = sortCardsByRarity(pack);
+        packContainer.innerHTML = sortedPack.map(card => {
             const attrs = buildCardPreviewAttributes(card);
             return `
             <div id="card-${attrs.uniqueIdAttr}" class="cursor-pointer"
@@ -614,6 +625,7 @@
 
     window.selectCard = selectCard;
     window.exportDecklist = exportDecklist;
+    window.importDraftToDeckManager = importDraftToDeckManager;
 
     document.getElementById('add-bot-button').addEventListener('click', () => {
         if (websocket) websocket.send(JSON.stringify({ type: 'add_bot' }));
