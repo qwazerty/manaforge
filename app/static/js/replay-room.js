@@ -29,6 +29,13 @@
         }
     }
 
+    function seekToStep(targetIndex) {
+        if (!Array.isArray(timeline) || !timeline.length) return;
+        const clamped = Math.min(Math.max(Number(targetIndex) || 0, 0), timeline.length - 1);
+        currentIndex = clamped;
+        updateUI();
+    }
+
     function startPlayback() {
         if (currentIndex >= timeline.length - 1) currentIndex = 0;
         isPlaying = true;
@@ -42,15 +49,6 @@
         updateUI();
     }
     
-    function setSpeed(speed) {
-        playbackSpeed = speed;
-        if (isPlaying) {
-            clearInterval(playInterval);
-            playInterval = setInterval(nextStep, playbackSpeed);
-        }
-        updateUI();
-    }
-
     function downloadReplay() {
         if (!timeline || timeline.length === 0) return;
         const data = { game_id: gameId, timeline: timeline };
@@ -69,12 +67,11 @@
             onPlay: startPlayback,
             onPause: pausePlayback,
             onNext: nextStep,
-            onSpeedChange: setSpeed,
             onDownload: downloadReplay,
+            onSeek: seekToStep,
             isPlaying: isPlaying,
             currentStep: currentIndex,
-            totalSteps: timeline.length,
-            speed: playbackSpeed
+            totalSteps: timeline.length
         };
     }
 
