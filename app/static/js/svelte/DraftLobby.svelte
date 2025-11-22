@@ -31,8 +31,8 @@
     const normalizedSets = $derived.by(() => {
         return [...sets].map((set) => ({
             ...set,
-            searchCode: (set.codeRaw ?? set.code ?? '').toString().toLowerCase(),
-            searchName: (set.nameRaw ?? set.name ?? '').toString().toLowerCase()
+            searchCode: (set.code ?? '').toString().toLowerCase(),
+            searchName: (set.name ?? '').toString().toLowerCase()
         }));
     });
 
@@ -115,10 +115,7 @@
             code,
             name,
             released_at,
-            icon_svg_uri,
-            // keep original for display without lowercasing
-            codeRaw: code,
-            nameRaw: name
+            icon_svg_uri
         };
     }
 
@@ -156,9 +153,9 @@
     }
 
     function selectSet(set) {
-        setTerm = set.nameRaw ?? set.name ?? set.code ?? '';
-        setCode = (set.codeRaw ?? set.code ?? '').toString().toLowerCase();
-        setFullName = set.nameRaw ?? set.name ?? set.code ?? '';
+        setTerm = set.name ?? set.code ?? '';
+        setCode = (set.code ?? '').toString().toLowerCase();
+        setFullName = set.name ?? set.code ?? '';
         suggestionsOpen = false;
     }
 
@@ -380,13 +377,13 @@
                                                 >
                                                     <div class="flex items-center gap-3">
                                                         {#if set.icon_svg_uri}
-                                                            <img src={set.icon_svg_uri} alt={`${String(set.codeRaw ?? set.code ?? '').toUpperCase()} icon`} class="w-8 h-8">
+                                                            <img src={set.icon_svg_uri} alt={`${String(set.code ?? '').toUpperCase()} icon`} class="w-8 h-8">
                                                         {:else}
                                                             <div class="w-8 h-8 rounded-full bg-arena-accent/20"></div>
                                                         {/if}
                                                         <div>
-                                                            <p class="font-semibold text-sm md:text-base text-arena-text">{set.nameRaw ?? set.name ?? 'Unknown Set'}</p>
-                                                            <p class="text-xs text-arena-muted uppercase tracking-wide">{String(set.codeRaw ?? set.code ?? '').toUpperCase()}</p>
+                                                            <p class="font-semibold text-sm md:text-base text-arena-text">{set.name ?? 'Unknown Set'}</p>
+                                                            <p class="text-xs text-arena-muted uppercase tracking-wide">{String(set.code ?? '').toUpperCase()}</p>
                                                         </div>
                                                     </div>
                                                     <span class="text-xs text-arena-muted">{set.released_at ?? 'TBD'}</span>
