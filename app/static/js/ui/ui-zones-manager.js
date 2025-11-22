@@ -680,16 +680,6 @@ class UIZonesManager {
                     insertIndex = Math.max(0, Math.min(insertIndex, filteredCards.length));
                     positionIndex = insertIndex;
                 }
-
-                if (
-                    activeDragged &&
-                    data.cardZone === targetZone &&
-                    container.contains(activeDragged) &&
-                    positionIndex !== null
-                ) {
-                    const referenceCard = filteredCards[positionIndex] || null;
-                    container.insertBefore(activeDragged, referenceCard);
-                }
             }
 
             // Trigger an action to move the card (adjust to the backend logic)
