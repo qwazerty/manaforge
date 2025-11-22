@@ -31,8 +31,8 @@
     const normalizedSets = $derived.by(() => {
         return [...sets].map((set) => ({
             ...set,
-            code: (set.code || '').toString().toLowerCase(),
-            name: (set.name || '').toString().toLowerCase()
+            searchCode: (set.codeRaw ?? set.code ?? '').toString().toLowerCase(),
+            searchName: (set.nameRaw ?? set.name ?? '').toString().toLowerCase()
         }));
     });
 
@@ -47,11 +47,11 @@
     const filteredSets = $derived.by(() => {
         const term = setTerm.trim().toLowerCase();
         if (!term) return sortedSets;
-        const byName = sortedSets.filter((set) => set.name.includes(term));
-        const byCode = sortedSets.filter((set) => set.code.includes(term));
+        const byName = sortedSets.filter((set) => set.searchName?.includes(term));
+        const byCode = sortedSets.filter((set) => set.searchCode?.includes(term));
         const merged = [...byName];
         byCode.forEach((set) => {
-            if (!merged.find((s) => s.code === set.code && s.name === set.name)) {
+            if (!merged.find((s) => s.searchCode === set.searchCode && s.searchName === set.searchName)) {
                 merged.push(set);
             }
         });
@@ -156,9 +156,9 @@
     }
 
     function selectSet(set) {
-        setTerm = set.name ?? set.code ?? '';
-        setCode = set.code ?? '';
-        setFullName = set.name ?? set.code ?? '';
+        setTerm = set.nameRaw ?? set.name ?? set.code ?? '';
+        setCode = (set.codeRaw ?? set.code ?? '').toString().toLowerCase();
+        setFullName = set.nameRaw ?? set.name ?? set.code ?? '';
         suggestionsOpen = false;
     }
 
