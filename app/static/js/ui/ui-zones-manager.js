@@ -6,6 +6,7 @@
 
 class UIZonesManager {
     static _zonePopupElements = new Map();
+    static _zonePopupComponents = new Map();
     static _deckZoneConfigs = new Map();
     static _graveyardZoneConfigs = new Map();
     static _exileZoneConfigs = new Map();
@@ -1063,28 +1064,64 @@ class UIZonesManager {
      * Generate zone modal HTML
      */
     static _openZonePopup(popupKey, cards, zoneInfo, isOpponent, ownerId) {
-        if (!this._zonePopupElements) {
-            this._zonePopupElements = new Map();
+        if (typeof ZonePopupComponent === 'undefined') {
+            console.error('[UIZonesManager] ZonePopupComponent not available');
+            return;
         }
 
-        const elements = this._ensureZonePopupElements(popupKey, zoneInfo, isOpponent);
+        return this._openZonePopupSvelte(popupKey, cards, zoneInfo, isOpponent, ownerId);
+    }
+
+    static _openZonePopupSvelte(popupKey, cards, zoneInfo, isOpponent, ownerId) {
         const cardsArray = Array.isArray(cards) ? cards : [];
         const baseZone = popupKey.replace('opponent_', '');
         const isCommanderPopup = baseZone === 'commander';
         const allowEmptyDisplay = ['reveal', 'graveyard', 'exile', 'deck'].includes(baseZone);
 
         if (!cardsArray.length && !isCommanderPopup && !allowEmptyDisplay) {
-            elements.panel.classList.add('hidden');
-            elements.panel.setAttribute('aria-hidden', 'true');
-            elements.panel.dataset.appear = 'hidden';
-            delete elements.panel.dataset.userMoved;
+            this._hideZonePopup(popupKey);
             return;
         }
 
         const popupTitle = `${isOpponent ? 'Opponent ' : ''}${zoneInfo.title}`;
-        elements.titleLabel.textContent = popupTitle;
-        elements.countLabel.textContent = String(cardsArray.length);
-        elements.body.innerHTML = this._generateZonePopupContent(cardsArray, popupKey, isOpponent, ownerId, zoneInfo);
+        const allowCommanderControls = zoneInfo?.allowTaxControls === true;
+        const allowDrop = isCommanderPopup ? allowCommanderControls : !isOpponent;
+        const cardsHtml = this._buildZonePopupCardsHtml(cardsArray, baseZone, isOpponent, ownerId);
+
+        const componentEntry = this._ensureZonePopupComponent(popupKey, zoneInfo, isOpponent);
+        const instance = componentEntry?.instance;
+        if (!instance) {
+            console.error('[UIZonesManager] ZonePopupComponent instance missing');
+            return;
+        }
+
+        try {
+            instance.$set({
+                popupKey,
+                title: popupTitle,
+                icon: zoneInfo?.icon || '🗂️',
+                cardsHtml,
+                cardCount: cardsArray.length,
+                baseZone,
+                isOpponent,
+                ownerId,
+                persistent: zoneInfo?.persistent === true,
+                allowDrop,
+                allowCommanderControls,
+                commanderTax: zoneInfo?.commanderTax || 0
+            });
+        } catch (error) {
+            console.error('[UIZonesManager] Failed to update ZonePopup component', error);
+            return;
+        }
+
+        const elements = this._getZonePopupElements(popupKey);
+        if (!elements?.panel) {
+            return;
+        }
+
+        elements.panel.dataset.persistent = zoneInfo && zoneInfo.persistent ? 'true' : 'false';
+        elements.panel.dataset.zoneOwner = isOpponent ? 'opponent' : 'player';
         elements.panel.classList.remove('hidden');
         elements.panel.setAttribute('aria-hidden', 'false');
         elements.panel.dataset.appear = 'visible';
@@ -1097,13 +1134,6 @@ class UIZonesManager {
             }
             if (computedWidth) {
                 elements.panel.style.width = `${computedWidth}px`;
-            }
-        }
-
-        if (!isCommanderPopup) {
-            const listElement = elements.body.querySelector('.reveal-card-list');
-            if (listElement && typeof UIHorizontalScroll !== 'undefined') {
-                UIHorizontalScroll.attachWheelListener(listElement);
             }
         }
 
@@ -1124,186 +1154,90 @@ class UIZonesManager {
         }
     }
 
-    static _ensureZonePopupElements(popupKey, zoneInfo, isOpponent) {
+    static _hideZonePopup(popupKey) {
+        const elements = this._getZonePopupElements(popupKey);
+        if (!elements?.panel) {
+            return;
+        }
+        elements.panel.classList.add('hidden');
+        elements.panel.setAttribute('aria-hidden', 'true');
+        elements.panel.dataset.appear = 'hidden';
+        delete elements.panel.dataset.userMoved;
+    }
+
+    static _buildZonePopupCardsHtml(cardsArray, baseZone, isOpponent, ownerId) {
+        return cardsArray.map((card, index) =>
+            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
+        ).join('');
+    }
+
+    static _ensureZonePopupComponent(popupKey, zoneInfo, isOpponent) {
+        if (!this._zonePopupComponents) {
+            this._zonePopupComponents = new Map();
+        }
+
+        if (this._zonePopupComponents.has(popupKey)) {
+            return this._zonePopupComponents.get(popupKey);
+        }
+
+        if (typeof ZonePopupComponent === 'undefined') {
+            console.error('[UIZonesManager] ZonePopupComponent is not available');
+            return null;
+        }
+
+        const mount = typeof ZonePopupComponent.mount === 'function'
+            ? ZonePopupComponent.mount
+            : null;
+
+        if (!mount) {
+            console.error('[UIZonesManager] ZonePopupComponent.mount is not available');
+            return null;
+        }
+
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+
+        const instance = mount(ZonePopupComponent.default, {
+            target: container,
+            props: {
+                popupKey,
+                title: zoneInfo?.title || 'Zone',
+                icon: zoneInfo?.icon || '🗂️',
+                cardCount: 0,
+                cardsHtml: '',
+                baseZone: popupKey.replace('opponent_', ''),
+                isOpponent,
+                ownerId: isOpponent ? 'player2' : 'player1',
+                persistent: zoneInfo?.persistent === true
+            }
+        });
+
+        this._getZonePopupElements(popupKey);
+        this._zonePopupComponents.set(popupKey, { instance, container });
+        return this._zonePopupComponents.get(popupKey);
+    }
+
+    static _getZonePopupElements(popupKey) {
         if (!this._zonePopupElements) {
             this._zonePopupElements = new Map();
         }
 
-        if (this._zonePopupElements.has(popupKey)) {
-            const existing = this._zonePopupElements.get(popupKey);
-            if (existing?.panel && !document.body.contains(existing.panel)) {
-                document.body.appendChild(existing.panel);
-            }
-            if (typeof UIRenderersTemplates !== 'undefined') {
-                UIRenderersTemplates._ensurePopupSearchElements(existing?.panel);
-                UIRenderersTemplates._initializePopupSearch(existing?.panel);
-            }
-            if (existing?.panel) {
-                existing.panel.dataset.persistent = zoneInfo && zoneInfo.persistent ? 'true' : 'false';
-                if (zoneInfo && zoneInfo.persistent) {
-                    const closeButton = existing.panel.querySelector('.zone-popup-close');
-                    if (closeButton) {
-                        closeButton.remove();
-                    }
-                }
-            }
+        const existing = this._zonePopupElements.get(popupKey);
+        if (existing?.panel && document.body.contains(existing.panel)) {
             return existing;
         }
 
-        const safeTitle = GameUtils.escapeHtml(zoneInfo.title || 'Zone');
-        const panel = document.createElement('div');
-        panel.id = `zone-popup-${popupKey}`;
-        panel.className = 'stack-popup reveal-popup zone-popup hidden';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-label', `${safeTitle} Zone`);
-        panel.setAttribute('aria-hidden', 'true');
-        panel.dataset.zonePopupKey = popupKey;
-        panel.dataset.zoneOwner = isOpponent ? 'opponent' : 'player';
-        panel.dataset.persistent = zoneInfo && zoneInfo.persistent ? 'true' : 'false';
-        panel.dataset.appear = 'hidden';
-
-        const closeButtonHtml = zoneInfo && zoneInfo.persistent
-            ? ''
-            : `<button class="zone-popup-close" onclick="UIZonesManager.closeZoneModal('${popupKey}')">✕</button>`;
-
-        panel.innerHTML = `
-            <div class="stack-popup-header reveal-popup-header zone-popup-header" data-draggable-handle>
-                <div class="stack-popup-title reveal-popup-title zone-popup-title">
-                    <span class="stack-popup-icon reveal-popup-icon zone-popup-icon">${zoneInfo.icon || '🗂️'}</span>
-                    <span class="stack-popup-label reveal-popup-label zone-popup-label">${safeTitle}</span>
-                    <span class="stack-popup-count reveal-popup-count zone-popup-count" id="zone-popup-count-${popupKey}">0</span>
-                </div>
-                ${closeButtonHtml}
-            </div>
-            <div class="popup-search-container">
-                <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search ${safeTitle}">
-            </div>
-            <div class="stack-popup-body reveal-popup-body zone-popup-body" id="zone-popup-body-${popupKey}"></div>
-            <div class="popup-search-empty hidden">No cards match your search</div>
-        `;
-        document.body.appendChild(panel);
-
-        const handle = panel.querySelector('[data-draggable-handle]');
-        const body = panel.querySelector(`#zone-popup-body-${popupKey}`);
-        const countLabel = panel.querySelector(`#zone-popup-count-${popupKey}`);
+        const panel = document.getElementById(`zone-popup-${popupKey}`);
+        if (!panel) {
+            return null;
+        }
+        const body = document.getElementById(`zone-popup-body-${popupKey}`) || panel.querySelector('.zone-popup-body');
+        const countLabel = document.getElementById(`zone-popup-count-${popupKey}`) || panel.querySelector('.zone-popup-count');
         const titleLabel = panel.querySelector('.zone-popup-label');
 
-        if (typeof UIRenderersTemplates !== 'undefined') {
-            if (typeof UIRenderersTemplates !== 'undefined' &&
-                typeof UIRenderersTemplates._makePopupDraggable === 'function') {
-                UIRenderersTemplates._makePopupDraggable(panel, handle);
-            }
-            UIRenderersTemplates._initializePopupSearch(panel);
-        }
-
-        const elements = { panel, body, countLabel, titleLabel };
-        this._zonePopupElements.set(popupKey, elements);
-        return elements;
-    }
-
-    static _generateZonePopupContent(cards, popupKey, isOpponent, ownerId, zoneInfo = {}) {
-        const baseZone = popupKey.replace('opponent_', '');
-
-        if (baseZone === 'commander') {
-            const commanderCards = Array.isArray(cards) ? cards : [];
-            const commanderTax = Number.isFinite(Number(zoneInfo.commanderTax))
-                ? Number(zoneInfo.commanderTax)
-                : 0;
-            const allowControls = zoneInfo.allowTaxControls === true;
-            const allowDrop = allowControls;
-            const listAttributes = allowDrop
-                ? `data-zone-context="${baseZone}" data-zone-owner="${ownerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, '${baseZone}')"`
-                : `data-zone-context="${baseZone}" data-zone-owner="${ownerId}"`;
-
-            const decreaseDisabledAttr = commanderTax <= 0 ? 'disabled' : '';
-            const decreaseDisabledClass = commanderTax <= 0 ? ' commander-tax-adjust-btn-disabled' : '';
-
-            const taxControls = allowControls
-                ? `
-                    <button class="commander-tax-adjust-btn${decreaseDisabledClass}" ${decreaseDisabledAttr} onclick="event.stopPropagation(); GameActions.adjustCommanderTax('${ownerId}', -2);">-2</button>
-                    <span class="commander-tax-value">${commanderTax}</span>
-                    <button class="commander-tax-adjust-btn" onclick="event.stopPropagation(); GameActions.adjustCommanderTax('${ownerId}', 2);">+2</button>
-                `
-                : `<span class="commander-tax-value">${commanderTax}</span>`;
-
-            const taxSection = `
-                <div class="commander-popup-tax">
-                    <span class="commander-tax-label">Commander Tax</span>
-                    <div class="commander-tax-value-group">
-                        ${taxControls}
-                    </div>
-                </div>
-            `;
-
-            const emptyCommanderState = `
-                <div class="commander-popup-empty">
-                    <span class="commander-popup-empty-icon">🧙</span>
-                    <div>No commander assigned</div>
-                </div>
-            `;
-
-            let cardsSection;
-            if (commanderCards.length) {
-                const cardsHtml = commanderCards.map((card, index) =>
-                    GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
-                ).join('');
-                cardsSection = `
-                    <div class="reveal-card-container commander-popup-card-container">
-                        <div class="reveal-card-list commander-popup-card-list" ${listAttributes} data-card-count="${commanderCards.length}">
-                            ${cardsHtml}
-                        </div>
-                    </div>
-                `;
-            } else if (allowDrop) {
-                cardsSection = `
-                    <div class="reveal-card-container commander-popup-card-container">
-                        <div class="reveal-card-list commander-popup-card-list commander-popup-card-list-empty" ${listAttributes} data-card-count="0">
-                            ${emptyCommanderState}
-                        </div>
-                    </div>
-                `;
-            } else {
-                cardsSection = emptyCommanderState;
-            }
-
-            return `
-                <div class="commander-popup-content">
-                    ${taxSection}
-                    ${cardsSection}
-                </div>
-            `;
-        }
-
-        const allowDrop = !isOpponent;
-        const listAttributes = allowDrop
-            ? `data-zone-context="${baseZone}" data-zone-owner="${ownerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, '${baseZone}')"`
-            : `data-zone-context="${baseZone}" data-zone-owner="${ownerId}"`;
-
-        if (!cards.length) {
-            const emptyState = '<div class="reveal-empty">No cards in this zone</div>';
-            if (!allowDrop) {
-                return emptyState;
-            }
-            return `
-                <div class="reveal-card-container">
-                    <div class="reveal-card-list zone-card-list zone-card-list-empty" ${listAttributes} data-card-count="0">
-                        ${emptyState}
-                    </div>
-                </div>
-            `;
-        }
-
-        const cardsHtml = cards.map((card, index) =>
-            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
-        ).join('');
-
-        return `
-            <div class="reveal-card-container">
-                <div class="reveal-card-list zone-card-list" ${listAttributes} data-card-count="${cards.length}">
-                    ${cardsHtml}
-                </div>
-            </div>
-        `;
+        const snapshot = { panel, body, countLabel, titleLabel };
+        this._zonePopupElements.set(popupKey, snapshot);
+        return snapshot;
     }
 
     static _getZonePopupIndex(popupKey, isOpponent) {

@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createClassComponent } from 'svelte/legacy';
+import ZonePopup from '../ZonePopup.svelte';
 import '../../ui/ui-zones-manager.js';
 
 declare global {
@@ -35,11 +37,18 @@ describe('Zone popups', () => {
         (globalThis as Record<string, unknown>).GameUtils = {
             escapeHtml: (value: unknown) => String(value ?? '')
         };
+
+        (globalThis as Record<string, unknown>).ZonePopupComponent = {
+            default: ZonePopup,
+            mount: (component: unknown, options: Record<string, unknown>) =>
+                createClassComponent({ component, ...options })
+        };
     });
 
     afterEach(() => {
         delete (globalThis as Record<string, unknown>).GameCore;
         delete (globalThis as Record<string, unknown>).GameUtils;
+        delete (globalThis as Record<string, unknown>).ZonePopupComponent;
         vi.unstubAllGlobals();
     });
 
