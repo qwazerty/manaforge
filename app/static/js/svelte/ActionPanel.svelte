@@ -190,19 +190,16 @@
                         </button>
                     </div>
 
-                    <div class="flex items-center gap-2 bg-arena-bg-dark/70 border border-arena-border rounded-full px-3 py-1 text-xs text-arena-text-primary shadow">
-                        <span class="text-arena-text-dim">Speed</span>
-                        <div class="relative">
-                            <select 
-                                class="replay-speed appearance-none bg-arena-bg-dark/90 border border-arena-border/60 rounded-full px-3 py-1 pr-7 text-xs text-arena-text-primary focus:border-arena-accent focus:outline-none shadow-sm"
-                                value={replayControls.speed}
-                                onchange={(e) => replayControls.onSpeedChange(parseInt(e.target.value))}>
-                                <option value="5000">5s</option>
-                                <option value="2000">2s</option>
-                                <option value="1000">1s</option>
-                            </select>
-                            <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-arena-text-dim">▼</span>
-                        </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-arena-text-dim font-medium">Speed</span>
+                        <select 
+                            class="replay-speed bg-arena-surface border border-arena-border rounded px-2 py-1 text-xs text-arena-text-primary focus:border-arena-accent focus:outline-none shadow-sm cursor-pointer"
+                            value={replayControls.speed}
+                            onchange={(e) => replayControls.onSpeedChange(parseInt(e.target.value))}>
+                            <option value="5000">5s</option>
+                            <option value="2000">2s</option>
+                            <option value="1000">1s</option>
+                        </select>
                     </div>
                 </div>
 
@@ -274,14 +271,8 @@
 </div>
 
 <style>
-    :global(.replay-speed) {
-        background-color: var(--arena-bg-dark, #0f162b);
-        color: var(--arena-text-primary, #f8fafc);
-        border-color: var(--arena-border, rgba(255, 255, 255, 0.1));
-    }
-
     :global(.replay-speed option) {
-        background-color: var(--arena-bg-dark, #0f162b);
+        background-color: var(--arena-surface, #1a1f2e);
         color: var(--arena-text-primary, #f8fafc);
     }
 
