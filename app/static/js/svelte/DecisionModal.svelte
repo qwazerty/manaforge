@@ -165,7 +165,7 @@
                             <div class="zone-card-slider-item" data-card-id={card.id}>
                                 <img src={card.image_url || '/static/images/card-back.jpg'} alt={card.name} class="card-mini" />
                                 <div class="zone-card-name">{card.name}</div>
-                                <div class="decision-card-actions mt-2">
+                                <div class="decision-card-actions mt-2 space-y-2">
                                     {#each getButtons() as button}
                                         <button
                                             type="button"
@@ -193,85 +193,3 @@
         </div>
     </div>
 {/if}
-
-<style>
-    .zone-modal {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.65);
-        z-index: 60;
-        opacity: 0;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-
-    .zone-modal.active {
-        opacity: 1;
-    }
-
-    .zone-modal-content {
-        width: min(640px, 90vw);
-        max-height: 88vh;
-        overflow-y: auto;
-        background: #0f172a;
-        border: 1px solid rgba(148, 163, 184, 0.3);
-        border-radius: 0.75rem;
-        padding: 1.75rem;
-        box-shadow: 0 10px 35px rgba(15, 23, 42, 0.7);
-        transform: translateY(12px);
-        transition: transform 0.2s ease;
-    }
-
-    .zone-modal.active .zone-modal-content {
-        transform: translateY(0);
-    }
-
-    .zone-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 0.75rem;
-    }
-
-    .zone-modal-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #cbd5f5;
-    }
-
-    .zone-modal-close {
-        border: none;
-        background: transparent;
-        color: #f87171;
-        font-size: 1.5rem;
-        line-height: 1;
-        cursor: pointer;
-    }
-
-    .zone-cards-slider {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 1rem;
-    }
-
-    .zone-card-slider-item {
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        border-radius: 0.5rem;
-        padding: 0.75rem;
-        text-align: center;
-        background: rgba(15, 23, 42, 0.6);
-    }
-
-    .zone-card-name {
-        font-size: 0.95rem;
-        font-weight: 500;
-        margin-top: 0.5rem;
-        color: #f1f5f9;
-    }
-
-    .decision-card-actions button + button {
-        margin-top: 0.5rem;
-    }
-</style>

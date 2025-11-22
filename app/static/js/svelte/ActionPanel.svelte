@@ -269,15 +269,3 @@
         {/if}
     {/if}
 </div>
-
-<style>
-    :global(.replay-speed option) {
-        background-color: var(--arena-surface, #1a1f2e);
-        color: var(--arena-text-primary, #f8fafc);
-    }
-
-    :global(.replay-speed option:checked) {
-        background-color: var(--arena-accent, #f4c76a);
-        color: var(--arena-bg-dark, #0f162b);
-    }
-</style>
