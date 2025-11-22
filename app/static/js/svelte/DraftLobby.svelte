@@ -180,7 +180,7 @@
     async function createDraftRoom() {
         resetStatus();
         if (!roomName.trim()) {
-            status = { message: 'Enter a draft room name.', type: 'error' };
+            status = { message: 'Enter a limited room name.', type: 'error' };
             return;
         }
 
@@ -227,7 +227,7 @@
                 return;
             }
 
-            let errorMessage = 'Failed to create draft room.';
+            let errorMessage = 'Failed to create limited room.';
             try {
                 const errorPayload = await response.json();
                 if (errorPayload?.detail) {
@@ -255,7 +255,7 @@
             }
             rooms = await response.json();
         } catch (error) {
-            console.error('Failed to load draft rooms', error);
+            console.error('Failed to load limited rooms', error);
             rooms = [];
         } finally {
             roomsLoading = false;
@@ -275,7 +275,7 @@
                 window.location.href = `/draft/${roomId}?player=${playerId}`;
                 return;
             }
-            status = { message: 'Failed to join draft room. It might be full or already started.', type: 'error' };
+            status = { message: 'Failed to join limited room. It might be full or already started.', type: 'error' };
         } catch (error) {
             status = { message: 'Unexpected error while joining the room.', type: 'error' };
             console.error(error);
@@ -299,22 +299,22 @@
     <div class="max-w-6xl mx-auto">
         <div class="text-center mb-12">
             <h1 class="font-magic text-4xl md:text-5xl font-bold text-arena-accent mb-4">
-                📦 Draft Lobby
+                📦 Limited Lobby
             </h1>
             <p class="text-xl text-arena-text-dim">
-                Create or join a draft to build your deck.
+                Create or join a limited room to build your deck.
             </p>
         </div>
 
         <div class="arena-card rounded-xl mb-8">
             <div class="p-8">
-                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Create a Draft Room</h2>
+                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Create a Limited Room</h2>
                 <div class="max-w-2xl mx-auto space-y-6">
                     <div class="relative">
                         <input
                             type="text"
                             bind:value={roomName}
-                            placeholder="Enter Draft Room Name..."
+                            placeholder="Enter Limited Room Name..."
                             class="w-full px-6 py-4 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text placeholder:text-arena-muted focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200 text-center text-lg font-semibold"
                         >
                         <button
@@ -327,7 +327,7 @@
                     </div>
 
                     <div>
-                        <label for="draftMode" class="block text-arena-text-dim mb-2">Draft Mode</label>
+                        <label for="draftMode" class="block text-arena-text-dim mb-2">Limited Mode</label>
                         <select
                             id="draftMode"
                             bind:value={draftMode}
@@ -453,12 +453,12 @@
 
         <div class="arena-card rounded-xl">
             <div class="p-8">
-                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Join a Draft Room</h2>
+                <h2 class="font-magic text-3xl font-bold text-arena-accent mb-2 text-center">Join a Limited Room</h2>
                 <div class="space-y-4">
                     {#if roomsLoading}
-                        <div class="text-center text-arena-text-dim py-4">Loading draft rooms...</div>
+                        <div class="text-center text-arena-text-dim py-4">Loading limited rooms...</div>
                     {:else if rooms.length === 0}
-                        <p class="text-center text-arena-text-dim">No active draft rooms found.</p>
+                        <p class="text-center text-arena-text-dim">No active limited rooms found.</p>
                     {:else}
                         {#each rooms as room (room.id)}
                             <div class="p-4 bg-arena-surface rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3">
