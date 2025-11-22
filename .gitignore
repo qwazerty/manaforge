@@ -193,3 +193,6 @@ htmlcov/
 
 # Documentation builds
 docs/build/
+
+# Allow static js lib
+!app/static/js/lib/
