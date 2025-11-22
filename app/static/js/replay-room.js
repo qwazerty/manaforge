@@ -10,7 +10,7 @@
     let gameArenaApp = null;
     let actionPanelApp = null;
 
-    let playbackSpeed = 2000;
+    let playbackSpeed = 500;
 
     function prevStep() {
         if (currentIndex > 0) {
