@@ -193,6 +193,13 @@ class DraftService:
             if not line or line.startswith("#"):
                 continue
 
+            # Check for section headers first
+            normalized_heading = re.sub(r'[^a-zA-Z\s]', ' ', line).lower()
+            normalized_heading = re.sub(r'\s+', ' ', normalized_heading).strip()
+            if normalized_heading in section_aliases:
+                current_section = section_aliases[normalized_heading]
+                continue
+
             match = card_entry_regex.match(line)
             if match:
                 quantity = int(match.group(1))
@@ -204,10 +211,17 @@ class DraftService:
                 })
                 continue
 
-            normalized_heading = re.sub(r'[^a-zA-Z\s]', ' ', line).lower()
-            normalized_heading = re.sub(r'\s+', ' ', normalized_heading).strip()
-            if normalized_heading in section_aliases:
-                current_section = section_aliases[normalized_heading]
+            # Fallback: assume it's just a card name (quantity 1)
+            # Match name with optional set code/collector number in parentheses
+            name_match = re.match(r"^([^(]+?)(?:\s*\([^)]*\).*?)?$", line)
+            if name_match:
+                card_name = name_match.group(1).strip()
+                if card_name:
+                    entries.append({
+                        "quantity": 1,
+                        "name": card_name,
+                        "section": current_section
+                    })
 
         return entries
 
