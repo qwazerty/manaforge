@@ -236,3 +236,22 @@ async def format_stats(request: Request):
             "stats": stats,
         }
     )
+
+
+@app.get("/replay")
+async def replay_lobby(request: Request):
+    """Replay lobby page."""
+    return templates.TemplateResponse(
+        request,
+        "replay_lobby.html",
+        {"title": "Replay Lobby"}
+    )
+
+@app.get("/replay/{game_id}")
+async def replay_room(request: Request, game_id: str):
+    """Replay room page."""
+    return templates.TemplateResponse(
+        request,
+        "replay_room.html",
+        {"title": f"Replay - {game_id}", "game_id": game_id}
+    )

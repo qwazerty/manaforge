@@ -193,6 +193,12 @@ function syncPersistentUi(state, { force = false } = {}) {
 
 // ===== INITIALIZATION FUNCTION =====
 async function initializeGame() {
+    // Check if we are on the active game page
+    if (!document.getElementById('game-interface-root')) {
+        // We might be on the replay page or lobby, skip initialization
+        return;
+    }
+
     // Initialize game ID from template data
     if (window.gameData) {
         gameId = window.gameData.gameId;
@@ -338,6 +344,33 @@ function stopAutoRefresh() {
     }
 }
 
+// ===== REPLAY EXPORT =====
+async function exportReplay() {
+    if (!gameId) {
+        console.error('No game ID available for export');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/games/${gameId}/replay`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch replay data');
+        }
+        const data = await response.json();
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `replay-${gameId}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    } catch (error) {
+        console.error('Error exporting replay:', error);
+        alert('Failed to export replay. Please try again later.');
+    }
+}
+
 // Export core module functionality to global scope
 window.GameCore = {
     initializeGame,
@@ -345,6 +378,7 @@ window.GameCore = {
     startAutoRefresh,
     stopAutoRefresh,
     updateSpectatorModeClass,
+    exportReplay,
     // Expose getters for state variables
     getGameState: () => gameState,
     getGameId: () => gameId,
@@ -358,7 +392,8 @@ window.GameCore = {
         updateSpectatorModeClass();
     },
     isPageVisible: () => isPageVisible,
-    syncPersistentUi
+    syncPersistentUi,
+    exportReplay
 };
 
 // ===== MAIN ENTRY POINT =====

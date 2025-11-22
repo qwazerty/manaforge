@@ -16,7 +16,8 @@
             title: 'Spectator Mode',
             message: 'Game controls are disabled while you are watching.'
         },
-        phaseClickHandler = null
+        phaseClickHandler = null,
+        replayControls = null
     } = $props();
 
     const handlePrimaryButtonClick = (button) => {
@@ -93,6 +94,16 @@
     });
 
     const hasQuickButtons = $derived(() => Array.isArray(quickButtons) && quickButtons.length > 0);
+
+    const replayTotalSteps = $derived(() => replayControls ? Math.max(replayControls.totalSteps || 0, 0) : 0);
+    const replayCurrentStep = $derived(() => replayControls ? (replayControls.currentStep || 0) : 0);
+
+    const replayProgress = $derived(() => {
+        const total = Math.max(replayTotalSteps(), 1);
+        const current = Math.max(Math.min(replayCurrentStep() + 1, total), 0);
+
+        return Math.round((current / total) * 100);
+    });
 </script>
 
 <div>
@@ -132,11 +143,88 @@
     {/if}
 
     {#if spectatorMode}
-        <div class="text-center py-6 border-t border-arena-accent/10">
-            <div class="text-3xl mb-2 leading-none">{spectatorInfo.icon}</div>
-            <div class="text-arena-accent font-semibold mb-1">{spectatorInfo.title}</div>
-            <p class="text-arena-text-dim text-sm">{spectatorInfo.message}</p>
-        </div>
+        {#if replayControls}
+            <div class="mt-4 p-4 border-t border-arena-border bg-arena-surface/50 rounded-lg shadow-inner flex flex-col gap-3">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <div class="w-10 h-10 rounded-full bg-arena-accent/15 border border-arena-accent/30 text-arena-accent flex items-center justify-center text-lg shadow">
+                            🎞️
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase tracking-[0.08em] text-arena-text-dim">Replay</div>
+                            <div class="text-sm font-semibold text-arena-text-primary">Spectator timeline</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button 
+                            class="arena-button w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-bg-dark/70 border border-arena-border hover:border-arena-accent/40"
+                            onclick={replayControls.onPrev}
+                            title="Previous Step"
+                            aria-label="Previous step">
+                            ⏮️
+                        </button>
+                        {#if replayControls.isPlaying}
+                            <button 
+                                class="arena-button w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-accent/80 text-arena-bg-dark shadow-lg"
+                                onclick={replayControls.onPause}
+                                title="Pause"
+                                aria-label="Pause replay">
+                                ⏸️
+                            </button>
+                        {:else}
+                            <button 
+                                class="arena-button w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-accent text-arena-bg-dark shadow-lg"
+                                onclick={replayControls.onPlay}
+                                title="Play"
+                                aria-label="Play replay">
+                                ▶️
+                            </button>
+                        {/if}
+                        <button 
+                            class="arena-button w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 bg-arena-bg-dark/70 border border-arena-border hover:border-arena-accent/40"
+                            onclick={replayControls.onNext}
+                            title="Next Step"
+                            aria-label="Next step">
+                            ⏭️
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-arena-bg-dark/70 border border-arena-border rounded-full px-3 py-1 text-xs text-arena-text-primary shadow">
+                        <span class="text-arena-text-dim">Speed</span>
+                        <div class="relative">
+                            <select 
+                                class="replay-speed appearance-none bg-arena-bg-dark/90 border border-arena-border/60 rounded-full px-3 py-1 pr-7 text-xs text-arena-text-primary focus:border-arena-accent focus:outline-none shadow-sm"
+                                value={replayControls.speed}
+                                onchange={(e) => replayControls.onSpeedChange(parseInt(e.target.value))}>
+                                <option value="5000">5s</option>
+                                <option value="2000">2s</option>
+                                <option value="1000">1s</option>
+                            </select>
+                            <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-arena-text-dim">▼</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex-1 min-w-[180px]">
+                        <div class="flex items-center justify-between text-[11px] text-arena-text-dim mb-1">
+                            <span>Step progress</span>
+                            <span class="font-mono text-xs text-arena-text-primary">{replayCurrentStep() + 1}/{replayTotalSteps()}</span>
+                        </div>
+                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-arena-accent to-yellow-400 transition-all duration-300" style={`width: ${replayProgress()}%`}></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {:else}
+            <div class="text-center py-6 border-t border-arena-accent/10">
+                <div class="text-3xl mb-2 leading-none">{spectatorInfo.icon}</div>
+                <div class="text-arena-accent font-semibold mb-1">{spectatorInfo.title}</div>
+                <p class="text-arena-text-dim text-sm">{spectatorInfo.message}</p>
+            </div>
+        {/if}
     {:else}
         <div class="text-center text-xs text-arena-muted mb-3">
             Phase Mode: {phaseModeLabel}
@@ -184,3 +272,21 @@
         {/if}
     {/if}
 </div>
+
+<style>
+    :global(.replay-speed) {
+        background-color: var(--arena-bg-dark, #0f162b);
+        color: var(--arena-text-primary, #f8fafc);
+        border-color: var(--arena-border, rgba(255, 255, 255, 0.1));
+    }
+
+    :global(.replay-speed option) {
+        background-color: var(--arena-bg-dark, #0f162b);
+        color: var(--arena-text-primary, #f8fafc);
+    }
+
+    :global(.replay-speed option:checked) {
+        background-color: var(--arena-accent, #f4c76a);
+        color: var(--arena-bg-dark, #0f162b);
+    }
+</style>

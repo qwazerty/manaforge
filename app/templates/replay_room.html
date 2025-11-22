@@ -1,0 +1,23 @@
+{% extends "base_arena.html" %}
+
+{% block title %}ManaForge - Replay{% endblock %}
+
+{% block content %}
+<div
+    id="replay-interface-root"
+    class="min-h-screen bg-arena-gradient relative game-container-1080 compact-zones"
+    data-game-id="{{ game_id }}">
+
+    <div class="mx-auto px-4 py-3 flex flex-col h-full">
+        <div id="game-arena-root" class="flex-grow">
+            <!-- GameArena.svelte will render here -->
+            <div class="flex items-center justify-center h-full text-arena-text-dim">
+                Loading replay data...
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'components/scripts.html' %}
+<script src="{{ url_for('static', path='js/replay-room.js') }}"></script>
+{% endblock %}
