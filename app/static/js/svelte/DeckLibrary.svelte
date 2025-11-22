@@ -1,9 +1,9 @@
 <script>
     import { onMount } from 'svelte';
-    import { DeckStorage } from '@static/lib/deck-storage';
+    import { DeckStorage } from '../../lib/deck-storage';
 
-    let decks = [];
-    let lastUpdate = '—';
+    let decks = $state([]);
+    let lastUpdate = $state('—');
 
     onMount(() => {
         loadDecks();
@@ -11,8 +11,9 @@
 
     function loadDecks() {
         const baseDecks = DeckStorage.list();
-        decks = Array.isArray(baseDecks) ? [...baseDecks] : [];
-        decks.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        const loaded = Array.isArray(baseDecks) ? [...baseDecks] : [];
+        loaded.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+        decks = loaded;
         
         const latest = decks.length ? decks[0] : null;
         lastUpdate = latest ? formatTimestamp(latest.updatedAt) : '—';
@@ -108,13 +109,13 @@
                         </a>
                         <button 
                             class="px-4 py-2 rounded-lg border border-arena-accent/30 hover:border-arena-accent transition text-sm flex items-center gap-1"
-                            on:click={() => handleDuplicate(deck.id)}
+                            onclick={() => handleDuplicate(deck.id)}
                         >
                             <span>🧬</span>Duplicate
                         </button>
                         <button 
                             class="px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition text-sm flex items-center gap-1"
-                            on:click={() => handleDelete(deck.id)}
+                            onclick={() => handleDelete(deck.id)}
                         >
                             <span>🗑️</span>Delete
                         </button>
