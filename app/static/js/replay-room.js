@@ -9,7 +9,6 @@
     let playInterval = null;
     let gameArenaApp = null;
     let actionPanelApp = null;
-    let actionHistoryApp = null;
 
     let playbackSpeed = 2000;
 
@@ -130,12 +129,10 @@
                 gameArenaApp = null;
                 // Sub-components are inside GameArena, so they are destroyed too
                 actionPanelApp = null;
-                actionHistoryApp = null;
             } else if (gameArenaApp && typeof gameArenaApp.$destroy === 'function') {
                 gameArenaApp.$destroy();
                 gameArenaApp = null;
                 actionPanelApp = null;
-                actionHistoryApp = null;
             } else {
                 arenaRoot.innerHTML = '';
             }
@@ -154,11 +151,7 @@
                 replayControls: getReplayControls()
             });
         }
-        if (actionHistoryApp && typeof actionHistoryApp.$set === 'function') {
-            actionHistoryApp.$set({
-                entries: state.action_history || []
-            });
-        }
+        prepareHistoryEntries(state);
     }
 
     function mountSubComponents(state) {
@@ -196,25 +189,7 @@
             }
         }
 
-        if (actionHistoryRoot && !actionHistoryApp && window.ActionHistoryComponent) {
-            const props = {
-                entries: state.action_history || [],
-                panelTitle: 'Replay Log'
-            };
-
-            if (typeof window.ActionHistoryComponent.mount === 'function') {
-                actionHistoryApp = window.ActionHistoryComponent.mount(window.ActionHistoryComponent.default, {
-                    target: actionHistoryRoot,
-                    props: props
-                });
-            } else {
-                const Comp = window.ActionHistoryComponent.default || window.ActionHistoryComponent;
-                actionHistoryApp = new Comp({
-                    target: actionHistoryRoot,
-                    props: props
-                });
-            }
-        }
+        prepareHistoryEntries(state);
     }
 
     function mountComponent(state) {
@@ -236,6 +211,21 @@
                 }
             });
         }
+    }
+
+    function prepareHistoryEntries(state) {
+        const history = Array.isArray(state?.action_history) ? state.action_history : [];
+        if (typeof window !== 'undefined' && window.UIActionHistory && typeof window.UIActionHistory.loadFromState === 'function') {
+            try {
+                window.UIActionHistory.loadFromState(history);
+                return Array.isArray(window.UIActionHistory.entries)
+                    ? [...window.UIActionHistory.entries]
+                    : history;
+            } catch (error) {
+                console.warn('Unable to load replay history into UIActionHistory', error);
+            }
+        }
+        return history;
     }
 
     // Init
