@@ -6,6 +6,7 @@
         placeholderText = 'Type your message...',
         sendButtonLabel = 'Send',
         sendDisabled = false,
+        statusText = '',
         onSend = null
     } = $props();
 
@@ -61,6 +62,7 @@
 
     const normalizedMessages = () => (Array.isArray(messages) ? messages : []);
     const hasMessages = () => normalizedMessages().length > 0;
+    const hasStatus = () => typeof statusText === 'string' && statusText.trim().length > 0;
 </script>
 
 <div class="arena-card rounded-lg p-4 flex flex-col h-[26rem] overflow-hidden" id="battle-chat-panel-card">
@@ -130,5 +132,11 @@
                 {sendButtonLabel}
             </button>
         </form>
+
+        {#if hasStatus()}
+            <div class="text-xs text-yellow-300">
+                {statusText}
+            </div>
+        {/if}
     </div>
 </div>
