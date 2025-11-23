@@ -577,7 +577,22 @@ class UIZonesManager {
             }
         }
         try {
-            const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+            const rawPayload =
+                (event.dataTransfer && event.dataTransfer.getData && event.dataTransfer.getData('text/plain')) || '';
+
+            if (!rawPayload) {
+                return;
+            }
+
+            let data = null;
+            try {
+                data = JSON.parse(rawPayload);
+            } catch (parseError) {
+                // Ignore drops that don't come from our drag source (e.g., external URLs)
+                console.warn('[UIZonesManager] ignoring non-JSON drop payload', rawPayload);
+                return;
+            }
+
             const { cardId, cardZone, uniqueCardId } = data;
 
             const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
