@@ -1,5 +1,6 @@
 <script>
     import { onDestroy, onMount } from 'svelte';
+    import GameArena from './GameArena.svelte';
 
     let {
         gameId = ''
@@ -14,8 +15,6 @@
     const playbackSpeed = 500;
     const phases = Array.isArray(UIConfig?.GAME_PHASES) ? UIConfig.GAME_PHASES : [];
 
-    let arenaApp = null;
-    let arenaUnmount = null;
     let actionPanelApp = null;
     let playInterval = null;
 
@@ -160,8 +159,6 @@
             return;
         }
 
-        ensureArenaMounted(currentState());
-        updateArena(currentState());
         ensureActionPanel(currentState());
         syncActionHistory(currentState());
         syncBattleChat(currentState());
@@ -171,45 +168,6 @@
         if (playInterval) {
             clearInterval(playInterval);
             playInterval = null;
-        }
-    }
-
-    function ensureArenaMounted(state) {
-        if (arenaApp) return;
-        const root = document.getElementById('game-arena-root');
-        if (!root) return;
-
-        const component = typeof window !== 'undefined' ? window.GameArenaComponent : null;
-        if (!component) {
-            errorMessage = 'Game arena UI is unavailable.';
-            return;
-        }
-
-        root.innerHTML = '';
-        const mount = typeof component.mount === 'function' ? component.mount : null;
-        const unmount = typeof component.unmount === 'function' ? component.unmount : null;
-        arenaUnmount = unmount || null;
-
-        const props = {
-            gameState: state,
-            selectedPlayer: 'spectator'
-        };
-
-        if (mount) {
-            arenaApp = mount(component.default, { target: root, props });
-        } else {
-            const CompClass = component.default || component;
-            arenaApp = new CompClass({ target: root, props });
-        }
-    }
-
-    function updateArena(state) {
-        if (!arenaApp) return;
-        if (typeof arenaApp.$set === 'function') {
-            arenaApp.$set({
-                gameState: state,
-                selectedPlayer: 'spectator'
-            });
         }
     }
 
@@ -326,25 +284,9 @@
         actionPanelApp = null;
     }
 
-    function destroyArena() {
-        if (arenaApp) {
-            try {
-                if (arenaUnmount) {
-                    arenaUnmount(arenaApp);
-                } else if (typeof arenaApp.$destroy === 'function') {
-                    arenaApp.$destroy();
-                }
-            } catch (error) {
-                console.warn('[ReplayRoom] failed to destroy GameArena', error);
-            }
-        }
-        arenaApp = null;
-    }
-
     function cleanup() {
         clearPlayTimer();
         destroyActionPanel();
-        destroyArena();
     }
 
     function handleProgressClick(event) {
@@ -375,9 +317,13 @@
             </div>
         {:else}
             <div id="game-arena-root" class="flex-grow">
-                <div class="flex items-center justify-center h-full text-arena-text-dim">
-                    Preparing arena...
-                </div>
+                {#if currentState()}
+                    <GameArena gameState={currentState()} selectedPlayer="spectator" />
+                {:else}
+                    <div class="flex items-center justify-center h-full text-arena-text-dim">
+                        Preparing arena...
+                    </div>
+                {/if}
             </div>
         {/if}
     </div>
