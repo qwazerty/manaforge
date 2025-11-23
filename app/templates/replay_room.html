@@ -4,20 +4,14 @@
 
 {% block content %}
 <div
-    id="replay-interface-root"
+    id="replay-app"
     class="min-h-screen bg-arena-gradient relative game-container-1080 compact-zones spectator-mode"
     data-game-id="{{ game_id }}">
-
-    <div class="mx-auto px-4 py-3 flex flex-col h-full">
-        <div id="game-arena-root" class="flex-grow">
-            <!-- GameArena.svelte will render here -->
-            <div class="flex items-center justify-center h-full text-arena-text-dim">
-                Loading replay data...
-            </div>
-        </div>
-    </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 {% include 'components/scripts.html' %}
-<script src="{{ url_for('static', path='js/replay-room.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/components/ReplayRoom.bundle.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-replay-room.js') }}"></script>
 {% endblock %}
