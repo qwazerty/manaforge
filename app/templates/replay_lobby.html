@@ -1,69 +1,13 @@
 {% extends "index.html" %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-8">
-    <div class="text-center mb-12">
-        <h1 class="text-4xl font-magic text-arena-accent mb-4">Game Replays</h1>
-        <p class="text-arena-text-dim text-lg">Watch past games or analyze your gameplay.</p>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Load by ID -->
-        <div class="arena-card p-8 rounded-xl text-center">
-            <div class="text-4xl mb-4">🔍</div>
-            <h2 class="text-2xl font-bold text-arena-text-primary mb-4">Load by Game ID</h2>
-            <p class="text-arena-text-dim mb-6">Enter the ID of a recently played game.</p>
-            
-            <div class="flex gap-2">
-                <input type="text" id="game-id-input" placeholder="Game ID..." 
-                       class="flex-1 bg-arena-bg-dark border border-arena-border rounded-lg px-4 py-2 text-arena-text-primary focus:outline-none focus:border-arena-accent">
-                <button id="load-id-btn" class="arena-button px-6 py-2 rounded-lg font-bold">
-                    Watch
-                </button>
-            </div>
-        </div>
-
-        <!-- Upload File -->
-        <div class="arena-card p-8 rounded-xl text-center">
-            <div class="text-4xl mb-4">📂</div>
-            <h2 class="text-2xl font-bold text-arena-text-primary mb-4">Upload Replay File</h2>
-            <p class="text-arena-text-dim mb-6">Load a saved replay JSON file.</p>
-            
-            <input type="file" id="replay-file-input" accept=".json" class="hidden">
-            <button id="upload-btn" class="arena-button px-6 py-2 rounded-lg font-bold w-full">
-                Select File
-            </button>
-        </div>
-    </div>
+<div class="py-12 px-4">
+    <div id="replay-lobby-root"></div>
 </div>
+{% endblock %}
 
-<script>
-    document.getElementById('load-id-btn').addEventListener('click', () => {
-        const gameId = document.getElementById('game-id-input').value.trim();
-        if (gameId) {
-            window.location.href = `/replay/${gameId}`;
-        }
-    });
-
-    document.getElementById('upload-btn').addEventListener('click', () => {
-        document.getElementById('replay-file-input').click();
-    });
-
-    document.getElementById('replay-file-input').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const replayData = JSON.parse(event.target.result);
-                localStorage.setItem('replay_data', JSON.stringify(replayData));
-                window.location.href = '/replay/local';
-            } catch (err) {
-                alert('Invalid JSON file');
-            }
-        };
-        reader.readAsText(file);
-    });
-</script>
+{% block extra_js %}
+<script src="{{ url_for('static', path='js/index.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/components/ReplayLobby.bundle.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-replay-lobby.js') }}"></script>
 {% endblock %}
