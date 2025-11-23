@@ -18,12 +18,13 @@
     let actionPanelApp = null;
     let playInterval = null;
 
-    const totalSteps = () => Array.isArray(timeline) ? timeline.length : 0;
-    const displayTotalSteps = () => Math.max(totalSteps(), 0);
-    const displayStepIndex = () =>
-        totalSteps() > 0 ? Math.min(currentIndex + 1, totalSteps()) : 0;
-    const currentState = () => (timeline[currentIndex]?.state) || null;
-    const hasTimeline = () => totalSteps() > 0;
+    const totalSteps = $derived(() => Array.isArray(timeline) ? timeline.length : 0);
+    const displayTotalSteps = $derived(() => Math.max(totalSteps(), 0));
+    const displayStepIndex = $derived(() =>
+        totalSteps() > 0 ? Math.min(currentIndex + 1, totalSteps()) : 0
+    );
+    const currentState = $derived(() => (timeline[currentIndex]?.state) || null);
+    const hasTimeline = $derived(() => totalSteps() > 0);
 
     const replayControls = $derived({
         onPrev: prevStep,
