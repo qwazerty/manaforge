@@ -61,12 +61,6 @@
         <p class="text-arena-text-dim text-lg">Watch past games or analyze your gameplay.</p>
     </div>
 
-    {#if hasStatus}
-        <div class={`arena-card border ${status.type === 'error' ? 'border-red-500/40 text-red-100' : 'border-green-500/40 text-green-100'} bg-arena-surface mb-6 px-4 py-3 rounded-lg text-sm`}>
-            {status.message}
-        </div>
-    {/if}
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div class="arena-card p-8 rounded-xl text-center">
             <div class="text-4xl mb-4">🔍</div>
