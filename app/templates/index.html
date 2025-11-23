@@ -1,102 +1,10 @@
 {% extends "base_arena.html" %}
 
 {% block content %}
-<!-- Hero Section -->
-<div class="relative overflow-hidden">
-    <!-- Background gradient overlay -->
-    <div class="absolute inset-0 bg-arena-gradient opacity-90"></div>
-    
-    <div class="relative z-10 py-16 px-4">
-        <div class="max-w-6xl mx-auto text-center">
-            <!-- Main Title -->
-            <div class="animate-fade-in mb-8">
-                <h1 class="font-magic text-5xl md:text-7xl font-bold text-arena-accent mb-4 animate-glow">
-                    🔮 Welcome to ManaForge
-                </h1>
-                <p class="text-xl md:text-2xl text-arena-text mb-6 font-light">
-                    Experience Magic The Gathering like never before
-                </p>
-                <div class="flex justify-center items-center space-x-2 text-arena-text-dim">
-                    <span class="mana-symbol mana-w">W</span>
-                    <span class="mana-symbol mana-u">U</span>
-                    <span class="mana-symbol mana-b">B</span>
-                    <span class="mana-symbol mana-r">R</span>
-                    <span class="mana-symbol mana-g">G</span>
-                </div>
-            </div>
-            
-            <!-- Quick Actions -->
-            <div class="max-w-2xl mx-auto animate-slide-up">
-                
-                <!-- Start Game Card -->
-                <div class="arena-card rounded-xl p-8 group">
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-accent-gradient rounded-full flex items-center justify-center mx-auto mb-6 shadow-arena">
-                            <span class="text-3xl">⚔️</span>
-                        </div>
-                        <h2 class="font-magic text-2xl font-bold text-arena-accent mb-4">Enter the Arena</h2>
-                        <p class="text-arena-text-dim mb-6 leading-relaxed">
-                            Challenge other planeswalkers in epic duels with pre-constructed decks
-                        </p>
-                        <a 
-                            href="/game"
-                            class="arena-button w-full py-3 px-6 rounded-lg font-semibold text-lg transition-all duration-300 inline-block text-center"
-                        >
-                            <span class="mr-2">🎮</span>Play
-                        </a>
-                        <a 
-                            href="/draft"
-                            class="arena-button w-full py-3 px-6 rounded-lg font-semibold text-lg transition-all duration-300 inline-block text-center mt-4"
-                        >
-                            <span class="mr-2">📦</span>Limited
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Features Section -->
-<div class="py-16 px-4">
-    <div class="max-w-6xl mx-auto">
-        <h2 class="font-magic text-3xl font-bold text-center text-arena-accent mb-12">
-            Forge Your Legend
-        </h2>
-        
-        <div class="grid md:grid-cols-3 gap-8">
-            <!-- Real-time Play -->
-            <div class="text-center p-6">
-                <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mx-auto mb-4 shadow-arena">
-                    <span class="text-xl">⚡</span>
-                </div>
-                <h3 class="font-magic text-xl font-semibold text-arena-accent mb-2">Real-time Battles</h3>
-                <p class="text-arena-text-dim">Experience smooth, responsive gameplay with instant card interactions and live opponent updates.</p>
-            </div>
-            
-            <!-- Deck Import -->
-            <div class="text-center p-6">
-                <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mx-auto mb-4 shadow-arena">
-                    <span class="text-xl">📋</span>
-                </div>
-                <h3 class="font-magic text-xl font-semibold text-arena-accent mb-2">Deck Import</h3>
-                <p class="text-arena-text-dim">Import your favorite decks from text lists and jump straight into battle with your custom strategies.</p>
-            </div>
-            
-            <!-- Community -->
-            <div class="text-center p-6">
-                <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mx-auto mb-4 shadow-arena">
-                    <span class="text-xl">👥</span>
-                </div>
-                <h3 class="font-magic text-xl font-semibold text-arena-accent mb-2">Planeswalker Community</h3>
-                <p class="text-arena-text-dim">Connect with fellow planeswalkers, share strategies, and compete in tournaments.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
+<div id="home-root"></div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='js/index.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/components/HomePage.bundle.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-home-page.js') }}"></script>
 {% endblock %}
