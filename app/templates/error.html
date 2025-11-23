@@ -3,67 +3,13 @@
 {% block title %}Spell Disrupted - ManaForge{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4">
-    <div class="max-w-2xl w-full text-center">
-        <div class="arena-card rounded-xl p-12 animate-fade-in">
-            <!-- Error Icon -->
-            <div class="mb-8">
-                <div class="w-24 h-24 bg-red-500/20 border-2 border-red-500/50 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-                    <span class="text-4xl">⚡</span>
-                </div>
-                <h1 class="font-magic text-3xl font-bold text-red-400 mb-4">
-                    Spell Disrupted!
-                </h1>
-                <p class="text-arena-text-dim text-lg leading-relaxed">
-                    {{ message or "A magical disturbance has occurred in the planeswalker realm." }}
-                </p>
-            </div>
-            
-            <!-- Action Buttons -->
-            <div class="space-y-4 mb-8">
-                <a href="/" 
-                   class="inline-flex items-center bg-arena-surface-light hover:bg-arena-surface border border-arena-accent/30 hover:border-arena-accent text-arena-text hover:text-arena-accent px-6 py-3 rounded-lg font-semibold transition-all duration-300">
-                    <span class="mr-2">🏠</span>Home Plane
-                </a>
-            </div>
-            
-            <!-- Troubleshooting -->
-            <div class="arena-surface rounded-lg p-6 border border-arena-accent/20">
-                <h3 class="font-magic text-lg font-semibold text-arena-accent mb-4">
-                    <span class="mr-2">🔮</span>Restoration Rituals
-                </h3>
-                <div class="text-arena-text-dim text-sm space-y-2">
-                    <p class="mb-3">If the magical energies remain disrupted, try these incantations:</p>
-                    <div class="grid md:grid-cols-3 gap-4 text-left">
-                        <div class="flex items-start">
-                            <span class="mr-2 text-arena-accent">•</span>
-                            <span>Refresh the enchanted interface</span>
-                        </div>
-                        <div class="flex items-start">
-                            <span class="mr-2 text-arena-accent">•</span>
-                            <span>Forge a new battlefield</span>
-                        </div>
-                        <div class="flex items-start">
-                            <span class="mr-2 text-arena-accent">•</span>
-                            <span>Strengthen your mana connection</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Magical Elements -->
-            <div class="flex justify-center items-center space-x-2 mt-8 opacity-60">
-                <span class="mana-symbol mana-w">W</span>
-                <span class="mana-symbol mana-u">U</span>
-                <span class="mana-symbol mana-b">B</span>
-                <span class="mana-symbol mana-r">R</span>
-                <span class="mana-symbol mana-g">G</span>
-            </div>
-        </div>
-    </div>
-</div>
+<div id="error-root"></div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='js/error.js') }}"></script>
+<script id="error-props" type="application/json">
+{{ {"message": message} | tojson }}
+</script>
+<script src="{{ url_for('static', path='js/ui/components/ErrorPage.bundle.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-error-page.js') }}"></script>
 {% endblock %}
