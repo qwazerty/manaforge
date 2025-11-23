@@ -54,7 +54,7 @@
                     🔮 Welcome to ManaForge
                 </h1>
                 <p class="text-xl md:text-2xl text-arena-text mb-6 font-light">
-                    Experience Magic The Gathering like never before
+                    Magic The Gathering web-based arena for duels and drafts
                 </p>
                 <div class="flex justify-center items-center space-x-2 text-arena-text-dim">
                     {#each manaSymbols as symbol, index}
@@ -75,9 +75,6 @@
                             <span class="text-3xl">⚔️</span>
                         </div>
                         <h2 class="font-magic text-2xl font-bold text-arena-accent mb-4">Enter the Arena</h2>
-                        <p class="text-arena-text-dim mb-6 leading-relaxed">
-                            Challenge other planeswalkers in epic duels with pre-constructed decks
-                        </p>
                         {#each quickActions as action, i}
                             <a
                                 href={action.href}
