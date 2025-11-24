@@ -3,70 +3,13 @@
 {% block title %}Limited Room - {{ room.name }}{% endblock %}
 
 {% block content %}
-<div id="draft-room-root" class="py-12 px-4" data-room='{{ room | tojson | e }}'>
-    <div class="max-w-[1800px] mx-auto">
-        <div class="text-center mb-8">
-            <h1 class="font-magic text-4xl font-bold text-arena-accent">{{ room.name }}</h1>
-            <p class="text-xl text-arena-text-dim">
-                Drafting: {{ room.set_name }}
-                ({{ room.draft_type | default('draft') | replace('_', ' ') | title }})
-            </p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <!-- Player List -->
-            <div class="lg:col-span-1 arena-card p-4 rounded-lg">
-                <h2 class="font-magic text-2xl text-arena-accent mb-4">Players</h2>
-                <div id="player-list" class="space-y-2">
-                    {% for player in room.players %}
-                    <div id="player-{{ player.id }}" class="p-2 bg-arena-surface rounded">
-                        {{ player.name }} {% if player.is_bot %}(Bot){% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="mt-4 space-y-2">
-                    <button id="add-bot-button" class="arena-button w-full py-4 px-8 rounded-lg">Add Bot</button>
-                    <button id="fill-bots-button" class="arena-button w-full py-4 px-8 rounded-lg">Fill with Bots</button>
-                    <button id="start-draft-button" class="arena-button w-full py-4 px-8 rounded-lg">Start Draft</button>
-                    <div id="export-container" class="mt-4 hidden space-y-3">
-                        <div class="flex flex-col gap-2">
-                            <button onclick="exportDecklist(event)" class="arena-button w-full py-4 px-8 rounded-lg">Copy Decklist</button>
-                            <button onclick="importDraftToDeckManager(event)" class="arena-button w-full py-4 px-8 rounded-lg">Open in Deck Manager</button>
-                        </div>
-                        <p id="draft-export-status" class="hidden text-center text-sm text-arena-text-dim"></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Draft Area -->
-            <div class="lg:col-span-3">
-                <div id="draft-complete-message" class="hidden text-center p-4 rounded-lg mb-4 arena-card">
-                    <h2 class="text-2xl font-bold text-arena-accent">Draft Complete!</h2>
-                    <p class="text-arena-text-dim">You can now export your decklist.</p>
-                </div>
-                <!-- Current Pack -->
-                <div id="current-pack-container" class="arena-card p-4 mb-8 rounded-lg">
-                    <h2 id="pack-header" class="font-magic text-2xl text-arena-accent mb-4">Current Pack (Pack {{ room.current_pack_number }}, Pick {{ room.current_pick_number }})</h2>
-                    <div id="current-pack" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <!-- Cards in the current pack will be rendered here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Draft Deck Builder -->
-        <div id="draft-deck-builder-root" class="mt-10"></div>
-
-    </div>
-</div>
+<div id="draft-room-root" data-room='{{ room | tojson | e }}'></div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
 <script src="{{ url_for('static', path='js/card-search.js') }}"></script>
-<script src="{{ url_for('static', path='js/draft-room-context.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/DeckManager.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-draft-deck-manager.js') }}"></script>
-<script src="{{ url_for('static', path='js/draft-room.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/components/DraftRoom.bundle.js') }}"></script>
+<script src="{{ url_for('static', path='js/ui/ui-draft-room.js') }}"></script>
 {% endblock %}

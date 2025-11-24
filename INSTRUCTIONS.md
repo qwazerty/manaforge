@@ -11,6 +11,7 @@ This project uses Svelte 5 in Runes mode. When writing or migrating Svelte compo
     -   Use `$state(initialValue)` for reactive variables instead of `let variable = initialValue;`.
     -   Use `$derived(expression)` for derived values instead of `$: derived = expression;`.
     -   Use `$effect(() => { ... })` for side effects instead of `$: { ... }`.
+    -   When reading a `$derived` value, remember it is a getter: call it (`derivedValue()`) in script/markup instead of treating it as a plain variable.
 
 2.  **Event Handling**: Use standard HTML attributes.
     -   Use `onclick={handler}` instead of `on:click={handler}`.
