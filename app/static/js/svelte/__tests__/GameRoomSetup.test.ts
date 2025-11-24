@@ -3,16 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import GameRoomSetup from '../GameRoomSetup.svelte';
 import type { ComponentType } from 'svelte';
+import { DeckStorage } from '../../lib/deck-storage';
 
 const GameRoomSetupComponent = GameRoomSetup as unknown as ComponentType;
-
-declare global {
-    interface Window {
-        DeckLibrary?: {
-            list?: () => Array<{ id: string; name: string; format: string; state: unknown; legacy?: boolean }>;
-        };
-    }
-}
 
 const baseConfig = {
     gameId: 'GAME-123',
@@ -37,7 +30,7 @@ const baseConfig = {
 };
 
 afterEach(() => {
-    delete window.DeckLibrary;
+    window.localStorage.clear();
 });
 
 describe('GameRoomSetup', () => {
@@ -71,16 +64,13 @@ describe('GameRoomSetup', () => {
                 'entry-1': { quantity: 4, card: { name: 'Lightning Bolt' } }
             }
         };
-        window.DeckLibrary = {
-            list: () => [
-                {
-                    id: 'deck-1',
-                    name: 'Izzet Blitz',
-                    format: 'modern',
-                    state: deckState
-                }
-            ]
-        };
+        DeckStorage.save({
+            id: 'deck-1',
+            name: 'Izzet Blitz',
+            format: 'modern',
+            state: deckState,
+            updatedAt: new Date().toISOString()
+        });
 
         render(GameRoomSetupComponent, {
             props: {
@@ -119,16 +109,13 @@ describe('GameRoomSetup', () => {
                 'entry-1': { quantity: 4, card: { name: 'Lightning Bolt' } }
             }
         };
-        window.DeckLibrary = {
-            list: () => [
-                {
-                    id: 'deck-1',
-                    name: 'Red Deck',
-                    format: 'modern',
-                    state: deckState
-                }
-            ]
-        };
+        DeckStorage.save({
+            id: 'deck-1',
+            name: 'Red Deck',
+            format: 'modern',
+            state: deckState,
+            updatedAt: new Date().toISOString()
+        });
 
         render(GameRoomSetupComponent, {
             props: {
