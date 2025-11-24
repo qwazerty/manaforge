@@ -4,6 +4,7 @@ Engine for managing draft rooms and the drafting process.
 import copy
 import uuid
 import random
+import re
 from typing import Dict, List, Optional, Any
 
 from app.models.game import DraftRoom, DraftPlayer, Card, DraftState, DraftType, CubeConfiguration
@@ -119,16 +120,38 @@ class DraftEngine:
         return bot
 
     def _update_player_names(self, room: DraftRoom):
-        """Re-assigns player and bot names based on their current order in the list."""
-        human_player_count = 1
-        bot_count = 1
+        """
+        Ensure every player has a name without overwriting existing ones.
+        New humans/bots get the next default number; renamed players stay intact.
+        """
+        human_count = 0
+        bot_count = 0
+
         for player in room.players:
+            if player.is_bot:
+                if player.name:
+                    match = re.match(r"Bot\s+(\d+)$", player.name.strip())
+                    if match:
+                        bot_count = max(bot_count, int(match.group(1)))
+                continue
+
+            if player.name:
+                match = re.match(r"Player\s+(\d+)$", player.name.strip())
+                if match:
+                    human_count = max(human_count, int(match.group(1)))
+
+        human_count += 1
+        bot_count += 1
+
+        for player in room.players:
+            if player.name:
+                continue
             if player.is_bot:
                 player.name = f"Bot {bot_count}"
                 bot_count += 1
             else:
-                player.name = f"Player {human_player_count}"
-                human_player_count += 1
+                player.name = f"Player {human_count}"
+                human_count += 1
 
     def _sanitize_player_name(
         self,
