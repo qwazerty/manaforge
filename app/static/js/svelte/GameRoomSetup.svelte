@@ -1,5 +1,6 @@
 <script>
     import { onMount, onDestroy, tick } from 'svelte';
+    import { DeckStorage } from '../../lib/deck-storage';
 
     let { config } = $props();
 
@@ -299,9 +300,7 @@
         if (!isBrowser) return [];
         let decks = [];
         try {
-            if (window.DeckLibrary && typeof window.DeckLibrary.list === 'function') {
-                decks = window.DeckLibrary.list() || [];
-            }
+            decks = DeckStorage.list() || [];
         } catch (error) {
             console.warn('[GameRoomSetup] Unable to load deck library entries', error);
         }
