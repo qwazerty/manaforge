@@ -23,3 +23,6 @@ This project uses Svelte 5 in Runes mode. When writing or migrating Svelte compo
 
 4.  **Component Mounting**:
     -   Use `mount(Component, { target: element })` from `svelte` (or `svelte/legacy` if using `createClassComponent` wrapper) instead of `new Component({ target: element })`.
+
+5.  **Imports & Paths**:
+    -   Avoid path aliases like `@static/...` in Svelte sources; use relative imports (e.g., `../../lib/deck-storage`) so the esbuild step resolves correctly in all environments.
