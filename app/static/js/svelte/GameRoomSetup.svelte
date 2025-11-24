@@ -1,6 +1,6 @@
 <script>
     import { onMount, onDestroy, tick } from 'svelte';
-    import { DeckStorage } from '../../lib/deck-storage';
+    import { DeckStorage } from '@static/lib/deck-storage';
 
     let { config } = $props();
 

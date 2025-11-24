@@ -30,6 +30,23 @@ describe('Zone popups', () => {
 
     beforeEach(() => {
         document.body.innerHTML = '<div id="game-board" style="width: 800px; height: 600px;"></div>';
+        
+        // Reset UIZonesManager state
+        if (window.UIZonesManager) {
+            // @ts-ignore - accessing private static fields for testing
+            window.UIZonesManager._zonePopupElements = new Map();
+            // @ts-ignore
+            window.UIZonesManager._zonePopupComponents = new Map();
+            // @ts-ignore
+            window.UIZonesManager._deckZoneConfigs = new Map();
+            // @ts-ignore
+            window.UIZonesManager._graveyardZoneConfigs = new Map();
+            // @ts-ignore
+            window.UIZonesManager._exileZoneConfigs = new Map();
+            // @ts-ignore
+            window.UIZonesManager._lifeZoneConfigs = new Map();
+        }
+
         vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
             cb(0);
             return 0;

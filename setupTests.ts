@@ -42,3 +42,19 @@ if (!('UIUtils' in globalThis)) {
         }
     };
 }
+
+if (!('UIRenderersTemplates' in globalThis)) {
+    // @ts-ignore
+    globalThis.UIRenderersTemplates = {
+        _makePopupDraggable: () => {},
+        _applyPopupSearch: () => {},
+        _positionRevealPopup: () => {}
+    };
+}
+
+if (!('UIHorizontalScroll' in globalThis)) {
+    // @ts-ignore
+    globalThis.UIHorizontalScroll = {
+        attachWheelListener: () => {}
+    };
+}
