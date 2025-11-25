@@ -194,6 +194,7 @@
     let showBasicLands = $state(false);
     let draggedEntryId = $state(null);
     let activeDropColumn = $state(null);
+    let showListView = $state(false);
     let importText = $state('');
     let importUrl = $state('');
     let suppressUrlUpdates = false;
@@ -223,6 +224,22 @@
                 sideboard: 'default'
             }
         };
+    }
+
+    function ensureStateDefaults(current) {
+        if (!current) return;
+        if (!current.filters) {
+            current.filters = { color: 'all', rarity: 'all', sideboardOnly: false };
+        } else {
+            if (!current.filters.color) current.filters.color = 'all';
+            if (!current.filters.rarity) current.filters.rarity = 'all';
+            if (typeof current.filters.sideboardOnly !== 'boolean') current.filters.sideboardOnly = false;
+        }
+        if (!current.sorting) {
+            current.sorting = { sideboard: 'default' };
+        } else if (!current.sorting.sideboard) {
+            current.sorting.sideboard = 'default';
+        }
     }
 
     function computeStats(currentState) {
@@ -380,7 +397,6 @@
     function lookupProductId(name) {
         const key = normalizeName(name);
         if (!key) return null;
-        console.log('Pricing lookup:', name, '->', key);
         const ids = PRODUCT_LOOKUP[key];
         if (!Array.isArray(ids) || ids.length === 0) return null;
         let bestId = null;
@@ -419,12 +435,127 @@
             .filter(Boolean);
     }
 
+    function getMainColumnKeys() {
+        const includeCommander = COMMANDER_FORMATS.has((state.format || '').toLowerCase()) || (state.columns.commander && state.columns.commander.length > 0);
+        return includeCommander ? ['commander', ...MAIN_COLUMNS_BASE] : [...MAIN_COLUMNS_BASE];
+    }
+
     function filterEntries(entries, columnKey = null) {
         const applyOnlyToSideboard = Boolean(state?.filters?.sideboardOnly);
         if (applyOnlyToSideboard && columnKey !== 'sideboard') {
             return entries;
         }
         return entries.filter((entry) => passesFilters(entry?.card));
+    }
+
+    function classifyType(card = {}) {
+        const typeLine = String(card.type_line || card.card_type || '').toLowerCase();
+        if (typeLine.includes('creature')) return 'creature';
+        if (typeLine.includes('planeswalker')) return 'planeswalker';
+        if (typeLine.includes('instant')) return 'instant';
+        if (typeLine.includes('sorcery')) return 'sorcery';
+        if (typeLine.includes('enchantment')) return 'enchantment';
+        if (typeLine.includes('artifact')) return 'artifact';
+        if (typeLine.includes('land')) return 'land';
+        return 'other';
+    }
+
+    function getTypeLabel(typeKey) {
+        const normalized = String(typeKey || '').toLowerCase();
+        return TYPE_LABELS[normalized] || (normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Other');
+    }
+
+    function collectEntriesWithColumn(columnKeys) {
+        const result = [];
+        columnKeys.forEach((columnKey) => {
+            const ids = state.columns[columnKey] || [];
+            ids.forEach((entryId) => {
+                const entry = state.entries[entryId];
+                if (entry) {
+                    result.push({ ...entry, __column: columnKey });
+                }
+            });
+        });
+        return result;
+    }
+
+    function groupEntriesForList(entriesWithColumn) {
+        const filtered = entriesWithColumn.filter((entry) => filterEntries([entry], entry.__column).length > 0);
+        const buckets = new Map();
+        filtered.forEach((entry) => {
+            const typeKey = classifyType(entry.card);
+            const label = getTypeLabel(typeKey);
+            if (!buckets.has(label)) {
+                buckets.set(label, { label, entries: [], count: 0 });
+            }
+            const bucket = buckets.get(label);
+            bucket.entries.push(entry);
+            bucket.count += Number(entry.quantity) || 0;
+        });
+        const groups = Array.from(buckets.values());
+        groups.forEach((group) => {
+            group.entries.sort((a, b) => {
+                const cmcA = Number(a.card?.cmc) || 0;
+                const cmcB = Number(b.card?.cmc) || 0;
+                if (cmcA !== cmcB) return cmcA - cmcB;
+                return compareByName(a.card, b.card);
+            });
+        });
+        return groups.sort((a, b) => a.label.localeCompare(b.label));
+    }
+
+    function getEntryColumn(entryId) {
+        for (const key of Object.keys(state.columns || {})) {
+            const ids = state.columns[key];
+            if (Array.isArray(ids) && ids.includes(entryId)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    function formatManaCost(manaCost) {
+        if (!manaCost) return [];
+        const matches = String(manaCost).match(/\{[^}]+\}/g);
+        return matches || [];
+    }
+
+    function buildManaSymbols(manaCost) {
+        return formatManaCost(manaCost).map((code) => {
+            const raw = code.slice(1, -1).toLowerCase();
+            const numeric = Number(raw);
+            if (Number.isFinite(numeric)) {
+                return { class: 'c', label: String(numeric) };
+            }
+            if (raw === 'x') {
+                return { class: 'c', label: 'X' };
+            }
+            const map = { w: 'w', u: 'u', b: 'b', r: 'r', g: 'g', c: 'c' };
+            const cls = map[raw] || 'c';
+            return { class: cls, label: code.slice(1, -1) };
+        });
+    }
+
+    function handleListDragOver(event, targetColumn) {
+        if (!targetColumn) return;
+        event.preventDefault();
+        activeDropColumn = targetColumn;
+    }
+
+    function handleListDrop(event, targetColumn) {
+        event.preventDefault();
+        const entryId = draggedEntryId;
+        activeDropColumn = null;
+        if (!entryId || !targetColumn) {
+            draggedEntryId = null;
+            return;
+        }
+        if (!showSideboard && targetColumn === 'sideboard') {
+            draggedEntryId = null;
+            return;
+        }
+        moveEntry(entryId, targetColumn);
+        draggedEntryId = null;
     }
 
     function passesFilters(card = {}) {
@@ -682,6 +813,7 @@
                 state = cloneState(savedDeck.state);
                 state.deckName = savedDeck.name || state.deckName;
                 state.format = savedDeck.format || state.format;
+                ensureStateDefaults(state);
                 return;
             }
         }
@@ -693,6 +825,7 @@
                 const parsed = JSON.parse(stored);
                 if (parsed && parsed.state) {
                     state = cloneState(parsed.state);
+                    ensureStateDefaults(state);
                     if (!currentDeckId && parsed.deckId) {
                         currentDeckId = parsed.deckId;
                     }
@@ -1166,7 +1299,7 @@
                     <p class="text-xs text-arena-text-dim mt-2">Sideboard {showSideboard ? stats.sideboardTotal : 0}</p>
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Prix du deck</p>
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Prix du deck (Cardmarket)</p>
                     <p class="text-3xl font-bold text-arena-text mt-1">{formatPrice(pricing.total)}</p>
                     <p class="text-xs text-arena-text-dim mt-2">
                         Main {formatPrice(pricing.main)} • Side {formatPrice(pricing.sideboard)}
@@ -1264,6 +1397,9 @@
                     <button onclick={openSearch} class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                         <span>🔍</span>Search
                     </button>
+                    <button onclick={() => showListView = !showListView} class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+                        <span>🗒️</span>{showListView ? 'Grid view' : 'List view'}
+                    </button>
                 </div>
             </div>
 
@@ -1288,87 +1424,178 @@
             </div>
             {/if}
 
-            <div class="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
-                {#each COLUMN_CONFIG as column}
-                    {#if (column.key !== 'sideboard' || showSideboard) && (column.key !== 'commander' || showCommander || getColumnEntries('commander').length > 0)}
-                        <div 
-                            class="flex-1 min-w-[200px] flex flex-col gap-3 p-2 rounded-lg transition-colors {activeDropColumn === column.key ? 'bg-arena-accent/10 ring-2 ring-arena-accent/40' : ''}"
-                            ondragover={(e) => handleDragOver(e, column.key)}
-                            ondrop={(e) => handleDrop(e, column.key)}
-                            role="listbox"
-                            tabindex="0"
-                        >
-                            <div class="flex items-center justify-between text-sm font-semibold text-arena-muted">
-                                <span>{column.icon} {column.label}</span>
-                                <span>{getColumnEntries(column.key).reduce((sum, e) => sum + e.quantity, 0)}</span>
-                            </div>
-                            
-                            <div class="flex flex-col min-h-[100px] pb-4">
-                                {#each sortEntriesForColumn(filterEntries(getColumnEntries(column.key), column.key), column.key) as entry (entry.id)}
-                                    <div 
-                                        class="relative group cursor-grab active:cursor-grabbing peer -mt-[120%] first:mt-0 hover:[&+.peer]:mt-0 transition-all duration-200 z-0"
-                                        draggable="true"
-                                        ondragstart={(e) => handleDragStart(e, entry.id)}
-                                        onmouseenter={(e) => handleMouseEnter(e, entry)}
-                                        onmousemove={(e) => handleMouseMove(e)}
-                                        onmouseleave={() => handleMouseLeave()}
-                                        role="option"
-                                        aria-selected="false"
-                                        tabindex="0"
-                                    >
-                                        <div class="relative rounded-xl overflow-hidden shadow-lg bg-arena-surface/40 border border-white/5 transition">
-                                            {#if entry.card.image_url || entry.card.image}
-                                                <img src={entry.card.image_url || entry.card.image} alt={entry.card.name} class="w-full select-none pointer-events-none">
-                                            {:else}
-                                                <div class="w-full h-32 flex flex-col items-center justify-center bg-arena-surface/80 text-center text-xs p-2">
-                                                    <span class="font-bold">{entry.card.name}</span>
-                                                    <span>{entry.card.mana_cost}</span>
-                                                </div>
-                                            {/if}
-                                            
-                                            <div class="absolute bottom-1 left-1">
-                                                {#if getCardPrice(entry.card) !== null}
-                                                    <span class="bg-black/70 text-white text-[11px] font-semibold px-2 py-1 rounded-full shadow-md">
-                                                        {formatPrice(getCardPrice(entry.card))}
-                                                    </span>
-                                                {:else}
-                                                    <span class="bg-black/50 text-white/70 text-[10px] font-semibold px-2 py-1 rounded-full">
-                                                        Prix N/A
-                                                    </span>
-                                                {/if}
+            {#if showListView}
+                <div class="space-y-6">
+                    <div class="grid md:grid-cols-2 gap-5">
+                        <div class="space-y-4">
+                            {#each groupEntriesForList(collectEntriesWithColumn(getMainColumnKeys())) as group}
+                                <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
+                                    <div class="text-sm font-medium text-arena-accent flex items-center gap-2">
+                                        <span>{group.label}</span>
+                                        <span class="text-arena-text-dim">({group.count})</span>
+                                    </div>
+                                    <div class="divide-y divide-arena-accent/10">
+                                        {#each group.entries as entry (entry.id)}
+                                            <div 
+                                                class="flex items-center gap-2 py-1 px-1 rounded hover:bg-arena-accent/10 transition cursor-grab text-sm"
+                                                draggable="true"
+                                                ondragstart={(e) => handleDragStart(e, entry.id)}
+                                                ondragover={(e) => handleListDragOver(e, entry.__column)}
+                                                ondrop={(e) => handleListDrop(e, entry.__column)}
+                                                onmouseenter={(e) => handleMouseEnter(e, entry)}
+                                                onmousemove={(e) => handleMouseMove(e)}
+                                                onmouseleave={() => handleMouseLeave()}
+                                            >
+                                                <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
+                                                <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
+                                                <span class="flex items-center gap-0.5 flex-shrink-0 w-20 justify-start">
+                                                    {#each buildManaSymbols(entry.card.mana_cost) as symbol}
+                                                        <span class={`mana-symbol mana-${symbol.class} text-[10px] leading-none`}>{symbol.label}</span>
+                                                    {/each}
+                                                </span>
+                                                <span class="text-xs text-arena-text-dim flex-shrink-0 w-16 text-right">
+                                                    {#if getCardPrice(entry.card) !== null}{formatPrice(getCardPrice(entry.card) * entry.quantity)}{:else}—{/if}
+                                                </span>
+                                                <span class="flex items-center gap-0.5 flex-shrink-0">
+                                                    <button onclick={() => updateEntryQuantity(entry.id, entry.quantity + 1)} class="w-5 h-5 rounded bg-black/60 text-green-400 hover:text-green-300 text-xs font-bold" title="Add">+</button>
+                                                    <button onclick={() => updateEntryQuantity(entry.id, entry.quantity - 1)} class="w-5 h-5 rounded bg-black/60 text-red-400 hover:text-red-300 text-xs font-bold" title="Remove">−</button>
+                                                </span>
                                             </div>
-                                            
-                                            <div class="absolute top-1 right-1 flex flex-col items-center gap-1 z-20">
-                                                <div class="bg-black/80 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
-                                                    {entry.quantity}x
+                                        {/each}
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                        {#if showSideboard}
+                            <div class="space-y-4"
+                                ondragover={(e) => handleListDragOver(e, 'sideboard')}
+                                ondrop={(e) => handleListDrop(e, 'sideboard')}
+                            >
+                                <div class="text-sm font-medium text-arena-accent">Sideboard ({stats.sideboardTotal})</div>
+                                {#each groupEntriesForList(collectEntriesWithColumn(['sideboard'])) as group}
+                                    <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
+                                        <div class="text-sm font-medium text-arena-text flex items-center gap-2">
+                                            <span>{group.label}</span>
+                                            <span class="text-arena-text-dim">({group.count})</span>
+                                        </div>
+                                        <div class="divide-y divide-arena-accent/10">
+                                            {#each group.entries as entry (entry.id)}
+                                                <div 
+                                                    class="flex items-center gap-2 py-1 px-1 rounded hover:bg-arena-accent/10 transition cursor-grab text-sm"
+                                                    draggable="true"
+                                                    ondragstart={(e) => handleDragStart(e, entry.id)}
+                                                    ondragover={(e) => handleListDragOver(e, entry.__column)}
+                                                    ondrop={(e) => handleListDrop(e, entry.__column)}
+                                                    onmouseenter={(e) => handleMouseEnter(e, entry)}
+                                                    onmousemove={(e) => handleMouseMove(e)}
+                                                    onmouseleave={() => handleMouseLeave()}
+                                                >
+                                                    <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
+                                                    <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
+                                                    <span class="flex items-center gap-0.5 flex-shrink-0 w-20 justify-start">
+                                                        {#each buildManaSymbols(entry.card.mana_cost) as symbol}
+                                                            <span class={`mana-symbol mana-${symbol.class} text-[10px] leading-none`}>{symbol.label}</span>
+                                                        {/each}
+                                                    </span>
+                                                    <span class="text-xs text-arena-text-dim flex-shrink-0 w-16 text-right">
+                                                        {#if getCardPrice(entry.card) !== null}{formatPrice(getCardPrice(entry.card) * entry.quantity)}{:else}—{/if}
+                                                    </span>
+                                                    <span class="flex items-center gap-0.5 flex-shrink-0">
+                                                        <button onclick={() => updateEntryQuantity(entry.id, entry.quantity + 1)} class="w-5 h-5 rounded bg-black/60 text-green-400 hover:text-green-300 text-xs font-bold" title="Add">+</button>
+                                                        <button onclick={() => updateEntryQuantity(entry.id, entry.quantity - 1)} class="w-5 h-5 rounded bg-black/60 text-red-400 hover:text-red-300 text-xs font-bold" title="Remove">−</button>
+                                                    </span>
                                                 </div>
-                                                
-                                                <div class="opacity-0 group-hover:opacity-100 transition flex flex-col gap-1">
-                                                    <button 
-                                                        onclick={() => updateEntryQuantity(entry.id, entry.quantity + 1)} 
-                                                        class="w-7 h-7 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-lg flex items-center justify-center font-bold text-sm transform hover:scale-110 transition"
-                                                        title="Add copy"
-                                                    >+</button>
-                                                    <button 
-                                                        onclick={() => updateEntryQuantity(entry.id, entry.quantity - 1)} 
-                                                        class="w-7 h-7 rounded-full bg-red-600 hover:bg-red-500 text-white shadow-lg flex items-center justify-center font-bold text-sm transform hover:scale-110 transition"
-                                                        title="Remove copy"
-                                                    >-</button>
-                                                </div>
-                                            </div>
+                                            {/each}
                                         </div>
                                     </div>
                                 {/each}
-                                {#if filterEntries(getColumnEntries(column.key)).length === 0}
-                                    <div class="h-24 border-2 border-dashed border-arena-accent/10 rounded-lg flex items-center justify-center text-arena-muted text-sm">
-                                        Drop here
-                                    </div>
-                                {/if}
                             </div>
-                        </div>
-                    {/if}
-                {/each}
-            </div>
+                        {/if}
+                    </div>
+                </div>
+            {:else}
+                <div class="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
+                    {#each COLUMN_CONFIG as column}
+                        {#if (column.key !== 'sideboard' || showSideboard) && (column.key !== 'commander' || showCommander || getColumnEntries('commander').length > 0)}
+                            <div 
+                                class="flex-1 min-w-[200px] flex flex-col gap-3 p-2 rounded-lg transition-colors {activeDropColumn === column.key ? 'bg-arena-accent/10 ring-2 ring-arena-accent/40' : ''}"
+                                ondragover={(e) => handleDragOver(e, column.key)}
+                                ondrop={(e) => handleDrop(e, column.key)}
+                                role="listbox"
+                                tabindex="0"
+                            >
+                                <div class="flex items-center justify-between text-sm font-semibold text-arena-muted">
+                                    <span>{column.icon} {column.label}</span>
+                                    <span>{getColumnEntries(column.key).reduce((sum, e) => sum + e.quantity, 0)}</span>
+                                </div>
+                                
+                                <div class="flex flex-col min-h-[100px] pb-4">
+                                    {#each sortEntriesForColumn(filterEntries(getColumnEntries(column.key), column.key), column.key) as entry (entry.id)}
+                                        <div 
+                                            class="relative group cursor-grab active:cursor-grabbing peer -mt-[120%] first:mt-0 hover:[&+.peer]:mt-0 transition-all duration-200 z-0"
+                                            draggable="true"
+                                            ondragstart={(e) => handleDragStart(e, entry.id)}
+                                            onmouseenter={(e) => handleMouseEnter(e, entry)}
+                                            onmousemove={(e) => handleMouseMove(e)}
+                                            onmouseleave={() => handleMouseLeave()}
+                                            role="option"
+                                            aria-selected="false"
+                                            tabindex="0"
+                                        >
+                                            <div class="relative rounded-xl overflow-hidden shadow-lg bg-arena-surface/40 border border-white/5 transition">
+                                                {#if entry.card.image_url || entry.card.image}
+                                                    <img src={entry.card.image_url || entry.card.image} alt={entry.card.name} class="w-full select-none pointer-events-none">
+                                                {:else}
+                                                    <div class="w-full h-32 flex flex-col items-center justify-center bg-arena-surface/80 text-center text-xs p-2">
+                                                        <span class="font-bold">{entry.card.name}</span>
+                                                        <span>{entry.card.mana_cost}</span>
+                                                    </div>
+                                                {/if}
+                                                
+                                                <div class="absolute bottom-1 left-1">
+                                                    {#if getCardPrice(entry.card) !== null}
+                                                        <span class="bg-black/70 text-white text-[11px] font-semibold px-2 py-1 rounded-full shadow-md">
+                                                            {formatPrice(getCardPrice(entry.card))}
+                                                        </span>
+                                                    {:else}
+                                                        <span class="bg-black/50 text-white/70 text-[10px] font-semibold px-2 py-1 rounded-full">
+                                                            Prix N/A
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                                
+                                                <div class="absolute top-1 right-1 flex flex-col items-center gap-1 z-20">
+                                                    <div class="bg-black/80 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+                                                        {entry.quantity}x
+                                                    </div>
+                                                    
+                                                    <div class="opacity-0 group-hover:opacity-100 transition flex flex-col gap-1">
+                                                        <button 
+                                                            onclick={() => updateEntryQuantity(entry.id, entry.quantity + 1)} 
+                                                            class="w-7 h-7 rounded-full bg-black/70 text-green-300 hover:text-green-200 border border-green-700/30 hover:border-green-600/40 shadow flex items-center justify-center font-bold text-sm transform hover:scale-105 transition"
+                                                            title="Add copy"
+                                                        >+</button>
+                                                        <button 
+                                                            onclick={() => updateEntryQuantity(entry.id, entry.quantity - 1)} 
+                                                            class="w-7 h-7 rounded-full bg-black/70 text-red-300 hover:text-red-200 border border-red-700/30 hover:border-red-600/40 shadow flex items-center justify-center font-bold text-sm transform hover:scale-105 transition"
+                                                            title="Remove copy"
+                                                        >-</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                    {#if filterEntries(getColumnEntries(column.key), column.key).length === 0}
+                                        <div class="h-24 border-2 border-dashed border-arena-accent/10 rounded-lg flex items-center justify-center text-arena-muted text-sm">
+                                            Drop here
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
+                    {/each}
+                </div>
+            {/if}
         </section>
     </div>
 </div>
