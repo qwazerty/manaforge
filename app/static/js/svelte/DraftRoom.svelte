@@ -9,6 +9,13 @@
         try { return JSON.parse(JSON.stringify(data)); } catch { return null; }
     };
 
+    const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
     let { room: initialRoom = null } = $props();
 
     let room = $state(initialRoom || {});
@@ -27,6 +34,11 @@
     let deckContext = $state({ deckId: '', deckName: '', draftType: '' });
     let deckManagerVisible = $state(false);
     let lastRefreshAt = 0;
+    
+    // Price cache for draft cards
+    let cardPrices = $state({});
+    let pendingPriceRequest = null;
+    let showPrices = $state(false);
 
     const draftType = $derived(() => (room?.draft_type || '').toString().toLowerCase());
     const roomState = $derived(() => (room?.state || '').toString().toLowerCase());
@@ -175,6 +187,11 @@
 
         updatePackState(me, nextRoom);
         updateDraftedCards(me.drafted_cards || []);
+        
+        // Fetch prices for current pack cards
+        if (Array.isArray(me.current_pack) && me.current_pack.length > 0) {
+            fetchPricesForPack(me.current_pack);
+        }
     }
 
     function findPlayer(nextRoom, targetPlayerId) {
@@ -619,6 +636,54 @@
         if (roomState() === 'drafting') return { label: 'In Progress', tone: 'bg-arena-accent/10 text-arena-accent' };
         return { label: 'Waiting', tone: 'bg-arena-muted/20 text-arena-muted' };
     }
+
+    function getCardPrice(cardName) {
+        if (!cardName) return null;
+        const price = cardPrices[cardName];
+        return Number.isFinite(price) ? price : null;
+    }
+
+    function formatPrice(value) {
+        if (!Number.isFinite(value)) return 'N/A';
+        return PRICE_FORMATTER.format(value);
+    }
+
+    async function fetchPricesForPack(cards) {
+        if (!Array.isArray(cards) || cards.length === 0) return;
+        
+        // Collect card names not already in cache
+        const cardNames = [];
+        cards.forEach((card) => {
+            if (card?.name && !(card.name in cardPrices)) {
+                cardNames.push(card.name);
+            }
+        });
+        
+        if (cardNames.length === 0) return;
+        
+        // Debounce
+        if (pendingPriceRequest) {
+            clearTimeout(pendingPriceRequest);
+        }
+        
+        pendingPriceRequest = setTimeout(async () => {
+            try {
+                const response = await fetch('/api/v1/pricing/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ card_names: cardNames })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    cardPrices = { ...cardPrices, ...data.prices };
+                }
+            } catch (error) {
+                console.warn('Failed to fetch card prices:', error);
+            }
+            pendingPriceRequest = null;
+        }, 50);
+    }
 </script>
 
 {#if !room?.id}
@@ -755,11 +820,14 @@
                 <div class="arena-card p-5 rounded-xl space-y-4">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                         <h2 class="font-magic text-2xl text-arena-accent">{packHeader()}</h2>
-                        {#if room?.state}
-                        <span class="text-sm text-arena-text-dim">
-                            Pack {room?.current_pack_number ?? 1} • Pick {room?.current_pick_number ?? 1}
-                        </span>
-                        {/if}
+                        <label class="flex items-center gap-2 text-sm text-arena-text cursor-pointer select-none">
+                            <input 
+                                type="checkbox" 
+                                bind:checked={showPrices}
+                                class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent"
+                            />
+                            <span>Show cards price</span>
+                        </label>
                     </div>
 
                     {#if packStatus}
@@ -783,6 +851,20 @@
                                     data-card-data={JSON.stringify(card)}
                                 >
                                     <img src={card.image_url} alt={card.name} class="w-full block">
+                                    <!-- Price badge -->
+                                    {#if showPrices}
+                                    <div class="absolute bottom-1 left-1">
+                                        {#if getCardPrice(card.name) !== null}
+                                            <span class="bg-black/70 text-white text-[11px] font-semibold px-2 py-1 rounded-full shadow-md">
+                                                {formatPrice(getCardPrice(card.name))}
+                                            </span>
+                                        {:else}
+                                            <span class="bg-black/50 text-white/70 text-[10px] font-semibold px-2 py-1 rounded-full">
+                                                Prix N/A
+                                            </span>
+                                        {/if}
+                                    </div>
+                                    {/if}
                                 </button>
                             {/each}
                         </div>
