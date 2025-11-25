@@ -16,11 +16,14 @@ from app.api.routes import router
 from app.api.websocket import websocket_router
 from app.api.draft_routes import router as draft_router
 from app.services.format_stats_service import get_format_statistics
+from app.services.pricing_service import load_pricing_data
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    # Load pricing data into memory at startup
+    load_pricing_data()
     yield
 
 

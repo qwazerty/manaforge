@@ -1,8 +1,6 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { DeckStorage, deepClone } from '../../lib/deck-storage';
-    import priceGuideData from '../../../../../data/price_guide_1.json';
-    import productsData from '../../../../../data/products_singles_1.json';
 
     // Constants
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
@@ -52,8 +50,12 @@
 
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
-    const PRICE_GUIDE_LOOKUP = buildPriceLookup(priceGuideData);
-    const PRODUCT_LOOKUP = buildProductLookup(productsData);
+    
+    // Price lookups - will be populated after fetching data
+    let PRICE_GUIDE_LOOKUP = {};
+    let PRODUCT_LOOKUP = {};
+    let pricingDataLoaded = $state(false);
+    
     const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
         currency: 'EUR',
@@ -1178,6 +1180,31 @@
         importStatus = { message: `${preset.name} added.`, type: 'success' };
     }
 
+    async function loadPricingData() {
+        try {
+            const [guideResponse, productsResponse] = await Promise.all([
+                fetch('/api/v1/pricing/guide'),
+                fetch('/api/v1/pricing/products')
+            ]);
+            
+            if (guideResponse.ok) {
+                const guideData = await guideResponse.json();
+                PRICE_GUIDE_LOOKUP = buildPriceLookup(guideData);
+            }
+            
+            if (productsResponse.ok) {
+                const productsDataResponse = await productsResponse.json();
+                PRODUCT_LOOKUP = buildProductLookup(productsDataResponse);
+            }
+            
+            pricingDataLoaded = true;
+        } catch (error) {
+            console.warn('Failed to load pricing data:', error);
+            // Pricing will show N/A but the app will still work
+            pricingDataLoaded = true;
+        }
+    }
+
     function handleMouseEnter(e, entry) {
         if (window.GameCards) {
             window.GameCards.showCardPreview(
@@ -1214,6 +1241,9 @@
     }
 
     onMount(() => {
+        // Load pricing data from API (loaded in memory on server)
+        loadPricingData();
+        
         if (!embedded) {
             loadState();
         }
