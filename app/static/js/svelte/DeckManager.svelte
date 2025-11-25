@@ -523,16 +523,43 @@
     function buildManaSymbols(manaCost) {
         return formatManaCost(manaCost).map((code) => {
             const raw = code.slice(1, -1).toLowerCase();
+            // Handle hybrid mana (e.g., {W/U}, {2/W})
+            if (raw.includes('/')) {
+                const parts = raw.split('/');
+                // Hybrid mana class format: ms-wp for {W/P}, ms-wu for {W/U}, ms-2w for {2/W}
+                return { class: `ms-${parts.join('')}`, isHybrid: true };
+            }
+            // Handle Phyrexian mana (e.g., {W/P} or {P})
+            if (raw === 'p') {
+                return { class: 'ms-p' };
+            }
+            // Handle numeric mana
             const numeric = Number(raw);
             if (Number.isFinite(numeric)) {
-                return { class: 'c', label: String(numeric) };
+                return { class: `ms-${numeric}` };
             }
-            if (raw === 'x') {
-                return { class: 'c', label: 'X' };
+            // Handle X, Y, Z
+            if (raw === 'x' || raw === 'y' || raw === 'z') {
+                return { class: `ms-${raw}` };
             }
-            const map = { w: 'w', u: 'u', b: 'b', r: 'r', g: 'g', c: 'c' };
-            const cls = map[raw] || 'c';
-            return { class: cls, label: code.slice(1, -1) };
+            // Handle snow mana
+            if (raw === 's') {
+                return { class: 'ms-s' };
+            }
+            // Handle colorless energy {E}
+            if (raw === 'e') {
+                return { class: 'ms-e' };
+            }
+            // Handle tap/untap
+            if (raw === 't') {
+                return { class: 'ms-tap' };
+            }
+            if (raw === 'q') {
+                return { class: 'ms-untap' };
+            }
+            // Standard color mana: w, u, b, r, g, c
+            const colorMap = { w: 'ms-w', u: 'ms-u', b: 'ms-b', r: 'ms-r', g: 'ms-g', c: 'ms-c' };
+            return { class: colorMap[raw] || `ms-${raw}` };
         });
     }
 
@@ -1465,9 +1492,9 @@
                                             >
                                                 <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
                                                 <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
-                                                <span class="flex items-center gap-0.5 flex-shrink-0 w-20 justify-start">
+                                                <span class="flex items-center gap-0.5 flex-shrink-0 w-24 justify-start">
                                                     {#each buildManaSymbols(entry.card.mana_cost) as symbol}
-                                                        <span class={`mana-symbol mana-${symbol.class} text-[10px] leading-none`}>{symbol.label}</span>
+                                                        <i class={`ms ms-cost ${symbol.class}`}></i>
                                                     {/each}
                                                 </span>
                                                 <span class="text-xs text-arena-text-dim flex-shrink-0 w-16 text-right">
@@ -1509,9 +1536,9 @@
                                                 >
                                                     <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
                                                     <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
-                                                    <span class="flex items-center gap-0.5 flex-shrink-0 w-20 justify-start">
+                                                    <span class="flex items-center gap-0.5 flex-shrink-0 w-24 justify-start">
                                                         {#each buildManaSymbols(entry.card.mana_cost) as symbol}
-                                                            <span class={`mana-symbol mana-${symbol.class} text-[10px] leading-none`}>{symbol.label}</span>
+                                                            <i class={`ms ms-cost ${symbol.class}`}></i>
                                                         {/each}
                                                     </span>
                                                     <span class="text-xs text-arena-text-dim flex-shrink-0 w-16 text-right">
@@ -1549,9 +1576,9 @@
                                                 >
                                                     <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
                                                     <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
-                                                    <span class="flex items-center gap-0.5 flex-shrink-0 w-20 justify-start">
+                                                    <span class="flex items-center gap-0.5 flex-shrink-0 w-24 justify-start">
                                                         {#each buildManaSymbols(entry.card.mana_cost) as symbol}
-                                                            <span class={`mana-symbol mana-${symbol.class} text-[10px] leading-none`}>{symbol.label}</span>
+                                                            <i class={`ms ms-cost ${symbol.class}`}></i>
                                                         {/each}
                                                     </span>
                                                     <span class="text-xs text-arena-text-dim flex-shrink-0 w-16 text-right">

@@ -139,8 +139,8 @@
 
             <div class="flex justify-center items-center space-x-2 mt-8 opacity-60">
                                 {#each MANA_SYMBOLS as symbol, index}
-                    <span
-                        class={`mana-symbol mana-${symbol.toLowerCase()} animate-float`}
+                    <i
+                        class={`ms ms-${symbol.toLowerCase()} ms-cost ms-2x animate-float`}
                         style={`animation-delay: ${index * 200}ms`}
                         role="img"
                         aria-label={`${symbol} mana`}
@@ -149,9 +149,7 @@
                             event.currentTarget.style.transition = 'transform 0.3s ease';
                         }}
                         onmouseleave={(event) => (event.currentTarget.style.transform = '')}
-                    >
-                        {symbol}
-                    </span>
+                    ></i>
                 {/each}
             </div>
         </div>

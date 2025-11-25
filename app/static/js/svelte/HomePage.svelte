@@ -58,12 +58,10 @@
                 </p>
                 <div class="flex justify-center items-center space-x-2 text-arena-text-dim">
                     {#each MANA_SYMBOLS as symbol, index}
-                        <span
-                            class={`mana-symbol mana-${symbol.toLowerCase()} animate-float`}
+                        <i
+                            class={`ms ms-${symbol.toLowerCase()} ms-cost ms-2x animate-float`}
                             style={`animation-delay: ${index * 200}ms`}
-                        >
-                            {symbol}
-                        </span>
+                        ></i>
                     {/each}
                 </div>
             </div>
