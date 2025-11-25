@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import { DeckStorage } from '../../lib/deck-storage';
     import priceGuideData from '../../../../../data/price_guide_1.json';
+    import productsData from '../../../../../data/products_singles_1.json';
 
     // Constants
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
@@ -51,6 +52,7 @@
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
     const PRICE_GUIDE_LOOKUP = buildPriceLookup(priceGuideData);
+    const PRODUCT_LOOKUP = buildProductLookup(productsData);
     const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
         currency: 'EUR',
@@ -321,7 +323,7 @@
     }
 
     function getCardPrice(card = {}) {
-        const productIdRaw = card.cardmarket_id ?? card.cardmarketId ?? card.idProduct;
+        const productIdRaw = card.cardmarket_id ?? card.cardmarketId ?? card.idProduct ?? lookupProductId(card.name);
         const productId = Number(productIdRaw);
         if (!Number.isFinite(productId)) return null;
         const price = PRICE_GUIDE_LOOKUP[productId];
@@ -353,6 +355,35 @@
         if (raw === null || raw === undefined) return NaN;
         const value = Number(raw);
         return Number.isFinite(value) ? value : NaN;
+    }
+
+    function buildProductLookup(data, priceLookup = PRICE_GUIDE_LOOKUP) {
+        const lookup = {};
+        if (!data || !Array.isArray(data.products)) return lookup;
+        data.products.forEach((product) => {
+            const id = Number(product?.idProduct);
+            const nameKey = normalizeName(product?.name);
+            if (!nameKey || !Number.isFinite(id)) return;
+            const hasPrice = Number.isFinite(priceLookup[id]);
+            const existingId = lookup[nameKey];
+            const existingHasPrice = Number.isFinite(priceLookup[existingId]);
+            // Prefer a product id that has a price; otherwise keep the first seen
+            if (!existingId || (hasPrice && !existingHasPrice)) {
+                lookup[nameKey] = id;
+            }
+        });
+        return lookup;
+    }
+
+    function normalizeName(name) {
+        return typeof name === 'string' ? name.trim().toLowerCase() : '';
+    }
+
+    function lookupProductId(name) {
+        const key = normalizeName(name);
+        if (!key) return null;
+        console.log('Pricing lookup:', name, '->', key);
+        return PRODUCT_LOOKUP[key] ?? null;
     }
 
     function getEntriesForColumns(currentState, columnKeys) {
