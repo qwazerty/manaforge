@@ -1639,7 +1639,7 @@
         @apply min-h-0;
         max-height: none !important;
         overflow-x: auto;
-        overflow-y: visible;
+        overflow-y: hidden;
     }
 
     .battlefield-zone.zone-drag-over {
@@ -1708,7 +1708,7 @@
     .creatures-zone-content,
     .support-zone-content,
     .lands-zone-content {
-        @apply flex flex-nowrap items-start overflow-x-auto overflow-y-visible;
+        @apply flex flex-nowrap items-start overflow-x-auto overflow-y-hidden;
         gap: 6px;
         padding: 6px;
     }
@@ -2495,6 +2495,7 @@
 
     .zone-content {
         position: relative;
+        overflow-y: hidden;
     }
 
     .zone-content::after {
