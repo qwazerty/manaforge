@@ -63,6 +63,24 @@
         { key: 'spectator', label: 'Spectator' }
     ];
 
+    const resolveErrorMessage = async (response, fallback = 'An error occurred.') => {
+        if (!response) return fallback;
+        try {
+            const data = await response.json();
+            if (data?.detail) return data.detail;
+            if (data?.message) return data.message;
+        } catch {
+            // ignore parse errors
+        }
+        try {
+            const text = await response.text();
+            if (text) return text;
+        } catch {
+            // ignore text errors
+        }
+        return fallback;
+    };
+
     const shareInputId = (roleKey) => `share-link-${gameId || 'room'}-${roleKey}`;
 
     const formatTimestamp = () => {
@@ -779,7 +797,8 @@
             });
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(payload?.detail || 'Deck import failed');
+                const message = payload?.detail || (await resolveErrorMessage(response, 'Deck import failed'));
+                throw new Error(message);
             }
             const deckTextValue = (payload?.deck_text || '').trim();
             if (deckTextValue) {
@@ -823,7 +842,8 @@
             });
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(payload?.detail || 'Deck parsing failed');
+                const message = payload?.detail || (await resolveErrorMessage(response, 'Deck parsing failed'));
+                throw new Error(message);
             }
             updateDeckPreviewState(payload);
             setDeckStatus('Deck parsed successfully.', 'accent');
@@ -866,7 +886,8 @@
             });
             const updatedStatus = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(updatedStatus?.detail || 'Deck submission failed');
+                const message = updatedStatus?.detail || (await resolveErrorMessage(response, 'Deck submission failed'));
+                throw new Error(message);
             }
             if (updatedStatus) {
                 applyStatusUpdate(updatedStatus);

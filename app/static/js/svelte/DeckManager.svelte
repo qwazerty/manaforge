@@ -68,6 +68,26 @@
         default60: { recommendation: '24 lands' }
     };
 
+    const resolveErrorMessage = async (response, fallback = 'An error occurred.') => {
+        if (!response) {
+            return fallback;
+        }
+        try {
+            const data = await response.json();
+            if (data?.detail) return data.detail;
+            if (data?.message) return data.message;
+        } catch {
+            // ignore json parse errors
+        }
+        try {
+            const text = await response.text();
+            if (text) return text;
+        } catch {
+            // ignore text read errors
+        }
+        return fallback;
+    };
+
     // Helper functions
     function isCommanderFormat(format) {
         return COMMANDER_FORMATS.has((format || '').toLowerCase());
@@ -1065,7 +1085,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ decklist_text: importText })
             });
-            if (!response.ok) throw new Error('Deck parsing failed');
+            if (!response.ok) {
+                const message = await resolveErrorMessage(response, 'Deck parsing failed');
+                throw new Error(message);
+            }
             const deck = await response.json();
             loadDeckPayload(deck);
             importStatus = { message: 'Deck imported from text.', type: 'success' };
@@ -1090,7 +1113,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deck_url: importUrl })
             });
-            if (!response.ok) throw new Error('Deck import failed');
+            if (!response.ok) {
+                const message = await resolveErrorMessage(response, 'Deck import failed');
+                throw new Error(message);
+            }
             const payload = await response.json();
             if (payload.deck_text) importText = payload.deck_text;
             if (payload.deck) {
