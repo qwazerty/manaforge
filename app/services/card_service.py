@@ -11,7 +11,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
-from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
+from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
@@ -19,8 +19,6 @@ _LOCAL_ORACLE_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 _LOCAL_ORACLE_CACHE_BY_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_CACHE_BY_ORACLE_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_LOADED = False
-_LOCAL_ORACLE_PATH: Optional[Path] = None
-_LOCAL_ORACLE_MTIME: Optional[float] = None
 
 
 def _normalize_name(name: str) -> str:
@@ -132,17 +130,20 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
         if not cards:
             return None
 
-        def filtered(pool: List[Dict[str, Any]], *, allow_booster=False, allow_promo=False, allow_special=False) -> List[Dict[str, Any]]:
+        def filtered(pool: List[Dict[str, Any]], *, allow_booster=False, allow_full_art=False, allow_promo=False, allow_special=False) -> List[Dict[str, Any]]:
             result = []
             for card in pool:
-                rarity = str(card.get("rarity") or "").lower()
-                if not allow_special and rarity == "special":
-                    continue
                 booster_flag = card.get("booster")
                 if allow_booster is False and booster_flag is False:
                     continue
+                full_art_flag = card.get("full_art")
+                if allow_full_art is False and full_art_flag is True:
+                    continue
                 promo_flag = card.get("promo")
                 if allow_promo is False and promo_flag is True:
+                    continue
+                rarity = str(card.get("rarity") or "").lower()
+                if not allow_special and rarity == "special":
                     continue
                 result.append(card)
             return result
@@ -157,13 +158,18 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
         if allow_booster:
             return latest(allow_booster)
 
-        # Step 3: allow promo true
-        allow_promo = filtered(cards, allow_booster=True, allow_promo=True)
+        # Step 3: allow booster false
+        allow_full_art = filtered(cards, allow_booster=True, allow_full_art=True)
+        if allow_full_art:
+            return latest(allow_full_art)
+
+        # Step 4: allow promo true
+        allow_promo = filtered(cards, allow_full_art=True, allow_booster=True, allow_promo=True)
         if allow_promo:
             return latest(allow_promo)
 
-        # Step 4: allow rarity special
-        allow_all = filtered(cards, allow_booster=True, allow_promo=True, allow_special=True)
+        # Step 5: allow rarity special
+        allow_all = filtered(cards, allow_full_art=True, allow_booster=True, allow_promo=True, allow_special=True)
         return latest(allow_all)
 
     # 1) printed_name match
@@ -570,7 +576,8 @@ class CardService:
     async def _build_deck_from_entries(
         self,
         entries: List[DeckEntry],
-        deck_name: Optional[str] = None
+        deck_name: Optional[str] = None,
+        deck_format: Optional[str] = None
     ) -> Deck:
         """Build a deck object from parsed entries, keeping commanders separate."""
         deck_cards: List[DeckCard] = []
@@ -610,18 +617,40 @@ class CardService:
             raise ValueError(f"Unable to import deck: missing cards in local oracle ({formatted_missing}).")
 
         deck_id, resolved_name = self._generate_deck_identity(deck_name)
+
+        normalized_format = GameFormat.STANDARD
+        if deck_format:
+            slug = re.sub(r"[^a-z0-9_]+", "_", deck_format.strip().lower())
+            try:
+                normalized_format = GameFormat(slug)
+            except ValueError:
+                format_map = {
+                    "modern": GameFormat.MODERN,
+                    "pioneer": GameFormat.PIONEER,
+                    "standard": GameFormat.STANDARD,
+                    "legacy": GameFormat.LEGACY,
+                    "vintage": GameFormat.VINTAGE,
+                    "pauper": GameFormat.PAUPER,
+                    "duel_commander": GameFormat.DUEL_COMMANDER,
+                    "commander_multi": GameFormat.COMMANDER_MULTI,
+                    "commander": GameFormat.COMMANDER_MULTI,
+                }
+                normalized_format = format_map.get(slug, GameFormat.STANDARD)
+
         return Deck(
             id=deck_id,
             name=resolved_name,
             cards=deck_cards,
             sideboard=sideboard_cards,
-            commanders=commanders
+            commanders=commanders,
+            format=normalized_format
         )
 
     async def parse_decklist(
         self,
         decklist_text: str,
-        deck_name: Optional[str] = None
+        deck_name: Optional[str] = None,
+        deck_format: Optional[str] = None
     ) -> Deck:
         """Parse a decklist in text format and create a Deck object."""
         normalized_text = (decklist_text or "").strip()
@@ -678,7 +707,7 @@ class CardService:
                 current_section = section_aliases[normalized_heading]
                 continue
 
-        return await self._build_deck_from_entries(entries, deck_name=deck_name)
+        return await self._build_deck_from_entries(entries, deck_name=deck_name, deck_format=deck_format)
 
     async def _http_get_json(
         self,
@@ -743,8 +772,8 @@ class CardService:
     async def _download_deck_text_and_name(
         self,
         source_url: str
-    ) -> Tuple[str, Optional[str]]:
-        """Detect provider and download deck text plus optional name."""
+    ) -> Tuple[str, Optional[str], Optional[str]]:
+        """Detect provider and download deck text plus optional name/format."""
         normalized = (source_url or "").strip()
         if not normalized:
             raise ValueError("Deck URL cannot be empty.")
@@ -771,7 +800,7 @@ class CardService:
     async def _extract_deck_from_moxfield(
         self,
         parsed_url
-    ) -> Tuple[str, Optional[str]]:
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck from Moxfield by deck identifier."""
         segments = [segment for segment in parsed_url.path.split("/") if segment]
         deck_id: Optional[str] = None
@@ -936,7 +965,7 @@ class CardService:
         lines.extend(emit_section("Deck", "main"))
 
         deck_text = "\n".join(lines).strip()
-        return deck_text, deck_name
+        return deck_text, deck_name, None
 
     def _extract_mtggoldfish_deck_ids(self, page_html: str) -> List[str]:
         """Extract potential deck identifiers from MTGGoldfish HTML."""
@@ -1113,6 +1142,7 @@ class CardService:
             enqueue(f"{base_url}/full{query_suffix}")
 
         page_html: Optional[str] = None
+        deck_format: Optional[str] = None
         first_html: Optional[str] = None
         deck_ids: List[str] = []
         last_error: Optional[Exception] = None
@@ -1186,11 +1216,25 @@ class CardService:
 
         return decks
 
+    def _detect_mtggoldfish_format(self, page_html: str) -> Optional[str]:
+        """Attempt to extract the deck format from an MTGGoldfish deck page."""
+        if not page_html:
+            return None
+        # Table row: <th>Format:</th><td>Modern</td>
+        match = re.search(r"Format:</th>\s*<td[^>]*>\s*([^<]+)<", page_html, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        # Meta/description fallback
+        match = re.search(r"Format:\s*([A-Za-z ]+)", page_html, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return None
+
     async def _extract_deck_from_mtggoldfish(
         self,
         parsed_url,
         original_url: str
-    ) -> Tuple[str, Optional[str]]:
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck from MTGGoldfish."""
         segments = [segment for segment in parsed_url.path.split("/") if segment]
         deck_id: Optional[str] = None
@@ -1261,8 +1305,11 @@ class CardService:
                         .strip()
                         or deck_name
                     )
+                detected_format = self._detect_mtggoldfish_format(page_html)
+                if detected_format:
+                    deck_format = detected_format
 
-            return deck_text, deck_name
+            return deck_text, deck_name, deck_format
 
         # Fall back to parsing archetype or other summary pages directly.
         if page_html is None:
@@ -1275,7 +1322,8 @@ class CardService:
                 if title_match:
                     raw_title = unescape(title_match.group(1))
                     deck_name = raw_title.split("|")[0].strip() or None
-            return deck_text, deck_name
+            deck_format = self._detect_mtggoldfish_format(page_html)
+            return deck_text, deck_name, deck_format
 
         deck_ids = self._extract_mtggoldfish_deck_ids(page_html)
         if deck_ids:
@@ -1291,6 +1339,7 @@ class CardService:
                 deck_page_html = ""
 
             deck_name = f"Deck {deck_id}"
+            deck_format = None
             if deck_page_html:
                 title_match = re.search(r"<title>(.*?)</title>", deck_page_html, re.IGNORECASE | re.DOTALL)
                 if title_match:
@@ -1302,8 +1351,11 @@ class CardService:
                         .strip()
                         or deck_name
                     )
+                detected_format = self._detect_mtggoldfish_format(deck_page_html)
+                if detected_format:
+                    deck_format = detected_format
 
-            return deck_text, deck_name
+            return deck_text, deck_name, deck_format
 
         raise ValueError("Unable to determine MTGGoldfish deck identifier from URL.")
 
@@ -1378,7 +1430,7 @@ class CardService:
     async def _extract_deck_from_scryfall_site(
         self,
         original_url: str
-    ) -> Tuple[str, Optional[str]]:
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck from the public Scryfall site."""
         page_html = await self._http_get_text(original_url)
 
@@ -1390,12 +1442,13 @@ class CardService:
             raise ValueError("Unable to locate Scryfall deck identifier on the page.")
 
         deck_id = deck_id_match.group(1)
-        return await self._fetch_scryfall_deck_by_id(deck_id)
+        deck_text, deck_name = await self._fetch_scryfall_deck_by_id(deck_id)
+        return deck_text, deck_name, None
 
     async def _extract_deck_from_scryfall_api(
         self,
         parsed_url
-    ) -> Tuple[str, Optional[str]]:
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck using the Scryfall API hostname."""
         segments = [segment for segment in parsed_url.path.split("/") if segment]
         deck_id: Optional[str] = None
@@ -1406,18 +1459,23 @@ class CardService:
         if not deck_id:
             raise ValueError("Unable to determine Scryfall deck identifier from URL.")
 
-        return await self._fetch_scryfall_deck_by_id(deck_id)
+        deck_text, deck_name = await self._fetch_scryfall_deck_by_id(deck_id)
+        return deck_text, deck_name, None
 
     async def import_deck_from_url(self, source_url: str) -> Dict[str, Any]:
         """
         Import a deck from a supported URL and return both text and parsed deck.
         """
-        deck_text, preferred_name = await self._download_deck_text_and_name(source_url)
+        deck_text, preferred_name, detected_format = await self._download_deck_text_and_name(source_url)
         normalized_text = (deck_text or "").strip()
         if not normalized_text:
             raise ValueError("Deck download returned empty decklist.")
 
-        deck = await self.parse_decklist(normalized_text, deck_name=preferred_name)
+        deck = await self.parse_decklist(
+            normalized_text,
+            deck_name=preferred_name,
+            deck_format=detected_format
+        )
         return {
             "deck": deck,
             "deck_text": normalized_text,
