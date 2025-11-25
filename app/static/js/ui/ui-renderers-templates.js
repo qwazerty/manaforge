@@ -98,12 +98,6 @@ class UIRenderersTemplates {
         this._updateRevealOverlay(gameState);
         this._ensureCommanderPopups(gameState);
 
-        if (window.UICardOverlap) {
-            requestAnimationFrame(() => {
-                window.UICardOverlap.applyOverlapToAllZones();
-            });
-        }
-
         return true;
     }
 
@@ -1391,10 +1385,6 @@ class UIRenderersTemplates {
         existingElements.forEach(node => node.remove());
         zoneContent.setAttribute('data-card-count', currentCards.length);
         zoneElement.setAttribute('data-card-count', currentCards.length);
-
-        if (window.UICardOverlap) {
-            window.UICardOverlap.applyOverlapToZone(zoneContent);
-        }
     }
 
     static _getCardKey(card) {
@@ -1482,10 +1472,6 @@ class UIRenderersTemplates {
 
         container.innerHTML = this.generatePlayerHand(hand, playerIndex);
         container.setAttribute('data-card-count', hand.length);
-
-        if (window.UICardOverlap) {
-            window.UICardOverlap.applyOverlapToZone(container);
-        }
     }
 
     static _updateOpponentHandZone(opponent, previousOpponent, opponentIdx) {
@@ -1513,9 +1499,6 @@ class UIRenderersTemplates {
             });
             container.dataset.handMode = 'spectator';
             container.setAttribute('data-card-count', hand.length);
-            if (window.UICardOverlap) {
-                window.UICardOverlap.applyOverlapToZone(container);
-            }
             return;
         }
 
