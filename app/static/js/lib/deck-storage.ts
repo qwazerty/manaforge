@@ -32,7 +32,7 @@ function writeAll(decks: Deck[]) {
     }
 }
 
-function deepClone<T>(value: T): T {
+export function deepClone<T>(value: T): T {
     try {
         return JSON.parse(JSON.stringify(value));
     } catch (error) {
