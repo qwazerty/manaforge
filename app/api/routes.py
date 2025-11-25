@@ -19,7 +19,7 @@ from app.services.game_engine import SimpleGameEngine
 from app.api.decorators import broadcast_game_update, action_registry
 from app.api.action_handlers import *
 from app.services.format_stats_service import get_cards_for_format
-from app.services.pricing_service import get_price_guide, get_products, get_memory_usage
+from app.services.pricing_service import get_memory_usage, lookup_prices
 
 
 router = APIRouter(prefix="/api/v1")
@@ -834,22 +834,31 @@ async def get_game_replay(game_id: str) -> Dict[str, Any]:
 # Pricing API endpoints (data loaded in memory at startup)
 # =============================================================================
 
-@router.get("/pricing/guide")
-async def get_pricing_guide() -> Dict[str, Any]:
+@router.post("/pricing/lookup")
+async def lookup_card_prices(request: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Get the full price guide data.
-    Data is loaded in memory at server startup for fast access.
+    Look up prices for a batch of card names.
+    
+    Request body:
+        { "card_names": ["Lightning Bolt", "Ragavan, Nimble Pilferer", ...] }
+    
+    Response:
+        { "prices": { "Lightning Bolt": 2.50, "Ragavan, Nimble Pilferer": 85.00, ... } }
+    
+    Cards without prices will have null values.
+    Data is loaded in memory at server startup for fast O(1) lookups.
     """
-    return get_price_guide()
-
-
-@router.get("/pricing/products")
-async def get_pricing_products() -> Dict[str, Any]:
-    """
-    Get the products catalog data.
-    Data is loaded in memory at server startup for fast access.
-    """
-    return get_products()
+    card_names = request.get("card_names", [])
+    
+    if not isinstance(card_names, list):
+        raise HTTPException(status_code=400, detail="card_names must be a list")
+    
+    if len(card_names) > 500:
+        raise HTTPException(status_code=400, detail="Maximum 500 cards per request")
+    
+    prices = lookup_prices(card_names)
+    
+    return {"prices": prices}
 
 
 @router.get("/pricing/status")

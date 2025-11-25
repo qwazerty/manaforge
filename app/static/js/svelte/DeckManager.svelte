@@ -51,10 +51,10 @@
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
     
-    // Price lookups - will be populated after fetching data
-    let PRICE_GUIDE_LOOKUP = {};
-    let PRODUCT_LOOKUP = {};
+    // Price cache - populated by batch API calls
+    let cardPrices = $state({});
     let pricingDataLoaded = $state(false);
+    let pendingPriceRequest = null;
     
     const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
@@ -230,6 +230,9 @@
     let showListView = $state(false);
     let importText = $state('');
     let importUrl = $state('');
+    let copyToastMessage = $state('');
+    let showCopyToast = $state(false);
+    let copyToastTimer = null;
     let suppressUrlUpdates = false;
 
     // Derived
@@ -372,10 +375,10 @@
     }
 
     function getCardPrice(card = {}) {
-        const productIdRaw = card.cardmarket_id ?? card.cardmarketId ?? card.idProduct ?? lookupProductId(card.name);
-        const productId = Number(productIdRaw);
-        if (!Number.isFinite(productId)) return null;
-        const price = PRICE_GUIDE_LOOKUP[productId];
+        // Look up price from our local cache (populated by API calls)
+        const name = card?.name;
+        if (!name) return null;
+        const price = cardPrices[name];
         return Number.isFinite(price) ? price : null;
     }
 
@@ -384,63 +387,8 @@
         return PRICE_FORMATTER.format(value);
     }
 
-    function buildPriceLookup(guide) {
-        const lookup = {};
-        if (!guide || !Array.isArray(guide.priceGuides)) return lookup;
-        guide.priceGuides.forEach((entry) => {
-            const productId = Number(entry?.idProduct);
-            const trend = normalizePriceValue(entry?.trend);
-            const average = normalizePriceValue(entry?.avg);
-            const fallback = normalizePriceValue(entry?.low);
-            const price = [trend, average, fallback].find((v) => Number.isFinite(v));
-            if (Number.isFinite(productId) && Number.isFinite(price)) {
-                lookup[productId] = price;
-            }
-        });
-        return lookup;
-    }
-
-    function normalizePriceValue(raw) {
-        if (raw === null || raw === undefined) return NaN;
-        const value = Number(raw);
-        return Number.isFinite(value) ? value : NaN;
-    }
-
-    function buildProductLookup(data) {
-        const lookup = {};
-        if (!data || !Array.isArray(data.products)) return lookup;
-        data.products.forEach((product) => {
-            const id = Number(product?.idProduct);
-            const nameKey = normalizeName(product?.name);
-            if (!nameKey || !Number.isFinite(id)) return;
-            if (!lookup[nameKey]) {
-                lookup[nameKey] = [];
-            }
-            lookup[nameKey].push(id);
-        });
-        return lookup;
-    }
-
     function normalizeName(name) {
         return typeof name === 'string' ? name.trim().toLowerCase() : '';
-    }
-
-    function lookupProductId(name) {
-        const key = normalizeName(name);
-        if (!key) return null;
-        const ids = PRODUCT_LOOKUP[key];
-        if (!Array.isArray(ids) || ids.length === 0) return null;
-        let bestId = null;
-        let bestPrice = Number.POSITIVE_INFINITY;
-        ids.forEach((id) => {
-            const price = PRICE_GUIDE_LOOKUP[id];
-            if (Number.isFinite(price) && price > 0 && price < bestPrice) {
-                bestPrice = price;
-                bestId = id;
-            }
-        });
-        if (bestId !== null) return bestId;
-        return ids[0]; // fallback to first if no priced entry
     }
 
     function getEntriesForColumns(currentState, columnKeys) {
@@ -974,6 +922,8 @@
         currentDeckId = null; // Reset ID for new import
         updateDeckIdInUrl(null);
         saveState();
+        // Fetch prices for all cards in the imported deck
+        fetchPricesForDeck();
     }
 
     function addCard(card, options = {}) {
@@ -1004,6 +954,10 @@
             state.columns[columnKey].push(entryId);
         }
         saveState();
+        // Fetch price for the new card if not already in cache
+        if (card.name && !(card.name in cardPrices)) {
+            fetchPricesForDeck();
+        }
     }
 
     function updateEntryQuantity(entryId, nextQuantity) {
@@ -1137,6 +1091,18 @@
         }
     }
 
+    function triggerCopyToast(message) {
+        copyToastMessage = message;
+        showCopyToast = true;
+        if (copyToastTimer) {
+            clearTimeout(copyToastTimer);
+        }
+        copyToastTimer = setTimeout(() => {
+            showCopyToast = false;
+            copyToastMessage = '';
+        }, 2400);
+    }
+
     async function exportDecklist() {
         // Simplified export logic
         const lines = [];
@@ -1166,8 +1132,10 @@
         try {
             await navigator.clipboard.writeText(lines.join('\n'));
             importStatus = { message: 'Deck copied to clipboard.', type: 'success' };
+            triggerCopyToast('Deck copied to clipboard');
         } catch (e) {
             importStatus = { message: 'Unable to copy deck.', type: 'error' };
+            triggerCopyToast('Unable to copy deck.');
         }
     }
 
@@ -1180,29 +1148,47 @@
         importStatus = { message: `${preset.name} added.`, type: 'success' };
     }
 
-    async function loadPricingData() {
-        try {
-            const [guideResponse, productsResponse] = await Promise.all([
-                fetch('/api/v1/pricing/guide'),
-                fetch('/api/v1/pricing/products')
-            ]);
-            
-            if (guideResponse.ok) {
-                const guideData = await guideResponse.json();
-                PRICE_GUIDE_LOOKUP = buildPriceLookup(guideData);
+    async function fetchPricesForDeck() {
+        // Collect all unique card names in the deck
+        const cardNames = new Set();
+        Object.values(state.entries).forEach((entry) => {
+            if (entry?.card?.name) {
+                cardNames.add(entry.card.name);
             }
-            
-            if (productsResponse.ok) {
-                const productsDataResponse = await productsResponse.json();
-                PRODUCT_LOOKUP = buildProductLookup(productsDataResponse);
-            }
-            
+        });
+        
+        if (cardNames.size === 0) {
             pricingDataLoaded = true;
-        } catch (error) {
-            console.warn('Failed to load pricing data:', error);
-            // Pricing will show N/A but the app will still work
-            pricingDataLoaded = true;
+            return;
         }
+        
+        // Debounce: cancel any pending request
+        if (pendingPriceRequest) {
+            clearTimeout(pendingPriceRequest);
+        }
+        
+        // Wait a bit before making the request (debounce)
+        pendingPriceRequest = setTimeout(async () => {
+            try {
+                const response = await fetch('/api/v1/pricing/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ card_names: Array.from(cardNames) })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Merge new prices into our cache
+                    cardPrices = { ...cardPrices, ...data.prices };
+                }
+                
+                pricingDataLoaded = true;
+            } catch (error) {
+                console.warn('Failed to fetch card prices:', error);
+                pricingDataLoaded = true;
+            }
+            pendingPriceRequest = null;
+        }, 100);
     }
 
     function handleMouseEnter(e, entry) {
@@ -1241,14 +1227,14 @@
     }
 
     onMount(() => {
-        // Load pricing data from API (loaded in memory on server)
-        loadPricingData();
-        
         if (!embedded) {
             loadState();
         }
         applyDeckContext();
         applyPendingImport();
+        
+        // Fetch prices for cards already in the deck
+        fetchPricesForDeck();
         
         // Hook into global search modal
         if (window.CardSearchModal && typeof window.CardSearchModal.setSubmitHandler === 'function') {
@@ -1673,3 +1659,10 @@
         </section>
     </div>
 </div>
+
+{#if showCopyToast}
+<div class="fixed bottom-6 right-6 bg-arena-surface/90 border border-arena-accent/40 text-arena-text px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+    <span>✅</span>
+    <span class="font-semibold text-sm">{copyToastMessage}</span>
+</div>
+{/if}
