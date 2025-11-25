@@ -4,6 +4,11 @@
 
     const DECK_MANAGER_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
 
+    const deepClone = (data) => {
+        if (data === null || data === undefined) return null;
+        try { return JSON.parse(JSON.stringify(data)); } catch { return null; }
+    };
+
     let { room: initialRoom = null } = $props();
 
     let room = $state(initialRoom || {});
@@ -215,7 +220,7 @@
     }
 
     function updateDraftedCards(cards) {
-        draftedCards = Array.isArray(cards) ? cards.map(cloneCardData).filter(Boolean) : [];
+        draftedCards = Array.isArray(cards) ? cards.map(deepClone).filter(Boolean) : [];
         syncDeckBuilderWithDraft(draftedCards);
 
         if (
@@ -410,7 +415,7 @@
                 const diff = desiredCount - current;
                 const sample = samples[cardKey];
                 if (sample) {
-                    window.DeckManager.addCard(cloneCardData(sample), { quantity: diff });
+                    window.DeckManager.addCard(deepClone(sample), { quantity: diff });
                 }
             } else if (current > desiredCount) {
                 removeDeckManagerCopies(cardKey, current - desiredCount);
@@ -595,15 +600,6 @@
         if (normalized === 'sealed') return 'Sealed';
         if (normalized === 'cube') return 'Cube Draft';
         return 'Draft';
-    }
-
-    function cloneCardData(card) {
-        if (!card) return null;
-        try {
-            return JSON.parse(JSON.stringify(card));
-        } catch (error) {
-            return card;
-        }
     }
 
     function rarityBadge(card) {

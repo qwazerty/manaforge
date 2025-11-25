@@ -14,20 +14,14 @@
 
     const stackMarkup = () => {
         const cardList = normalizedCards();
-        if (cardList.length === 0) {
-            return '';
-        }
-
+        if (cardList.length === 0) return '';
         const stackLayers = Math.min(5, Math.max(1, cardList.length));
         const topCards = cardList.slice(-stackLayers);
-
-        return topCards.map((card, index) => {
-            return `
-                <div class="graveyard-card-layer">
-                    ${GameCards.renderCardWithLoadingState(card, 'card-front-mini', true, 'graveyard', false, index, null, { disableContextMenu: true })}
-                </div>
-            `;
-        }).join('');
+        return topCards.map((card, index) => `
+            <div class="graveyard-card-layer">
+                ${GameCards.renderCardWithLoadingState(card, 'card-front-mini', true, 'graveyard', false, index, null, { disableContextMenu: true })}
+            </div>
+        `).join('');
     };
 
     function handleClick(event) {
@@ -37,13 +31,8 @@
     }
 
     const attachContextMenu = () => {
-        if (
-            !graveyardButton ||
-            !zoneIdentifier ||
-            typeof window === 'undefined' ||
-            !window.ZoneContextMenu ||
-            typeof window.ZoneContextMenu.attachToZone !== 'function'
-        ) {
+        if (!graveyardButton || !zoneIdentifier || typeof window === 'undefined' ||
+            !window.ZoneContextMenu || typeof window.ZoneContextMenu.attachToZone !== 'function') {
             return;
         }
         if (graveyardButton.dataset.zoneMenuAttached === 'true') {
