@@ -2,6 +2,7 @@
 
 - Do not run `npm run ...` or `npm build ...` commands from this environment. The user will execute all `npm run` tasks manually on their side.
 - You can run tests, using the `corepack pnpm test:unit` command.
+- Do not edit generated bundle files (e.g., `app/static/js/ui/components/*.bundle.js` or compiled JS); only modify source files (e.g., `.svelte`).
 
 ## Svelte Development Guidelines
 
