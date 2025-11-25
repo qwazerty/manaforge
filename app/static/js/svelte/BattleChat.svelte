@@ -14,6 +14,13 @@
     let chatMessagesElement = null;
     let previousMessageCount = 0;
 
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
     const handleSubmit = (event) => {
         event.preventDefault();
         const text = (inputValue || '').trim();
@@ -32,17 +39,6 @@
         } catch (error) {
             console.error('BattleChat onSend handler failed', error);
         }
-    };
-
-    const formatTime = (timestamp) => {
-        if (!timestamp) {
-            return '';
-        }
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
     };
 
     $effect(() => {

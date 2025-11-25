@@ -12,17 +12,9 @@
     let exileButton = null;
 
     const stackMarkup = $derived(() => {
-        if (cards.length === 0) {
-            return '';
-        }
-        const stackLayers = Math.min(5, Math.max(1, cards.length));
-        return Array.from({ length: stackLayers }, () => {
-            return `
-                <div class="exile-card-layer">
-                    <div class="card-back-mini"></div>
-                </div>
-            `;
-        }).join('');
+        if (cards.length === 0) return '';
+        const layers = Math.min(5, Math.max(1, cards.length));
+        return Array.from({ length: layers }, () => '<div class="exile-card-layer"><div class="card-back-mini"></div></div>').join('');
     });
 
     function handleClick(event) {
@@ -32,13 +24,8 @@
     }
 
     const attachContextMenu = () => {
-        if (
-            !exileButton ||
-            !zoneIdentifier ||
-            typeof window === 'undefined' ||
-            !window.ZoneContextMenu ||
-            typeof window.ZoneContextMenu.attachToZone !== 'function'
-        ) {
+        if (!exileButton || !zoneIdentifier || typeof window === 'undefined' ||
+            !window.ZoneContextMenu || typeof window.ZoneContextMenu.attachToZone !== 'function') {
             return;
         }
         if (exileButton.dataset.zoneMenuAttached === 'true') {

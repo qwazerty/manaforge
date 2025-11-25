@@ -19,6 +19,8 @@
     let setInputEl = $state();
     let suggestionsEl = $state();
 
+    const generateId = (length = 8) => Math.random().toString(36).substring(2, 2 + length);
+
     const draftType = $derived.by(() => {
         if (draftMode === 'cube') return 'cube';
         if (draftMode === 'sealed') return 'sealed';
@@ -70,10 +72,6 @@
         if (normalized === 'sealed') return 'Sealed';
         if (normalized === 'cube') return 'Cube Draft';
         return 'Draft';
-    }
-
-    function randomId(prefix) {
-        return `${prefix}-${Math.random().toString(36).slice(2, 11)}`;
     }
 
     function generateRandomRoomName() {
@@ -184,7 +182,7 @@
             return;
         }
 
-        const creatorId = randomId('player');
+        const creatorId = `player-${generateId(9)}`;
         const payload = {
             name: roomName.trim(),
             creator_id: creatorId,
@@ -263,7 +261,7 @@
     }
 
     async function joinDraftRoom(roomId) {
-        const playerId = randomId('player');
+        const playerId = `player-${generateId(9)}`;
         try {
             const response = await fetch(`/api/v1/draft/rooms/${roomId}/join`, {
                 method: 'POST',

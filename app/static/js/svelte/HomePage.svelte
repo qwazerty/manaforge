@@ -1,7 +1,7 @@
 <script>
     import { onMount } from 'svelte';
 
-    const manaSymbols = ['W', 'U', 'B', 'R', 'G'];
+    const MANA_SYMBOLS = ['W', 'U', 'B', 'R', 'G'];
 
     const featureCards = [
         {
@@ -57,7 +57,7 @@
                     Magic The Gathering web-based arena for duels and drafts
                 </p>
                 <div class="flex justify-center items-center space-x-2 text-arena-text-dim">
-                    {#each manaSymbols as symbol, index}
+                    {#each MANA_SYMBOLS as symbol, index}
                         <span
                             class={`mana-symbol mana-${symbol.toLowerCase()} animate-float`}
                             style={`animation-delay: ${index * 200}ms`}

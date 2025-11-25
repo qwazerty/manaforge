@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher, tick } from 'svelte';
+    import { tick } from 'svelte';
 
     type DecisionDestination = 'top' | 'bottom' | 'graveyard';
 
@@ -26,8 +26,6 @@
     const open = $derived(Boolean(props.open));
     const actionType = $derived(props.actionType ?? 'scry');
     const cards = $derived(props.cards ?? []);
-
-    const dispatch = createEventDispatcher();
 
     let decisions = $state<DecisionEntry[]>([]);
     let isActive = $state(false);
@@ -90,15 +88,12 @@
         if (!decisions.length) {
             return;
         }
-        const detail = { decisions: [...decisions] };
-        props.onConfirm?.(detail);
-        dispatch('confirm', detail);
+        props.onConfirm?.({ decisions: [...decisions] });
         notifyClose();
     }
 
     function addOneMoreCard() {
         props.onAddOneMore?.({ actionType });
-        dispatch('addOneMore', { actionType });
     }
 
     function closeWithDefaults() {
@@ -125,7 +120,6 @@
 
     function notifyClose() {
         props.onClose?.();
-        dispatch('close');
     }
 
     const buttonVariants: Record<string, Array<{ destination: DecisionDestination; label: string; accent?: 'danger' }>> = {

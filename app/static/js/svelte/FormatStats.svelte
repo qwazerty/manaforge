@@ -600,9 +600,9 @@
                     </div>
                 {:else}
                     <div class="mt-4 flex items-center justify-between text-sm text-arena-text-dim">
-                        <span />
+                        <span></span>
                         <p>{pageLabel}</p>
-                        <span />
+                        <span></span>
                     </div>
                 {/if}
 

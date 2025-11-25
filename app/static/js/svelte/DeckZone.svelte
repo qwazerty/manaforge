@@ -11,13 +11,8 @@
     let deckButton = null;
 
     const attachContextMenu = () => {
-        if (
-            !deckButton ||
-            !zoneIdentifier ||
-            typeof window === 'undefined' ||
-            !window.ZoneContextMenu ||
-            typeof window.ZoneContextMenu.attachToZone !== 'function'
-        ) {
+        if (!deckButton || !zoneIdentifier || typeof window === 'undefined' ||
+            !window.ZoneContextMenu || typeof window.ZoneContextMenu.attachToZone !== 'function') {
             return;
         }
         if (deckButton.dataset.zoneMenuAttached === 'true') {
@@ -33,7 +28,6 @@
     });
 
     $effect(() => {
-        // Re-attach if the zone identifier changes or the element remounts
         const currentIdentifier = zoneIdentifier;
         if (!currentIdentifier || !deckButton) {
             return;
@@ -46,16 +40,9 @@
     });
 
     const stackCards = $derived(() => {
-        if (cardsRemaining === 0) {
-            return '';
-        }
-
-        const stackLayers = Math.min(5, Math.max(1, cardsRemaining));
-        return Array.from({ length: stackLayers }, () => `
-            <div class="deck-card-layer">
-                <div class="card-back-mini"></div>
-            </div>
-        `).join('');
+        if (cardsRemaining === 0) return '';
+        const layers = Math.min(5, Math.max(1, cardsRemaining));
+        return Array.from({ length: layers }, () => '<div class="deck-card-layer"><div class="card-back-mini"></div></div>').join('');
     });
 
     function handleClick(event) {

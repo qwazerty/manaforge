@@ -22,7 +22,9 @@
         if (helperResult) {
             return helperResult;
         }
+        if (!timestamp) return '';
         const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return '';
         return date.toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -108,10 +110,7 @@
     };
 
     const triggerPreviewShow = (event, cardItem, fallback) => {
-        if (!previewHandlers || typeof previewHandlers.show !== 'function') {
-            return;
-        }
-        previewHandlers.show(
+        previewHandlers?.show?.(
             event,
             cardItem?.cardInfo || null,
             fallback || cardItem?.displayName || '',
@@ -120,17 +119,11 @@
     };
 
     const triggerPreviewMove = (event) => {
-        if (!previewHandlers || typeof previewHandlers.move !== 'function') {
-            return;
-        }
-        previewHandlers.move(event);
+        previewHandlers?.move?.(event);
     };
 
     const triggerPreviewHide = () => {
-        if (!previewHandlers || typeof previewHandlers.hide !== 'function') {
-            return;
-        }
-        previewHandlers.hide();
+        previewHandlers?.hide?.();
     };
 
     const shouldShowDetailLabel = (detail) => {

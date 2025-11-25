@@ -1,11 +1,11 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
 
+    const MANA_SYMBOLS = ['W', 'U', 'B', 'R', 'G'];
+
     let redirectTimer;
     let sparkleInterval;
     let iconEl = null;
-
-    const manaSymbols = ['W', 'U', 'B', 'R', 'G'];
 
     const props = $props();
 
@@ -106,9 +106,9 @@
                 <a
                     href="/"
                     class="inline-flex items-center bg-arena-surface-light hover:bg-arena-surface border border-arena-accent/30 hover:border-arena-accent text-arena-text hover:text-arena-accent px-6 py-3 rounded-lg font-semibold transition-all duration-300"
-                    on:mouseenter={handleButtonEnter}
-                    on:mouseleave={handleButtonLeave}
-                    on:click={handleButtonClick}
+                    onmouseenter={handleButtonEnter}
+                    onmouseleave={handleButtonLeave}
+                    onclick={handleButtonClick}
                 >
                     <span class="mr-2">🏠</span>Home Plane
                 </a>
@@ -138,15 +138,17 @@
             </div>
 
             <div class="flex justify-center items-center space-x-2 mt-8 opacity-60">
-                {#each manaSymbols as symbol, index}
+                                {#each MANA_SYMBOLS as symbol, index}
                     <span
                         class={`mana-symbol mana-${symbol.toLowerCase()} animate-float`}
                         style={`animation-delay: ${index * 200}ms`}
-                        on:mouseenter={(event) => {
+                        role="img"
+                        aria-label={`${symbol} mana`}
+                        onmouseenter={(event) => {
                             event.currentTarget.style.transform = 'scale(1.2) rotate(10deg)';
                             event.currentTarget.style.transition = 'transform 0.3s ease';
                         }}
-                        on:mouseleave={(event) => (event.currentTarget.style.transform = '')}
+                        onmouseleave={(event) => (event.currentTarget.style.transform = '')}
                     >
                         {symbol}
                     </span>
