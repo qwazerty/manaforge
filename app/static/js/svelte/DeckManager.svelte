@@ -1,6 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { DeckStorage } from '../../lib/deck-storage';
+    import priceGuideData from '../../../../../data/price_guide_1.json';
 
     // Constants
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
@@ -49,6 +50,13 @@
 
     const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C'];
     const MAIN_COLUMNS_BASE = ['cmc1', 'cmc2', 'cmc3', 'cmc4', 'cmc5', 'cmc6plus', 'lands'];
+    const PRICE_GUIDE_LOOKUP = buildPriceLookup(priceGuideData);
+    const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 
     const LAND_HINTS = {
         draft: { recommendation: '17 lands' },
@@ -190,6 +198,7 @@
 
     // Derived
     let stats = $derived(computeStats(state));
+    let pricing = $derived(computePricing(state));
     let showCommander = $derived(COMMANDER_FORMATS.has((state.format || '').toLowerCase()));
     let showSideboard = $derived(!COMMANDER_FORMATS.has((state.format || '').toLowerCase()));
 
@@ -271,6 +280,79 @@
             colors,
             manaCurve
         };
+    }
+
+    function computePricing(currentState) {
+        const empty = { main: 0, sideboard: 0, total: 0, missingCopies: 0, pricedCopies: 0 };
+        if (!currentState) return empty;
+
+        const includeCommander = COMMANDER_FORMATS.has((currentState.format || '').toLowerCase()) || (currentState.columns.commander && currentState.columns.commander.length > 0);
+        const mainColumns = includeCommander ? ['commander', ...MAIN_COLUMNS_BASE] : [...MAIN_COLUMNS_BASE];
+        const mainEntries = getEntriesForColumns(currentState, mainColumns);
+        const sideEntries = !COMMANDER_FORMATS.has((currentState.format || '').toLowerCase()) ? getEntriesForColumns(currentState, ['sideboard']) : [];
+
+        const main = sumEntries(mainEntries);
+        const side = sumEntries(sideEntries);
+
+        return {
+            main: main.total,
+            sideboard: side.total,
+            total: main.total + side.total,
+            missingCopies: main.missingCopies + side.missingCopies,
+            pricedCopies: main.pricedCopies + side.pricedCopies
+        };
+    }
+
+    function sumEntries(entries) {
+        return entries.reduce(
+            (acc, entry) => {
+                const price = getCardPrice(entry?.card);
+                if (!Number.isFinite(price)) {
+                    acc.missingCopies += Number(entry?.quantity) || 0;
+                    return acc;
+                }
+                const quantity = Number(entry?.quantity) || 0;
+                acc.total += price * quantity;
+                acc.pricedCopies += quantity;
+                return acc;
+            },
+            { total: 0, missingCopies: 0, pricedCopies: 0 }
+        );
+    }
+
+    function getCardPrice(card = {}) {
+        const productIdRaw = card.cardmarket_id ?? card.cardmarketId ?? card.idProduct;
+        const productId = Number(productIdRaw);
+        if (!Number.isFinite(productId)) return null;
+        const price = PRICE_GUIDE_LOOKUP[productId];
+        return Number.isFinite(price) ? price : null;
+    }
+
+    function formatPrice(value) {
+        if (!Number.isFinite(value)) return 'N/A';
+        return PRICE_FORMATTER.format(value);
+    }
+
+    function buildPriceLookup(guide) {
+        const lookup = {};
+        if (!guide || !Array.isArray(guide.priceGuides)) return lookup;
+        guide.priceGuides.forEach((entry) => {
+            const productId = Number(entry?.idProduct);
+            const trend = normalizePriceValue(entry?.trend);
+            const average = normalizePriceValue(entry?.avg);
+            const fallback = normalizePriceValue(entry?.low);
+            const price = [trend, average, fallback].find((v) => Number.isFinite(v));
+            if (Number.isFinite(productId) && Number.isFinite(price)) {
+                lookup[productId] = price;
+            }
+        });
+        return lookup;
+    }
+
+    function normalizePriceValue(raw) {
+        if (raw === null || raw === undefined) return NaN;
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : NaN;
     }
 
     function getEntriesForColumns(currentState, columnKeys) {
@@ -1036,10 +1118,17 @@
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Main deck</p>
                     <p class="text-3xl font-bold text-arena-accent mt-1">{stats.mainDeckTotal}</p>
+                    <p class="text-xs text-arena-text-dim mt-2">Sideboard {showSideboard ? stats.sideboardTotal : 0}</p>
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Sideboard</p>
-                    <p class="text-3xl font-bold text-arena-text mt-1">{showSideboard ? stats.sideboardTotal : 0}</p>
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Prix du deck</p>
+                    <p class="text-3xl font-bold text-arena-text mt-1">{formatPrice(pricing.total)}</p>
+                    <p class="text-xs text-arena-text-dim mt-2">
+                        Main {formatPrice(pricing.main)} • Side {formatPrice(pricing.sideboard)}
+                    </p>
+                    {#if pricing.missingCopies > 0}
+                        <p class="text-xs text-red-300 mt-1">{pricing.missingCopies} copie{pricing.missingCopies > 1 ? 's' : ''} sans prix</p>
+                    {/if}
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Colors</p>
@@ -1187,6 +1276,18 @@
                                                     <span>{entry.card.mana_cost}</span>
                                                 </div>
                                             {/if}
+                                            
+                                            <div class="absolute bottom-1 left-1">
+                                                {#if getCardPrice(entry.card) !== null}
+                                                    <span class="bg-black/70 text-white text-[11px] font-semibold px-2 py-1 rounded-full shadow-md">
+                                                        {formatPrice(getCardPrice(entry.card))}
+                                                    </span>
+                                                {:else}
+                                                    <span class="bg-black/50 text-white/70 text-[10px] font-semibold px-2 py-1 rounded-full">
+                                                        Prix N/A
+                                                    </span>
+                                                {/if}
+                                            </div>
                                             
                                             <div class="absolute top-1 right-1 flex flex-col items-center gap-1 z-20">
                                                 <div class="bg-black/80 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
