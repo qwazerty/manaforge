@@ -3,6 +3,7 @@
 import re
 import unicodedata
 import time
+from datetime import datetime
 from html import unescape
 from urllib.parse import quote_plus, urlparse, urljoin
 import json
@@ -14,10 +15,12 @@ from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
-_LOCAL_ORACLE_CACHE: Dict[str, Dict[str, Any]] = {}
+_LOCAL_ORACLE_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 _LOCAL_ORACLE_CACHE_BY_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_CACHE_BY_ORACLE_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_LOADED = False
+_LOCAL_ORACLE_PATH: Optional[Path] = None
+_LOCAL_ORACLE_MTIME: Optional[float] = None
 
 
 def _normalize_name(name: str) -> str:
@@ -56,28 +59,41 @@ def _load_local_oracle_data() -> None:
         else:
             cards = payload.get("data") or payload.get("cards") or []
         for card in cards:
+            def add_key(raw_name: Optional[str]) -> None:
+                key = _normalize_name(raw_name or "")
+                if not key:
+                    return
+                bucket = _LOCAL_ORACLE_CACHE.setdefault(key, [])
+                bucket.append(card)
+
             name = card.get("name")
-            key = _normalize_name(name)
-            if key and key not in _LOCAL_ORACLE_CACHE:
-                _LOCAL_ORACLE_CACHE[key] = card
+            printed_name = card.get("printed_name")
+
+            # Canonical name + printed name (for Universes Within, etc.)
+            add_key(name)
+            add_key(printed_name)
 
             # Index each face name separately for double-faced/split cards
             face_names = []
             if isinstance(card.get("card_faces"), list):
                 for face in card["card_faces"]:
                     face_name = face.get("name")
+                    printed_face_name = face.get("printed_name")
                     if isinstance(face_name, str):
                         face_names.append(face_name)
+                    if isinstance(printed_face_name, str):
+                        face_names.append(printed_face_name)
 
             # Also index the split parts of "Front // Back" names
             if isinstance(name, str) and "//" in name:
                 for part in name.split("//"):
                     face_names.append(part.strip())
+            if isinstance(printed_name, str) and "//" in printed_name:
+                for part in printed_name.split("//"):
+                    face_names.append(part.strip())
 
             for face_name in face_names:
-                normalized_face = _normalize_name(face_name)
-                if normalized_face and normalized_face not in _LOCAL_ORACLE_CACHE:
-                    _LOCAL_ORACLE_CACHE[normalized_face] = card
+                add_key(face_name)
 
             card_id = str(card.get("id") or "").strip()
             if card_id and card_id not in _LOCAL_ORACLE_CACHE_BY_ID:
@@ -99,11 +115,99 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
         return None
 
     normalized = _normalize_name(name)
-    return (
-        _LOCAL_ORACLE_CACHE.get(normalized)
-        or _LOCAL_ORACLE_CACHE_BY_ID.get(name)
-        or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
-    )
+    candidates = _LOCAL_ORACLE_CACHE.get(normalized, [])
+    if not candidates:
+        return _LOCAL_ORACLE_CACHE_BY_ID.get(name) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
+
+    def latest(cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        def sort_key(card: Dict[str, Any]) -> datetime:
+            raw = str(card.get("released_at") or "")
+            try:
+                return datetime.fromisoformat(raw)
+            except Exception:
+                return datetime.min
+        return sorted(cards, key=sort_key, reverse=True)[0] if cards else None
+
+    def choose_with_booster_priority(cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not cards:
+            return None
+
+        def filtered(pool: List[Dict[str, Any]], *, allow_booster=False, allow_promo=False, allow_special=False) -> List[Dict[str, Any]]:
+            result = []
+            for card in pool:
+                rarity = str(card.get("rarity") or "").lower()
+                if not allow_special and rarity == "special":
+                    continue
+                booster_flag = card.get("booster")
+                if allow_booster is False and booster_flag is False:
+                    continue
+                promo_flag = card.get("promo")
+                if allow_promo is False and promo_flag is True:
+                    continue
+                result.append(card)
+            return result
+
+        # Step 1: default filters (exclude rarity special, booster false, promo true)
+        primary = filtered(cards)
+        if primary:
+            return latest(primary)
+
+        # Step 2: allow booster false
+        allow_booster = filtered(cards, allow_booster=True)
+        if allow_booster:
+            return latest(allow_booster)
+
+        # Step 3: allow promo true
+        allow_promo = filtered(cards, allow_booster=True, allow_promo=True)
+        if allow_promo:
+            return latest(allow_promo)
+
+        # Step 4: allow rarity special
+        allow_all = filtered(cards, allow_booster=True, allow_promo=True, allow_special=True)
+        return latest(allow_all)
+
+    # 1) printed_name match
+    printed_matches = [
+        card for card in candidates
+        if _normalize_name(card.get("printed_name") or "") == normalized
+    ]
+    if printed_matches:
+        return choose_with_booster_priority(printed_matches)
+
+    # Exclude entries that have printed_name if we didn't match it
+    candidates = [card for card in candidates if not card.get("printed_name")]
+
+    # 2) flavor_name match
+    flavor_matches = [
+        card for card in candidates
+        if _normalize_name(card.get("flavor_name") or "") == normalized
+    ]
+    if flavor_matches:
+        return choose_with_booster_priority(flavor_matches)
+
+    # Exclude entries that have flavor_name if we didn't match it
+    candidates = [card for card in candidates if not card.get("flavor_name")]
+
+    # 3) name match
+    name_matches = [
+        card for card in candidates
+        if _normalize_name(card.get("name") or "") == normalized
+    ]
+    if name_matches:
+        return choose_with_booster_priority(name_matches)
+
+    # 4) card_faces fallback: match any face name
+    face_matches = []
+    for card in candidates:
+        faces = card.get("card_faces") or []
+        for face in faces:
+            if _normalize_name(face.get("name") or "") == normalized:
+                face_matches.append(card)
+                break
+    if face_matches:
+        return choose_with_booster_priority(face_matches)
+
+    return _LOCAL_ORACLE_CACHE_BY_ID.get(name) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
 
 
 class CardService:
