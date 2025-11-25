@@ -1,6 +1,7 @@
 """Card service for managing Magic cards via Scryfall API."""
 
 import re
+import unicodedata
 import time
 from html import unescape
 from urllib.parse import quote_plus, urlparse, urljoin
@@ -14,19 +15,26 @@ from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
 _LOCAL_ORACLE_CACHE: Dict[str, Dict[str, Any]] = {}
+_LOCAL_ORACLE_CACHE_BY_ID: Dict[str, Dict[str, Any]] = {}
+_LOCAL_ORACLE_CACHE_BY_ORACLE_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_LOADED = False
 
 
 def _normalize_name(name: str) -> str:
     if not isinstance(name, str):
         return ""
+    normalized = unicodedata.normalize("NFKD", name)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     normalized = (
-        name.lower()
+        normalized.lower()
         .strip()
         .replace("’", "'")
         .replace("`", "'")
         .replace("´", "'")
     )
+    normalized = re.sub(r"[–—-]", " ", normalized)  # dash variants -> space
+    normalized = re.sub(r"[,:/]", " ", normalized)  # common separators -> space
+    normalized = re.sub(r"\s+", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized
 
@@ -36,10 +44,7 @@ def _load_local_oracle_data() -> None:
     if _LOCAL_ORACLE_LOADED:
         return
     root = Path(__file__).resolve().parents[2]
-    oracle_path = None
-    for candidate in root.glob("data/oracle-cards-*.json"):
-        oracle_path = candidate
-        break
+    oracle_path = root / "data" / "oracle-cards.json"
     if not oracle_path or not oracle_path.exists():
         _LOCAL_ORACLE_LOADED = True
         return
@@ -53,9 +58,34 @@ def _load_local_oracle_data() -> None:
         for card in cards:
             name = card.get("name")
             key = _normalize_name(name)
-            if not key or key in _LOCAL_ORACLE_CACHE:
-                continue
-            _LOCAL_ORACLE_CACHE[key] = card
+            if key and key not in _LOCAL_ORACLE_CACHE:
+                _LOCAL_ORACLE_CACHE[key] = card
+
+            # Index each face name separately for double-faced/split cards
+            face_names = []
+            if isinstance(card.get("card_faces"), list):
+                for face in card["card_faces"]:
+                    face_name = face.get("name")
+                    if isinstance(face_name, str):
+                        face_names.append(face_name)
+
+            # Also index the split parts of "Front // Back" names
+            if isinstance(name, str) and "//" in name:
+                for part in name.split("//"):
+                    face_names.append(part.strip())
+
+            for face_name in face_names:
+                normalized_face = _normalize_name(face_name)
+                if normalized_face and normalized_face not in _LOCAL_ORACLE_CACHE:
+                    _LOCAL_ORACLE_CACHE[normalized_face] = card
+
+            card_id = str(card.get("id") or "").strip()
+            if card_id and card_id not in _LOCAL_ORACLE_CACHE_BY_ID:
+                _LOCAL_ORACLE_CACHE_BY_ID[card_id] = card
+
+            oracle_id = str(card.get("oracle_id") or "").strip()
+            if oracle_id and oracle_id not in _LOCAL_ORACLE_CACHE_BY_ORACLE_ID:
+                _LOCAL_ORACLE_CACHE_BY_ORACLE_ID[oracle_id] = card
     except Exception as exc:
         print(f"Unable to load local oracle data: {exc}")
     _LOCAL_ORACLE_LOADED = True
@@ -63,9 +93,17 @@ def _load_local_oracle_data() -> None:
 
 def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
     _load_local_oracle_data()
-    if not _LOCAL_ORACLE_CACHE:
+    if not (_LOCAL_ORACLE_CACHE or _LOCAL_ORACLE_CACHE_BY_ID or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID):
         return None
-    return _LOCAL_ORACLE_CACHE.get(_normalize_name(name))
+    if not name:
+        return None
+
+    normalized = _normalize_name(name)
+    return (
+        _LOCAL_ORACLE_CACHE.get(normalized)
+        or _LOCAL_ORACLE_CACHE_BY_ID.get(name)
+        or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
+    )
 
 
 class CardService:
@@ -78,6 +116,13 @@ class CardService:
     def __init__(self):
         """Initialize the CardService without database dependency."""
         pass
+
+    def get_card_data_from_oracle(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Retrieve card data strictly from the local oracle dump."""
+        local_card = _lookup_local_card(identifier)
+        if not local_card:
+            return None
+        return self._parse_scryfall_card(local_card)
 
     def _generate_deck_identity(self, preferred_name: Optional[str] = None) -> Tuple[str, str]:
         """
@@ -427,6 +472,7 @@ class CardService:
         deck_cards: List[DeckCard] = []
         sideboard_cards: List[DeckCard] = []
         commanders: List[Card] = []
+        missing_cards: List[str] = []
 
         for entry in entries:
             if len(entry) == 3:
@@ -435,9 +481,9 @@ class CardService:
                 quantity, card_name = entry
                 section = None
 
-            card_data = await self.get_card_data_from_scryfall(card_name)
+            card_data = self.get_card_data_from_oracle(card_name)
             if not card_data:
-                print(f"❌ Card not found: {card_name}")
+                missing_cards.append(card_name)
                 continue
 
             card = Card(**card_data)
@@ -454,7 +500,10 @@ class CardService:
 
             deck_card = DeckCard(card=card, quantity=quantity)
             deck_cards.append(deck_card)
-            print(f"✅ Added {quantity}x {card_name}")
+
+        if missing_cards:
+            formatted_missing = ", ".join(sorted({name.strip() for name in missing_cards}))
+            raise ValueError(f"Unable to import deck: missing cards in local oracle ({formatted_missing}).")
 
         deck_id, resolved_name = self._generate_deck_identity(deck_name)
         return Deck(
