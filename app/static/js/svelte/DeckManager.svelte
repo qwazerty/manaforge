@@ -357,20 +357,17 @@
         return Number.isFinite(value) ? value : NaN;
     }
 
-    function buildProductLookup(data, priceLookup = PRICE_GUIDE_LOOKUP) {
+    function buildProductLookup(data) {
         const lookup = {};
         if (!data || !Array.isArray(data.products)) return lookup;
         data.products.forEach((product) => {
             const id = Number(product?.idProduct);
             const nameKey = normalizeName(product?.name);
             if (!nameKey || !Number.isFinite(id)) return;
-            const hasPrice = Number.isFinite(priceLookup[id]);
-            const existingId = lookup[nameKey];
-            const existingHasPrice = Number.isFinite(priceLookup[existingId]);
-            // Prefer a product id that has a price; otherwise keep the first seen
-            if (!existingId || (hasPrice && !existingHasPrice)) {
-                lookup[nameKey] = id;
+            if (!lookup[nameKey]) {
+                lookup[nameKey] = [];
             }
+            lookup[nameKey].push(id);
         });
         return lookup;
     }
@@ -383,7 +380,19 @@
         const key = normalizeName(name);
         if (!key) return null;
         console.log('Pricing lookup:', name, '->', key);
-        return PRODUCT_LOOKUP[key] ?? null;
+        const ids = PRODUCT_LOOKUP[key];
+        if (!Array.isArray(ids) || ids.length === 0) return null;
+        let bestId = null;
+        let bestPrice = Number.POSITIVE_INFINITY;
+        ids.forEach((id) => {
+            const price = PRICE_GUIDE_LOOKUP[id];
+            if (Number.isFinite(price) && price > 0 && price < bestPrice) {
+                bestPrice = price;
+                bestId = id;
+            }
+        });
+        if (bestId !== null) return bestId;
+        return ids[0]; // fallback to first if no priced entry
     }
 
     function getEntriesForColumns(currentState, columnKeys) {
