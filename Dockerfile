@@ -12,6 +12,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY app ./app
+COPY data ./data
 COPY tools ./tools
 COPY tailwind.config.js ./tailwind.config.js
 
