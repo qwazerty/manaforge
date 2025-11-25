@@ -216,7 +216,8 @@
             columns,
             filters: {
                 color: 'all',
-                rarity: 'all'
+                rarity: 'all',
+                sideboardOnly: false
             },
             sorting: {
                 sideboard: 'default'
@@ -418,7 +419,11 @@
             .filter(Boolean);
     }
 
-    function filterEntries(entries) {
+    function filterEntries(entries, columnKey = null) {
+        const applyOnlyToSideboard = Boolean(state?.filters?.sideboardOnly);
+        if (applyOnlyToSideboard && columnKey !== 'sideboard') {
+            return entries;
+        }
         return entries.filter((entry) => passesFilters(entry?.card));
     }
 
@@ -1245,6 +1250,10 @@
                             <option value="rarity">Rarity</option>
                             <option value="cmc">CMC</option>
                         </select>
+                        <label class="flex items-center gap-2 text-sm text-arena-text">
+                            <input type="checkbox" bind:checked={state.filters.sideboardOnly} onchange={saveState} class="rounded border-arena-accent/40 bg-arena-surface" />
+                            Filter sideboard only
+                        </label>
                     </div>
                     <button onclick={() => showBasicLands = !showBasicLands} class="arena-button px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                         <span>🌱</span>Lands
@@ -1295,7 +1304,7 @@
                             </div>
                             
                             <div class="flex flex-col min-h-[100px] pb-4">
-                                {#each sortEntriesForColumn(filterEntries(getColumnEntries(column.key)), column.key) as entry (entry.id)}
+                                {#each sortEntriesForColumn(filterEntries(getColumnEntries(column.key), column.key), column.key) as entry (entry.id)}
                                     <div 
                                         class="relative group cursor-grab active:cursor-grabbing peer -mt-[120%] first:mt-0 hover:[&+.peer]:mt-0 transition-all duration-200 z-0"
                                         draggable="true"
