@@ -1,4 +1,6 @@
 <script>
+    import { onMount } from 'svelte';
+
     import DeckZone from './DeckZone.svelte';
     import GraveyardZone from './GraveyardZone.svelte';
     import ExileZone from './ExileZone.svelte';
@@ -8,6 +10,11 @@
         gameState = null,
         selectedPlayer = 'player1'
     } = $props();
+
+    let gameBoardEl = null;
+    let overlapObserver = null;
+    let overlapPending = false;
+    let overlapResizeDebounce = null;
 
     const zoneContainerClass =
         UIConfig?.CSS_CLASSES?.zone?.container || 'zone-item';
@@ -46,6 +53,111 @@
     const boardHydrated = $derived(() => {
         return boardData() ? 'true' : 'false';
     });
+
+    const OVERLAP_ZONE_SELECTORS = [
+        '.creatures-zone-content',
+        '.support-zone-content',
+        '.lands-zone-content',
+        '.hand-zone-content',
+        '.opponent-hand-zone'
+    ];
+
+    const calculateOverlapValue = (cardCount, viewportWidth = null) => {
+        const width = viewportWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1920);
+        let baseOverlap = -20;
+
+        if (cardCount > 15) {
+            baseOverlap = -50;
+        } else if (cardCount > 10) {
+            baseOverlap = -40;
+        } else if (cardCount > 6) {
+            baseOverlap = -30;
+        }
+
+        if (width <= 768) {
+            return baseOverlap - 10;
+        }
+        if (width <= 1200) {
+            return baseOverlap - 5;
+        }
+
+        return baseOverlap;
+    };
+
+    const applyOverlapToContainer = (container, viewportWidth = null) => {
+        if (!container) {
+            return;
+        }
+
+        const cards = Array.from(container.children);
+        const cardCount = cards.length;
+        const width = viewportWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1920);
+
+        if (cardCount <= 1) {
+            container.style.justifyContent = '';
+            cards.forEach((card, index) => {
+                card.style.marginLeft = index === 0 ? '0px' : '';
+            });
+            container.setAttribute('data-card-count', cardCount);
+            container.removeAttribute('data-dynamic-overlap');
+            container.removeAttribute('data-zone-type');
+            return;
+        }
+
+        const overlap = calculateOverlapValue(cardCount, width);
+        const isLandsZone = container.closest('.lands-zone');
+        const isOpponentZone = container.closest('.opponent-zone');
+        let justifyContent = 'center';
+
+        if (isLandsZone) {
+            justifyContent = 'flex-start';
+        } else if (isOpponentZone) {
+            justifyContent = 'center';
+        } else if (cardCount >= 10) {
+            justifyContent = 'flex-start';
+        }
+
+        container.style.justifyContent = justifyContent;
+        cards.forEach((card, index) => {
+            card.style.marginLeft = index === 0 ? '0px' : `${overlap}px`;
+        });
+
+        container.setAttribute('data-dynamic-overlap', overlap);
+        container.setAttribute('data-card-count', cardCount);
+        container.setAttribute('data-zone-type', isLandsZone ? 'lands' : 'other');
+    };
+
+    const applyOverlapToAllZones = () => {
+        const root = gameBoardEl || (typeof document !== 'undefined' ? document : null);
+        if (!root) {
+            return;
+        }
+
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
+        OVERLAP_ZONE_SELECTORS.forEach((selector) => {
+            root.querySelectorAll(selector).forEach((container) => {
+                applyOverlapToContainer(container, viewportWidth);
+            });
+        });
+    };
+
+    const scheduleOverlapRefresh = () => {
+        if (overlapPending) {
+            return;
+        }
+
+        overlapPending = true;
+        const runner = () => {
+            overlapPending = false;
+            applyOverlapToAllZones();
+        };
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(runner);
+        } else {
+            setTimeout(runner, 0);
+        }
+    };
 
     function buildBoardData(state, playerSelection) {
         const { players, controlledIdx, opponentIdx, activePlayer } = computePlayerContext(state, playerSelection);
@@ -134,10 +246,10 @@
                 cardsRemaining: deckConfig.cardsRemaining,
                 deckClass: deckConfig.deckClass,
                 zoneIdentifier: deckConfig.zoneIdentifier,
-                overlayText: deckConfig.overlayText,
-                onClick: deckConfig.onClick
-            }),
-            buildZoneDescriptor('life', LifeZone, {
+            overlayText: deckConfig.overlayText,
+            onClick: deckConfig.onClick
+        }),
+        buildZoneDescriptor('life', LifeZone, {
                 life: lifeConfig.life,
                 playerId: lifeConfig.playerId,
                 negativeControls: lifeConfig.negativeControls,
@@ -442,6 +554,53 @@
             </div>
         `;
     }
+
+    onMount(() => {
+        scheduleOverlapRefresh();
+
+        if (typeof MutationObserver !== 'undefined' && gameBoardEl) {
+            overlapObserver = new MutationObserver((mutations) => {
+                const hasCardChanges = mutations.some((mutation) => mutation.type === 'childList');
+                if (hasCardChanges) {
+                    scheduleOverlapRefresh();
+                }
+            });
+            overlapObserver.observe(gameBoardEl, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        const handleResize = () => {
+            if (overlapResizeDebounce) {
+                clearTimeout(overlapResizeDebounce);
+            }
+            overlapResizeDebounce = setTimeout(() => {
+                scheduleOverlapRefresh();
+            }, 200);
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('resize', handleResize);
+        }
+
+        return () => {
+            overlapObserver?.disconnect();
+            overlapObserver = null;
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('resize', handleResize);
+            }
+            if (overlapResizeDebounce) {
+                clearTimeout(overlapResizeDebounce);
+                overlapResizeDebounce = null;
+            }
+        };
+    });
+
+    $effect(() => {
+        void boardData();
+        scheduleOverlapRefresh();
+    });
 </script>
 
 <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 flex-grow h-full">
@@ -521,7 +680,11 @@
         {/if}
     </div>
 
-    <div class="xl:col-span-2" id="game-board" data-board-hydrated={boardHydrated()}>
+    <div
+        class="xl:col-span-2"
+        id="game-board"
+        data-board-hydrated={boardHydrated()}
+        bind:this={gameBoardEl}>
         {#if boardData()}
             {@const board = boardData()}
             {#if board.opponent}
