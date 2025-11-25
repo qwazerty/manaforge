@@ -22,6 +22,7 @@
     ];
 
     const TYPE_LABELS = {
+        commander: 'Commander',
         creature: 'Creatures',
         instant: 'Instants',
         sorcery: 'Sorceries',
@@ -204,6 +205,17 @@
     let pricing = $derived(computePricing(state));
     let showCommander = $derived(COMMANDER_FORMATS.has((state.format || '').toLowerCase()));
     let showSideboard = $derived(!COMMANDER_FORMATS.has((state.format || '').toLowerCase()));
+    let mainGroups = $derived(
+        groupEntriesForList(
+            collectEntriesWithColumn(getMainColumnKeys())
+        )
+    );
+    let mainColumnsSplit = $derived(
+        showSideboard ? { left: mainGroups, right: [] } : splitIntoTwoColumns(mainGroups)
+    );
+    let sideboardGroups = $derived(
+        showSideboard ? groupEntriesForList(collectEntriesWithColumn(['sideboard'])) : []
+    );
 
     function getDefaultState() {
         const columns = {};
@@ -448,7 +460,10 @@
         return entries.filter((entry) => passesFilters(entry?.card));
     }
 
-    function classifyType(card = {}) {
+    function classifyType(card = {}, columnKey = null) {
+        // Si la carte est dans la colonne commander, classifier comme commander
+        if (columnKey === 'commander') return 'commander';
+        
         const typeLine = String(card.type_line || card.card_type || '').toLowerCase();
         if (typeLine.includes('creature')) return 'creature';
         if (typeLine.includes('planeswalker')) return 'planeswalker';
@@ -483,10 +498,10 @@
         const filtered = entriesWithColumn.filter((entry) => filterEntries([entry], entry.__column).length > 0);
         const buckets = new Map();
         filtered.forEach((entry) => {
-            const typeKey = classifyType(entry.card);
+            const typeKey = classifyType(entry.card, entry.__column);
             const label = getTypeLabel(typeKey);
             if (!buckets.has(label)) {
-                buckets.set(label, { label, entries: [], count: 0 });
+                buckets.set(label, { label, typeKey, entries: [], count: 0 });
             }
             const bucket = buckets.get(label);
             bucket.entries.push(entry);
@@ -501,7 +516,29 @@
                 return compareByName(a.card, b.card);
             });
         });
-        return groups.sort((a, b) => a.label.localeCompare(b.label));
+        // Trier les groupes: Commander en premier, puis alphabétiquement
+        return groups.sort((a, b) => {
+            if (a.typeKey === 'commander') return -1;
+            if (b.typeKey === 'commander') return 1;
+            return a.label.localeCompare(b.label);
+        });
+    }
+
+    function splitIntoTwoColumns(groups) {
+        const left = [];
+        const right = [];
+        let leftCount = 0;
+        let rightCount = 0;
+        groups.forEach(group => {
+            if (leftCount <= rightCount) {
+                left.push(group);
+                leftCount += group.count;
+            } else {
+                right.push(group);
+                rightCount += group.count;
+            }
+        });
+        return { left, right };
     }
 
     function getEntryColumn(entryId) {
@@ -1452,27 +1489,10 @@
             {/if}
 
             {#if showListView}
-                {@const mainGroups = groupEntriesForList(collectEntriesWithColumn(getMainColumnKeys()))}
-                {@const splitGroups = showSideboard ? { left: mainGroups, right: [] } : (() => {
-                    const left = [];
-                    const right = [];
-                    let leftCount = 0;
-                    let rightCount = 0;
-                    mainGroups.forEach(group => {
-                        if (leftCount <= rightCount) {
-                            left.push(group);
-                            leftCount += group.count;
-                        } else {
-                            right.push(group);
-                            rightCount += group.count;
-                        }
-                    });
-                    return { left, right };
-                })()}
                 <div class="space-y-6">
                     <div class="grid md:grid-cols-2 gap-5">
                         <div class="space-y-4">
-                            {#each splitGroups.left as group}
+                            {#each mainColumnsSplit.left as group}
                                 <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
                                     <div class="text-sm font-medium text-arena-accent flex items-center gap-2">
                                         <span>{group.label}</span>
@@ -1516,7 +1536,7 @@
                                 ondrop={(e) => handleListDrop(e, 'sideboard')}
                             >
                                 <div class="text-sm font-medium text-arena-accent">Sideboard ({stats.sideboardTotal})</div>
-                                {#each groupEntriesForList(collectEntriesWithColumn(['sideboard'])) as group}
+                                {#each sideboardGroups as group}
                                     <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
                                         <div class="text-sm font-medium text-arena-text flex items-center gap-2">
                                             <span>{group.label}</span>
@@ -1556,7 +1576,7 @@
                             </div>
                         {:else}
                             <div class="space-y-4">
-                                {#each splitGroups.right as group}
+                                {#each mainColumnsSplit.right as group}
                                     <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
                                         <div class="text-sm font-medium text-arena-accent flex items-center gap-2">
                                             <span>{group.label}</span>
