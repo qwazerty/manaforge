@@ -104,6 +104,27 @@ export const DeckStorage = {
         return this.save(clone);
     },
 
+    removeByFormats(formats: string[] = []) {
+        const normalized = (formats || [])
+            .map((format) => (format || '').toString().toLowerCase())
+            .filter(Boolean);
+
+        if (!normalized.length) return;
+
+        const decks = readAll();
+        const next = decks.filter(
+            (deck) => !normalized.includes((deck.format || '').toString().toLowerCase())
+        );
+
+        if (next.length !== decks.length) {
+            writeAll(next);
+        }
+    },
+
+    removeLimited() {
+        this.removeByFormats(['draft', 'sealed', 'cube']);
+    },
+
     generateId(): string {
         return `deck_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     }
