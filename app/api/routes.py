@@ -19,6 +19,7 @@ from app.services.game_engine import SimpleGameEngine
 from app.api.decorators import broadcast_game_update, action_registry
 from app.api.action_handlers import *
 from app.services.format_stats_service import get_cards_for_format
+from app.services.pricing_service import get_price_guide, get_products, get_memory_usage
 
 
 router = APIRouter(prefix="/api/v1")
@@ -827,3 +828,34 @@ async def get_game_replay(game_id: str) -> Dict[str, Any]:
         }
 
     raise HTTPException(status_code=404, detail="Replay not found for this game")
+
+
+# =============================================================================
+# Pricing API endpoints (data loaded in memory at startup)
+# =============================================================================
+
+@router.get("/pricing/guide")
+async def get_pricing_guide() -> Dict[str, Any]:
+    """
+    Get the full price guide data.
+    Data is loaded in memory at server startup for fast access.
+    """
+    return get_price_guide()
+
+
+@router.get("/pricing/products")
+async def get_pricing_products() -> Dict[str, Any]:
+    """
+    Get the products catalog data.
+    Data is loaded in memory at server startup for fast access.
+    """
+    return get_products()
+
+
+@router.get("/pricing/status")
+async def get_pricing_status() -> Dict[str, Any]:
+    """
+    Get the status of the pricing data cache.
+    Useful for debugging and monitoring.
+    """
+    return get_memory_usage()
