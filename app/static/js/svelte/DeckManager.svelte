@@ -1425,10 +1425,27 @@
             {/if}
 
             {#if showListView}
+                {@const mainGroups = groupEntriesForList(collectEntriesWithColumn(getMainColumnKeys()))}
+                {@const splitGroups = showSideboard ? { left: mainGroups, right: [] } : (() => {
+                    const left = [];
+                    const right = [];
+                    let leftCount = 0;
+                    let rightCount = 0;
+                    mainGroups.forEach(group => {
+                        if (leftCount <= rightCount) {
+                            left.push(group);
+                            leftCount += group.count;
+                        } else {
+                            right.push(group);
+                            rightCount += group.count;
+                        }
+                    });
+                    return { left, right };
+                })()}
                 <div class="space-y-6">
                     <div class="grid md:grid-cols-2 gap-5">
                         <div class="space-y-4">
-                            {#each groupEntriesForList(collectEntriesWithColumn(getMainColumnKeys())) as group}
+                            {#each splitGroups.left as group}
                                 <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
                                     <div class="text-sm font-medium text-arena-accent flex items-center gap-2">
                                         <span>{group.label}</span>
@@ -1475,6 +1492,46 @@
                                 {#each groupEntriesForList(collectEntriesWithColumn(['sideboard'])) as group}
                                     <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
                                         <div class="text-sm font-medium text-arena-text flex items-center gap-2">
+                                            <span>{group.label}</span>
+                                            <span class="text-arena-text-dim">({group.count})</span>
+                                        </div>
+                                        <div class="divide-y divide-arena-accent/10">
+                                            {#each group.entries as entry (entry.id)}
+                                                <div 
+                                                    class="flex items-center gap-2 py-1 px-1 rounded hover:bg-arena-accent/10 transition cursor-grab text-sm"
+                                                    draggable="true"
+                                                    ondragstart={(e) => handleDragStart(e, entry.id)}
+                                                    ondragover={(e) => handleListDragOver(e, entry.__column)}
+                                                    ondrop={(e) => handleListDrop(e, entry.__column)}
+                                                    onmouseenter={(e) => handleMouseEnter(e, entry)}
+                                                    onmousemove={(e) => handleMouseMove(e)}
+                                                    onmouseleave={() => handleMouseLeave()}
+                                                >
+                                                    <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
+                                                    <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
+                                                    <span class="flex items-center gap-0.5 flex-shrink-0 w-20 justify-start">
+                                                        {#each buildManaSymbols(entry.card.mana_cost) as symbol}
+                                                            <span class={`mana-symbol mana-${symbol.class} text-[10px] leading-none`}>{symbol.label}</span>
+                                                        {/each}
+                                                    </span>
+                                                    <span class="text-xs text-arena-text-dim flex-shrink-0 w-16 text-right">
+                                                        {#if getCardPrice(entry.card) !== null}{formatPrice(getCardPrice(entry.card) * entry.quantity)}{:else}—{/if}
+                                                    </span>
+                                                    <span class="flex items-center gap-0.5 flex-shrink-0">
+                                                        <button onclick={() => updateEntryQuantity(entry.id, entry.quantity + 1)} class="w-5 h-5 rounded bg-black/60 text-green-400 hover:text-green-300 text-xs font-bold" title="Add">+</button>
+                                                        <button onclick={() => updateEntryQuantity(entry.id, entry.quantity - 1)} class="w-5 h-5 rounded bg-black/60 text-red-400 hover:text-red-300 text-xs font-bold" title="Remove">−</button>
+                                                    </span>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {:else}
+                            <div class="space-y-4">
+                                {#each splitGroups.right as group}
+                                    <div class="space-y-1 rounded-lg border border-arena-accent/10 bg-arena-surface/60 p-3">
+                                        <div class="text-sm font-medium text-arena-accent flex items-center gap-2">
                                             <span>{group.label}</span>
                                             <span class="text-arena-text-dim">({group.count})</span>
                                         </div>
