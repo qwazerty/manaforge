@@ -4,12 +4,68 @@ import re
 import time
 from html import unescape
 from urllib.parse import quote_plus, urlparse, urljoin
+import json
+from pathlib import Path
 import aiohttp
 from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
+
+_LOCAL_ORACLE_CACHE: Dict[str, Dict[str, Any]] = {}
+_LOCAL_ORACLE_LOADED = False
+
+
+def _normalize_name(name: str) -> str:
+    if not isinstance(name, str):
+        return ""
+    normalized = (
+        name.lower()
+        .strip()
+        .replace("’", "'")
+        .replace("`", "'")
+        .replace("´", "'")
+    )
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized
+
+
+def _load_local_oracle_data() -> None:
+    global _LOCAL_ORACLE_LOADED
+    if _LOCAL_ORACLE_LOADED:
+        return
+    root = Path(__file__).resolve().parents[2]
+    oracle_path = None
+    for candidate in root.glob("data/oracle-cards-*.json"):
+        oracle_path = candidate
+        break
+    if not oracle_path or not oracle_path.exists():
+        _LOCAL_ORACLE_LOADED = True
+        return
+    try:
+        with oracle_path.open("r", encoding="utf-8") as f:
+            payload = json.load(f)
+        if isinstance(payload, list):
+            cards = payload
+        else:
+            cards = payload.get("data") or payload.get("cards") or []
+        for card in cards:
+            name = card.get("name")
+            key = _normalize_name(name)
+            if not key or key in _LOCAL_ORACLE_CACHE:
+                continue
+            _LOCAL_ORACLE_CACHE[key] = card
+    except Exception as exc:
+        print(f"Unable to load local oracle data: {exc}")
+    _LOCAL_ORACLE_LOADED = True
+
+
+def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
+    _load_local_oracle_data()
+    if not _LOCAL_ORACLE_CACHE:
+        return None
+    return _LOCAL_ORACLE_CACHE.get(_normalize_name(name))
 
 
 class CardService:
@@ -176,6 +232,10 @@ class CardService:
         self, identifier: str, by_id: bool = False
     ) -> Optional[Dict[str, Any]]:
         """Get complete card data from Scryfall API by name or ID."""
+        local_card = _lookup_local_card(identifier)
+        if local_card:
+            return self._parse_scryfall_card(local_card)
+
         if by_id:
             url = f"https://api.scryfall.com/cards/{identifier}"
         else:
@@ -197,6 +257,12 @@ class CardService:
                         return self._parse_scryfall_card(data)
         except Exception as e:
             print(f"Error fetching card data for {identifier}: {e}")
+        
+        if not by_id:
+            normalized = _normalize_name(identifier)
+            local_hit = _lookup_local_card(normalized)
+            if local_hit:
+                return self._parse_scryfall_card(local_hit)
         
         return None
     
