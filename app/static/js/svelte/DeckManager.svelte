@@ -533,10 +533,12 @@
                 return compareByName(a.card, b.card);
             });
         });
-        // Trier les groupes: Commander en premier, puis alphabétiquement
+        // Trier les groupes: Commander en premier, terrains en dernier, reste alphabétique
         return groups.sort((a, b) => {
             if (a.typeKey === 'commander') return -1;
             if (b.typeKey === 'commander') return 1;
+            if (a.typeKey === 'land' && b.typeKey !== 'land') return 1;
+            if (b.typeKey === 'land' && a.typeKey !== 'land') return -1;
             return a.label.localeCompare(b.label);
         });
     }
