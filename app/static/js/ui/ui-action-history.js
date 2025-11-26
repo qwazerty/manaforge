@@ -68,6 +68,7 @@ class UIActionHistory {
 
         this._enrichCardDetails(entry, context);
         this._applyActionSpecificDetailOverrides(entry);
+        this._applyFaceDownPrivacy(entry);
 
         if (this._shouldSkipActionEntry(rawAction, entry)) {
             return;
@@ -893,6 +894,56 @@ class UIActionHistory {
             moveContext.deckPosition,
             moveContext.targetZone
         );
+    }
+
+    static _applyFaceDownPrivacy(entry) {
+        if (!entry) {
+            return;
+        }
+
+        const payload = entry?.context?.payload || {};
+        const detailFlag = this._resolveDetailValue(entry, ['Face Down', 'Face down']);
+        const faceDownFlag = Boolean(
+            payload.face_down ||
+            payload?.additional_data?.face_down ||
+            (typeof detailFlag === 'string'
+                ? detailFlag.toLowerCase() === 'true'
+                : detailFlag)
+        );
+
+        if (!faceDownFlag) {
+            return;
+        }
+
+        const ownerId = payload.face_down_owner || payload.player || entry.player || null;
+        const viewerSeat =
+            typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
+                ? GameCore.getSelectedPlayer()
+                : null;
+        const viewerMatchesOwner =
+            ownerId &&
+            viewerSeat &&
+            ownerId.toLowerCase() === String(viewerSeat).toLowerCase();
+
+        if (viewerMatchesOwner) {
+            return;
+        }
+
+        entry.cardRefs = [];
+        entry.details = [
+            {
+                label: '',
+                value: 'Face-down card (hidden)',
+                hideLabel: true
+            }
+        ];
+
+        if (
+            typeof entry.displayAction === 'string' &&
+            !entry.displayAction.toLowerCase().includes('face-down')
+        ) {
+            entry.displayAction = `${entry.displayAction} (face-down)`;
+        }
     }
 
     static _resolveHandToLibraryMoveContext(entry) {

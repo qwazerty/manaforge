@@ -28,14 +28,95 @@
         return GameCore.getSelectedPlayer();
     };
 
+    const FACE_DOWN_LABEL = 'Face-down Spell';
+    const CARD_BACK_IMAGE = '/static/images/card-back.jpg';
+
+    const isFaceDownFlag = (card) => {
+        if (!card) {
+            return false;
+        }
+        // Check all possible property names for face-down status
+        const faceDown = card.face_down ?? card.faceDown ?? card.is_face_down ?? card.isFaceDown;
+        return faceDown === true || faceDown === 'true' || faceDown === 1;
+    };
+
+    const viewerCanSeeFaceDown = (card) => {
+        if (!isFaceDownFlag(card)) {
+            return true;
+        }
+        // Get the owner who can see this face-down card
+        const faceDownOwner = (card.face_down_owner || card.faceDownOwner || card.face_down_owner_id || card.faceDownOwnerId || '').toLowerCase();
+        const viewer = (getSelectedPlayer() || '').toLowerCase();
+        
+        // Spectators and unknown viewers cannot see face-down cards
+        if (!viewer || viewer === 'spectator') {
+            return false;
+        }
+        
+        // If no face_down_owner is set, no one can see it
+        if (!faceDownOwner) {
+            return false;
+        }
+        
+        // Only the face_down_owner can see the card
+        return faceDownOwner === viewer;
+    };
+
+    const isFaceDownHidden = (card) => {
+        if (!isFaceDownFlag(card)) {
+            return false;
+        }
+        return !viewerCanSeeFaceDown(card);
+    };
+
+    const getDisplayName = (card) => {
+        if (isFaceDownHidden(card)) {
+            return FACE_DOWN_LABEL;
+        }
+        return card?.name || 'Unknown Spell';
+    };
+
     const getCardImage = (card) => {
+        // Always check face-down status first with our own logic
+        if (isFaceDownHidden(card)) {
+            return CARD_BACK_IMAGE;
+        }
+        // If viewer can see the card, use GameCards for proper image handling
         if (typeof GameCards !== 'undefined' && typeof GameCards.getSafeImageUrl === 'function') {
-            return GameCards.getSafeImageUrl(card);
+            return GameCards.getSafeImageUrl(card, { viewerId: getSelectedPlayer(), ignoreFaceDown: true });
         }
         return card?.image_url || card?.image || null;
     };
 
-    const getCardId = (card) => card?.id || card?.card_id || card?.name || '';
+    const getCardId = (card) => {
+        // For hidden face-down cards, only return the unique_id to prevent info leakage
+        if (isFaceDownHidden(card)) {
+            return card?.unique_id || 'face-down';
+        }
+        return card?.id || card?.card_id || card?.name || '';
+    };
+
+    const buildMaskedCard = (card) => {
+        // Build a masked version that hides all identifying information
+        const masked = {
+            unique_id: card?.unique_id || null,
+            name: FACE_DOWN_LABEL,
+            face_down: true,
+            image_url: null,
+            card_type: null,
+            face_down_owner: card?.face_down_owner || card?.faceDownOwner || null,
+            owner_id: card?.owner_id || card?.ownerId || null,
+            controller_id: card?.controller_id || card?.controllerId || null
+        };
+        return masked;
+    };
+
+    const getCardDataAttr = (card) => {
+        if (isFaceDownHidden(card)) {
+            return JSON.stringify(buildMaskedCard(card));
+        }
+        return JSON.stringify(card);
+    };
 
     const getOwnerId = (card) => card?.owner_id || card?.ownerId || '';
     const getControllerId = (card) => card?.controller_id || card?.controllerId || getOwnerId(card);
@@ -457,12 +538,12 @@
                                 data-index={index}
                                 data-card-id={getCardId(card)}
                                 data-card-unique-id={card.unique_id}
-                                data-card-name={card.name || 'Unknown Spell'}
+                                data-card-name={getDisplayName(card)}
                                 data-card-image={getCardImage(card) || ''}
                                 data-card-zone="stack"
                                 data-card-owner={getOwnerId(card)}
                                 data-card-controller={getControllerId(card)}
-                                data-card-data={JSON.stringify(card)}
+                                data-card-data={getCardDataAttr(card)}
                                 data-stack-index={index}
                                 draggable={canDragCard(card)}
                                 role="button"
@@ -476,10 +557,10 @@
                                     {#if getCardImage(card)}
                                         <img
                                             src={getCardImage(card)}
-                                            alt={card.name || 'Stack Card'}
+                                            alt={getDisplayName(card)}
                                             class="stack-card-image" />
                                     {:else}
-                                        <div class="stack-card-fallback"></div>
+                                        <div class="stack-card-fallback" aria-label={getDisplayName(card)}></div>
                                     {/if}
                                 </div>
                             </div>

@@ -2,6 +2,8 @@
  * ManaForge Game Cards Module
  * Functions for card rendering and management
  */
+const CARD_BACK_IMAGE = '/static/images/card-back.jpg';
+
 const GameCards = {
     draggedCardElement: null,
     _hoverPreviewInitialized: false,
@@ -252,6 +254,44 @@ const GameCards = {
         "will of the council":{"name":"Will of the council","description":"Players vote for outcomes; the vote result determines the effect."},
         "wither":{"name":"Wither","description":"This creature deals damage to creatures in the form of -1/-1 counters."},
     },
+    getCurrentViewerSeat: function() {
+        if (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function') {
+            return GameCore.getSelectedPlayer();
+        }
+        return null;
+    },
+    canViewerSeeFaceDownCard: function(card, viewerId = null) {
+        if (!card) {
+            return false;
+        }
+        if (!this.isFaceDownCard(card)) {
+            return true;
+        }
+        const resolvedViewer = viewerId || this.getCurrentViewerSeat();
+        if (!resolvedViewer || resolvedViewer === 'spectator') {
+            return false;
+        }
+        const ownerId = card.face_down_owner || card.face_down_owner_id || card.faceDownOwner || card.faceDownOwnerId;
+        if (!ownerId) {
+            return false;
+        }
+        return ownerId.toLowerCase() === String(resolvedViewer).toLowerCase();
+    },
+    _buildMaskedCardData: function(card, displayName = 'Face-down Card') {
+        if (!card) {
+            return null;
+        }
+        const masked = {
+            ...card,
+            name: displayName,
+            oracle_text: '',
+            text: '',
+            type_line: 'Face-down Card',
+            image_url: null,
+            card_faces: []
+        };
+        return masked;
+    },
     isFaceDownCard: function(card) {
         if (!card) return false;
         const name = (card.name || '').toLowerCase();
@@ -264,28 +304,37 @@ const GameCards = {
         return Boolean(explicitFlag || manifestOrMorphToken || mentionsFaceDown || isMueFaceDown);
     },
 
-    getSafeImageUrl: function(card) {
+    getSafeImageUrl: function(card, options = {}) {
         if (!card) return null;
 
-        const fallbackBackImage = '/static/images/card-back.jpg';
-        const isFaceDown = this.isFaceDownCard(card);
+        const viewerId = options.viewerId || this.getCurrentViewerSeat();
+        const ignoreFaceDown = Boolean(options.ignoreFaceDown);
+        const canRevealFaceDown = ignoreFaceDown || this.canViewerSeeFaceDownCard(card, viewerId);
+        const treatAsFaceDown = this.isFaceDownCard(card) && !canRevealFaceDown;
         const baseImage = card.image_url || card.image;
-        
+
         // Allow back-face images for double-faced cards
         if (card.is_double_faced && card.card_faces && card.card_faces.length > 1) {
             const currentFace = card.current_face || 0;
             if (currentFace < card.card_faces.length && card.card_faces[currentFace].image_url) {
+                if (treatAsFaceDown) {
+                    return CARD_BACK_IMAGE;
+                }
                 return card.card_faces[currentFace].image_url;
             }
         }
-        
+
+        if (treatAsFaceDown) {
+            return CARD_BACK_IMAGE;
+        }
+
         if (!baseImage) {
-            return isFaceDown ? fallbackBackImage : null;
+            return null;
         }
 
         // For single-faced cards, skip generic "/back/" images unless it's an intentional face-down card
         if (baseImage.includes("/back/") && !card.is_double_faced) {
-            return isFaceDown ? baseImage : null;
+            return null;
         }
 
         return baseImage;
@@ -499,7 +548,15 @@ const GameCards = {
     renderCardWithLoadingState: function(card, cardClass = 'card-mini', showTooltip = true, zone = 'unknown', isOpponent = false, index = 0, playerId = null, options = {}) {
         const cardId = card.id || card.name;
         const cardName = card.name || 'Unknown';
-        const imageUrl = this.getSafeImageUrl(card);
+        const viewerSeat = this.getCurrentViewerSeat();
+        const isFaceDown = this.isFaceDownCard(card);
+        const maskForViewer = isFaceDown && !this.canViewerSeeFaceDownCard(card, viewerSeat);
+        const displayCardLabel = isFaceDown ? 'Face-down Card' : cardName;
+        const actualImageUrl = this.getSafeImageUrl(card, { ignoreFaceDown: true });
+        const thumbnailImageUrl = isFaceDown ? CARD_BACK_IMAGE : actualImageUrl;
+        const previewImageUrl = maskForViewer ? CARD_BACK_IMAGE : actualImageUrl;
+        const cardDataForAttr = maskForViewer ? this._buildMaskedCardData(card, displayCardLabel) : card;
+        const serializedCardData = JSON.stringify(cardDataForAttr).replace(/'/g, "&#39;");
         const visualState = this._computeCardVisualState(card, zone, isOpponent);
         const stateClasses = visualState.classes;
         const stateFlags = visualState.data;
@@ -572,8 +629,8 @@ const GameCards = {
         const ownerId = card.owner_id || card.ownerId || '';
 
         const dataCardId = GameUtils.escapeHtml(cardId || '');
-        const dataCardName = GameUtils.escapeHtml(cardName || '');
-        const dataImageUrl = GameUtils.escapeHtml(imageUrl || '');
+        const dataCardName = GameUtils.escapeHtml((!maskForViewer ? cardName : displayCardLabel) || '');
+        const dataImageUrl = GameUtils.escapeHtml(previewImageUrl || '');
         const dataUniqueId = GameUtils.escapeHtml(uniqueCardId || '');
         const dataZone = GameUtils.escapeHtml(zone || '');
         const dataCardType = GameUtils.escapeHtml(primaryCardType || '');
@@ -590,7 +647,7 @@ const GameCards = {
         })();
         const dataAttachmentHost = GameUtils.escapeHtml(attachmentHostId || '');
         const dataAttachmentOrder = parsedAttachmentOrder !== null ? parsedAttachmentOrder : '';
-        const searchIndex = GameUtils.escapeHtml(this.buildSearchIndex(card));
+        const searchIndex = GameUtils.escapeHtml(maskForViewer ? 'face-down card' : this.buildSearchIndex(card));
         const jsCardId = JSON.stringify(cardId || '');
         const jsUniqueCardId = JSON.stringify(uniqueCardId || '');
         const zoneAttr = (zone || '').replace(/'/g, "\\'");
@@ -663,7 +720,7 @@ const GameCards = {
                 data-card-tapped="${stateFlags.isTapped}"
                 data-card-targeted="${stateFlags.isTargeted}"
                 data-card-search="${searchIndex}"
-                data-card-data='${JSON.stringify(card).replace(/'/g, "&#39;")}'
+                data-card-data='${serializedCardData}'
                 data-is-opponent="${isOpponent}"
                 data-readonly="${readOnly}"
                 style="${inlineStyleText}"
@@ -673,10 +730,10 @@ const GameCards = {
                 ${onClickAction}
                 ${dragEndAttr}
                 ${contextMenuAttr}>
-                ${imageUrl ? `
+                ${thumbnailImageUrl ? `
                     <div class="relative">
-                        <img src="${imageUrl}" 
-                             alt="${cardName}" 
+                        <img src="${thumbnailImageUrl}" 
+                             alt="${displayCardLabel}" 
                              style="opacity: 0; transition: opacity 0.3s ease;"
                              onload="this.style.opacity=1; this.nextElementSibling.style.display='none';"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
@@ -687,7 +744,7 @@ const GameCards = {
                         ${powerToughnessHtml}
                     </div>
                 ` : `
-                    <div class="card-fallback relative">
+                    <div class="card-fallback relative" aria-label="${displayCardLabel}">
                         ${overlayStack}
                         ${countersHtml}
                         ${powerToughnessHtml}
@@ -769,7 +826,10 @@ const GameCards = {
         cardElement.classList.toggle('attacking-creature', Boolean(stateClasses.attacking));
         cardElement.classList.toggle('blocking-creature', Boolean(stateClasses.blocking));
 
-        const serializedData = JSON.stringify(cardData).replace(/'/g, "&#39;");
+        const viewerSeat = this.getCurrentViewerSeat();
+        const maskForViewer = this.isFaceDownCard(cardData) && !this.canViewerSeeFaceDownCard(cardData, viewerSeat);
+        const maskedData = maskForViewer ? this._buildMaskedCardData(cardData, 'Face-down Card') : cardData;
+        const serializedData = JSON.stringify(maskedData).replace(/'/g, "&#39;");
         cardElement.setAttribute('data-card-data', serializedData);
         cardElement.setAttribute('data-card-tapped', stateFlags.isTapped ? 'true' : 'false');
         cardElement.setAttribute('data-card-targeted', stateFlags.isTargeted ? 'true' : 'false');
@@ -1229,6 +1289,8 @@ const GameCards = {
         const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
         const isOpponent = cardElement.getAttribute('data-is-opponent') === 'true';
         const isTargeted = cardElement.classList.contains('targeted');
+        const cardTypeAttr = (cardElement.getAttribute('data-card-type') || '').toLowerCase();
+        const isSpellCard = cardTypeAttr === 'instant' || cardTypeAttr === 'sorcery';
         const attachedTo = cardElement.getAttribute('data-attached-to') || '';
         const hasAttachmentHost = Boolean(attachedTo && attachedTo.trim().length);
         const attachmentChildren = Array.from(document.querySelectorAll(`[data-attached-to="${uniqueCardId}"]`));
@@ -1286,6 +1348,9 @@ const GameCards = {
         const cardData = JSON.parse(cardElement.getAttribute('data-card-data') || '{}');
         const isTokenCard = Boolean(cardData?.is_token);
         const isDoubleFaced = cardData.is_double_faced && cardData.card_faces && cardData.card_faces.length > 1;
+        const isFaceDownCard = Boolean(cardData?.face_down || cardData?.is_face_down || cardData?.faceDown);
+        const faceDownOwnerId = cardData?.face_down_owner || cardData?.face_down_owner_id || cardData?.faceDownOwner || cardData?.faceDownOwnerId;
+        const isFaceDownOwner = isFaceDownCard && selectedPlayer && faceDownOwnerId && faceDownOwnerId.toLowerCase() === selectedPlayer.toLowerCase();
 
         if (isDoubleFaced && !isOpponent) {
             const currentFace = cardData.current_face || 0;
@@ -1296,6 +1361,9 @@ const GameCards = {
         if (!isOpponent) {
             if (cardZone === 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
+                if (!isSpellCard) {
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}, { faceDown: true })`)}"><span class="icon">🙈</span> Play Face Down</div>`;
+                }
             } else if (cardZone === 'deck') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.performGameAction("play_card_from_library", { unique_id: ${jsUniqueCardId} }); UIZonesManager.closeZoneModal("deck");`)}"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }
@@ -1318,6 +1386,10 @@ const GameCards = {
                 const counterIcon = '🔢';
                 menuHTML += `<div class="card-context-menu-divider"></div>`;
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameCards.showCounterModal(${jsUniqueCardId}, ${jsCardId})`)}"><span class="icon">${counterIcon}</span> Manage Cards</div>`;
+            }
+
+            if (isFaceDownCard && isFaceDownOwner && cardZone !== 'hand') {
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.revealFaceDownCard(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">👁️</span> Reveal Card</div>`;
             }
 
             menuHTML += `<div class="card-context-menu-divider"></div>`;

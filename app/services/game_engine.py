@@ -669,6 +669,7 @@ class SimpleGameEngine:
             "resolve_temporary_zone": self._resolve_temporary_zone,
             "target_card": self._target_card,
             "flip_card": self._flip_card,
+            "reveal_face_down_card": self._reveal_face_down_card,
             "add_counter": self._add_counter,
             "remove_counter": self._remove_counter,
             "set_counter": self._set_counter,
@@ -870,6 +871,11 @@ class SimpleGameEngine:
             destination_zone = "stack"
         else:
             destination_zone = "battlefield"
+
+        face_down_requested = bool(action.additional_data.get("face_down"))
+
+        card_to_play.face_down = face_down_requested
+        card_to_play.face_down_owner = action.player_id if face_down_requested else None
 
         self._move_card(
             game_state,
@@ -1418,6 +1424,11 @@ class SimpleGameEngine:
             card.blocking = None
             card.attached_to = None
             card.attachment_order = None
+            # Only clear face_down when moving to zones other than stack or battlefield
+            # Cards on the stack should retain their face_down status
+            if normalized_destination != "stack" and getattr(card, "face_down", False):
+                card.face_down = False
+                card.face_down_owner = None
         if normalized_destination in ["graveyard", "exile", "library", "reveal_zone", "commander_zone"]:
             card.tapped = False
             card.targeted = False
@@ -1983,6 +1994,23 @@ class SimpleGameEngine:
 
         face_name = "back" if card_found.current_face == 1 else "front"
         print(f"Player {action.player_id} flipped {card_found.name} to {face_name} face")
+
+    def _reveal_face_down_card(self, game_state: GameState, action: GameAction) -> None:
+        """Reveal a face-down permanent without moving it."""
+        unique_id = action.additional_data.get("unique_id")
+        if not unique_id:
+            raise ValueError("unique_id is required for reveal_face_down_card action")
+
+        card_found = self._find_card_by_unique_id(game_state, unique_id)
+        if not card_found:
+            raise ValueError(f"Card with unique_id {unique_id} not found")
+
+        if not getattr(card_found, "face_down", False):
+            return
+
+        card_found.face_down = False
+        card_found.face_down_owner = None
+        print(f"Player {action.player_id} revealed {card_found.name} from face-down state")
 
     def _find_card_by_unique_id(self, game_state: GameState, unique_id: str):
         for player in game_state.players:

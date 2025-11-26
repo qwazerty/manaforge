@@ -600,6 +600,8 @@ async def perform_game_action(
             "success": True
         }
         broadcast_info.update(action_data.get("broadcast_data", {}))
+        if broadcast_info.get("face_down"):
+            broadcast_info.setdefault("face_down_owner", player_id)
         
         await broadcast_game_update(game_id, game_state, broadcast_info)
         
