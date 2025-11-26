@@ -2,6 +2,7 @@
 Service for managing draft-related logic, such as sets and boosters.
 """
 import re
+import aiohttp
 import random
 from urllib.parse import urlparse, parse_qs
 from typing import List, Dict, Any, Optional, Tuple
@@ -16,9 +17,17 @@ class DraftService:
         self.card_service = card_service
 
     async def search_sets(self, query: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Search for MTG sets using the local oracle data."""
-        all_sets = self.card_service.list_local_sets()
-        allowed_set_types = {"core", "expansion"}
+        """Search for MTG sets using the Scryfall API."""
+        url = "https://api.scryfall.com/sets"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return []
+
+                data = await response.json()
+
+        all_sets = data.get("data", [])
+        allowed_set_types = {"core", "expansion", "masters", "draft_innovation", "cube"}
         filtered_sets = [
             s
             for s in all_sets
