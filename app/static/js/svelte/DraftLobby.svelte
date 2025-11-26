@@ -64,7 +64,7 @@
         if (hasSearchTerm) {
             return filteredSets;
         }
-        return sortedSets.slice(0, 10);
+        return sortedSets;
     });
 
     function formatDraftTypeLabel(rawType) {

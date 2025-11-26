@@ -2,7 +2,6 @@
 Service for managing draft-related logic, such as sets and boosters.
 """
 import re
-import aiohttp
 import random
 from urllib.parse import urlparse, parse_qs
 from typing import List, Dict, Any, Optional, Tuple
@@ -17,17 +16,9 @@ class DraftService:
         self.card_service = card_service
 
     async def search_sets(self, query: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Search for MTG sets using the Scryfall API."""
-        url = "https://api.scryfall.com/sets"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    return []
-
-                data = await response.json()
-
-        all_sets = data.get("data", [])
-        allowed_set_types = {"core", "expansion", "masters", "draft_innovation", "cube"}
+        """Search for MTG sets using the local oracle data."""
+        all_sets = self.card_service.list_local_sets()
+        allowed_set_types = {"core", "expansion"}
         filtered_sets = [
             s
             for s in all_sets
@@ -84,31 +75,23 @@ class DraftService:
 
     async def _get_cards_by_rarity(self, set_code: str, rarity: str, count: int) -> List[Card]:
         """Get a number of random cards of a specific rarity from a set."""
-        search_query = f"e:{set_code} r:{rarity}"
-        url = f"https://api.scryfall.com/cards/search?q={search_query}"
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    return []
-                
-                data = await response.json()
-                all_cards_data = data.get("data", [])
-                
-                if not all_cards_data:
-                    return []
+        all_cards_data = self.card_service.get_local_cards(
+            set_code=set_code,
+            rarity=rarity,
+            include_tokens=False
+        )
 
-                # Scryfall API returns up to 175 cards per page. For simplicity, we'll sample from the first page.
-                # For a full implementation, we would need to handle pagination.
-                
-                sampled_cards_data = random.sample(all_cards_data, min(count, len(all_cards_data)))
-                
-                cards = []
-                for card_data in sampled_cards_data:
-                    parsed_card = self.card_service._parse_scryfall_card(card_data)
-                    if parsed_card:
-                        cards.append(Card(**parsed_card))
-                return cards
+        if not all_cards_data:
+            return []
+
+        sampled_cards_data = random.sample(all_cards_data, min(count, len(all_cards_data)))
+
+        cards = []
+        for card_data in sampled_cards_data:
+            parsed_card = self.card_service._parse_scryfall_card(card_data)
+            if parsed_card:
+                cards.append(Card(**parsed_card))
+        return cards
 
     async def load_cube_pool(
         self,

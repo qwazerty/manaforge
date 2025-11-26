@@ -1,11 +1,11 @@
-"""Card service for managing Magic cards via Scryfall API."""
+"""Card service for managing Magic cards using the local oracle dump."""
 
 import re
 import unicodedata
 import time
 from datetime import datetime
 from html import unescape
-from urllib.parse import quote_plus, urlparse, urljoin
+from urllib.parse import urlparse, urljoin
 import json
 from pathlib import Path
 import aiohttp
@@ -217,7 +217,7 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
 
 
 class CardService:
-    """Service for managing Magic cards via Scryfall API."""
+    """Service for managing Magic cards using the local oracle data."""
 
     _DEFAULT_HEADERS = {
         "User-Agent": "ManaForgeDeckImporter/1.0 (+https://manaforge.houke.fr/)"
@@ -323,6 +323,82 @@ class CardService:
                 break
 
         return results
+    
+    def _local_card_pool(self) -> List[Dict[str, Any]]:
+        """Return a de-duplicated list of local oracle entries."""
+        _load_local_oracle_data()
+        if _LOCAL_ORACLE_CACHE_BY_ID:
+            return list(_LOCAL_ORACLE_CACHE_BY_ID.values())
+
+        dedup: Dict[str, Dict[str, Any]] = {}
+        for entries in _LOCAL_ORACLE_CACHE.values():
+            for card in entries:
+                key = str(card.get("id") or card.get("oracle_id") or card.get("name") or "")
+                if key and key not in dedup:
+                    dedup[key] = card
+        return list(dedup.values())
+
+    def get_local_cards(
+        self,
+        set_code: Optional[str] = None,
+        rarity: Optional[str] = None,
+        include_tokens: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Return local oracle cards filtered by set and rarity."""
+        cards = self._local_card_pool()
+
+        if set_code:
+            normalized_set = set_code.strip().lower()
+            cards = [
+                card for card in cards
+                if str(card.get("set") or "").lower() == normalized_set
+            ]
+
+        if rarity:
+            normalized_rarity = rarity.strip().lower()
+            cards = [
+                card for card in cards
+                if str(card.get("rarity") or "").lower() == normalized_rarity
+            ]
+
+        if not include_tokens:
+            cards = [card for card in cards if not self._is_token_card(card)]
+
+        return cards
+
+    def list_local_sets(self) -> List[Dict[str, Any]]:
+        """Return available sets from the local oracle dump."""
+        sets: Dict[str, Dict[str, Any]] = {}
+        for card in self._local_card_pool():
+            code = str(card.get("set") or "").lower()
+            if not code:
+                continue
+            entry = sets.setdefault(
+                code,
+                {
+                    "code": code,
+                    "name": card.get("set_name"),
+                    "set_type": card.get("set_type"),
+                    "released_at": card.get("released_at") or "",
+                    "icon_svg_uri": card.get("icon_svg_uri") or None
+                }
+            )
+            if not entry.get("name"):
+                entry["name"] = card.get("set_name")
+            if not entry.get("set_type"):
+                entry["set_type"] = card.get("set_type")
+            candidate_date = str(card.get("released_at") or "")
+            current_date = str(entry.get("released_at") or "")
+            if candidate_date and (not current_date or candidate_date > current_date):
+                entry["released_at"] = candidate_date
+            if not entry.get("icon_svg_uri") and code:
+                entry["icon_svg_uri"] = f"https://svgs.scryfall.io/sets/{code}.svg"
+
+        return sorted(
+            sets.values(),
+            key=lambda s: s.get("released_at") or "",
+            reverse=True
+        )
 
     def _generate_deck_identity(self, preferred_name: Optional[str] = None) -> Tuple[str, str]:
         """
@@ -411,7 +487,7 @@ class CardService:
         return "\n".join(filtered)
     
     async def get_card(self, card_id: str) -> Optional[Card]:
-        """Get a card by ID using Scryfall API."""
+        """Get a card by ID using the local oracle data."""
         card_name = card_id.replace("_", " ").title()
         return await self.get_card_by_name(card_name)
     
@@ -420,95 +496,47 @@ class CardService:
         return await self.get_card(card_id)
     
     async def get_card_by_name(self, card_name: str) -> Optional[Card]:
-        """Get a card by exact name using Scryfall API."""
-        card_data = await self.get_card_data_from_scryfall(card_name)
+        """Get a card by exact name using the local oracle data."""
+        card_data = self.get_card_data_from_oracle(card_name)
         if card_data:
             return Card(**card_data)
         return None
     
     async def search_cards(self, query: str, limit: int = 20, card_type: Optional[str] = None) -> List[Card]:
-        """Search cards by name using Scryfall API with optional type filtering (e.g., token, creature, instant, etc.)."""
+        """Search cards by name using the local oracle with optional type filtering."""
         if not query.strip():
             return []
         
-        try:
-            # Build Scryfall query with optional type filter
-            scryfall_query = query.replace(" ", "+")
-            if card_type:
-                scryfall_query = f"t:{card_type}+{scryfall_query}"
-            
-            url = (
-                f"https://api.scryfall.com/cards/search?q={scryfall_query}"
-                "&unique=cards&order=name"
-            )
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        cards = []
-                        
-                        card_data_list = data.get("data", [])[:limit]
-                        for scryfall_card in card_data_list:
-                            card_data = self._parse_scryfall_card(scryfall_card)
-                            if card_data:
-                                cards.append(Card(**card_data))
-                        
-                        return cards
-                    elif response.status == 404:
-                        # No results found
-                        return []
-        except Exception as e:
-            print(f"Error searching cards: {e}")
-        
-        return []
-    
-    async def _fetch_card_json(self, session: aiohttp.ClientSession, url: str) -> Optional[Dict[str, Any]]:
-        """Helper to fetch JSON payload from Scryfall and handle errors gracefully."""
-        try:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    return await response.json()
-        except Exception as exc:
-            print(f"Error fetching data from Scryfall ({url}): {exc}")
-        return None
+        tokens_only = (card_type or "").strip().lower() == "token"
+        raw_cards = self.search_local_cards(
+            query=query,
+            limit=limit,
+            tokens_only=tokens_only
+        )
 
+        results: List[Card] = []
+        for raw_card in raw_cards:
+            card_data = self._parse_scryfall_card(raw_card)
+            if card_data:
+                results.append(Card(**card_data))
+        return results
+    
     async def get_card_data_from_scryfall(
         self, identifier: str, by_id: bool = False
     ) -> Optional[Dict[str, Any]]:
-        """Get complete card data from Scryfall API by name or ID."""
+        """
+        Legacy alias that now returns card data strictly from the local oracle dump.
+        """
         local_card = _lookup_local_card(identifier)
         if local_card:
             return self._parse_scryfall_card(local_card)
 
-        if by_id:
-            url = f"https://api.scryfall.com/cards/{identifier}"
-        else:
-            sanitized_identifier = identifier.strip()
-            formatted_name = quote_plus(sanitized_identifier)
-            url = f"https://api.scryfall.com/cards/named?exact={formatted_name}"
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                data = await self._fetch_card_json(session, url)
-                if data:
-                    return self._parse_scryfall_card(data)
-
-                if not by_id:
-                    # Fallback to fuzzy search for cards with alternate punctuation or formatting.
-                    fuzzy_url = f"https://api.scryfall.com/cards/named?fuzzy={quote_plus(identifier)}"
-                    data = await self._fetch_card_json(session, fuzzy_url)
-                    if data:
-                        return self._parse_scryfall_card(data)
-        except Exception as e:
-            print(f"Error fetching card data for {identifier}: {e}")
-        
-        if not by_id:
-            normalized = _normalize_name(identifier)
+        normalized = _normalize_name(identifier)
+        if normalized and normalized != identifier:
             local_hit = _lookup_local_card(normalized)
             if local_hit:
                 return self._parse_scryfall_card(local_hit)
-        
+
         return None
     
     def _parse_scryfall_card(
@@ -819,7 +847,7 @@ class CardService:
                         preview = snippet[0][:120] if snippet else ""
                         if response.status in (401, 403):
                             raise ValueError(
-                                "Scryfall returned an authorization error. "
+                                "The provider returned an authorization error. "
                                 "Ensure the deck is public or use the text export."
                             )
                         raise ValueError(
@@ -849,7 +877,7 @@ class CardService:
                         preview = snippet[0][:120] if snippet else ""
                         if response.status in (401, 403):
                             raise ValueError(
-                                "Scryfall returned an authorization error. "
+                                "The provider returned an authorization error. "
                                 "Ensure the deck is public or use the text export."
                             )
                         raise ValueError(
@@ -884,7 +912,7 @@ class CardService:
             return await self._extract_deck_from_scryfall_site(normalized)
 
         raise ValueError(
-            "Unsupported deck provider. Supported providers: Moxfield, Scryfall, MTGGoldfish."
+            "Unsupported deck provider. Supported providers: Moxfield, MTGGoldfish, Scryfall."
         )
 
     async def _extract_deck_from_moxfield(
