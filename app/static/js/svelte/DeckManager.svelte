@@ -65,6 +65,8 @@
         }
     });
 
+    const pricingPending = $derived(() => !pricingDataLoaded);
+
     const LAND_HINTS = {
         draft: { recommendation: '17 lands' },
         duel_commander: { recommendation: '37-38 lands' },
@@ -1161,6 +1163,7 @@
             return;
         }
 
+        pricingDataLoaded = false;
         queuePriceLookup(missingNames);
     }
 
@@ -1393,13 +1396,19 @@
                     <p class="text-xs text-arena-text-dim mt-2">Sideboard {showSideboard ? stats.sideboardTotal : 0}</p>
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
-                    <p class="text-sm uppercase tracking-wide text-arena-muted">Prix du deck (Cardmarket)</p>
-                    <p class="text-3xl font-bold text-arena-text mt-1">{formatPrice(pricing.total)}</p>
+                    <p class="text-sm uppercase tracking-wide text-arena-muted">Deck price (Cardmarket)</p>
+                    <p class="text-3xl font-bold text-arena-text mt-1">{pricingPending() ? 'N/A' : formatPrice(pricing.total)}</p>
                     <p class="text-xs text-arena-text-dim mt-2">
-                        Main {formatPrice(pricing.main)} • Side {formatPrice(pricing.sideboard)}
+                        {#if pricingPending()}
+                            Getting prices from Cardmarket...
+                        {:else}
+                            Main {formatPrice(pricing.main)} • Side {formatPrice(pricing.sideboard)}
+                        {/if}
                     </p>
-                    {#if pricing.missingCopies > 0}
-                        <p class="text-xs text-red-300 mt-1">{pricing.missingCopies} copie{pricing.missingCopies > 1 ? 's' : ''} sans prix</p>
+                    {#if !pricingPending() && pricing.missingCopies > 0}
+                        <p class="text-xs text-red-300 mt-1">
+                            {pricing.missingCopies} {pricing.missingCopies > 1 ? 'copies' : 'copy'} missing prices
+                        </p>
                     {/if}
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
@@ -1455,7 +1464,7 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="flex items-center gap-2">
-                        <select bind:value={state.filters.color} onchange={saveState} class="bg-arena-surface border border-arena-accent/20 rounded px-2 py-1 text-sm">
+                        <select bind:value={state.filters.color} onchange={saveState} class="bg-arena-surface border border-arena-accent/20 rounded px-3 py-2 text-sm">
                             <option value="all">All Colors</option>
                             <option value="W">White</option>
                             <option value="U">Blue</option>
@@ -1465,20 +1474,20 @@
                             <option value="C">Colorless</option>
                             <option value="multi">Multicolor</option>
                         </select>
-                        <select bind:value={state.filters.rarity} onchange={saveState} class="bg-arena-surface border border-arena-accent/20 rounded px-2 py-1 text-sm">
+                        <select bind:value={state.filters.rarity} onchange={saveState} class="bg-arena-surface border border-arena-accent/20 rounded px-3 py-2 text-sm">
                             <option value="all">All Rarities</option>
                             <option value="mythic">Mythic</option>
                             <option value="rare">Rare</option>
                             <option value="uncommon">Uncommon</option>
                             <option value="common">Common</option>
                         </select>
-                        <select bind:value={state.sorting.sideboard} onchange={saveState} class="bg-arena-surface border border-arena-accent/20 rounded px-2 py-1 text-sm">
-                            <option value="default">Sort Side: Default</option>
+                        <select bind:value={state.sorting.sideboard} onchange={saveState} class="bg-arena-surface border border-arena-accent/20 rounded px-3 py-2 text-sm">
+                            <option value="default">Sort: Default</option>
                             <option value="rarity">Rarity</option>
                             <option value="cmc">CMC</option>
                         </select>
                         <label class="flex items-center gap-2 text-sm text-arena-text">
-                            <input type="checkbox" bind:checked={state.filters.sideboardOnly} onchange={saveState} class="rounded border-arena-accent/40 bg-arena-surface" />
+                            <input type="checkbox" bind:checked={state.filters.sideboardOnly} onchange={saveState} class="rounded border-arena-accent/40 bg-arena-surface px-3 py-2" />
                             Filter sideboard only
                         </label>
                     </div>
