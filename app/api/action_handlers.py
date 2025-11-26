@@ -71,11 +71,19 @@ async def handle_play_card(
     
     card_id = request.get("card_id")
     unique_id = request.get("unique_id")
-    
+    face_down = bool(request.get("face_down"))
+
+    additional_data = {"unique_id": unique_id}
+    broadcast_data = {"card": card_id, "unique_id": unique_id}
+
+    if face_down:
+        additional_data["face_down"] = True
+        broadcast_data["face_down"] = True
+
     return {
         "card_id": card_id,
-        "additional_data": {"unique_id": unique_id},
-        "broadcast_data": {"card": card_id, "unique_id": unique_id}
+        "additional_data": additional_data,
+        "broadcast_data": broadcast_data
     }
 
 @action_registry.register("play_card_from_library", required_fields=["card_id", "unique_id"])
@@ -95,6 +103,30 @@ async def handle_play_card_from_library(
         "card_id": card_id,
         "additional_data": {"unique_id": unique_id},
         "broadcast_data": {"card": card_id, "unique_id": unique_id}
+    }
+
+
+@action_registry.register("reveal_face_down_card", required_fields=["unique_id"])
+async def handle_reveal_face_down_card(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Reveal a previously face-down permanent."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for reveal_face_down_card"
+        )
+
+    unique_id = request.get("unique_id")
+    card_id = request.get("card_id")
+
+    return {
+        "card_id": card_id,
+        "additional_data": {"unique_id": unique_id},
+        "broadcast_data": {
+            "card": card_id,
+            "unique_id": unique_id,
+            "revealed_face_down": True
+        }
     }
 
 

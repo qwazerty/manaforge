@@ -370,12 +370,14 @@ function recordActionHistory(actionType, success, data = null, message = null, p
         details.message = message;
     }
 
+    const contextPayload = data ? JSON.parse(JSON.stringify(data)) : null;
+
     UIActionHistory.addEntry({
         action: actionType,
         player,
         success,
         details
-    });
+    }, contextPayload ? { source: 'client', payload: contextPayload } : null);
 }
 
 function recordActionFailure(actionType, message, data = null, playerOverride = null) {
@@ -554,16 +556,22 @@ async function performHttpGameAction(actionType, actionData = {}) {
     }
 }
 
-function playCardFromHand(cardId, uniqueId) {
+function playCardFromHand(cardId, uniqueId, options = {}) {
     // Close hover preview when playing a card
     if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
         GameCards._closeActiveCardPreview();
     }
     
-    performGameAction('play_card', { 
+    const payload = { 
         card_id: cardId,
         unique_id: uniqueId 
-    });
+    };
+
+    if (options && options.faceDown) {
+        payload.face_down = true;
+    }
+
+    performGameAction('play_card', payload);
 
     // Find card name for better user feedback
     let cardName = cardId; // fallback to cardId if name not found
@@ -571,6 +579,17 @@ function playCardFromHand(cardId, uniqueId) {
     if (cardElement) {
         cardName = cardElement.getAttribute('data-card-name') || cardId;
     }
+}
+
+function revealFaceDownCard(cardId, uniqueId) {
+    if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
+        GameCards._closeActiveCardPreview();
+    }
+
+    performGameAction('reveal_face_down_card', {
+        card_id: cardId,
+        unique_id: uniqueId
+    });
 }
 
 function clearTappedState(uniqueCardId) {
@@ -1043,6 +1062,7 @@ window.GameActions = {
     performGameAction,
     performHttpGameAction,
     playCardFromHand,
+    revealFaceDownCard,
     changePhase,
     clearTappedState,
     clearTargetedState,

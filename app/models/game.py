@@ -132,6 +132,14 @@ class Card(BaseModel):
     is_token: bool = Field(
         default=False, description="Whether this card is a token"
     )
+    face_down: bool = Field(
+        default=False,
+        description="Whether the card is currently face-down with hidden information"
+    )
+    face_down_owner: Optional[str] = Field(
+        default=None,
+        description="Player ID allowed to view details while the card remains face-down"
+    )
 
 
 

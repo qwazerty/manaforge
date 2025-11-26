@@ -283,6 +283,8 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     broadcast_info["action_result"].update(
                         handler_result.get("broadcast_data", {})
                     )
+                    if broadcast_info["action_result"].get("face_down"):
+                        broadcast_info["action_result"].setdefault("face_down_owner", player_id)
                     broadcast_info["action_result"].setdefault("origin", "server")
                     broadcast_info["action_result"].setdefault(
                         "timestamp", broadcast_info["timestamp"]
