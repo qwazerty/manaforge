@@ -391,8 +391,7 @@ class CardService:
             current_date = str(entry.get("released_at") or "")
             if candidate_date and (not current_date or candidate_date > current_date):
                 entry["released_at"] = candidate_date
-            if not entry.get("icon_svg_uri") and code:
-                entry["icon_svg_uri"] = f"https://svgs.scryfall.io/sets/{code}.svg"
+
 
         return sorted(
             sets.values(),
