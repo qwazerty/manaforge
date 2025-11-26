@@ -2037,7 +2037,6 @@
 
     .card-attachment-group .card-host {
         position: relative;
-        z-index: 20;
     }
 
     .card-attachment-pile {
@@ -3087,7 +3086,6 @@
         flex-direction: column;
         gap: 4px;
         pointer-events: none;
-        z-index: 2;
     }
 
     .card-keyword-overlay {
