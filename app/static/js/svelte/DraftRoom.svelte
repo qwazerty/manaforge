@@ -1,5 +1,6 @@
 <script>
     import { onDestroy, onMount } from 'svelte';
+    import { createPriceLookup, formatPrice, getCachedPrice } from '../../lib/pricing';
     import DeckManager from './DeckManager.svelte';
 
     const DECK_MANAGER_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
@@ -8,13 +9,6 @@
         if (data === null || data === undefined) return null;
         try { return JSON.parse(JSON.stringify(data)); } catch { return null; }
     };
-
-    const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
 
     let { room: initialRoom = null } = $props();
 
@@ -37,7 +31,12 @@
     
     // Price cache for draft cards
     let cardPrices = $state({});
-    let pendingPriceRequest = null;
+    const queuePriceLookup = createPriceLookup({
+        delay: 50,
+        onPrices: (prices) => {
+            cardPrices = { ...cardPrices, ...prices };
+        }
+    });
     let showPrices = $state(false);
 
     const draftType = $derived(() => (room?.draft_type || '').toString().toLowerCase());
@@ -638,51 +637,24 @@
     }
 
     function getCardPrice(cardName) {
-        if (!cardName) return null;
-        const price = cardPrices[cardName];
-        return Number.isFinite(price) ? price : null;
+        return getCachedPrice(cardPrices, cardName);
     }
 
-    function formatPrice(value) {
-        if (!Number.isFinite(value)) return 'N/A';
-        return PRICE_FORMATTER.format(value);
-    }
-
-    async function fetchPricesForPack(cards) {
+    function fetchPricesForPack(cards) {
         if (!Array.isArray(cards) || cards.length === 0) return;
-        
-        // Collect card names not already in cache
-        const cardNames = [];
+
+        const missingNames = [];
         cards.forEach((card) => {
             if (card?.name && !(card.name in cardPrices)) {
-                cardNames.push(card.name);
+                missingNames.push(card.name);
             }
         });
-        
-        if (cardNames.length === 0) return;
-        
-        // Debounce
-        if (pendingPriceRequest) {
-            clearTimeout(pendingPriceRequest);
+
+        if (missingNames.length === 0) {
+            return;
         }
-        
-        pendingPriceRequest = setTimeout(async () => {
-            try {
-                const response = await fetch('/api/v1/pricing/lookup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ card_names: cardNames })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    cardPrices = { ...cardPrices, ...data.prices };
-                }
-            } catch (error) {
-                console.warn('Failed to fetch card prices:', error);
-            }
-            pendingPriceRequest = null;
-        }, 50);
+
+        queuePriceLookup(missingNames);
     }
 </script>
 
