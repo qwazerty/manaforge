@@ -67,7 +67,6 @@
         connectWebSocket();
         window.addEventListener('manaforge:deck-manager-ready', handleDeckManagerReady);
         deckManagerVisible = true;
-        refreshRoomState();
 
         return () => {
             cleanupWebsocket();
@@ -291,13 +290,12 @@
 
     function startDraft() {
         const sent = sendMessage({ type: 'start_draft' });
+        if (!sent) {
+            // Fallback to REST API if WebSocket not ready
+            triggerDraftStartFallback();
+        }
         isStarting = true;
         packStatus = 'Starting draft...';
-        triggerDraftStartFallback();
-        setTimeout(refreshRoomState, 500);
-        if (!sent) {
-            setTimeout(refreshRoomState, 1200);
-        }
     }
 
     async function exportDecklist() {
