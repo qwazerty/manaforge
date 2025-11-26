@@ -937,13 +937,6 @@ class UIActionHistory {
                 hideLabel: true
             }
         ];
-
-        if (
-            typeof entry.displayAction === 'string' &&
-            !entry.displayAction.toLowerCase().includes('face-down')
-        ) {
-            entry.displayAction = `${entry.displayAction} (face-down)`;
-        }
     }
 
     static _resolveHandToLibraryMoveContext(entry) {
