@@ -1,6 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { DeckStorage, deepClone } from '../../lib/deck-storage';
+    import { createPriceLookup, formatPrice, getCachedPrice } from '../../lib/pricing';
 
     // Constants
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
@@ -54,13 +55,14 @@
     // Price cache - populated by batch API calls
     let cardPrices = $state({});
     let pricingDataLoaded = $state(false);
-    let pendingPriceRequest = null;
-    
-    const PRICE_FORMATTER = new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+    const queuePriceLookup = createPriceLookup({
+        delay: 100,
+        onPrices: (prices) => {
+            cardPrices = { ...cardPrices, ...prices };
+        },
+        onComplete: () => {
+            pricingDataLoaded = true;
+        }
     });
 
     const LAND_HINTS = {
@@ -375,16 +377,7 @@
     }
 
     function getCardPrice(card = {}) {
-        // Look up price from our local cache (populated by API calls)
-        const name = card?.name;
-        if (!name) return null;
-        const price = cardPrices[name];
-        return Number.isFinite(price) ? price : null;
-    }
-
-    function formatPrice(value) {
-        if (!Number.isFinite(value)) return 'N/A';
-        return PRICE_FORMATTER.format(value);
+        return getCachedPrice(cardPrices, card);
     }
 
     function normalizeName(name) {
@@ -1148,7 +1141,7 @@
         importStatus = { message: `${preset.name} added.`, type: 'success' };
     }
 
-    async function fetchPricesForDeck() {
+    function fetchPricesForDeck() {
         // Collect all unique card names in the deck
         const cardNames = new Set();
         Object.values(state.entries).forEach((entry) => {
@@ -1156,39 +1149,19 @@
                 cardNames.add(entry.card.name);
             }
         });
-        
+
         if (cardNames.size === 0) {
             pricingDataLoaded = true;
             return;
         }
-        
-        // Debounce: cancel any pending request
-        if (pendingPriceRequest) {
-            clearTimeout(pendingPriceRequest);
+
+        const missingNames = Array.from(cardNames).filter((name) => !(name in cardPrices));
+        if (!missingNames.length) {
+            pricingDataLoaded = true;
+            return;
         }
-        
-        // Wait a bit before making the request (debounce)
-        pendingPriceRequest = setTimeout(async () => {
-            try {
-                const response = await fetch('/api/v1/pricing/lookup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ card_names: Array.from(cardNames) })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    // Merge new prices into our cache
-                    cardPrices = { ...cardPrices, ...data.prices };
-                }
-                
-                pricingDataLoaded = true;
-            } catch (error) {
-                console.warn('Failed to fetch card prices:', error);
-                pricingDataLoaded = true;
-            }
-            pendingPriceRequest = null;
-        }, 100);
+
+        queuePriceLookup(missingNames);
     }
 
     function handleMouseEnter(e, entry) {
