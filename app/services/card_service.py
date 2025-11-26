@@ -234,6 +234,96 @@ class CardService:
             return None
         return self._parse_scryfall_card(local_card)
 
+    def _is_token_card(self, card: Dict[str, Any]) -> bool:
+        """Return True when the card entry represents a token or emblem."""
+        set_type = str(card.get("set_type") or "").lower()
+        return "token" in set_type
+
+    def _select_best_local_print(self, cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Pick a reasonable printing from a list of oracle entries."""
+        if not cards:
+            return None
+
+        def release_date(card: Dict[str, Any]) -> datetime:
+            raw = str(card.get("released_at") or "")
+            try:
+                return datetime.fromisoformat(raw)
+            except Exception:
+                return datetime.min
+
+        def score(card: Dict[str, Any]) -> int:
+            value = 0
+            # Prefer booster-legal, non-full-art, non-promo entries
+            if card.get("booster") is False:
+                value -= 2
+            else:
+                value += 2
+            if card.get("full_art") is True:
+                value -= 1
+            if card.get("promo") is True:
+                value -= 2
+            rarity = str(card.get("rarity") or "").lower()
+            if rarity == "special":
+                value -= 1
+            return value
+
+        return sorted(cards, key=lambda c: (score(c), release_date(c)), reverse=True)[0]
+
+    def search_local_cards(
+        self,
+        query: str,
+        limit: Optional[int] = None,
+        tokens_only: bool = False,
+        set_code: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Search the local oracle dump for cards that match the query."""
+        if not query or len(query.strip()) < 2:
+            return []
+
+        _load_local_oracle_data()
+        if not _LOCAL_ORACLE_CACHE:
+            return []
+
+        normalized_query = _normalize_name(query)
+        if not normalized_query:
+            return []
+
+        normalized_set = (set_code or "").strip().lower() if set_code else None
+
+        results: List[Dict[str, Any]] = []
+        seen: Set[str] = set()
+
+        for name_key in sorted(_LOCAL_ORACLE_CACHE.keys()):
+            if normalized_query not in name_key:
+                continue
+
+            pool = _LOCAL_ORACLE_CACHE.get(name_key, [])
+            if tokens_only:
+                pool = [
+                    card for card in pool
+                    if self._is_token_card(card)
+                ]
+            elif normalized_set:
+                pool = [
+                    card for card in pool
+                    if str(card.get("set") or "").lower() == normalized_set
+                ]
+
+            chosen = self._select_best_local_print(pool)
+            if not chosen:
+                continue
+
+            dedupe_key = str(chosen.get("oracle_id") or chosen.get("id") or chosen.get("name"))
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+
+            results.append(chosen)
+            if limit and limit > 0 and len(results) >= limit:
+                break
+
+        return results
+
     def _generate_deck_identity(self, preferred_name: Optional[str] = None) -> Tuple[str, str]:
         """
         Generate a deck identifier and name using a preferred name when available.
@@ -1266,6 +1356,7 @@ class CardService:
         if deck_id:
             deck_text = ""
             deck_name = f"Deck {deck_id}"
+            deck_format: Optional[str] = None
 
             arena_url = f"https://www.mtggoldfish.com/deck/arena_download/{deck_id}"
             try:
