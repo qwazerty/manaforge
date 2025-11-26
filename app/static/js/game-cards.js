@@ -454,7 +454,7 @@ const GameCards = {
 
     generatePowerToughnessOverlay: function(card) {
         // For face-down cards hidden from the viewer, show 2/2 (standard Morph stats)
-        if (this.isFaceDownCard(card) && !this.canViewerSeeFaceDownCard(card)) {
+        if (this.isFaceDownCard(card)) {
             return `
             <div class="card-pt-overlay"
                 data-pt-base="2/2"
