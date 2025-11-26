@@ -112,6 +112,22 @@ def _build_price_lookup() -> None:
             _price_by_product_id[product_id] = price
 
 
+def _add_product_name_mapping(product_id: int, name: str) -> None:
+    """
+    Store a normalized name -> product ID mapping, avoiding duplicates.
+    
+    We normalize by trimming whitespace and lowercasing so lookups are
+    case-insensitive and resilient to minor formatting differences.
+    """
+    normalized_name = str(name).strip().lower()
+    if not normalized_name:
+        return
+
+    bucket = _product_ids_by_name.setdefault(normalized_name, [])
+    if product_id not in bucket:
+        bucket.append(product_id)
+
+
 def _build_product_lookup() -> None:
     """Build product ID lookup by normalized card name."""
     global _product_ids_by_name
@@ -132,12 +148,14 @@ def _build_product_lookup() -> None:
         except (ValueError, TypeError):
             continue
         
-        # Normalize name: lowercase, strip whitespace
-        normalized_name = str(name).strip().lower()
-        
-        if normalized_name not in _product_ids_by_name:
-            _product_ids_by_name[normalized_name] = []
-        _product_ids_by_name[normalized_name].append(product_id)
+        # Index the full name
+        _add_product_name_mapping(product_id, name)
+
+        # Also index each face of double-faced / meld cards so lookups work
+        # when only the front-face name is provided (e.g., "Fang, Fearless l'Cie").
+        if "//" in name:
+            for face_name in name.split("//"):
+                _add_product_name_mapping(product_id, face_name)
     
     _is_loaded = True
     logger.info("Pricing data loaded into memory successfully.")
