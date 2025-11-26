@@ -194,9 +194,13 @@ class DraftEngine:
             self.add_bot_to_room(room_id)
 
     async def start_draft(self, room_id: str):
-        """Starts the draft for a room."""
+        """Starts the draft for a room. Idempotent - does nothing if already started."""
         room = self.get_draft_room(room_id)
         if not room:
+            return
+
+        # Idempotent: if draft already started or completed, do nothing
+        if room.state != DraftState.WAITING:
             return
 
         room.state = DraftState.DRAFTING
