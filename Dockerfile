@@ -2,7 +2,7 @@
 # Stage 1
 ##########
 
-FROM node:22-bookworm AS frontend-builder
+FROM node:24-bullseye AS frontend-builder
 WORKDIR /app
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
