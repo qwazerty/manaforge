@@ -8,6 +8,7 @@ class WebSocketManager {
     static websocket = null;
     static gameId = null;
     static isPageVisible = true;
+    static _seatFallbackCache = new Map();
 
     // ===== MAIN WEBSOCKET FUNCTIONALITY =====
     
@@ -104,6 +105,35 @@ class WebSocketManager {
                 readyState: this.websocket ? this.websocket.readyState : 'no-connection'
             });
         }
+    }
+
+    /**
+     * Send a chat message through the active WebSocket connection.
+     */
+    static sendChatMessage(messageText, options = {}) {
+        const trimmed = (messageText || '').trim();
+        if (!trimmed) {
+            return { success: false, error: 'empty_message' };
+        }
+
+        const senderInfo = this.getLocalPlayerInfo();
+        const playerName = options.playerName || senderInfo.name;
+        const timestamp = typeof options.timestamp === 'number'
+            ? options.timestamp
+            : Date.now();
+
+        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+            return { success: false, error: 'WebSocket disconnected' };
+        }
+
+        this.websocket.send(JSON.stringify({
+            type: 'chat',
+            player: playerName,
+            message: trimmed,
+            timestamp
+        }));
+
+        return { success: true };
     }
 
     /**
@@ -219,24 +249,11 @@ class WebSocketManager {
                 
             case 'chat': {
                 const selectedPlayer = GameCore.getSelectedPlayer();
-                const resolveName =
-                    typeof GameCore.getPlayerDisplayName === 'function'
-                        ? (value) => GameCore.getPlayerDisplayName(value)
-                        : (value) => value;
-                const senderName = resolveName(message.player) || message.player || 'Unknown';
-                let localName = resolveName(selectedPlayer);
+                const senderName = this._getPlayerDisplayName(message.player) || message.player || 'Unknown';
+                let localName = this._getPlayerDisplayName(selectedPlayer);
 
                 if (!localName) {
-                    if (selectedPlayer === 'spectator') {
-                        localName = 'Spectator';
-                    } else if (
-                        window.GameChat &&
-                        typeof window.GameChat._formatSeatFallback === 'function'
-                    ) {
-                        localName = window.GameChat._formatSeatFallback(selectedPlayer);
-                    } else {
-                        localName = selectedPlayer || 'Unknown';
-                    }
+                    localName = this.formatSeatFallback(selectedPlayer);
                 }
 
                 if (senderName !== localName) {
@@ -709,6 +726,57 @@ class WebSocketManager {
                 });
             }
         }
+    }
+
+    static getLocalPlayerInfo() {
+        const playerKey = typeof GameCore?.getSelectedPlayer === 'function'
+            ? GameCore.getSelectedPlayer()
+            : 'player1';
+        return {
+            id: playerKey,
+            name: this._getPlayerDisplayName(playerKey)
+        };
+    }
+
+    static _getPlayerDisplayName(playerKey) {
+        if (typeof GameCore?.getPlayerDisplayName === 'function') {
+            const name = GameCore.getPlayerDisplayName(playerKey);
+            if (name) {
+                return name;
+            }
+        }
+        return this.formatSeatFallback(playerKey);
+    }
+
+    static formatSeatFallback(playerKey) {
+        if (!playerKey) {
+            return 'Unknown';
+        }
+
+        const cached = this._seatFallbackCache?.get?.(playerKey);
+        if (cached) {
+            return cached;
+        }
+
+        let resolved = '';
+        if (playerKey === 'spectator') {
+            resolved = 'Spectator';
+        } else {
+            const match = String(playerKey)
+                .toLowerCase()
+                .match(/player\s*(\d+)/);
+            if (match) {
+                resolved = `Player ${match[1]}`;
+            } else {
+                resolved = String(playerKey);
+            }
+        }
+
+        if (!this._seatFallbackCache) {
+            this._seatFallbackCache = new Map();
+        }
+        this._seatFallbackCache.set(playerKey, resolved);
+        return resolved;
     }
 }
 
