@@ -282,6 +282,7 @@ async def list_games() -> List[Dict[str, Any]]:
             "seat_claimed_count": seat_claimed_count,
             "player_status": player_status_dump,
             "created_at": setup.created_at.isoformat(),
+            "updated_at": setup.updated_at.isoformat(),
             "players": [
                 player_id
                 for player_id, status in player_status_dump.items()
@@ -297,6 +298,7 @@ async def list_games() -> List[Dict[str, Any]]:
             entry["active_player"] = game_state.active_player
             entry["turn"] = game_state.turn
             entry["created_at"] = game_state.created_at.isoformat()
+            entry["updated_at"] = game_state.updated_at.isoformat()
             processed_games.add(game_id)
 
         games_list.append(entry)
@@ -318,7 +320,8 @@ async def list_games() -> List[Dict[str, Any]]:
             "active_player": game_state.active_player,
             "turn": game_state.turn,
             "max_players": len(game_state.players),
-            "created_at": game_state.created_at.isoformat()
+            "created_at": game_state.created_at.isoformat(),
+            "updated_at": game_state.updated_at.isoformat()
         })
 
     return games_list
