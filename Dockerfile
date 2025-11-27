@@ -22,7 +22,7 @@ RUN pnpm run build:svelte
 ##########
 # Stage 2
 ##########
-FROM python:3.12-slim AS backend
+FROM python:3.14-slim AS backend
 
 WORKDIR /app
 
