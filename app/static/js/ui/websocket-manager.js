@@ -379,9 +379,6 @@ class WebSocketManager {
         // Update zone counts and previews
         UIZonesManager.updateZoneCounts();
         UIZonesManager.refreshOpenZonePopups(GameCore.getGameState());
-        if (typeof UIPlayerCounters !== 'undefined' && UIPlayerCounters) {
-            UIPlayerCounters.refreshModal();
-        }
         if (typeof UIZonesManager !== 'undefined' && UIZonesManager) {
             UIZonesManager.hydrateSvelteZones();
         }

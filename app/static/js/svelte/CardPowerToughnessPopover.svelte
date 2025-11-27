@@ -111,7 +111,7 @@
         const normalizeValue = (text) => {
             const trimmed = String(text ?? '').trim();
             if (!trimmed) return null;
-            if (!/^-?\\d+$/.test(trimmed)) {
+            if (!/^-?\d+$/.test(trimmed)) {
                 return null;
             }
             return parseInt(trimmed, 10);

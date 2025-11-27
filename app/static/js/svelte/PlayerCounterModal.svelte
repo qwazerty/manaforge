@@ -1,4 +1,6 @@
 <script>
+import { formatCounterLabel } from './utils/player-counter-utils.js';
+
     const noop = () => {};
 
     let {
@@ -76,14 +78,6 @@
         }
         newCounterType = '';
         newCounterAmount = amountInputMin;
-    };
-
-    const formatLabel = (type) => {
-        if (!type) {
-            return 'Compteur';
-        }
-        const text = String(type);
-        return text.charAt(0).toUpperCase() + text.slice(1);
     };
 
     const panelStyle = `
@@ -201,7 +195,7 @@
                                             <span class="text-xl">{counter.icon}</span>
                                         {/if}
                                         <div>
-                                            <div class="text-sm font-semibold text-arena-text">{counter.label || formatLabel(counter.type)}</div>
+                                            <div class="text-sm font-semibold text-arena-text">{counter.label || formatCounterLabel(counter.type)}</div>
                                             <div class="text-xs text-arena-muted break-all">{counter.type}</div>
                                         </div>
                                     </div>
