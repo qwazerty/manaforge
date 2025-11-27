@@ -14,14 +14,12 @@ mkdir -p "$DATA_DIR"
 # 1. Fetch Scryfall unique artwork data
 echo ""
 echo ">>> Fetching Scryfall bulk data metadata..."
-SCRYFALL_BULK_URL="https://api.scryfall.com/bulk-data"
+SCRYFALL_BULK_URL="https://api.scryfall.com/bulk-data/unique_artwork"
 DOWNLOAD_URI=$(curl -s "$SCRYFALL_BULK_URL" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-for item in data.get('data', []):
-    if item.get('type') == 'unique_artwork':
-        print(item.get('download_uri', ''))
-        break
+if data.get('type') == 'unique_artwork':
+    print(data.get('download_uri', ''))
 ")
 
 if [ -z "$DOWNLOAD_URI" ]; then

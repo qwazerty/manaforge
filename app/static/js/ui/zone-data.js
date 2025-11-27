@@ -83,9 +83,7 @@ class ZoneData {
         const lifeValue = typeof safeData.life === 'number'
             ? safeData.life
             : parseInt(safeData.life || 20, 10) || 20;
-        const counters = (typeof UIPlayerCounters !== 'undefined' && typeof UIPlayerCounters.getBadgeEntries === 'function')
-            ? UIPlayerCounters.getBadgeEntries(safeData, playerId)
-            : [];
+        const counters = ZoneData._extractCounterEntries(safeData);
         const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
         const manageButton = {
             label: 'Counters',
@@ -95,10 +93,7 @@ class ZoneData {
                 'bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/50 hover:border-indigo-300',
                 'text-indigo-100 hover:text-white transition-all duration-200'
             ].join(' '),
-            onClick: (event) => UIPlayerCounters.openCounterManager(
-                playerId,
-                event?.currentTarget || event?.target || null
-            )
+            onClick: null
         };
         const toControlConfig = (control, index) => {
             const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
@@ -153,5 +148,44 @@ class ZoneData {
             positiveControls,
             hasCustomLifeControls
         };
+    }
+
+    static _extractCounterEntries(playerData = {}) {
+        const counters = playerData?.counters || {};
+        return Object.entries(counters)
+            .filter(([, value]) => Number(value) > 0)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([type, amount]) => ({
+                type,
+                amount: Number.isFinite(Number(amount)) ? Number(amount) : 0,
+                label: ZoneData._formatCounterLabel(type),
+                icon: ZoneData._getCounterIcon(type)
+            }));
+    }
+
+    static _formatCounterLabel(counterType) {
+        if (!counterType) {
+            return 'Compteur';
+        }
+        const normalized = String(counterType).trim();
+        if (!normalized) {
+            return 'Compteur';
+        }
+        const lower = normalized.toLowerCase();
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }
+
+    static _getCounterIcon(counterType) {
+        if (typeof GameCards !== 'undefined' && typeof GameCards.getCounterIcon === 'function') {
+            const icon = GameCards.getCounterIcon(counterType);
+            if (icon) {
+                return icon;
+            }
+            const lower = typeof counterType === 'string' ? counterType.toLowerCase() : counterType;
+            if (lower) {
+                return GameCards.getCounterIcon(lower) || null;
+            }
+        }
+        return null;
     }
 }

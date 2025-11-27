@@ -5,6 +5,8 @@
     import GraveyardZone from './GraveyardZone.svelte';
     import ExileZone from './ExileZone.svelte';
     import LifeZone from './LifeZone.svelte';
+    import PlayerCounterModal from './PlayerCounterModal.svelte';
+    import { buildCounterEntries } from './utils/player-counter-utils.js';
 
     let {
         gameState = null,
@@ -12,6 +14,12 @@
     } = $props();
 
     let gameBoardEl = null;
+    let counterModal = $state({
+        open: false,
+        playerId: '',
+        playerName: '',
+        position: null
+    });
     let overlapObserver = null;
     let overlapPending = false;
     let overlapResizeDebounce = null;
@@ -52,6 +60,15 @@
 
     const boardHydrated = $derived(() => {
         return boardData() ? 'true' : 'false';
+    });
+
+    const counterModalCounters = $derived(() => {
+        if (!counterModal.open || !counterModal.playerId || !gameState) {
+            return [];
+        }
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        const target = players.find((player) => player?.id === counterModal.playerId);
+        return target ? buildCounterEntries(target) : [];
     });
 
     const OVERLAP_ZONE_SELECTORS = [
@@ -203,6 +220,98 @@
         return rawName || fallback;
     }
 
+    function findPlayerById(state, playerId) {
+        if (!state || !playerId) {
+            return null;
+        }
+        const players = Array.isArray(state.players) ? state.players : [];
+        return players.find((player) => player?.id === playerId) || null;
+    }
+
+    function fallbackCounterModalPosition() {
+        if (typeof window === 'undefined') {
+            return { top: 200, left: 200, anchor: 'center' };
+        }
+        return {
+            top: (window.scrollY || 0) + (window.innerHeight || 0) / 2,
+            left: (window.scrollX || 0) + (window.innerWidth || 0) / 2,
+            anchor: 'center'
+        };
+    }
+
+    function calculateCounterModalPosition(anchorElement = null) {
+        if (typeof UIUtils !== 'undefined' && typeof UIUtils.calculateAnchorPosition === 'function') {
+            return UIUtils.calculateAnchorPosition(anchorElement, {
+                preferredAnchor: anchorElement ? 'bottom-left' : 'center',
+                panelWidth: 420,
+                panelHeight: 460,
+                horizontalOffset: 4,
+                verticalOffset: 8
+            });
+        }
+        return fallbackCounterModalPosition();
+    }
+
+    function openCounterModalForPlayer(playerData, playerId, anchorElement = null) {
+        const resolvedId = playerId || resolvePlayerOwnerId(playerData, null, false);
+        if (!resolvedId) {
+            return;
+        }
+        const fallbackIndex = resolvedId === 'player2' ? 1 : 0;
+        const nameFallback = getSeatFallbackName(fallbackIndex);
+        const displayName = getPlayerDisplayName(playerData, nameFallback);
+        counterModal = {
+            open: true,
+            playerId: resolvedId,
+            playerName: displayName,
+            position: calculateCounterModalPosition(anchorElement)
+        };
+    }
+
+    function closeCounterModal() {
+        counterModal = {
+            open: false,
+            playerId: '',
+            playerName: '',
+            position: null
+        };
+    }
+
+    function handleLifeManageClick(playerData, ownerId, event) {
+        if (event && typeof event.stopPropagation === 'function') {
+            event.stopPropagation();
+        }
+        const anchor = event?.currentTarget || event?.target || null;
+        openCounterModalForPlayer(playerData, ownerId, anchor);
+    }
+
+    function modifyModalCounter(type, delta) {
+        if (!counterModal.playerId || !type || !Number.isFinite(delta)) {
+            return;
+        }
+        GameActions.modifyPlayerCounter(counterModal.playerId, type, delta);
+    }
+
+    function removeModalCounter(type) {
+        if (!counterModal.playerId || !type) {
+            return;
+        }
+        GameActions.setPlayerCounter(counterModal.playerId, type, 0);
+    }
+
+    function addModalCounter(type, amount) {
+        const normalizedType = (type || '').trim();
+        if (!normalizedType || !counterModal.playerId) {
+            if (typeof GameUI?.logMessage === 'function') {
+                GameUI.logMessage('Indiquer un type de compteur', 'warning');
+            }
+            return;
+        }
+        const parsedAmount = Number(amount);
+        const delta = Number.isFinite(parsedAmount) && parsedAmount !== 0 ? parsedAmount : 1;
+        GameActions.modifyPlayerCounter(counterModal.playerId, normalizedType, delta);
+    }
+
     function buildSidebarSection(playerData, playerIndex, isOpponent) {
         if (!playerData) {
             return null;
@@ -225,6 +334,12 @@
         const exileCards = Array.isArray(playerData?.exile) ? playerData.exile : [];
         const exileConfig = getExileConfig(exileCards, isOpponent);
         const lifeConfig = getLifeConfig(playerData, ownerId);
+        const manageButton = lifeConfig.manageButton
+            ? {
+                ...lifeConfig.manageButton,
+                onClick: (event) => handleLifeManageClick(playerData, ownerId, event)
+            }
+            : null;
 
         return [
             buildZoneDescriptor('exile', ExileZone, {
@@ -249,16 +364,16 @@
             overlayText: deckConfig.overlayText,
             onClick: deckConfig.onClick
         }),
-        buildZoneDescriptor('life', LifeZone, {
-                life: lifeConfig.life,
-                playerId: lifeConfig.playerId,
-                negativeControls: lifeConfig.negativeControls,
-                positiveControls: lifeConfig.positiveControls,
-                hasCustomLifeControls: lifeConfig.hasCustomLifeControls,
-                counters: lifeConfig.counters,
-                manageButton: lifeConfig.manageButton
-            })
-        ];
+                buildZoneDescriptor('life', LifeZone, {
+                    life: lifeConfig.life,
+                    playerId: lifeConfig.playerId,
+                    negativeControls: lifeConfig.negativeControls,
+                    positiveControls: lifeConfig.positiveControls,
+                    hasCustomLifeControls: lifeConfig.hasCustomLifeControls,
+                    counters: lifeConfig.counters,
+                    manageButton
+                })
+            ];
     }
 
     function buildZoneDescriptor(zoneKey, component, props) {
@@ -776,4 +891,15 @@
         <div id="action-history-panel"></div>
         <div id="battle-chat-panel"></div>
     </div>
+    <PlayerCounterModal
+        open={counterModal.open}
+        playerId={counterModal.playerId}
+        playerName={counterModal.playerName}
+        counters={counterModalCounters()}
+        position={counterModal.position}
+        onClose={closeCounterModal}
+        onModify={modifyModalCounter}
+        onRemove={removeModalCounter}
+        onAdd={addModalCounter}
+    />
 </div>
