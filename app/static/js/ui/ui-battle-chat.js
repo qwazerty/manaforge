@@ -117,39 +117,32 @@ class UIBattleChat {
         });
         this._pushMessage(entry);
 
-        if (
-            typeof GameChat !== 'undefined' &&
-            GameChat &&
-            typeof GameChat.sendMessage === 'function'
-        ) {
-            const result = GameChat.sendMessage(trimmed, {
+        const chatManager = typeof WebSocketManager !== 'undefined' ? WebSocketManager : null;
+        const sendChat = chatManager?.sendChatMessage?.bind(chatManager);
+
+        const result = typeof sendChat === 'function'
+            ? sendChat(trimmed, {
                 playerName: entry.sender,
                 playerId: entry.playerId,
                 timestamp: entry.timestamp
-            });
-            if (!result || result.success !== true) {
-                const errorText = result?.error || 'Chat not available';
-                this._markMessageError(entry.id, errorText);
-                this.setStatus(errorText);
-                return result || { success: false, error: errorText };
-            }
-            this.setStatus('');
-            return result;
+            })
+            : { success: false, error: 'Chat not available' };
+
+        if (!result || result.success !== true) {
+            const errorText = result?.error || 'Chat not available';
+            this._markMessageError(entry.id, errorText);
+            this.setStatus(errorText);
+            return result || { success: false, error: errorText };
         }
 
-        const fallbackText = 'Chat not available';
-        this._markMessageError(entry.id, fallbackText);
-        this.setStatus(fallbackText);
-        return { success: false, error: fallbackText };
+        this.setStatus('');
+        return result;
     }
 
     static _resolveLocalSender() {
-        if (
-            typeof GameChat !== 'undefined' &&
-            GameChat &&
-            typeof GameChat.getLocalPlayerInfo === 'function'
-        ) {
-            const info = GameChat.getLocalPlayerInfo();
+        const chatManager = typeof WebSocketManager !== 'undefined' ? WebSocketManager : null;
+        if (chatManager?.getLocalPlayerInfo) {
+            const info = chatManager.getLocalPlayerInfo();
             if (info) {
                 return info;
             }
@@ -161,14 +154,9 @@ class UIBattleChat {
             ? GameCore.getSelectedPlayer()
             : 'player1';
 
-        let fallbackName = fallbackId || 'Player';
-        if (
-            typeof GameChat !== 'undefined' &&
-            GameChat &&
-            typeof GameChat._formatSeatFallback === 'function'
-        ) {
-            fallbackName = GameChat._formatSeatFallback(fallbackId);
-        }
+        const fallbackName = chatManager?.formatSeatFallback
+            ? chatManager.formatSeatFallback(fallbackId)
+            : this._formatSeatFallback(fallbackId);
 
         return {
             id: fallbackId,
@@ -305,6 +293,25 @@ class UIBattleChat {
             return Math.round(value);
         }
         return Date.now();
+    }
+
+    static _formatSeatFallback(playerKey) {
+        if (!playerKey) {
+            return 'Unknown';
+        }
+
+        const match = String(playerKey)
+            .toLowerCase()
+            .match(/player\s*(\d+)/);
+        if (match) {
+            return `Player ${match[1]}`;
+        }
+
+        if (playerKey === 'spectator') {
+            return 'Spectator';
+        }
+
+        return String(playerKey);
     }
 }
 
