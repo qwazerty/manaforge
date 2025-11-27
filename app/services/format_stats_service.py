@@ -115,11 +115,10 @@ def _project_root() -> Path:
 
 
 def _latest_oracle_file() -> Path:
-    data_dir = _project_root() / "data"
-    candidates = sorted(data_dir.glob("oracle-cards-*.json"))
-    if not candidates:
-        raise FileNotFoundError("No oracle card dataset found in the data/ directory.")
-    return candidates[-1]
+    base_file = _project_root() / "data" / "oracle-cards.json"
+    if base_file.exists():
+        return base_file
+    raise FileNotFoundError("No oracle card dataset found in the data/ directory.")
 
 
 @lru_cache(maxsize=1)
