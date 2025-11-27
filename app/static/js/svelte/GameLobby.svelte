@@ -78,11 +78,17 @@
             const response = await fetch('/api/v1/games/list', { cache: 'no-store' });
             if (!response.ok) throw new Error('Unable to load games');
             const newGames = await response.json();
-            
-            // Sort games
+            const parseTimestamp = (value) => {
+                if (!value) return 0;
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+            };
+
+            // Sort games by most recent update (descending)
             games = [...newGames].sort((a, b) => {
-                if ((a.ready && b.ready) || (!a.ready && !b.ready)) return 0;
-                return a.ready ? 1 : -1;
+                const aTs = parseTimestamp(a.updated_at ?? a.created_at);
+                const bTs = parseTimestamp(b.updated_at ?? b.created_at);
+                return bTs - aTs;
             });
         } catch (error) {
             console.error('Error fetching game list:', error);
@@ -441,6 +447,11 @@
                                 {#if game.created_at}
                                     <div class="text-xs text-arena-muted mb-1">
                                         Created {formatLobbyTimestamp(game.created_at)}
+                                    </div>
+                                {/if}
+                                {#if game.updated_at || game.created_at}
+                                    <div class="text-xs text-arena-muted mb-1">
+                                        Last updated {formatLobbyTimestamp(game.updated_at ?? game.created_at)}
                                     </div>
                                 {/if}
 

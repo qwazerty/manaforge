@@ -321,6 +321,10 @@ class GameSetupStatus(BaseModel):
         default_factory=current_utc_datetime,
         description="Timestamp for when the lobby was created (UTC)"
     )
+    updated_at: datetime = Field(
+        default_factory=current_utc_datetime,
+        description="Timestamp for the most recent change to the setup"
+    )
     player_status: Dict[str, PlayerDeckStatus] = Field(
         default_factory=dict,
         description="Per-player deck submission statuses"
@@ -413,6 +417,10 @@ class GameState(BaseModel):
     created_at: datetime = Field(
         default_factory=current_utc_datetime,
         description="Timestamp for when the game started (UTC)"
+    )
+    updated_at: datetime = Field(
+        default_factory=current_utc_datetime,
+        description="Timestamp for the most recent change to the game state"
     )
 
 

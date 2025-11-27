@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
     GamePhase, CombatState, CombatStep, CardType, GameSetupStatus,
-    PlayerDeckStatus, GameFormat, PhaseMode
+    PlayerDeckStatus, GameFormat, PhaseMode, current_utc_datetime
 )
 
 class SimpleGameEngine:
@@ -31,6 +31,14 @@ class SimpleGameEngine:
         self.game_setups: dict[str, GameSetupStatus] = {}
         self._pending_decks: dict[str, dict[str, Deck]] = {}
         self.replays: dict[str, List[Dict[str, Any]]] = {}
+
+    @staticmethod
+    def _touch_setup(setup: GameSetupStatus) -> None:
+        setup.updated_at = current_utc_datetime()
+
+    @staticmethod
+    def _touch_game_state(game_state: GameState) -> None:
+        game_state.updated_at = current_utc_datetime()
 
     def _record_replay_step(self, game_id: str, action: Optional[GameAction], game_state: GameState) -> None:
         """Record a step in the game replay timeline."""
@@ -319,6 +327,7 @@ class SimpleGameEngine:
             f"Created game setup for {game_id} with "
             f"format={game_format.value}, phase_mode={phase_mode.value}"
         )
+        self._touch_setup(setup)
         return setup
     
     def get_game_setup_status(self, game_id: str) -> Optional[GameSetupStatus]:
@@ -359,6 +368,7 @@ class SimpleGameEngine:
                 message=message
             )
             setup.status = f"{player_id} submitted invalid deck"
+            self._touch_setup(setup)
             return setup
 
         if setup.game_format == GameFormat.DUEL_COMMANDER:
@@ -408,6 +418,7 @@ class SimpleGameEngine:
                 setup.ready = True
                 setup.status = "Game ready - both decks validated"
                 print(f"Game {game_id} initialized with both players' decks")
+                self._touch_setup(setup)
         else:
             submitted_count = sum(
                 1 for status in setup.player_status.values() if status.submitted
@@ -416,6 +427,7 @@ class SimpleGameEngine:
                 1 for status in setup.player_status.values() if status.seat_claimed
             )
             setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+            self._touch_setup(setup)
         
         return setup
 
@@ -460,6 +472,7 @@ class SimpleGameEngine:
                     break
 
         setup.player_status[player_id] = player_status
+        self._touch_setup(setup)
         return setup
     
     def update_game_settings(
@@ -473,6 +486,7 @@ class SimpleGameEngine:
             raise ValueError(f"Game setup {game_id} not found")
 
         setup = self.game_setups[game_id]
+        modified = False
         
         # Don't allow changes after game is ready
         if setup.ready:
@@ -484,10 +498,15 @@ class SimpleGameEngine:
             if submitted_any:
                 raise ValueError("Cannot change game format after decks have been submitted")
             setup.game_format = game_format
+            modified = True
         
         # Allow phase mode changes any time before game starts
         if phase_mode and phase_mode != setup.phase_mode:
             setup.phase_mode = phase_mode
+            modified = True
+        
+        if modified:
+            self._touch_setup(setup)
         
         return setup
     
@@ -543,6 +562,7 @@ class SimpleGameEngine:
                 "player2": setup.player_status["player2"]
             }
         )
+        self._touch_game_state(game_state)
         
         self.games[game_id] = game_state
         self._pending_decks.pop(game_id, None)
@@ -579,6 +599,7 @@ class SimpleGameEngine:
             round=1,
             players_played_this_round=[False, False]
         )
+        self._touch_game_state(game_state)
         
         self.games[game_id] = game_state
         self._log_phase_history_entry(game_state, GamePhase.BEGIN)
@@ -604,6 +625,7 @@ class SimpleGameEngine:
             active_player=0,
             phase=GamePhase.BEGIN
         )
+        self._touch_game_state(game_state)
         
         self.games[game_id] = game_state
         self._log_phase_history_entry(game_state, GamePhase.BEGIN)
@@ -630,6 +652,7 @@ class SimpleGameEngine:
         self._draw_cards(player2, 7)
         
         game_state.players.append(player2)
+        self._touch_game_state(game_state)
         self._record_replay_step(game_id, None, game_state)
         
         return game_state
@@ -709,6 +732,7 @@ class SimpleGameEngine:
         else:
             raise ValueError(f"Unknown action_type: {action.action_type}")
 
+        self._touch_game_state(game_state)
         self._record_replay_step(game_id, action, game_state)
         return game_state
     
