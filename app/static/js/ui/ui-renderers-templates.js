@@ -946,6 +946,15 @@ class UIRenderersTemplates {
             elements.panel.setAttribute('aria-hidden', 'false');
             elements.panel.dataset.appear = 'visible';
 
+            // Show/hide action button based on whether user controls this zone
+            if (elements.actionBtn) {
+                if (isControlled) {
+                    elements.actionBtn.classList.remove('hidden');
+                } else {
+                    elements.actionBtn.classList.add('hidden');
+                }
+            }
+
             const computedWidth = this._calculateRevealPopupWidth(zoneCards.length);
             if (computedWidth) {
                 elements.panel.style.width = `${computedWidth}px`;
@@ -1220,6 +1229,8 @@ class UIRenderersTemplates {
         }
 
         const safeName = GameUtils.escapeHtml(playerName || 'Player');
+        const actionName = zoneType === 'look' ? 'lookTopLibrary' : 'revealTopLibrary';
+        const actionLabel = zoneType === 'look' ? 'Look Another' : 'Reveal Another';
         const panel = document.createElement('div');
         panel.id = `${zoneType}-popup-${playerId}`;
         panel.className = `stack-popup ${zoneType}-popup hidden`;
@@ -1232,6 +1243,9 @@ class UIRenderersTemplates {
                 <div class="stack-popup-title ${zoneType}-popup-title">
                     <span class="stack-popup-icon ${zoneType}-popup-icon">${config.icon}</span>
                     <span class="stack-popup-label ${zoneType}-popup-label">${config.title} - ${safeName}</span>
+                    <button class="zone-popup-action-btn hidden" data-action="${actionName}" title="${actionLabel}">
+                        ${actionLabel}
+                    </button>
                     <span class="stack-popup-count ${zoneType}-popup-count" id="${zoneType}-popup-count-${playerId}">0</span>
                 </div>
             </div>
@@ -1247,11 +1261,23 @@ class UIRenderersTemplates {
         const body = panel.querySelector(`#${zoneType}-popup-body-${playerId}`);
         const countLabel = panel.querySelector(`#${zoneType}-popup-count-${playerId}`);
         const titleLabel = panel.querySelector(`.${zoneType}-popup-label`);
+        const actionBtn = panel.querySelector('.zone-popup-action-btn');
+
+        // Add click handler for the action button
+        if (actionBtn) {
+            actionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = actionBtn.dataset.action;
+                if (window.GameActions && typeof window.GameActions[action] === 'function') {
+                    window.GameActions[action]();
+                }
+            });
+        }
 
         this._makePopupDraggable(panel, handle);
         this._initializePopupSearch(panel);
 
-        const elements = { panel, body, countLabel, titleLabel };
+        const elements = { panel, body, countLabel, titleLabel, actionBtn };
         this[cacheKey].set(playerId, elements);
         return elements;
     }
@@ -1301,14 +1327,17 @@ class UIRenderersTemplates {
             return;
         }
 
+        // Position relative to stack-area (zones sidebar), fallback to game-board
+        const stackArea = document.getElementById('stack-area');
         const board = document.getElementById('game-board');
-        if (!board) {
+        const referenceElement = stackArea || board;
+        if (!referenceElement) {
             return;
         }
 
         const padding = 16;
         const offset = 24;
-        const boardRect = board.getBoundingClientRect();
+        const refRect = referenceElement.getBoundingClientRect();
         const panelRect = panel.getBoundingClientRect();
         const panelHeight = panelRect.height || panel.offsetHeight || 0;
         const panelWidth = panelRect.width || panel.offsetWidth || 0;
@@ -1316,12 +1345,15 @@ class UIRenderersTemplates {
         let top;
         let left;
 
+        // Position to the right of the reference element
+        left = refRect.right + padding;
+
         if (isControlled) {
-            top = boardRect.bottom - panelHeight - padding;
-            left = boardRect.right + padding;
+            // Position near the bottom for controlled player
+            top = refRect.bottom - panelHeight - padding;
         } else {
-            top = boardRect.top + padding + (index * (panelHeight + offset));
-            left = boardRect.right + padding;
+            // Stack popups for opponent(s)
+            top = refRect.top + padding + (index * (panelHeight + offset));
         }
 
         top = Math.max(padding, Math.min(top, window.innerHeight - panelHeight - padding));
