@@ -728,43 +728,6 @@ function deleteToken(uniqueCardId, cardName = 'Token') {
     const label = cardName || 'Token';
 }
 
-function millTopLibraryCard() {
-    const currentSelectedPlayer = GameCore.getSelectedPlayer();
-    if (currentSelectedPlayer === 'spectator') {
-        GameUI.logMessage('Spectators cannot mill cards', 'error');
-        return;
-    }
-
-    const gameState = GameCore.getGameState();
-    if (!gameState || !Array.isArray(gameState.players)) {
-        GameUI.logMessage('Unable to access game state', 'error');
-        return;
-    }
-
-    const playerIndex = currentSelectedPlayer === 'player2' ? 1 : 0;
-    const player = gameState.players[playerIndex] || {};
-    const library = Array.isArray(player.library)
-        ? player.library
-        : Array.isArray(player.deck)
-            ? player.deck
-            : [];
-
-    if (!library.length) {
-        return;
-    }
-
-    const topCard = library[0];
-    const cardId = topCard?.id || topCard?.card_id;
-    const uniqueId = topCard?.unique_id;
-
-    if (!cardId || !uniqueId) {
-        GameUI.logMessage('Unable to identify the top card', 'error');
-        return;
-    }
-
-    moveCard(cardId, 'deck', 'graveyard', uniqueId, null, null);
-}
-
 function moveAllHandToReveal() {
     const currentSelectedPlayer = GameCore.getSelectedPlayer();
     if (currentSelectedPlayer === 'spectator') {
@@ -1165,7 +1128,6 @@ window.GameActions = {
     sendToTopLibrary,
     sendToBottomLibrary,
     deleteToken,
-    millTopLibraryCard,
     lookTopLibrary,
     revealTopLibrary,
     updateCardTappedState,

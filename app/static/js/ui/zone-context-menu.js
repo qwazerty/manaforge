@@ -18,7 +18,6 @@ class ZoneContextMenu {
                 { id: 'draw', label: 'Draw Card', icon: '🃏', action: 'drawCard' },
                 { id: 'lookTopLibrary', label: 'Look Top Library', icon: '👁️', action: 'lookTopLibrary' },
                 { id: 'revealTopLibrary', label: 'Reveal Top Library', icon: '👁️', action: 'revealTopLibrary' },
-                { id: 'mill', label: 'Mill Top Card', icon: '🌀', action: 'mill' },
                 { id: 'search', label: 'Search Library', icon: '🔍', action: 'searchZone' },
                 { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' },
                 { id: 'mulligan', label: 'Mulligan', icon: '🔄', action: 'mulligan' }
@@ -248,9 +247,6 @@ class ZoneContextMenu {
             case 'shuffleLibrary':
                 this.shuffleLibrary(isOpponent);
                 break;
-            case 'mill':
-                this.mill(isOpponent);
-                break;
             case 'mulligan':
                 this.mulligan(isOpponent);
                 break;
@@ -268,18 +264,6 @@ class ZoneContextMenu {
             window.GameActions.performGameAction('mulligan');
         } else {
             console.warn('GameActions not available for mulligan');
-        }
-    }
-
-    /**
-     * Mill the top card of the library
-     */
-    static mill(isOpponent = false) {
-        if (isOpponent) return;
-        if (window.GameActions && typeof window.GameActions.millTopLibraryCard === 'function') {
-            window.GameActions.millTopLibraryCard();
-        } else {
-            console.warn('GameActions not available for mill');
         }
     }
 
