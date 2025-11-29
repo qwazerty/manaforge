@@ -1230,7 +1230,7 @@ class UIRenderersTemplates {
 
         const safeName = GameUtils.escapeHtml(playerName || 'Player');
         const actionName = zoneType === 'look' ? 'lookTopLibrary' : 'revealTopLibrary';
-        const actionLabel = zoneType === 'look' ? 'Look Another' : 'Reveal Another';
+        const actionLabel = zoneType === 'look' ? 'Look another' : 'Reveal another';
         const panel = document.createElement('div');
         panel.id = `${zoneType}-popup-${playerId}`;
         panel.className = `stack-popup ${zoneType}-popup hidden`;
@@ -1243,10 +1243,10 @@ class UIRenderersTemplates {
                 <div class="stack-popup-title ${zoneType}-popup-title">
                     <span class="stack-popup-icon ${zoneType}-popup-icon">${config.icon}</span>
                     <span class="stack-popup-label ${zoneType}-popup-label">${config.title} - ${safeName}</span>
+                    <span class="stack-popup-count ${zoneType}-popup-count" id="${zoneType}-popup-count-${playerId}">0</span>
                     <button class="zone-popup-action-btn hidden" data-action="${actionName}" title="${actionLabel}">
                         ${actionLabel}
                     </button>
-                    <span class="stack-popup-count ${zoneType}-popup-count" id="${zoneType}-popup-count-${playerId}">0</span>
                 </div>
             </div>
             <div class="popup-search-container">
