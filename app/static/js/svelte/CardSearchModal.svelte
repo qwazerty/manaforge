@@ -19,6 +19,7 @@
     let loading = $state(false);
     let error = $state('');
     let tokenOnly = $state(false);
+    let exactMatch = $state(false);
     let selectedIndex = $state(-1);
     let isSubmitting = $state(false);
     let searchTimer = null;
@@ -135,6 +136,7 @@
         results = [];
         error = '';
         tokenOnly = false;
+        exactMatch = false;
         selectedIndex = -1;
         loading = false;
         isSubmitting = false;
@@ -186,13 +188,21 @@
         loading = true;
         const pendingQuery = query;
         const pendingToken = tokenOnly;
-        searchTimer = setTimeout(() => runSearch(pendingQuery, pendingToken), SEARCH_DELAY);
+        const pendingExact = exactMatch;
+        searchTimer = setTimeout(() => runSearch(pendingQuery, pendingToken, pendingExact), SEARCH_DELAY);
     }
 
     function handleTokenToggle(event) {
         tokenOnly = !!event?.target?.checked;
         if (query.length >= MIN_QUERY_LENGTH) {
-            runSearch(query, tokenOnly);
+            runSearch(query, tokenOnly, exactMatch);
+        }
+    }
+
+    function handleExactMatchToggle(event) {
+        exactMatch = !!event?.target?.checked;
+        if (query.length >= MIN_QUERY_LENGTH) {
+            runSearch(query, tokenOnly, exactMatch);
         }
     }
 
@@ -208,9 +218,10 @@
             return;
         }
         query = tokenName;
+        exactMatch = true;
         selectedIndex = -1;
         clearSearchTimer();
-        runSearch(tokenName, tokenOnly);
+        runSearch(tokenName, tokenOnly, true);
         if (searchInput && typeof searchInput.focus === 'function') {
             searchInput.focus();
         }
@@ -256,7 +267,7 @@
         }
     }
 
-    async function runSearch(term, tokenFlag) {
+    async function runSearch(term, tokenFlag, exactFlag = false) {
         clearSearchTimer();
         loading = true;
         error = '';
@@ -264,6 +275,9 @@
         const params = new URLSearchParams({ q: term, limit: 50 });
         if (tokenFlag) {
             params.set('tokens_only', 'true');
+        }
+        if (exactFlag) {
+            params.set('exact', 'true');
         }
 
         try {
@@ -281,17 +295,17 @@
                 );
             }
 
-            if (query === term && tokenOnly === tokenFlag && open) {
+            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && open) {
                 results = cardList;
             }
         } catch (err) {
             console.error('[CardSearchModal] search failed', err);
-            if (query === term && tokenOnly === tokenFlag && open) {
+            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && open) {
                 error = 'Search failed. Please try again.';
                 results = [];
             }
         } finally {
-            if (query === term && tokenOnly === tokenFlag && open) {
+            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && open) {
                 loading = false;
             }
         }
@@ -418,6 +432,10 @@
                 <label class="flex items-center gap-2 text-sm text-arena-text cursor-pointer select-none">
                     <input type="checkbox" class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent" checked={tokenOnly} on:change={handleTokenToggle} />
                     <span>Tokens only</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-arena-text cursor-pointer select-none">
+                    <input type="checkbox" class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent" checked={exactMatch} on:change={handleExactMatchToggle} />
+                    <span>Exact match</span>
                 </label>
             </div>
 
