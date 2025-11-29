@@ -1013,6 +1013,11 @@ class SimpleGameEngine:
         """Handle drawing a card."""
         player = self._get_player(game_state, action.player_id)
         self._draw_cards(player, 1)
+        
+        # Auto-advance to main phase 1 if in begin phase
+        if game_state.phase == GamePhase.BEGIN:
+            self._set_phase(game_state, GamePhase.MAIN1)
+            self._log_phase_history_entry(game_state, GamePhase.MAIN1)
     
     def _get_player(self, game_state: GameState, player_id: str) -> Player:
         """Get player by ID."""
