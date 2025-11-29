@@ -364,6 +364,7 @@ class UIRenderersTemplates {
             priorityPlayerIndex
         });
         props.searchButton = this._buildSearchButtonConfig();
+        props.tokenSearchButton = this._buildTokenSearchButtonConfig();
         props.quickButtons = this._buildQuickActionButtons();
         return props;
     }
@@ -497,6 +498,114 @@ class UIRenderersTemplates {
         };
     }
 
+    static _collectBattlefieldTokenNames() {
+        if (
+            typeof GameCore === 'undefined' ||
+            typeof GameCore.getGameState !== 'function'
+        ) {
+            return [];
+        }
+
+        const gameState = GameCore.getGameState();
+        if (!gameState) {
+            return [];
+        }
+
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        const names = new Set();
+        for (const player of players) {
+            const battlefield = Array.isArray(player?.battlefield) ? player.battlefield : [];
+            for (const card of battlefield) {
+                if (!card) {
+                    continue;
+                }
+                const cardName = typeof card.name === 'string' ? card.name.trim() : '';
+                
+                // Check if the card itself is a token
+                if (cardName && this._isBattlefieldToken(card, cardName)) {
+                    names.add(cardName);
+                }
+                
+                // Extract token names from oracle text
+                const oracleTokens = this._extractTokenNamesFromOracle(card);
+                for (const tokenName of oracleTokens) {
+                    names.add(tokenName);
+                }
+            }
+        }
+
+        return Array.from(names).sort((a, b) => a.localeCompare(b));
+    }
+
+    static _extractTokenNamesFromOracle(card) {
+        const tokens = new Set();
+        
+        // Get oracle text from card or card faces
+        const oracleTexts = [];
+        if (card?.oracle_text) {
+            oracleTexts.push(card.oracle_text);
+        }
+        if (card?.text) {
+            oracleTexts.push(card.text);
+        }
+        if (Array.isArray(card?.card_faces)) {
+            for (const face of card.card_faces) {
+                if (face?.oracle_text) {
+                    oracleTexts.push(face.oracle_text);
+                }
+                if (face?.text) {
+                    oracleTexts.push(face.text);
+                }
+            }
+        }
+        
+        const fullText = oracleTexts.join(' ');
+        if (!fullText) {
+            return tokens;
+        }
+        
+        // Pattern to match token creation text
+        // Matches patterns like:
+        // - "create a Treasure token"
+        // - "creates a 1/1 red Goblin creature token"
+        // - "create two Treasure tokens"
+        // - "create X 1/1 white Soldier creature tokens"
+        const tokenPattern = /creates?\s+(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+|X)?\s*(?:\d+\/\d+\s+)?([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)\s+(?:creature\s+)?tokens?/gi;
+        
+        let match;
+        while ((match = tokenPattern.exec(fullText)) !== null) {
+            let tokenName = match[1].trim();
+            // Clean up the token name - remove common prefixes that aren't part of the name
+            // Including colors and card type keywords
+            tokenName = tokenName
+                .replace(/^(legendary|colorless|artifact|enchantment|creature|white|blue|black|red|green)\s+/gi, '')
+                .replace(/\s+(creature|artifact|enchantment)$/gi, '')
+                .trim();
+            
+            // Apply color removal again in case there are multiple color words
+            tokenName = tokenName
+                .replace(/^(white|blue|black|red|green)\s+/gi, '')
+                .trim();
+            
+            if (tokenName && tokenName.length > 1) {
+                tokens.add(tokenName);
+            }
+        }
+        
+        return tokens;
+    }
+
+    static _isBattlefieldToken(card, cardName) {
+        if (card?.is_token) {
+            return true;
+        }
+        const normalized = String(cardName || '').toLowerCase();
+        if (normalized.includes(' token')) {
+            return true;
+        }
+        return normalized.includes('token');
+    }
+
     static _buildSearchButtonConfig() {
         const className = `${UIConfig?.CSS_CLASSES?.button?.secondary || ''} w-full`;
         return {
@@ -505,7 +614,51 @@ class UIRenderersTemplates {
             disabled: false,
             className,
             onClick: () => {
-                if (typeof window !== 'undefined' && typeof window.showCardSearch === 'function') {
+                if (typeof window === 'undefined') {
+                    return;
+                }
+                if (
+                    window.CardSearchModal &&
+                    typeof window.CardSearchModal.setTokenFilter === 'function'
+                ) {
+                    window.CardSearchModal.setTokenFilter([]);
+                }
+                if (typeof window.showCardSearch === 'function') {
+                    window.showCardSearch('battlefield');
+                }
+            }
+        };
+    }
+
+    static _buildTokenSearchButtonConfig() {
+        const className = `${UIConfig?.CSS_CLASSES?.button?.secondary || ''} w-full`;
+        const tokenNames = this._collectBattlefieldTokenNames();
+
+        return {
+            label: '🔍 Search tokens',
+            title: tokenNames.length
+                ? 'Search tokens that appear on the battlefield'
+                : 'No battlefield tokens detected',
+            disabled: tokenNames.length === 0,
+            className,
+            onClick: () => {
+                if (typeof window === 'undefined') {
+                    return;
+                }
+
+                const latestTokens = this._collectBattlefieldTokenNames();
+                if (!latestTokens.length) {
+                    return;
+                }
+
+                if (
+                    window.CardSearchModal &&
+                    typeof window.CardSearchModal.setTokenFilter === 'function'
+                ) {
+                    window.CardSearchModal.setTokenFilter(latestTokens);
+                }
+
+                if (typeof window.showCardSearch === 'function') {
                     window.showCardSearch('battlefield');
                 }
             }

@@ -8,7 +8,8 @@
         open: incomingOpen = false,
         targetZone: incomingTargetZone = 'hand',
         submitHandler = null,
-        onClose = null
+        onClose = null,
+        tokenHints: incomingTokenHints = []
     } = $props();
 
     let open = $state(incomingOpen);
@@ -24,6 +25,7 @@
     let searchInput = null;
     let resultRefs = [];
     let customSubmit = $state(typeof submitHandler === 'function' ? submitHandler : null);
+    let tokenHintNames = $state(dedupeTokenHints(incomingTokenHints));
 
     const zoneLabels = {
         hand: 'the hand',
@@ -32,6 +34,38 @@
         exile: 'the exile',
         library: 'the library'
     };
+
+    function normalizeTokenHint(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value).replace(/\s+/g, ' ').trim();
+    }
+
+    function dedupeTokenHints(source) {
+        const seen = new Set();
+        const result = [];
+        if (!Array.isArray(source)) {
+            return result;
+        }
+        for (const entry of source) {
+            const hint = normalizeTokenHint(entry);
+            if (!hint) {
+                continue;
+            }
+            const key = hint.toLowerCase();
+            if (seen.has(key)) {
+                continue;
+            }
+            seen.add(key);
+            result.push(hint);
+        }
+        return result;
+    }
+
+    function normalizeTokenNameForFilter(value) {
+        return normalizeTokenHint(value).toLowerCase();
+    }
 
     $effect(() => {
         open = incomingOpen;
@@ -43,6 +77,16 @@
 
     $effect(() => {
         customSubmit = typeof submitHandler === 'function' ? submitHandler : null;
+    });
+
+    $effect(() => {
+        tokenHintNames = dedupeTokenHints(incomingTokenHints);
+    });
+
+    $effect(() => {
+        if (tokenHintNames.length) {
+            tokenOnly = true;
+        }
     });
 
     $effect(() => {
@@ -152,6 +196,39 @@
         }
     }
 
+    function buildTokenFilterSet() {
+        const normalized = tokenHintNames
+            .map((value) => normalizeTokenNameForFilter(value))
+            .filter(Boolean);
+        return new Set(normalized);
+    }
+
+    function applyTokenHint(tokenName) {
+        if (!tokenName) {
+            return;
+        }
+        query = tokenName;
+        selectedIndex = -1;
+        clearSearchTimer();
+        runSearch(tokenName, tokenOnly);
+        if (searchInput && typeof searchInput.focus === 'function') {
+            searchInput.focus();
+        }
+    }
+
+    function clearTokenHints(event) {
+        event?.preventDefault();
+        if (
+            typeof window !== 'undefined' &&
+            window.CardSearchModal &&
+            typeof window.CardSearchModal.setTokenFilter === 'function'
+        ) {
+            window.CardSearchModal.setTokenFilter([]);
+        } else {
+            tokenHintNames = [];
+        }
+    }
+
     function handleKeydown(event) {
         if (!open) return;
 
@@ -195,9 +272,17 @@
                 throw new Error('Search failed');
             }
 
-            const cards = await response.json();
+            const fetchedCards = await response.json();
+            const normalizedSet = buildTokenFilterSet();
+            let cardList = Array.isArray(fetchedCards) ? fetchedCards : [];
+            if (normalizedSet.size) {
+                cardList = cardList.filter((card) =>
+                    normalizedSet.has(normalizeTokenNameForFilter(card?.name))
+                );
+            }
+
             if (query === term && tokenOnly === tokenFlag && open) {
-                results = Array.isArray(cards) ? cards : [];
+                results = cardList;
             }
         } catch (err) {
             console.error('[CardSearchModal] search failed', err);
@@ -335,6 +420,31 @@
                     <span>Tokens only</span>
                 </label>
             </div>
+
+            {#if tokenHintNames.length}
+                <div class="flex flex-col gap-2 rounded-xl border border-arena-border/30 bg-arena-surface/60 p-3 text-xs text-arena-text-dim">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-[11px] uppercase tracking-[0.3em] text-arena-muted">Battlefield tokens</span>
+                        <span class="text-[11px] font-semibold text-white">{tokenHintNames.length} detected</span>
+                        <button
+                            type="button"
+                            class="text-[11px] underline text-arena-text-dim hover:text-white transition-colors"
+                            on:click={clearTokenHints}>
+                            Clear filter
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        {#each tokenHintNames as token (token)}
+                            <button
+                                type="button"
+                                class="px-3 py-1.5 rounded-full border border-arena-accent/60 bg-arena-accent/20 text-sm font-medium text-white transition hover:border-arena-accent hover:bg-arena-accent/40 hover:text-white"
+                                on:click={() => applyTokenHint(token)}>
+                                {token}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+            {/if}
 
             <div class="overflow-y-auto max-h-[65vh] pr-1">
                 {#if error}
