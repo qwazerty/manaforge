@@ -10,6 +10,7 @@
         phaseModeLabel = 'Strict',
         passButton = null,
         searchButton = null,
+        tokenSearchButton = null,
         quickButtons = [],
         spectatorInfo = {
             icon: '👁️',
@@ -236,16 +237,28 @@
             </div>
         {/if}
 
-        {#if searchButton}
-            <div class="mb-4">
-                <button
-                    type="button"
-                    class={combineButtonClasses(searchButton)}
-                    title={searchButton.title}
-                    disabled={searchButton.disabled}
-                    onclick={() => handlePrimaryButtonClick(searchButton)}>
-                    {searchButton.label}
-                </button>
+        {#if searchButton || tokenSearchButton}
+            <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {#if searchButton}
+                    <button
+                        type="button"
+                        class={combineButtonClasses(searchButton)}
+                        title={searchButton.title}
+                        disabled={searchButton.disabled}
+                        onclick={() => handlePrimaryButtonClick(searchButton)}>
+                        {searchButton.label}
+                    </button>
+                {/if}
+                {#if tokenSearchButton}
+                    <button
+                        type="button"
+                        class={combineButtonClasses(tokenSearchButton)}
+                        title={tokenSearchButton.title}
+                        disabled={tokenSearchButton.disabled}
+                        onclick={() => handlePrimaryButtonClick(tokenSearchButton)}>
+                        {tokenSearchButton.label}
+                    </button>
+                {/if}
             </div>
         {/if}
 

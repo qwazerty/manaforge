@@ -5,6 +5,23 @@
 
     let component = null;
     let submitHandler = null;
+    let tokenFilterList = [];
+
+    function normalizeTokenFilterList(filter) {
+        if (!Array.isArray(filter)) {
+            return [];
+        }
+        return filter
+            .map((value) => String(value || '').trim())
+            .filter((value) => value.length > 0);
+    }
+
+    function updateComponentTokenHints() {
+        if (!component || typeof component.$set !== 'function') {
+            return;
+        }
+        component.$set({ tokenHints: tokenFilterList });
+    }
 
     function mountComponent() {
         if (!document.body.contains(host)) {
@@ -36,6 +53,7 @@
                 open: false,
                 targetZone: 'hand',
                 submitHandler,
+                tokenHints: tokenFilterList,
                 onClose: () => {
                     // Keep external state in sync when the modal closes itself
                     api._open = false;
@@ -58,7 +76,8 @@
             instance.$set({
                 open: true,
                 targetZone,
-                submitHandler
+                submitHandler,
+                tokenHints: tokenFilterList
             });
         },
 
@@ -75,6 +94,10 @@
             if (component) {
                 component.$set({ submitHandler });
             }
+        },
+        setTokenFilter(filter) {
+            tokenFilterList = normalizeTokenFilterList(filter);
+            updateComponentTokenHints();
         }
     };
 
