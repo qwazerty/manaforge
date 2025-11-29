@@ -371,6 +371,47 @@ async function exportReplay() {
     }
 }
 
+// ===== END GAME =====
+async function endGame() {
+    if (!gameId) {
+        console.error('No game ID available');
+        return;
+    }
+
+    const confirmed = confirm('Are you sure you want to end this game? This action cannot be undone.');
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/games/${gameId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            throw new Error('Failed to end game');
+        }
+        
+        // Stop auto-refresh and WebSocket
+        stopAutoRefresh();
+        if (window.websocket) {
+            window.websocket.close();
+        }
+        
+        // Mark the game as ended visually
+        document.body.classList.add('game-ended');
+        
+        // Disable the end game button
+        const endGameBtn = document.getElementById('end-game-btn');
+        if (endGameBtn) {
+            endGameBtn.disabled = true;
+            endGameBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    } catch (error) {
+        console.error('Error ending game:', error);
+        alert('Failed to end game. Please try again.');
+    }
+}
+
 // Export core module functionality to global scope
 window.GameCore = {
     initializeGame,
@@ -379,6 +420,7 @@ window.GameCore = {
     stopAutoRefresh,
     updateSpectatorModeClass,
     exportReplay,
+    endGame,
     // Expose getters for state variables
     getGameState: () => gameState,
     getGameId: () => gameId,
