@@ -292,6 +292,7 @@ class CardService:
 
         results: List[Dict[str, Any]] = []
         seen: Set[str] = set()
+        should_dedupe = not tokens_only
 
         for name_key in sorted(_LOCAL_ORACLE_CACHE.keys()):
             if normalized_query not in name_key:
@@ -303,6 +304,13 @@ class CardService:
                     card for card in pool
                     if self._is_token_card(card)
                 ]
+                if not pool:
+                    continue
+                for card in pool:
+                    results.append(card)
+                    if limit and limit > 0 and len(results) >= limit:
+                        return results
+                continue
             elif normalized_set:
                 pool = [
                     card for card in pool
@@ -314,9 +322,10 @@ class CardService:
                 continue
 
             dedupe_key = str(chosen.get("oracle_id") or chosen.get("id") or chosen.get("name"))
-            if dedupe_key in seen:
-                continue
-            seen.add(dedupe_key)
+            if should_dedupe:
+                if dedupe_key in seen:
+                    continue
+                seen.add(dedupe_key)
 
             results.append(chosen)
             if limit and limit > 0 and len(results) >= limit:
