@@ -829,6 +829,85 @@ function returnAllRevealToHand() {
     });
 }
 
+function _getZoneCards(zoneName) {
+    const currentSelectedPlayer = GameCore.getSelectedPlayer();
+    if (currentSelectedPlayer === 'spectator') {
+        return [];
+    }
+
+    const gameState = GameCore.getGameState();
+    if (!gameState || !gameState.players) {
+        return [];
+    }
+
+    const playerIndex = currentSelectedPlayer === 'player2' ? 1 : 0;
+    const player = gameState.players[playerIndex];
+    
+    const zoneKey = zoneName === 'reveal' ? 'reveal_zone' : (zoneName === 'look' ? 'look_zone' : zoneName);
+    return Array.isArray(player?.[zoneKey]) ? player[zoneKey] : [];
+}
+
+function sendAllZoneToGraveyard(zoneName) {
+    const cards = _getZoneCards(zoneName);
+    if (cards.length === 0) return;
+
+    cards.forEach(card => {
+        if (card.unique_id) {
+            moveCard(card.id || card.card_id, zoneName, 'graveyard', card.unique_id);
+        }
+    });
+}
+
+function sendAllZoneToHand(zoneName) {
+    const cards = _getZoneCards(zoneName);
+    if (cards.length === 0) return;
+
+    cards.forEach(card => {
+        if (card.unique_id) {
+            moveCard(card.id || card.card_id, zoneName, 'hand', card.unique_id);
+        }
+    });
+}
+
+function sendAllZoneToExile(zoneName) {
+    const cards = _getZoneCards(zoneName);
+    if (cards.length === 0) return;
+
+    cards.forEach(card => {
+        if (card.unique_id) {
+            moveCard(card.id || card.card_id, zoneName, 'exile', card.unique_id);
+        }
+    });
+}
+
+function sendAllZoneToTopLibrary(zoneName) {
+    const cards = _getZoneCards(zoneName);
+    if (cards.length === 0) return;
+
+    // Shuffle the order to randomize which card ends on top
+    const shuffled = [...cards].sort(() => Math.random() - 0.5);
+    
+    shuffled.forEach(card => {
+        if (card.unique_id) {
+            sendToTopLibrary(card.id || card.card_id, zoneName, card.unique_id);
+        }
+    });
+}
+
+function sendAllZoneToBottomLibrary(zoneName) {
+    const cards = _getZoneCards(zoneName);
+    if (cards.length === 0) return;
+
+    // Shuffle the order to randomize
+    const shuffled = [...cards].sort(() => Math.random() - 0.5);
+    
+    shuffled.forEach(card => {
+        if (card.unique_id) {
+            sendToBottomLibrary(card.id || card.card_id, zoneName, card.unique_id);
+        }
+    });
+}
+
 function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
     // Close hover preview when duplicating a card
     if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
@@ -1104,7 +1183,12 @@ window.GameActions = {
     attachCard,
     detachCard,
     moveAllHandToReveal,
-    returnAllRevealToHand
+    returnAllRevealToHand,
+    sendAllZoneToGraveyard,
+    sendAllZoneToHand,
+    sendAllZoneToExile,
+    sendAllZoneToTopLibrary,
+    sendAllZoneToBottomLibrary
 };
 
 /**
