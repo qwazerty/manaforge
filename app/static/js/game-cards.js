@@ -1318,7 +1318,7 @@ const GameCards = {
             : null;
         const isSpectator = selectedPlayer === 'spectator';
         const canControlZones = selectedPlayer === 'player1' || selectedPlayer === 'player2';
-        const opponentPlayableZones = ['graveyard', 'exile', 'reveal', 'reveal_zone'];
+        const opponentPlayableZones = ['graveyard', 'exile', 'reveal', 'reveal_zone', 'look', 'look_zone'];
         const canPlayOpponentCard = canControlZones && !isSpectator && isOpponent && opponentPlayableZones.includes(normalizedZone);
 
         const safeCardName = GameUtils.escapeHtml(cardName || 'Unknown');
@@ -2103,10 +2103,12 @@ const GameCards = {
         const cardId = cardElement.getAttribute('data-card-id');
         const cardZone = cardElement.getAttribute('data-card-zone');
         const uniqueCardId = cardElement.getAttribute('data-card-unique-id');
+        const cardOwnerId = cardElement.getAttribute('data-card-owner');
         event.dataTransfer.setData('text/plain', JSON.stringify({
             cardId,
             cardZone,
-            uniqueCardId
+            uniqueCardId,
+            cardOwnerId
         }));
         // Optionally: add visual feedback
         const dragHandle = cardElement.closest('.card-attachment-group') || cardElement;

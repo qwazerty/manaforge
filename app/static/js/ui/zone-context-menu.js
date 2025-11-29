@@ -16,12 +16,12 @@ class ZoneContextMenu {
             icon: '📚',
             actions: [
                 { id: 'draw', label: 'Draw Card', icon: '🃏', action: 'drawCard' },
+                { id: 'lookTopLibrary', label: 'Look Top Library', icon: '👁️', action: 'lookTopLibrary' },
+                { id: 'revealTopLibrary', label: 'Reveal Top Library', icon: '👁️', action: 'revealTopLibrary' },
                 { id: 'mill', label: 'Mill Top Card', icon: '🌀', action: 'mill' },
                 { id: 'search', label: 'Search Library', icon: '🔍', action: 'searchZone' },
                 { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' },
-                { id: 'mulligan', label: 'Mulligan', icon: '🔄', action: 'mulligan' },
-                { id: 'scry', label: 'Scry', icon: '🔮', action: 'scry' },
-                { id: 'surveil', label: 'Surveil', icon: '👁️', action: 'surveil' }
+                { id: 'mulligan', label: 'Mulligan', icon: '🔄', action: 'mulligan' }
             ]
         },
         graveyard: {
@@ -232,6 +232,16 @@ class ZoneContextMenu {
             case 'drawCard':
                 this.drawCard(isOpponent);
                 break;
+            case 'lookTopLibrary':
+                if (window.GameActions && typeof window.GameActions.lookTopLibrary === 'function') {
+                    window.GameActions.lookTopLibrary();
+                }
+                break;
+            case 'revealTopLibrary':
+                if (window.GameActions && typeof window.GameActions.revealTopLibrary === 'function') {
+                    window.GameActions.revealTopLibrary();
+                }
+                break;
             case 'searchZone':
                 this.searchZone(baseZoneName, isOpponent);
                 break;
@@ -243,12 +253,6 @@ class ZoneContextMenu {
                 break;
             case 'mulligan':
                 this.mulligan(isOpponent);
-                break;
-            case 'scry':
-                this.scry(isOpponent);
-                break;
-            case 'surveil':
-                this.surveil(isOpponent);
                 break;
             default:
                 console.warn(`Unknown action: ${actionType}`);
@@ -264,32 +268,6 @@ class ZoneContextMenu {
             window.GameActions.performGameAction('mulligan');
         } else {
             console.warn('GameActions not available for mulligan');
-        }
-    }
-
-    /**
-     * Scry X
-     */
-    static scry(isOpponent = false) {
-        if (isOpponent) return;
-        const amount = 1;
-        if (window.GameActions && window.GameActions.performGameAction) {
-            window.GameActions.performGameAction('scry', { amount: amount });
-        } else {
-            console.warn('GameActions not available for scry');
-        }
-    }
-
-    /**
-     * Surveil X
-     */
-    static surveil(isOpponent = false) {
-        if (isOpponent) return;
-        const amount = 1;
-        if (window.GameActions && window.GameActions.performGameAction) {
-            window.GameActions.performGameAction('surveil', { amount: amount });
-        } else {
-            console.warn('GameActions not available for surveil');
         }
     }
 

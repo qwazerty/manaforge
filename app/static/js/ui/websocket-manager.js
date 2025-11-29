@@ -196,15 +196,6 @@ class WebSocketManager {
                         this._handleCombatStateUpdate(oldGameState, newGameState, message.action_result);
                     }
                     
-                    // Check for pending actions like scry or surveil
-                    if (newGameState.pending_action && newGameState.pending_action.player_id === GameCore.getSelectedPlayer()) {
-                        const pending = newGameState.pending_action;
-                        const player = newGameState.players.find(p => p.id === pending.player_id);
-                        if (player && player.temporary_zone && player.temporary_zone.length > 0) {
-                            DecisionModal.show(pending.type, player.temporary_zone);
-                        }
-                    }
-                    
                     if (actionResult && actionResult.action === 'tap_card') {
                         const result = actionResult;
                     }

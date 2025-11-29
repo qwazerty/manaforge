@@ -2929,6 +2929,30 @@
         padding: 12px 0;
     }
 
+    .look-popup {
+        border: 1px solid rgba(168, 85, 247, 0.35);
+        background: rgba(30, 41, 59, 0.92);
+        backdrop-filter: blur(8px);
+    }
+
+    .look-popup .stack-popup-header {
+        background: rgba(30, 41, 59, 0.95);
+        border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+    }
+
+    .look-popup-title {
+        color: #fb923c;
+    }
+
+    .look-popup-icon {
+        color: #fb923c;
+    }
+
+    .look-popup-count {
+        background: rgba(251, 209, 115, 0.2);
+        color: #fb923c;
+    }
+
     .zone-popup-header {
         background: rgba(30, 41, 59, 0.8);
         border-bottom: 1px solid rgba(249, 115, 22, 0.2);

@@ -687,9 +687,8 @@ class SimpleGameEngine:
             "shuffle_library": self._shuffle_library,
             "untap_all": self._untap_all,
             "mulligan": self._mulligan,
-            "scry": self._scry,
-            "surveil": self._surveil,
-            "resolve_temporary_zone": self._resolve_temporary_zone,
+            "look_top_library": self._look_top_library,
+            "reveal_top_library": self._reveal_top_library,
             "target_card": self._target_card,
             "flip_card": self._flip_card,
             "reveal_face_down_card": self._reveal_face_down_card,
@@ -841,8 +840,19 @@ class SimpleGameEngine:
         for _ in range(min(count, len(player.library))):
             if player.library:
                 card = player.library.pop(0)
+                self._clear_look_zone_for_card(player, card.unique_id)
                 player.hand.append(card)
 
+    def _clear_look_zone_for_card(self, player: Player, unique_id: Optional[str]) -> None:
+        """Remove a card from a player's look zone when it leaves the library."""
+        if unique_id is None:
+            return
+        look_zone = getattr(player, "look_zone", None)
+        if not look_zone:
+            return
+        filtered = [card for card in look_zone if card.unique_id != unique_id]
+        player.look_zone = filtered
+    
     def _initialize_commander_zone(self, player: Player, deck: Deck) -> None:
         """Populate the command zone with designated commanders."""
         commanders = getattr(deck, "commanders", []) or []
@@ -1509,12 +1519,15 @@ class SimpleGameEngine:
                 if card.unique_id == unique_id:
                     card_found = source_zone_list.pop(i)
                     break
-        
+       
         if not card_found:
             raise ValueError(
                 f"Card with unique_id {unique_id} not found in "
                 f"{source_zone_name} for player {source_player_id}"
             )
+
+        if source_zone_name == "library":
+            self._clear_look_zone_for_card(source_player, unique_id)
 
         previous_host_id = card_found.attached_to
         if source_zone_name == "battlefield" and source_zone_list is not None:
@@ -1616,6 +1629,8 @@ class SimpleGameEngine:
             return "library"
         if zone_name in ["reveal", "reveal_zone"]:
             return "reveal_zone"
+        if zone_name in ["look", "look_zone"]:
+            return "look_zone"
         if zone_name in ["commander", "commander_zone", "command_zone"]:
             return "commander_zone"
         return zone_name
@@ -1828,83 +1843,33 @@ class SimpleGameEngine:
         
         print(f"Player {action.player_id} took a mulligan.")
 
-    def _scry(self, game_state: GameState, action: GameAction) -> None:
-        """Handle scry action by moving cards to the temporary zone."""
+    def _look_top_library(self, game_state: GameState, action: GameAction) -> None:
+        """Handle look top library action without removing the card."""
         player = self._get_player(game_state, action.player_id)
-        amount = action.additional_data.get("amount", 1)
+        if not player.library:
+            print(f"Player {action.player_id} attempted to look at an empty library.")
+            return
 
-        scry_cards = player.library[:amount]
-        player.library = player.library[amount:]
-        player.temporary_zone.extend(scry_cards)
+        top_card = player.library[0]
+        look_zone = self._get_zone_list(game_state, player, "look_zone")
+        look_zone.clear()
+        look_zone.append(top_card.model_copy(deep=True))
 
-        game_state.pending_action = {
-            "player_id": player.id,
-            "type": "scry",
-            "count": len(scry_cards)
-        }
-        
-        print(f"Player {action.player_id} is scrying {len(scry_cards)} cards.")
+        print(f"Player {action.player_id} looked at {top_card.name} from the top of their library.")
 
-    def _surveil(self, game_state: GameState, action: GameAction) -> None:
-        """Handle surveil action by moving cards to the temporary zone."""
+    def _reveal_top_library(self, game_state: GameState, action: GameAction) -> None:
+        """Handle reveal top library action by moving the card to the reveal zone."""
         player = self._get_player(game_state, action.player_id)
-        amount = action.additional_data.get("amount", 1)
+        if not player.library:
+            print(f"Player {action.player_id} attempted to reveal an empty library.")
+            return
 
-        surveil_cards = player.library[:amount]
-        player.library = player.library[amount:]
-        player.temporary_zone.extend(surveil_cards)
+        top_card = player.library.pop(0)
+        reveal_zone = self._get_zone_list(game_state, player, "reveal_zone")
+        reveal_zone.append(top_card)
+        self._clear_look_zone_for_card(player, top_card.unique_id)
 
-        game_state.pending_action = {
-            "player_id": player.id,
-            "type": "surveil",
-            "count": len(surveil_cards)
-        }
-
-        print(
-            f"Player {action.player_id} is surveiling {len(surveil_cards)} cards."
-        )
-
-    def _resolve_temporary_zone(
-        self, game_state: GameState, action: GameAction
-    ) -> None:
-        """Resolve player decisions for cards in the temporary zone."""
-        player = self._get_player(game_state, action.player_id)
-        decisions = action.additional_data.get("decisions", [])
-
-        for decision in decisions:
-            card_id = decision.get("card_id")
-            destination = decision.get("destination")
-
-            card_to_move = None
-            for i, card in enumerate(player.temporary_zone):
-                if card.id == card_id:
-                    card_to_move = player.temporary_zone.pop(i)
-                    break
-            
-            if not card_to_move:
-                print(
-                    f"Warning: Card {card_id} not found in temporary zone "
-                    "for resolution."
-                )
-                continue
-
-            if destination == "top":
-                player.library.insert(0, card_to_move)
-            elif destination == "bottom":
-                player.library.append(card_to_move)
-            elif destination == "graveyard":
-                player.graveyard.append(card_to_move)
-            else:
-                print(
-                    f"Warning: Unknown destination '{destination}'. "
-                    "Returning card to top of library."
-                )
-                player.library.insert(0, card_to_move)
-        
-        if not player.temporary_zone:
-            game_state.pending_action = None
-        
-        print(f"Player {action.player_id} resolved temporary zone actions.")
+        print(f"Player {action.player_id} revealed {top_card.name} from the top of their library.")
 
     def _resolve_all_stack(self, game_state: GameState, action: GameAction) -> None:
         """Resolve all spells on the stack."""
@@ -2483,12 +2448,6 @@ class SimpleGameEngine:
                     break
 
             if removed:
-                break
-
-            # Temporary zones are optional attributes
-            temp_zone = getattr(player, "temporary_zone", None)
-            if temp_zone and remove_from_collection(temp_zone, "temporary_zone"):
-                removed = True
                 break
 
         if not removed:

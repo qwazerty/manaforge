@@ -264,14 +264,13 @@ function findCardInfoInState(uniqueIds, cardIds, names) {
     }
 
     if (Array.isArray(state.players)) {
-        const zones = [
-            'hand',
-            'battlefield',
-            'graveyard',
-            'exile',
-            'temporary_zone',
-            'library'
-        ];
+            const zones = [
+                'hand',
+                'battlefield',
+                'graveyard',
+                'exile',
+                'library'
+            ];
         for (const player of state.players) {
             for (const zoneName of zones) {
                 const zone = player[zoneName];
@@ -522,6 +521,10 @@ async function performHttpGameAction(actionType, actionData = {}) {
                     ...actionData
                 };
                 break;
+            case 'look_top_library':
+            case 'reveal_top_library':
+                endpoint = `/api/v1/games/${gameId}/action`;
+                break;
             default:
                 throw new Error(`Unknown action type: ${actionType}`);
         }
@@ -693,6 +696,14 @@ function showInRevealZone(cardId, sourceZone, uniqueCardId = null, callback = nu
         clearTargetedState(uniqueCardId);
     }
     moveCard(cardId, sourceZone, 'reveal', uniqueCardId, null, callback);
+}
+
+function lookTopLibrary() {
+    performGameAction('look_top_library');
+}
+
+function revealTopLibrary() {
+    performGameAction('reveal_top_library');
 }
 
 function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
@@ -1076,6 +1087,8 @@ window.GameActions = {
     sendToBottomLibrary,
     deleteToken,
     millTopLibraryCard,
+    lookTopLibrary,
+    revealTopLibrary,
     updateCardTappedState,
     resolveStackSpell,
     counterStackSpell,
