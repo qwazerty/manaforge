@@ -31,7 +31,8 @@ class UIZonesManager {
         'hand': { title: 'Hand', icon: '🃏', description: 'Cards in your hand' },
         'commander': { title: 'Commander', icon: '👑', description: 'Command zone with your commander and tax' },
         'battlefield': { title: 'Battlefield', icon: '⚔️', description: 'Cards currently in play' },
-        'reveal': { title: 'Reveal Zone', icon: '👁️', description: 'Cards currently revealed to all players' }
+        'reveal': { title: 'Reveal Zone', icon: '👁️', description: 'Cards currently revealed to all players' },
+        'look': { title: 'Look Zone', icon: '🕵️', description: 'Cards you are looking at from your library' }
     };
 
     static _getSelectedPlayer() {
@@ -593,7 +594,7 @@ class UIZonesManager {
                 return;
             }
 
-            const { cardId, cardZone, uniqueCardId } = data;
+            const { cardId, cardZone, uniqueCardId, cardOwnerId } = data;
 
             const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
             const battlefieldZones = ['battlefield', 'lands', 'creatures', 'support', 'permanents'];
@@ -699,6 +700,14 @@ class UIZonesManager {
 
             // Trigger an action to move the card (adjust to the backend logic)
             if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
+                const options = {};
+                if (cardOwnerId) {
+                    options.sourcePlayerId = cardOwnerId;
+                }
+                const targetOwnerId = current?.dataset?.zoneOwner;
+                if (targetOwnerId) {
+                    options.destinationPlayerId = targetOwnerId;
+                }
                 window.GameActions.moveCard(
                     cardId,
                     cardZone,
@@ -706,7 +715,8 @@ class UIZonesManager {
                     uniqueCardId,
                     null,
                     null,
-                    positionIndex
+                    positionIndex,
+                    options
                 );
             } else {
                 console.warn('Card movement not implemented on the backend.');
@@ -751,7 +761,7 @@ class UIZonesManager {
             return;
         }
 
-        const { cardId, cardZone, uniqueCardId } = dragData;
+        const { cardId, cardZone, uniqueCardId, cardOwnerId } = dragData;
         const draggedElement = (typeof GameCards !== 'undefined' ? GameCards.draggedCardElement : null) || document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         const groupHandle = draggedElement && typeof draggedElement.closest === 'function'
             ? draggedElement.closest('.card-attachment-group')
@@ -820,6 +830,14 @@ class UIZonesManager {
         }
 
         if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
+            const options = {};
+            if (cardOwnerId) {
+                options.sourcePlayerId = cardOwnerId;
+            }
+            const targetOwnerId = container?.dataset?.zoneOwner || container?.getAttribute('data-zone-owner');
+            if (targetOwnerId) {
+                options.destinationPlayerId = targetOwnerId;
+            }
             window.GameActions.moveCard(
                 cardId,
                 cardZone,
@@ -827,7 +845,8 @@ class UIZonesManager {
                 uniqueCardId,
                 null,
                 null,
-                positionIndex
+                positionIndex,
+                options
             );
         }
     }
@@ -849,6 +868,7 @@ class UIZonesManager {
         const normalizedZoneName = (() => {
             if (pureZoneName === 'commander') return 'commander_zone';
             if (pureZoneName === 'reveal') return 'reveal_zone';
+            if (pureZoneName === 'look') return 'look_zone';
             return pureZoneName;
         })();
 
@@ -857,6 +877,8 @@ class UIZonesManager {
             zone = playerData.library || playerData.deck || [];
         } else if (normalizedZoneName === 'reveal_zone') {
             zone = playerData.reveal_zone || playerData.reveal || [];
+        } else if (normalizedZoneName === 'look_zone') {
+            zone = playerData.look_zone || playerData.look || [];
         } else {
             zone = playerData[normalizedZoneName] || [];
         }

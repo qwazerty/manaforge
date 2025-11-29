@@ -652,10 +652,6 @@ class UIActionHistory {
             return true;
         }
 
-        if (normalized === 'resolve_temporary_zone') {
-            return true;
-        }
-
         if (normalized === 'flip_card') {
             return true;
         }
@@ -877,12 +873,6 @@ class UIActionHistory {
         const normalizedAction = entry.rawAction
             ? String(entry.rawAction).toLowerCase()
             : '';
-        if (normalizedAction === 'scry' || normalizedAction === 'surveil') {
-            entry.details = [];
-            entry.cardRefs = [];
-            return;
-        }
-
         const moveContext = this._resolveHandToLibraryMoveContext(entry);
         if (!moveContext) {
             return;
@@ -1560,7 +1550,7 @@ class UIActionHistory {
             return null;
         };
 
-        const zones = ['hand', 'battlefield', 'graveyard', 'exile', 'temporary_zone'];
+        const zones = ['hand', 'battlefield', 'graveyard', 'exile'];
 
         if (Array.isArray(state.stack)) {
             for (const spell of state.stack) {

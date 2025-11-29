@@ -270,12 +270,11 @@ class Player(BaseModel):
     reveal_zone: List[Card] = Field(
         default_factory=list, description="Cards in the player's reveal zone"
     )
+    look_zone: List[Card] = Field(
+        default_factory=list, description="Cards the player has looked at from the library"
+    )
     mana_pool: Dict[str, int] = Field(
         default_factory=dict, description="Available mana"
-    )
-    temporary_zone: List[Card] = Field(
-        default_factory=list,
-        description="Temporary zone for scry/surveil"
     )
     counters: Dict[str, int] = Field(
         default_factory=dict,
@@ -409,10 +408,6 @@ class GameState(BaseModel):
     chat_log: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Chat messages exchanged during the game session"
-    )
-    pending_action: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="A pending action requiring player input, e.g., for scry/surveil"
     )
     created_at: datetime = Field(
         default_factory=current_utc_datetime,

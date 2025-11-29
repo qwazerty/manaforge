@@ -6,6 +6,7 @@
 
 class UIRenderersTemplates {
     static _revealPopupElements = new Map();
+    static _lookPopupElements = new Map();
     static _actionPanelComponent = null;
     static _actionPanelTarget = null;
     static _stackPopupComponent = null;
@@ -95,7 +96,8 @@ class UIRenderersTemplates {
 
         const players = Array.isArray(gameState.players) ? gameState.players : [];
         this._preloadCardImages(players);
-        this._updateRevealOverlay(gameState);
+        this._updateZoneOverlay(gameState, 'reveal');
+        this._updateZoneOverlay(gameState, 'look');
         this._ensureCommanderPopups(gameState);
 
         return true;
@@ -233,13 +235,15 @@ class UIRenderersTemplates {
             this._renderActionPanelSvelte(actionPanelContainer, panelProps);
 
             this._updateStackOverlay(stack, gameState);
-            this._updateRevealOverlay(gameState);
+            this._updateZoneOverlay(gameState, 'reveal');
+            this._updateZoneOverlay(gameState, 'look');
             this._ensureCommanderPopups(gameState);
         } catch (error) {
             this._destroyActionPanelComponent();
             this._renderError(actionPanelContainer, 'Error', error.message);
             this._updateStackOverlay([], null);
-            this._updateRevealOverlay(null);
+            this._updateZoneOverlay(null, 'reveal');
+            this._updateZoneOverlay(null, 'look');
             this._ensureCommanderPopups(null);
         }
     }
@@ -892,9 +896,11 @@ class UIRenderersTemplates {
         this._stackPopupTarget = null;
     }
 
-    static _updateRevealOverlay(gameState) {
-        if (!this._revealPopupElements) {
-            this._revealPopupElements = new Map();
+    static _updateZoneOverlay(gameState, zoneType) {
+        const config = this._getZoneConfig(zoneType);
+        const cacheKey = `_${zoneType}PopupElements`;
+        if (!this[cacheKey]) {
+            this[cacheKey] = new Map();
         }
 
         const players = Array.isArray(gameState?.players) ? gameState.players : [];
@@ -904,10 +910,10 @@ class UIRenderersTemplates {
         players.forEach((player, index) => {
             const playerId = player?.id || `player${index + 1}`;
             const playerName = player?.name || `Player ${index + 1}`;
-            const revealCards = Array.isArray(player?.reveal_zone)
-                ? player.reveal_zone
-                : (Array.isArray(player?.reveal) ? player.reveal : []);
-            const elements = this._getRevealPopupElements(playerId, playerName);
+            const zoneCards = Array.isArray(player?.[config.zoneKey])
+                ? player[config.zoneKey]
+                : (Array.isArray(player?.[zoneType]) ? player[zoneType] : []);
+            const elements = this._getZonePopupElements(zoneType, playerId, playerName);
             if (!elements) {
                 return;
             }
@@ -919,7 +925,7 @@ class UIRenderersTemplates {
                 : (selectedPlayer !== playerId);
             const isControlled = selectedPlayer !== 'spectator' && !isOpponent;
 
-            if (!revealCards.length) {
+            if (!zoneCards.length) {
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
                 elements.panel.dataset.appear = 'hidden';
@@ -927,14 +933,20 @@ class UIRenderersTemplates {
                 return;
             }
 
-            elements.body.innerHTML = this._generateRevealContent(revealCards, isOpponent, playerId);
-            elements.countLabel.textContent = String(revealCards.length);
-            elements.titleLabel.textContent = `Reveal - ${playerName}`;
+            // For look zone, opponent sees cards face-down
+            const showFaceDown = zoneType === 'look' && isOpponent;
+
+            elements.body.innerHTML = this._generateZoneContent(zoneCards, isOpponent, playerId, {
+                zoneContext: zoneType,
+                showFaceDown
+            });
+            elements.countLabel.textContent = String(zoneCards.length);
+            elements.titleLabel.textContent = `${config.title} - ${playerName}`;
             elements.panel.classList.remove('hidden');
             elements.panel.setAttribute('aria-hidden', 'false');
             elements.panel.dataset.appear = 'visible';
 
-            const computedWidth = this._calculateRevealPopupWidth(revealCards.length);
+            const computedWidth = this._calculateRevealPopupWidth(zoneCards.length);
             if (computedWidth) {
                 elements.panel.style.width = `${computedWidth}px`;
             }
@@ -946,7 +958,7 @@ class UIRenderersTemplates {
             }
         });
 
-        this._revealPopupElements.forEach((elements, playerId) => {
+        this[cacheKey].forEach((elements, playerId) => {
             if (!seen.has(playerId)) {
                 elements.panel.classList.add('hidden');
                 elements.panel.setAttribute('aria-hidden', 'true');
@@ -954,6 +966,14 @@ class UIRenderersTemplates {
                 delete elements.panel.dataset.userMoved;
             }
         });
+    }
+
+    static _getZoneConfig(zoneType) {
+        const configs = {
+            reveal: { zoneKey: 'reveal_zone', title: 'Reveal', icon: '👁️', emptyText: 'No cards revealed' },
+            look: { zoneKey: 'look_zone', title: 'Look', icon: '🕵️', emptyText: 'No cards to look at' }
+        };
+        return configs[zoneType] || configs.reveal;
     }
 
     static _calculateRevealPopupWidth(cardCount) {
@@ -1146,7 +1166,7 @@ class UIRenderersTemplates {
         }
 
         const normalized = (query || '').trim().toLowerCase();
-        const list = panel.querySelector('.reveal-card-list');
+        const list = panel.querySelector('.zone-card-list');
         const emptyState = panel.querySelector('.popup-search-empty');
 
         if (!list) {
@@ -1178,19 +1198,21 @@ class UIRenderersTemplates {
         }
     }
 
-    static _getRevealPopupElements(playerId, playerName) {
+    static _getZonePopupElements(zoneType, playerId, playerName) {
         if (!playerId) {
             return null;
         }
 
-        if (!this._revealPopupElements) {
-            this._revealPopupElements = new Map();
+        const config = this._getZoneConfig(zoneType);
+        const cacheKey = `_${zoneType}PopupElements`;
+        if (!this[cacheKey]) {
+            this[cacheKey] = new Map();
         }
 
-        if (this._revealPopupElements.has(playerId)) {
-            const existing = this._revealPopupElements.get(playerId);
+        if (this[cacheKey].has(playerId)) {
+            const existing = this[cacheKey].get(playerId);
             if (existing?.titleLabel) {
-                existing.titleLabel.textContent = `Reveal - ${playerName}`;
+                existing.titleLabel.textContent = `${config.title} - ${playerName}`;
             }
             this._ensurePopupSearchElements(existing?.panel);
             this._initializePopupSearch(existing?.panel);
@@ -1199,68 +1221,75 @@ class UIRenderersTemplates {
 
         const safeName = GameUtils.escapeHtml(playerName || 'Player');
         const panel = document.createElement('div');
-        panel.id = `reveal-popup-${playerId}`;
-        panel.className = 'stack-popup reveal-popup hidden';
+        panel.id = `${zoneType}-popup-${playerId}`;
+        panel.className = `stack-popup ${zoneType}-popup hidden`;
         panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-label', `Reveal - ${playerName}`);
+        panel.setAttribute('aria-label', `${config.title} - ${playerName}`);
         panel.setAttribute('aria-hidden', 'true');
         panel.dataset.playerId = playerId;
         panel.innerHTML = `
-            <div class="stack-popup-header reveal-popup-header" data-draggable-handle>
-                <div class="stack-popup-title reveal-popup-title">
-                    <span class="stack-popup-icon reveal-popup-icon">👁️</span>
-                    <span class="stack-popup-label reveal-popup-label">Reveal - ${safeName}</span>
-                    <span class="stack-popup-count reveal-popup-count" id="reveal-popup-count-${playerId}">0</span>
+            <div class="stack-popup-header ${zoneType}-popup-header" data-draggable-handle>
+                <div class="stack-popup-title ${zoneType}-popup-title">
+                    <span class="stack-popup-icon ${zoneType}-popup-icon">${config.icon}</span>
+                    <span class="stack-popup-label ${zoneType}-popup-label">${config.title} - ${safeName}</span>
+                    <span class="stack-popup-count ${zoneType}-popup-count" id="${zoneType}-popup-count-${playerId}">0</span>
                 </div>
             </div>
             <div class="popup-search-container">
-                <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search revealed cards">
+                <input type="search" class="popup-card-search-input" placeholder="Search cards" aria-label="Search ${zoneType} cards">
             </div>
-            <div class="stack-popup-body reveal-popup-body" id="reveal-popup-body-${playerId}"></div>
+            <div class="stack-popup-body ${zoneType}-popup-body" id="${zoneType}-popup-body-${playerId}"></div>
             <div class="popup-search-empty hidden">No cards match your search</div>
         `;
         document.body.appendChild(panel);
 
         const handle = panel.querySelector('[data-draggable-handle]');
-        const body = panel.querySelector(`#reveal-popup-body-${playerId}`);
-        const countLabel = panel.querySelector(`#reveal-popup-count-${playerId}`);
-        const titleLabel = panel.querySelector('.reveal-popup-label');
+        const body = panel.querySelector(`#${zoneType}-popup-body-${playerId}`);
+        const countLabel = panel.querySelector(`#${zoneType}-popup-count-${playerId}`);
+        const titleLabel = panel.querySelector(`.${zoneType}-popup-label`);
 
         this._makePopupDraggable(panel, handle);
         this._initializePopupSearch(panel);
 
         const elements = { panel, body, countLabel, titleLabel };
-        this._revealPopupElements.set(playerId, elements);
+        this[cacheKey].set(playerId, elements);
         return elements;
     }
 
-    static _generateRevealContent(cards, isOpponent, playerId) {
+    static _generateZoneContent(cards, isOpponent, playerId, options = {}) {
+        const zoneContext = options.zoneContext || 'reveal';
+        const showFaceDown = options.showFaceDown || false;
+        const config = this._getZoneConfig(zoneContext);
         const allowDrop = !isOpponent;
         const listAttributes = allowDrop
-            ? `data-zone-context="reveal" data-zone-owner="${playerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, 'reveal')"`
-            : `data-zone-context="reveal" data-zone-owner="${playerId}"`;
+            ? `data-zone-context="${zoneContext}" data-zone-owner="${playerId}" ondragover="UIZonesManager.handlePopupDragOver(event)" ondragleave="UIZonesManager.handlePopupDragLeave(event)" ondrop="UIZonesManager.handlePopupDrop(event, '${zoneContext}')"`
+            : `data-zone-context="${zoneContext}" data-zone-owner="${playerId}"`;
 
         if (!Array.isArray(cards) || cards.length === 0) {
-            const emptyState = '<div class="reveal-empty">No cards revealed</div>';
+            const emptyState = `<div class="${zoneContext}-empty">${config.emptyText}</div>`;
             if (!allowDrop) {
                 return emptyState;
             }
             return `
-                <div class="reveal-card-container">
-                    <div class="reveal-card-list zone-card-list zone-card-list-empty" ${listAttributes} data-card-count="0">
+                <div class="${zoneContext}-card-container">
+                    <div class="${zoneContext}-card-list zone-card-list zone-card-list-empty" ${listAttributes} data-card-count="0">
                         ${emptyState}
                     </div>
                 </div>
             `;
         }
 
-        const cardsHtml = cards.map((card, index) =>
-            GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, 'reveal', isOpponent, index, playerId)
-        ).join('');
+        const cardsHtml = cards.map((card, index) => {
+            // If showFaceDown, render as face-down card for opponent
+            const cardToRender = showFaceDown
+                ? { ...card, is_face_down: true, face_down_controller: card.owner_id || card.controller_id || playerId }
+                : card;
+            return GameCards.renderCardWithLoadingState(cardToRender, 'card-battlefield', true, zoneContext, isOpponent, index, playerId);
+        }).join('');
 
         return `
-            <div class="reveal-card-container">
-                <div class="reveal-card-list zone-card-list" ${listAttributes} data-card-count="${cards.length}">
+            <div class="${zoneContext}-card-container">
+                <div class="${zoneContext}-card-list zone-card-list" ${listAttributes} data-card-count="${cards.length}">
                     ${cardsHtml}
                 </div>
             </div>

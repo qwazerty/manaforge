@@ -521,6 +521,9 @@ async def get_game_ui_data(game_id: str) -> dict:
                 'reveal_zone': [
                     safe_model_dump(card) for card in getattr(player, 'reveal_zone', [])
                 ],
+                'look_zone': [
+                    safe_model_dump(card) for card in getattr(player, 'look_zone', [])
+                ],
                 'commander_zone': [
                     safe_model_dump(card) for card in getattr(player, 'commander_zone', [])
                 ],
