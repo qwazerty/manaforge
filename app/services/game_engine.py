@@ -32,6 +32,20 @@ class SimpleGameEngine:
         self._pending_decks: dict[str, dict[str, Deck]] = {}
         self.replays: dict[str, List[Dict[str, Any]]] = {}
 
+    def end_game(self, game_id: str) -> bool:
+        """End a game and remove it from all tracking dictionaries."""
+        found = False
+        if game_id in self.games:
+            del self.games[game_id]
+            found = True
+        if game_id in self.game_setups:
+            del self.game_setups[game_id]
+            found = True
+        if game_id in self._pending_decks:
+            del self._pending_decks[game_id]
+        # Keep replays for export even after game ends
+        return found
+
     @staticmethod
     def _touch_setup(setup: GameSetupStatus) -> None:
         setup.updated_at = current_utc_datetime()

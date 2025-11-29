@@ -329,6 +329,15 @@ async def list_games() -> List[Dict[str, Any]]:
     return games_list
 
 
+@router.delete("/games/{game_id}")
+async def end_game(game_id: str) -> Dict[str, Any]:
+    """End a game and remove it from the active games list."""
+    success = game_engine.end_game(game_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Game not found")
+    return {"success": True, "message": f"Game {game_id} has been ended"}
+
+
 @router.get("/games/{game_id}/setup")
 async def get_game_setup_status(game_id: str) -> GameSetupStatus:
     """Get game setup status (for deck import phase)."""
