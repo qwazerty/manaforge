@@ -2593,7 +2593,7 @@
     .stack-popup-header {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
         gap: 8px;
         padding: 14px 16px;
         background: rgba(30, 41, 59, 0.85);
@@ -2628,6 +2628,27 @@
         font-size: 0.875rem;
         padding: 2px 10px;
         border-radius: 9999px;
+    }
+
+    .zone-popup-action-btn {
+        background: rgba(250, 204, 21, 0.2);
+        color: #facc15;
+        border: 1px solid rgba(250, 204, 21, 0.4);
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .zone-popup-action-btn:hover {
+        background: rgba(250, 204, 21, 0.35);
+        border-color: rgba(250, 204, 21, 0.6);
+    }
+
+    .zone-popup-action-btn:active {
+        transform: scale(0.95);
     }
 
     .stack-popup-body {
@@ -2930,6 +2951,8 @@
     }
 
     .look-popup {
+        width: auto;
+        max-width: 90vw;
         border: 1px solid rgba(168, 85, 247, 0.35);
         background: rgba(30, 41, 59, 0.92);
         backdrop-filter: blur(8px);
@@ -2951,6 +2974,29 @@
     .look-popup-count {
         background: rgba(251, 209, 115, 0.2);
         color: #fb923c;
+    }
+
+    .look-popup-body {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .look-card-container {
+        width: 100%;
+    }
+
+    .look-card-list {
+        display: flex;
+        align-items: flex-start;
+        gap: 0px;
+        overflow-x: auto;
+        padding: 8px 4px 20px 4px;
+    }
+
+    .look-card-list .card-battlefield,
+    .look-card-list .card-battlefield-1080,
+    .look-card-list .card-mini {
+        margin-left: 0;
     }
 
     .zone-popup-header {
