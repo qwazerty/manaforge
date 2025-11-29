@@ -202,6 +202,17 @@ class UIUtils {
         const normalizeTypeText = (card) => {
             if (!card) return '';
 
+            // Face-down cards are ONLY creatures (no other types)
+            const isFaceDown = typeof GameCards !== 'undefined' && GameCards.isFaceDownCard?.(card);
+            if (isFaceDown) {
+                // Check for custom type overrides first
+                const overrides = card.custom_types || card.customTypes;
+                if (Array.isArray(overrides) && overrides.length > 0) {
+                    return overrides.map(v => String(v).trim().toLowerCase()).filter(Boolean).join(' ');
+                }
+                return 'creature';
+            }
+
             const customTypes = (() => {
                 const overrides = card.custom_types || card.customTypes;
                 if (!Array.isArray(overrides) || overrides.length === 0) {

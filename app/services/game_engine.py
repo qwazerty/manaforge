@@ -899,14 +899,17 @@ class SimpleGameEngine:
         is_land = card_to_play.card_type == CardType.LAND
         is_spell = card_to_play.card_type in [CardType.INSTANT, CardType.SORCERY]
 
-        if game_state.phase_mode == PhaseMode.STRICT and not is_land:
+        face_down_requested = bool(action.additional_data.get("face_down"))
+
+        # Face-down cards always go to stack first (treated as creatures)
+        if face_down_requested:
+            destination_zone = "stack"
+        elif game_state.phase_mode == PhaseMode.STRICT and not is_land:
             destination_zone = "stack"
         elif is_spell:
             destination_zone = "stack"
         else:
             destination_zone = "battlefield"
-
-        face_down_requested = bool(action.additional_data.get("face_down"))
 
         card_to_play.face_down = face_down_requested
         card_to_play.face_down_owner = action.player_id if face_down_requested else None
@@ -1199,6 +1202,12 @@ class SimpleGameEngine:
     def _resolve_spell_destination(self, owner: Player, spell: Card) -> str:
         """Move a resolved spell to its appropriate zone and return the zone name."""
         spell.targeted = False
+
+        # Face-down cards always go to battlefield (they're treated as creatures)
+        if spell.face_down:
+            spell.tapped = False
+            owner.battlefield.append(spell)
+            return "battlefield"
 
         if spell.card_type in (CardType.INSTANT, CardType.SORCERY):
             owner.graveyard.append(spell)
