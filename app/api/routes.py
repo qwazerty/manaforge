@@ -43,6 +43,7 @@ async def search_cards(
     limit: int = 20,
     type: Optional[str] = None,
     tokens_only: bool = False,
+    exact: bool = False,
     set: Optional[str] = None,
     card_service: CardService = Depends(get_card_service)
 ) -> List[Card]:
@@ -51,6 +52,7 @@ async def search_cards(
         query=q,
         limit=limit,
         tokens_only=tokens_only,
+        exact=exact,
         set_code=set
     )
 

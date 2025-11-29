@@ -274,6 +274,7 @@ class CardService:
         query: str,
         limit: Optional[int] = None,
         tokens_only: bool = False,
+        exact: bool = False,
         set_code: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Search the local oracle dump for cards that match the query."""
@@ -295,8 +296,13 @@ class CardService:
         should_dedupe = not tokens_only
 
         for name_key in sorted(_LOCAL_ORACLE_CACHE.keys()):
-            if normalized_query not in name_key:
-                continue
+            # Check exact match or contains based on exact flag
+            if exact:
+                if normalized_query != name_key:
+                    continue
+            else:
+                if normalized_query not in name_key:
+                    continue
 
             pool = _LOCAL_ORACLE_CACHE.get(name_key, [])
             if tokens_only:
