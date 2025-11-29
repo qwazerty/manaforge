@@ -1411,6 +1411,10 @@ const GameCards = {
             if (cardZone !== 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.moveCard(${jsCardId}, ${jsCardZone}, "hand", ${jsUniqueCardId})`)}"><span class="icon">👋</span> Send to Hand</div>`;
             }
+            const battlefieldZones = ['reveal', 'reveal_zone', 'look', 'look_zone'];
+            if (battlefieldZones.includes(cardZone) && !isTokenCard) {
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToBattlefield(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⚔️</span> Send to Battlefield</div>`;
+            }
             if (isTokenCard) {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.deleteToken(${jsUniqueCardId}, ${jsCardName})`)}"><span class="icon">🗑️</span> Delete Token</div>`;
             } else {
@@ -1443,6 +1447,7 @@ const GameCards = {
                 if (revealCardCount >= 2) {
                     menuHTML += `<div class="card-context-menu-divider"></div>`;
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToHand("reveal")`)}"><span class="icon">👋</span> Send all to Hand</div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToBattlefield("reveal")`)}"><span class="icon">⚔️</span> Send all to Battlefield</div>`;
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToGraveyard("reveal")`)}"><span class="icon">⚰️</span> Send all to Graveyard</div>`;
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToExile("reveal")`)}"><span class="icon">✨</span> Send all to Exile</div>`;
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToTopLibrary("reveal")`)}"><span class="icon">🔀</span> Send all to Top Library (random)</div>`;
@@ -1467,6 +1472,7 @@ const GameCards = {
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToExile("look")`)}"><span class="icon">✨</span> Send all to Exile</div>`;
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToTopLibrary("look")`)}"><span class="icon">🔀</span> Send all to Top Library (random)</div>`;
                     menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToBottomLibrary("look")`)}"><span class="icon">🔀</span> Send all to Bottom Library (random)</div>`;
+                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendAllZoneToBattlefield("look")`)}"><span class="icon">⚔️</span> Send all to Battlefield</div>`;
                 }
             }
         }
