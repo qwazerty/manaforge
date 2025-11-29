@@ -304,6 +304,19 @@ const GameCards = {
         return Boolean(explicitFlag || manifestOrMorphToken || mentionsFaceDown || isMueFaceDown);
     },
 
+    /**
+     * Check if a card is a creature (face-down cards are always creatures)
+     */
+    isCreatureCard: function(card) {
+        if (!card) return false;
+        if (this.isFaceDownCard(card)) return true;
+        const typeLine = (card.type_line || card.typeLine || card.card_type || card.cardType || '').toLowerCase();
+        if (typeLine.includes('creature')) return true;
+        const customTypes = card.custom_types || card.customTypes;
+        if (Array.isArray(customTypes) && customTypes.some(t => String(t).toLowerCase().includes('creature'))) return true;
+        return false;
+    },
+
     getSafeImageUrl: function(card, options = {}) {
         if (!card) return null;
 
@@ -577,63 +590,81 @@ const GameCards = {
         const attackingClass = stateClasses.attacking ? ' attacking-creature' : '';
         const blockingClass = stateClasses.blocking ? ' blocking-creature' : '';
         const uniqueCardId = card.unique_id;
-        const typePieces = [];
-        const pushType = (value) => {
-            if (value) {
-                typePieces.push(String(value));
-            }
-        };
-        pushType(card.card_type);
-        pushType(card.cardType);
-        pushType(card.type_line);
-        pushType(card.typeLine);
-        pushType(card.subtype);
-        if (Array.isArray(card.types)) {
-            card.types.forEach(pushType);
-        }
-        if (Array.isArray(card.subtypes)) {
-            card.subtypes.forEach(pushType);
-        }
-        if (Array.isArray(card.supertypes)) {
-            card.supertypes.forEach(pushType);
-        }
-        if (Array.isArray(card.card_faces)) {
-            card.card_faces.forEach(face => {
-                pushType(face?.type_line);
-                pushType(face?.typeLine);
-                if (Array.isArray(face?.types)) {
-                    face.types.forEach(pushType);
-                }
-                if (Array.isArray(face?.subtypes)) {
-                    face.subtypes.forEach(pushType);
-                }
-            });
-        }
+
+        // Resolve card type - face-down cards are ONLY creatures
         const customTypes = this.getCustomTypes(card);
-        if (customTypes.length) {
-            customTypes.forEach(pushType);
-        }
-        const typeLine = typePieces.join(' ').toLowerCase();
+        let typeLine = '';
         let primaryCardType = '';
-        if (customTypes.length) {
-            const priorityOrder = ['creature', 'land', 'planeswalker', 'artifact', 'enchantment', 'instant', 'sorcery'];
-            const normalizedTypes = customTypes.map(type => type.toLowerCase());
-            const prioritized = priorityOrder.find(type => normalizedTypes.includes(type));
-            primaryCardType = prioritized || customTypes[0];
-        } else if (typeLine.includes('creature')) {
+
+        if (this.isFaceDownCard(card)) {
+            // Face-down = creature only (unless custom types override)
+            typeLine = customTypes.length ? customTypes.join(' ').toLowerCase() : 'creature';
             primaryCardType = 'creature';
-        } else if (typeLine.includes('land')) {
-            primaryCardType = 'land';
-        } else if (typeLine.includes('planeswalker')) {
-            primaryCardType = 'planeswalker';
-        } else if (typeLine.includes('artifact')) {
-            primaryCardType = 'artifact';
-        } else if (typeLine.includes('enchantment')) {
-            primaryCardType = 'enchantment';
-        } else if (typeLine.includes('instant')) {
-            primaryCardType = 'instant';
-        } else if (typeLine.includes('sorcery')) {
-            primaryCardType = 'sorcery';
+            if (customTypes.length) {
+                const priorityOrder = ['creature', 'land', 'planeswalker', 'artifact', 'enchantment', 'instant', 'sorcery'];
+                const normalizedTypes = customTypes.map(type => type.toLowerCase());
+                const prioritized = priorityOrder.find(type => normalizedTypes.includes(type));
+                primaryCardType = prioritized || customTypes[0];
+            }
+        } else {
+            // Normal type resolution
+            const typePieces = [];
+            const pushType = (value) => {
+                if (value) {
+                    typePieces.push(String(value));
+                }
+            };
+            pushType(card.card_type);
+            pushType(card.cardType);
+            pushType(card.type_line);
+            pushType(card.typeLine);
+            pushType(card.subtype);
+            if (Array.isArray(card.types)) {
+                card.types.forEach(pushType);
+            }
+            if (Array.isArray(card.subtypes)) {
+                card.subtypes.forEach(pushType);
+            }
+            if (Array.isArray(card.supertypes)) {
+                card.supertypes.forEach(pushType);
+            }
+            if (Array.isArray(card.card_faces)) {
+                card.card_faces.forEach(face => {
+                    pushType(face?.type_line);
+                    pushType(face?.typeLine);
+                    if (Array.isArray(face?.types)) {
+                        face.types.forEach(pushType);
+                    }
+                    if (Array.isArray(face?.subtypes)) {
+                        face.subtypes.forEach(pushType);
+                    }
+                });
+            }
+            if (customTypes.length) {
+                customTypes.forEach(pushType);
+            }
+            typeLine = typePieces.join(' ').toLowerCase();
+
+            if (customTypes.length) {
+                const priorityOrder = ['creature', 'land', 'planeswalker', 'artifact', 'enchantment', 'instant', 'sorcery'];
+                const normalizedTypes = customTypes.map(type => type.toLowerCase());
+                const prioritized = priorityOrder.find(type => normalizedTypes.includes(type));
+                primaryCardType = prioritized || customTypes[0];
+            } else if (typeLine.includes('creature')) {
+                primaryCardType = 'creature';
+            } else if (typeLine.includes('land')) {
+                primaryCardType = 'land';
+            } else if (typeLine.includes('planeswalker')) {
+                primaryCardType = 'planeswalker';
+            } else if (typeLine.includes('artifact')) {
+                primaryCardType = 'artifact';
+            } else if (typeLine.includes('enchantment')) {
+                primaryCardType = 'enchantment';
+            } else if (typeLine.includes('instant')) {
+                primaryCardType = 'instant';
+            } else if (typeLine.includes('sorcery')) {
+                primaryCardType = 'sorcery';
+            }
         }
 
         const controllerId = card.controller_id || card.controllerId || card.owner_id || card.ownerId || '';
@@ -1372,9 +1403,7 @@ const GameCards = {
         if (!isOpponent) {
             if (cardZone === 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId})`)}"><span class="icon">▶️</span> Play Card</div>`;
-                if (!isSpellCard) {
-                    menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}, { faceDown: true })`)}"><span class="icon">🙈</span> Play Face Down</div>`;
-                }
+                menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}, { faceDown: true })`)}"><span class="icon">🙈</span> Play Face Down</div>`;
             } else if (cardZone === 'deck') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.performGameAction("play_card_from_library", { unique_id: ${jsUniqueCardId} }); UIZonesManager.closeZoneModal("deck");`)}"><span class="icon">⚔️</span> Put on Battlefield</div>`;
             }

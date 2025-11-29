@@ -76,6 +76,9 @@ const GameCombat = {
     },
 
     isCreatureCard(card) {
+        if (typeof GameCards !== 'undefined' && typeof GameCards.isCreatureCard === 'function') {
+            return GameCards.isCreatureCard(card);
+        }
         return this.getNormalizedTypeText(card).includes('creature');
     },
 
