@@ -710,6 +710,10 @@ function sendToHand(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'hand', uniqueCardId, null, callback);
 }
 
+function sendToBattlefield(cardId, sourceZone, uniqueCardId = null, callback = null) {
+    moveCard(cardId, sourceZone, 'battlefield', uniqueCardId, null, callback);
+}
+
 function sendToTopLibrary(cardId, sourceZone, uniqueCardId = null, callback = null) {
     moveCard(cardId, sourceZone, 'library', uniqueCardId, 'top', callback);
 }
@@ -867,6 +871,17 @@ function sendAllZoneToBottomLibrary(zoneName) {
     shuffled.forEach(card => {
         if (card.unique_id) {
             sendToBottomLibrary(card.id || card.card_id, zoneName, card.unique_id);
+        }
+    });
+}
+
+function sendAllZoneToBattlefield(zoneName) {
+    const cards = _getZoneCards(zoneName);
+    if (cards.length === 0) return;
+
+    cards.forEach(card => {
+        if (card.unique_id) {
+            moveCard(card.id || card.card_id, zoneName, 'battlefield', card.unique_id);
         }
     });
 }
@@ -1125,6 +1140,7 @@ window.GameActions = {
     sendToExile,
     showInRevealZone,
     sendToHand,
+    sendToBattlefield,
     sendToTopLibrary,
     sendToBottomLibrary,
     deleteToken,
@@ -1150,7 +1166,8 @@ window.GameActions = {
     sendAllZoneToHand,
     sendAllZoneToExile,
     sendAllZoneToTopLibrary,
-    sendAllZoneToBottomLibrary
+    sendAllZoneToBottomLibrary,
+    sendAllZoneToBattlefield
 };
 
 /**
