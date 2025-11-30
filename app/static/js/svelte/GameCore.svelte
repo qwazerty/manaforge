@@ -1,7 +1,7 @@
 <svelte:options accessors={true} />
 
 <script>
-    import { onDestroy, onMount } from 'svelte';
+    import { onMount } from 'svelte';
     import {
         gameState,
         gameId,
@@ -269,8 +269,17 @@
     }
 
     async function refreshGameData() {
+        // Skip HTTP polling entirely if WebSocket is connected
         const socket = typeof window !== 'undefined' ? window.websocket : null;
         if (socket && socket.readyState === WebSocket.OPEN) {
+            // WebSocket is handling updates - no need for HTTP polling
+            return;
+        }
+
+        // Also check WebSocketManager connection state
+        if (typeof window !== 'undefined' && 
+            window.WebSocketManager && 
+            window.WebSocketManager.websocket?.readyState === WebSocket.OPEN) {
             return;
         }
 
@@ -315,10 +324,22 @@
     }
 
     function startAutoRefresh() {
+        // Don't start polling if WebSocket is already connected
+        const socket = typeof window !== 'undefined' ? window.websocket : null;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            return;
+        }
+        if (typeof window !== 'undefined' && 
+            window.WebSocketManager && 
+            window.WebSocketManager.websocket?.readyState === WebSocket.OPEN) {
+            return;
+        }
+
         if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
         }
-        autoRefreshInterval = setInterval(refreshGameData, 5000);
+        // Fallback polling only when WebSocket is not available (15s interval)
+        autoRefreshInterval = setInterval(refreshGameData, 15000);
     }
 
     function stopAutoRefresh() {
@@ -405,13 +426,23 @@
             const visible = !document.hidden;
             setPageVisible(visible);
             if (visible) {
-                startAutoRefresh();
-                if (!window.websocket || window.websocket.readyState === WebSocket.CLOSED) {
+                // Check if WebSocket is connected before starting polling or refreshing
+                const wsConnected = (window.websocket && window.websocket.readyState === WebSocket.OPEN) ||
+                    (window.WebSocketManager?.websocket?.readyState === WebSocket.OPEN);
+                
+                if (!wsConnected) {
+                    // Only start polling and refresh if WebSocket is not connected
+                    startAutoRefresh();
                     if (window.GameSocket && typeof window.GameSocket.initWebSocket === 'function') {
                         window.GameSocket.initWebSocket();
                     }
+                    refreshGameData();
+                } else {
+                    // WebSocket is connected, just request fresh state via WebSocket
+                    if (window.WebSocketManager && typeof window.WebSocketManager.requestGameState === 'function') {
+                        window.WebSocketManager.requestGameState();
+                    }
                 }
-                refreshGameData();
             } else {
                 stopAutoRefresh();
             }
@@ -466,7 +497,9 @@
             window.GameSocket.initWebSocket();
         }
 
-        startAutoRefresh();
+        // Don't start auto-refresh here - WebSocket will handle updates
+        // Auto-refresh will only start as fallback if WebSocket fails to connect
+        // (handled by WebSocketManager on connection failure)
         setupVisibilityListener();
     }
 
@@ -540,13 +573,5 @@
                 detachReady();
             }
         };
-    });
-
-    onDestroy(() => {
-        stopAutoRefresh();
-        if (visibilityCleanup) {
-            visibilityCleanup();
-            visibilityCleanup = null;
-        }
     });
 </script>
