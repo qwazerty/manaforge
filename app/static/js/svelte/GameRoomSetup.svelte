@@ -36,6 +36,7 @@
     let isImportingDeck = $state(false);
     let isModernImportInFlight = $state(false);
     let modernExampleLocked = $state(false);
+    let isClosingGame = $state(false);
 
     let editingPlayer = $state(null);
     let nameDraft = $state('');
@@ -951,6 +952,36 @@
         }
     };
 
+    const closeGame = async () => {
+        if (isClosingGame || !gameId) return;
+        if (!confirm('Are you sure you want to close this game? This action cannot be undone.')) {
+            return;
+        }
+        isClosingGame = true;
+        setDeckStatus('Closing game...', 'muted', 0);
+        try {
+            const response = await fetch(`/api/v1/games/${encodeURIComponent(gameId)}`, {
+                method: 'DELETE'
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(payload?.detail || 'Unable to close the game.');
+            }
+            stopPolling();
+            setDeckStatus('Game closed successfully. Redirecting...', 'accent', 0);
+            if (isBrowser) {
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            }
+        } catch (error) {
+            console.error('[GameRoomSetup] Failed to close game', error);
+            setDeckStatus(error.message || 'Unable to close the game.', 'red');
+        } finally {
+            isClosingGame = false;
+        }
+    };
+
     onMount(() => {
         loadDeckFromCache();
         refreshDeckLibrary();
@@ -1096,6 +1127,17 @@
                     </select>
                 </div>
             </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+            <button
+                type="button"
+                class="px-4 py-2 text-sm font-semibold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50 rounded-lg bg-transparent hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick={closeGame}
+                disabled={isClosingGame}
+            >
+                {isClosingGame ? 'Closing...' : '🗑️ Close Game'}
+            </button>
         </div>
     </div>
 
