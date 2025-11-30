@@ -10,6 +10,13 @@ const __dirname = path.dirname(__filename);
 const SVELTE_DIR = path.resolve('app/static/js/svelte');
 const COMPONENT_DIR = path.resolve('app/static/js/ui/components');
 
+// Path aliases - must match tsconfig.json paths
+const PATH_ALIASES = {
+    '@lib': path.resolve('app/static/js/lib'),
+    '@svelte': path.resolve('app/static/js/svelte'),
+    '@ui': path.resolve('app/static/js/ui'),
+};
+
 const sanitizeGlobalName = (name) => {
     const trimmed = name.replace(/[^a-zA-Z0-9]/g, '');
     const safe = trimmed || 'component';
@@ -43,13 +50,17 @@ const bundleComponent = (fileName) => {
     const jsOutputPath = path.join(COMPONENT_DIR, `${baseName}.js`);
     const bundlePath = path.join(COMPONENT_DIR, `${baseName}.bundle.js`);
     const globalName = sanitizeGlobalName(baseName);
+    const aliasFlags = Object.entries(PATH_ALIASES)
+        .map(([alias, target]) => `--alias:${alias}=${target}`)
+        .join(' ');
     const command = [
         'npx esbuild',
         `"${jsOutputPath}"`,
         '--bundle --format=iife',
         `--global-name=${globalName}`,
         `--outfile="${bundlePath}"`,
-        '--sourcemap'
+        '--sourcemap',
+        aliasFlags
     ].join(' ');
 
     console.log(`[build-svelte] esbuild: ${command}`);
