@@ -2,6 +2,24 @@
 
 <script>
     import { onMount } from 'svelte';
+    import {
+        getGameStateSnapshot,
+        getSelectedPlayerSnapshot
+    } from './stores/gameCoreStore.js';
+
+    const getGameState = () => {
+        if (typeof GameCore?.getGameState === 'function') {
+            return GameCore.getGameState();
+        }
+        return getGameStateSnapshot();
+    };
+
+    const getSelectedPlayer = () => {
+        if (typeof GameCore?.getSelectedPlayer === 'function') {
+            return GameCore.getSelectedPlayer();
+        }
+        return getSelectedPlayerSnapshot();
+    };
 
     /**
      * ManaForge Unified Renderers and Templates Module
@@ -25,10 +43,10 @@
          * Render role display
          */
         static renderRoleDisplay() {
-            const currentSelectedPlayer = GameCore.getSelectedPlayer();
+            const currentSelectedPlayer = getSelectedPlayer();
             const roleDisplay = document.getElementById('current-role-display');
             const roleDescription = document.getElementById('role-description');
-            const gameState = GameCore.getGameState() || {};
+            const gameState = getGameState() || {};
             const players = Array.isArray(gameState.players) ? gameState.players : [];
         
             if (!roleDisplay || !roleDescription) {
@@ -68,7 +86,7 @@
         }
 
         static renderGameArena() {
-            const gameState = GameCore.getGameState();
+            const gameState = getGameState();
             this._renderGameArenaWithState(gameState);
         }
 
@@ -90,7 +108,7 @@
 
             const props = {
                 gameState,
-                selectedPlayer: GameCore.getSelectedPlayer()
+                selectedPlayer: getSelectedPlayer()
             };
 
             this._renderGameArenaSvelte(arenaContainer, props);
@@ -214,14 +232,14 @@
         }
 
         static updateGameBoard(gameState) {
-            return this._renderGameArenaWithState(gameState || GameCore.getGameState());
+            return this._renderGameArenaWithState(gameState || getGameState());
         }
 
         /**
          * Render action panel
          */
         static renderActionPanel() {
-            const gameState = GameCore.getGameState();
+            const gameState = getGameState();
             const actionPanelContainer = document.getElementById('action-panel');
         
             if (!this._validateContainer(actionPanelContainer, 'Action panel container')) {
@@ -310,7 +328,7 @@
         }
 
         static _buildActionPanelProps(gameState) {
-            const selectedPlayer = GameCore.getSelectedPlayer();
+            const selectedPlayer = getSelectedPlayer();
             const spectatorMode = selectedPlayer === 'spectator';
             const players = Array.isArray(gameState?.players) ? gameState.players : [];
             const currentPhase = gameState?.phase || 'begin';

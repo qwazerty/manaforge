@@ -2,6 +2,50 @@
 
 <script>
     import { onMount } from 'svelte';
+    import {
+        getGameIdSnapshot,
+        getGameStateSnapshot,
+        getSelectedPlayerSnapshot,
+        setGameId,
+        setGameState
+    } from './stores/gameCoreStore.js';
+
+    const getSelectedPlayer = () => {
+        if (typeof GameCore?.getSelectedPlayer === 'function') {
+            return GameCore.getSelectedPlayer();
+        }
+        return getSelectedPlayerSnapshot();
+    };
+
+    const getGameId = () => {
+        if (typeof GameCore?.getGameId === 'function') {
+            return GameCore.getGameId();
+        }
+        return getGameIdSnapshot();
+    };
+
+    const getGameState = () => {
+        if (typeof GameCore?.getGameState === 'function') {
+            return GameCore.getGameState();
+        }
+        return getGameStateSnapshot();
+    };
+
+    const updateGameState = (state) => {
+        if (typeof GameCore?.setGameState === 'function') {
+            GameCore.setGameState(state);
+            return;
+        }
+        setGameState(state);
+    };
+
+    const updateGameId = (id) => {
+        if (typeof GameCore?.setGameId === 'function') {
+            GameCore.setGameId(id);
+            return;
+        }
+        setGameId(id);
+    };
 
     /**
      * ManaForge Unified WebSocket Manager Module
@@ -21,8 +65,8 @@
          * Initialize WebSocket connection
          */
         static initWebSocket() {
-            const gameId = GameCore.getGameId();
-            const currentSelectedPlayer = GameCore.getSelectedPlayer();
+            const gameId = getGameId();
+            const currentSelectedPlayer = getSelectedPlayer();
         
             if (!gameId) {
                 console.error('Game ID not set, cannot initialize WebSocket');
@@ -94,7 +138,7 @@
          * Send game action through WebSocket
          */
         static sendGameAction(actionType, actionData = {}) {
-            const currentSelectedPlayer = GameCore.getSelectedPlayer();
+            const currentSelectedPlayer = getSelectedPlayer();
         
             if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
                 this.websocket.send(JSON.stringify({
@@ -148,7 +192,7 @@
             switch (message.type) {
                 case 'game_state_update':
                     const newGameState = message.game_state;
-                    const currentGameState = GameCore.getGameState();
+                    const currentGameState = getGameState();
                     const actionResult = message.action_result;
                     const isPreviewUpdate = Boolean(
                         actionResult &&
@@ -157,7 +201,7 @@
                 
                     if (JSON.stringify(newGameState) !== JSON.stringify(currentGameState)) {
                         const oldGameState = currentGameState;
-                        GameCore.setGameState(newGameState);
+                        updateGameState(newGameState);
                         let handledPreview = false;
                         if (isPreviewUpdate && window.GameCombat && newGameState?.combat_state) {
                             const combatState = newGameState.combat_state;
@@ -244,7 +288,7 @@
                     break;
                 
                 case 'chat': {
-                    const selectedPlayer = GameCore.getSelectedPlayer();
+                    const selectedPlayer = getSelectedPlayer();
                     const senderName = this._getPlayerDisplayName(message.player) || message.player || 'Unknown';
                     let localName = this._getPlayerDisplayName(selectedPlayer);
 
@@ -314,7 +358,7 @@
             }
         
             this.gameId = id;
-            GameCore.setGameId(id);
+            updateGameId(id);
             this.initWebSocket();
         }
 
@@ -374,13 +418,13 @@
         
             // Update zone counts and previews
             UIZonesManager.updateZoneCounts();
-            UIZonesManager.refreshOpenZonePopups(GameCore.getGameState());
+            UIZonesManager.refreshOpenZonePopups(getGameState());
             if (typeof UIZonesManager !== 'undefined' && UIZonesManager) {
                 UIZonesManager.hydrateSvelteZones();
             }
         
             // Redraw combat arrows if in a combat window
-            const gameState = GameCore.getGameState();
+            const gameState = getGameState();
             if (
                 gameState &&
                 ['attack', 'block', 'damage'].includes(gameState.phase) &&
@@ -510,7 +554,7 @@
             const stepChanged = newCombatState.step !== oldCombatState.step;
             const attackersUpdated = newCombatState.attackers_declared && !oldCombatState.attackers_declared;
             const blockersUpdated = newCombatState.blockers_declared && !oldCombatState.blockers_declared;
-            const currentPlayer = GameCore.getSelectedPlayer();
+            const currentPlayer = getSelectedPlayer();
 
             if (window.GameCombat) {
                 if (Array.isArray(newCombatState.pending_attackers)) {
@@ -563,7 +607,7 @@
                 this._applyCombatAnimations(newGameState);
             
                 // Start blocker declaration for defending player
-                const currentPlayer = GameCore.getSelectedPlayer();
+                const currentPlayer = getSelectedPlayer();
                 const activePlayerIndex = newGameState.active_player || 0;
                 const currentPlayerIndex = currentPlayer === 'player2' ? 1 : 0;
                 const isDefendingPlayer = currentPlayerIndex !== activePlayerIndex;
@@ -586,7 +630,7 @@
                     this._applyCombatAnimations(newGameState);
                 
                     // Start blocker declaration for defending player
-                    const currentPlayer = GameCore.getSelectedPlayer();
+                    const currentPlayer = getSelectedPlayer();
                     const activePlayerIndex = newGameState.active_player || 0;
                     const currentPlayerIndex = currentPlayer === 'player2' ? 1 : 0;
                     const isDefendingPlayer = currentPlayerIndex !== activePlayerIndex;
@@ -722,9 +766,7 @@
         }
 
         static getLocalPlayerInfo() {
-            const playerKey = typeof GameCore?.getSelectedPlayer === 'function'
-                ? GameCore.getSelectedPlayer()
-                : 'player1';
+            const playerKey = getSelectedPlayer() || 'player1';
             return {
                 id: playerKey,
                 name: this._getPlayerDisplayName(playerKey)

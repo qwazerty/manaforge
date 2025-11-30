@@ -83,11 +83,38 @@ const copyUtilsDirectory = async () => {
     }
 };
 
+const copyStoresDirectory = async () => {
+    const srcStoresDir = path.join(SVELTE_DIR, 'stores');
+    const destStoresDir = path.join(COMPONENT_DIR, 'stores');
+
+    try {
+        const stats = await fs.stat(srcStoresDir);
+        if (!stats.isDirectory()) {
+            return;
+        }
+    } catch {
+        return;
+    }
+
+    await fs.mkdir(destStoresDir, { recursive: true });
+
+    const entries = await fs.readdir(srcStoresDir, { withFileTypes: true });
+    for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith('.js')) {
+            const srcPath = path.join(srcStoresDir, entry.name);
+            const destPath = path.join(destStoresDir, entry.name);
+            await fs.copyFile(srcPath, destPath);
+            console.log(`[build-svelte] copied store: ${entry.name}`);
+        }
+    }
+};
+
 export const buildAllSvelte = async () => {
     await fs.mkdir(COMPONENT_DIR, { recursive: true });
 
     // Copy utility files first so they can be resolved during bundling
     await copyUtilsDirectory();
+    await copyStoresDirectory();
 
     const entries = await fs.readdir(SVELTE_DIR, { withFileTypes: true });
     const components = entries

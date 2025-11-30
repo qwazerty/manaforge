@@ -2,20 +2,28 @@
 
 <script>
     import { onDestroy, onMount } from 'svelte';
-    import { get, writable } from 'svelte/store';
-
-    const gameStateStore = writable(null);
-    const selectedPlayerStore = writable('player1');
-    const gameIdStore = writable(null);
-    const isPageVisibleStore = writable(true);
+    import {
+        gameState,
+        gameId,
+        isPageVisible,
+        selectedPlayer,
+        getGameStateSnapshot,
+        getGameIdSnapshot,
+        getPageVisibleSnapshot,
+        getSelectedPlayerSnapshot,
+        setGameId,
+        setGameState,
+        setPageVisible,
+        setSelectedPlayer
+    } from './stores/gameCoreStore.js';
 
     let autoRefreshInterval = null;
     let persistentUiLoaded = false;
     let visibilityCleanup = null;
 
-    const getGameState = () => get(gameStateStore);
-    const getGameId = () => get(gameIdStore);
-    const getSelectedPlayer = () => get(selectedPlayerStore);
+    const getGameState = () => getGameStateSnapshot();
+    const getGameId = () => getGameIdSnapshot();
+    const getSelectedPlayer = () => getSelectedPlayerSnapshot();
 
     function normalizePlayerSeatKey(identifier) {
         if (!identifier || typeof identifier !== 'string') {
@@ -240,7 +248,7 @@
         }
 
         const state = await response.json();
-        gameStateStore.set(state);
+        setGameState(state);
 
         syncPersistentUi(state, { force: true });
 
@@ -279,7 +287,7 @@
 
                 if (JSON.stringify(newGameState) !== JSON.stringify(currentState)) {
                     const oldPhase = currentState?.phase;
-                    gameStateStore.set(newGameState);
+                    setGameState(newGameState);
                     const newPhase = newGameState?.phase;
 
                     GameUI.generateLeftArea();
@@ -391,11 +399,11 @@
         }
 
         const initialVisibility = !document.hidden;
-        isPageVisibleStore.set(initialVisibility);
+        setPageVisible(initialVisibility);
 
         const handler = () => {
             const visible = !document.hidden;
-            isPageVisibleStore.set(visible);
+            setPageVisible(visible);
             if (visible) {
                 startAutoRefresh();
                 if (!window.websocket || window.websocket.readyState === WebSocket.CLOSED) {
@@ -424,7 +432,7 @@
 
         const config = readGameConfig();
         if (config.gameId) {
-            gameIdStore.set(config.gameId);
+            setGameId(config.gameId);
         }
 
         const id = getGameId();
@@ -436,7 +444,7 @@
         const playerFromUrl = typeof GameUtils?.getPlayerFromUrl === 'function'
             ? GameUtils.getPlayerFromUrl()
             : (config.playerId || 'player1');
-        selectedPlayerStore.set(playerFromUrl);
+        setSelectedPlayer(playerFromUrl);
         updateSpectatorModeClass(playerFromUrl);
         if (typeof window !== 'undefined' && window.gameData) {
             window.gameData.playerId = playerFromUrl;
@@ -506,13 +514,13 @@
         getSelectedPlayer,
         getPlayerDisplayName: (identifier, fallback = null) =>
             resolvePlayerDisplayName(identifier, fallback),
-        setGameState: (state) => gameStateStore.set(state),
-        setGameId: (id) => gameIdStore.set(id),
+        setGameState: (state) => setGameState(state),
+        setGameId: (id) => setGameId(id),
         setSelectedPlayer: (player) => {
-            selectedPlayerStore.set(player);
+            setSelectedPlayer(player);
             updateSpectatorModeClass(player);
         },
-        isPageVisible: () => get(isPageVisibleStore),
+        isPageVisible: () => getPageVisibleSnapshot(),
         syncPersistentUi
     };
 
