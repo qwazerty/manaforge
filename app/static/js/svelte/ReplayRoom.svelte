@@ -1,6 +1,7 @@
 <script>
     import { onDestroy, onMount } from 'svelte';
     import GameArena from './GameArena.svelte';
+    import { loadActionHistoryFromState } from './stores/actionHistoryStore.js';
 
     let {
         gameId = ''
@@ -215,14 +216,10 @@
 
     function syncActionHistory(state) {
         const history = Array.isArray(state?.action_history) ? state.action_history : [];
-        const manager = typeof window !== 'undefined' ? window.UIActionHistory : null;
-        if (!manager || typeof manager.loadFromState !== 'function') {
-            return;
-        }
         try {
-            manager.loadFromState(history);
+            loadActionHistoryFromState(history);
         } catch (error) {
-            console.warn('Unable to load replay history into UIActionHistory', error);
+            console.warn('Unable to load replay history into action history store', error);
         }
     }
 

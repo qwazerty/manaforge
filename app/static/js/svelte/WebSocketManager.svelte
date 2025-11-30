@@ -13,6 +13,11 @@
         setGameId,
         setPageVisible
     } from './stores/gameCoreStore.js';
+    import {
+        addActionHistoryFailure,
+        addActionHistoryFromActionResult,
+        mergeActionHistoryEntries
+    } from './stores/actionHistoryStore.js';
 
     /** @type {{ reconnectDelay?: number }} */
     const { reconnectDelay = 1000 } = $props();
@@ -568,11 +573,9 @@
 
         if (
             newGameState &&
-            Array.isArray(newGameState.action_history) &&
-            typeof UIActionHistory !== 'undefined' &&
-            typeof UIActionHistory.mergeStateEntries === 'function'
+            Array.isArray(newGameState.action_history)
         ) {
-            UIActionHistory.mergeStateEntries(newGameState.action_history);
+            mergeActionHistoryEntries(newGameState.action_history);
         }
         if (
             newGameState &&
@@ -635,17 +638,17 @@
     }
 
     function recordActionResult(actionResult) {
-        if (typeof UIActionHistory === 'undefined' || !actionResult) {
+        if (!actionResult) {
             return;
         }
-        UIActionHistory.addFromActionResult(actionResult, { source: 'websocket' });
+        addActionHistoryFromActionResult(actionResult, { source: 'websocket' });
     }
 
     function recordActionFailure(action, message, player = null) {
-        if (typeof UIActionHistory === 'undefined' || !action) {
+        if (!action) {
             return;
         }
-        UIActionHistory.addFailure(action, message, player);
+        addActionHistoryFailure(action, message, player);
     }
 
     function handleCombatStateUpdate(oldGameState, newGameState, actionResult) {

@@ -16,6 +16,7 @@
         setPageVisible,
         setSelectedPlayer
     } from './stores/gameCoreStore.js';
+    import { loadActionHistoryFromState } from './stores/actionHistoryStore.js';
 
     let autoRefreshInterval = null;
     let persistentUiLoaded = false;
@@ -228,16 +229,11 @@
             return;
         }
 
-        if (
-            typeof UIActionHistory !== 'undefined' &&
-            typeof UIActionHistory.loadFromState === 'function'
-        ) {
-            if (Object.prototype.hasOwnProperty.call(state, 'action_history')) {
-                const historyEntries = Array.isArray(state.action_history)
-                    ? state.action_history
-                    : [];
-                UIActionHistory.loadFromState(historyEntries);
-            }
+        if (Object.prototype.hasOwnProperty.call(state, 'action_history')) {
+            const historyEntries = Array.isArray(state.action_history)
+                ? state.action_history
+                : [];
+            loadActionHistoryFromState(historyEntries);
         }
 
         if (

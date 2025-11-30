@@ -164,22 +164,6 @@
             const hydrateSidebar = () => {
                 try {
                     if (
-                        typeof UIActionHistory !== 'undefined' &&
-                        typeof UIActionHistory.refreshPanel === 'function'
-                    ) {
-                        UIActionHistory.refreshPanel();
-                    } else if (
-                        typeof UIActionHistory !== 'undefined' &&
-                        typeof UIActionHistory._render === 'function'
-                    ) {
-                        UIActionHistory._render();
-                    }
-                } catch (error) {
-                    console.error('[UIRenderersTemplates] Failed to refresh action history', error);
-                }
-
-                try {
-                    if (
                         typeof UIBattleChat !== 'undefined' &&
                         typeof UIBattleChat.render === 'function'
                     ) {

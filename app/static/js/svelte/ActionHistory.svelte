@@ -1,82 +1,30 @@
 <script>
+    import {
+        actionHistoryEntries,
+        buildActionHistoryTurnKey,
+        formatActionHistoryTime,
+        formatActionHistoryTurnLabel,
+        getActionHistoryPreviewHandlers
+    } from './stores/actionHistoryStore.js';
+
     let {
-        entries = [],
         panelIcon = '📜',
-        panelTitle = 'Action History',
-        previewHandlers = null
+        panelTitle = 'Action History'
     } = $props();
 
-    const callHistoryHelper = (method, ...args) => {
-        if (
-            typeof window !== 'undefined' &&
-            window.UIActionHistory &&
-            typeof window.UIActionHistory[method] === 'function'
-        ) {
-            return window.UIActionHistory[method](...args);
-        }
-        return null;
-    };
+    let entries = $state([]);
+    const previewHandlers = getActionHistoryPreviewHandlers();
 
-    const formatTime = (timestamp) => {
-        const helperResult = callHistoryHelper('_formatTime', timestamp);
-        if (helperResult) {
-            return helperResult;
-        }
-        if (!timestamp) return '';
-        const date = new Date(timestamp);
-        if (Number.isNaN(date.getTime())) return '';
-        return date.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
+    $effect(() => {
+        const unsubscribe = actionHistoryEntries.subscribe((value) => {
+            entries = Array.isArray(value) ? value : [];
         });
-    };
+        return () => unsubscribe();
+    });
 
-    const buildTurnKey = (entry) => {
-        const helperKey = callHistoryHelper('_buildTurnKey', entry);
-        if (helperKey !== null && helperKey !== undefined) {
-            return helperKey;
-        }
-        if (!entry || typeof entry.turn !== 'number' || Number.isNaN(entry.turn)) {
-            return null;
-        }
-        const playerKey =
-            entry.turnPlayerId ||
-            entry.turnPlayerLabel ||
-            entry.turnPlayerName ||
-            '';
-        return `${entry.turn}-${playerKey}`;
-    };
-
-    const formatTurnLabel = (entry) => {
-        const helperResult = callHistoryHelper('_formatTurnLabel', entry);
-        if (helperResult) {
-            return helperResult;
-        }
-
-        if (!entry) {
-            return 'New Turn';
-        }
-
-        const parts = [];
-        if (typeof entry.turn === 'number' && !Number.isNaN(entry.turn)) {
-            parts.push(`Tour ${entry.turn}`);
-        }
-
-        if (entry.turnPlayerLabel) {
-            parts.push(entry.turnPlayerLabel);
-        } else if (entry.turnPlayerName) {
-            parts.push(entry.turnPlayerName);
-        } else if (entry.turnPlayerId) {
-            const formatted = callHistoryHelper('_formatPlayer', entry.turnPlayerId);
-            parts.push(formatted || entry.turnPlayerId);
-        }
-
-        if (parts.length === 0) {
-            return 'New Turn';
-        }
-        return parts.join(' • ');
-    };
+    const formatTime = (timestamp) => formatActionHistoryTime(timestamp);
+    const buildTurnKey = (entry) => buildActionHistoryTurnKey(entry);
+    const formatTurnLabel = (entry) => formatActionHistoryTurnLabel(entry);
 
     const getSegments = (list) => {
         const normalized = Array.isArray(list) ? [...list].reverse() : [];

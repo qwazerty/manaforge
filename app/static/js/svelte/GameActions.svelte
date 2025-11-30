@@ -2,6 +2,10 @@
 
 <script>
     import { onMount } from 'svelte';
+    import {
+        addActionHistoryEntry,
+        addActionHistoryFailure
+    } from './stores/actionHistoryStore.js';
 
     /**
      * ManaForge Game Actions Module
@@ -362,10 +366,6 @@
     }
 
     function recordActionHistory(actionType, success, data = null, message = null, playerOverride = null) {
-        if (typeof UIActionHistory === 'undefined') {
-            return;
-        }
-
         const player = playerOverride || GameCore.getSelectedPlayer();
         let details = sanitizeActionDetails(data);
 
@@ -376,7 +376,7 @@
 
         const contextPayload = data ? JSON.parse(JSON.stringify(data)) : null;
 
-        UIActionHistory.addEntry({
+        addActionHistoryEntry({
             action: actionType,
             player,
             success,
@@ -385,10 +385,6 @@
     }
 
     function recordActionFailure(actionType, message, data = null, playerOverride = null) {
-        if (typeof UIActionHistory === 'undefined') {
-            return;
-        }
-
         const player = playerOverride || GameCore.getSelectedPlayer();
         let details = sanitizeActionDetails(data);
 
@@ -398,11 +394,11 @@
         }
 
         if (!details || (Object.keys(details).length === 1 && details.error)) {
-            UIActionHistory.addFailure(actionType, message || 'Action failed', player);
+            addActionHistoryFailure(actionType, message || 'Action failed', player);
             return;
         }
 
-        UIActionHistory.addEntry({
+        addActionHistoryEntry({
             action: actionType,
             player,
             success: false,
