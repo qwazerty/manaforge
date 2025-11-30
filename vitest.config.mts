@@ -13,7 +13,8 @@ export default defineConfig({
         alias: {
             '@svelte': path.resolve(__dirname, 'app/static/js/svelte'),
             '@ui': path.resolve(__dirname, 'app/static/js/ui'),
-            '@static': path.resolve(__dirname, 'app/static/js')
+            '@static': path.resolve(__dirname, 'app/static/js'),
+            '@lib': path.resolve(__dirname, 'app/static/js/lib')
         }
     },
     test: {

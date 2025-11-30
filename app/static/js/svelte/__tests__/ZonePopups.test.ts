@@ -1,12 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, waitFor } from '@testing-library/svelte';
 import { createClassComponent } from 'svelte/legacy';
 import ZonePopup from '../ZonePopup.svelte';
-import '../../ui/ui-zones-manager.js';
+import UIZonesManager from '../UIZonesManager.svelte';
 
 declare global {
     interface Window {
         UIZonesManager: {
             showZoneModal: (zone: string) => void;
+            closeZoneModal: (zone: string) => void;
+            _zonePopupElements: Map<string, unknown>;
+            _zonePopupComponents: Map<string, unknown>;
+            _deckZoneConfigs: Map<string, unknown>;
+            _graveyardZoneConfigs: Map<string, unknown>;
+            _exileZoneConfigs: Map<string, unknown>;
+            _lifeZoneConfigs: Map<string, unknown>;
         };
     }
 }
@@ -28,22 +36,24 @@ describe('Zone popups', () => {
         };
     };
 
-    beforeEach(() => {
+    beforeEach(async () => {
         document.body.innerHTML = '<div id="game-board" style="width: 800px; height: 600px;"></div>';
+        
+        // Render the UIZonesManager component to install window.UIZonesManager
+        render(UIZonesManager);
+        
+        // Wait for onMount to execute
+        await waitFor(() => {
+            expect(window.UIZonesManager).toBeDefined();
+        });
         
         // Reset UIZonesManager state
         if (window.UIZonesManager) {
-            // @ts-ignore - accessing private static fields for testing
             window.UIZonesManager._zonePopupElements = new Map();
-            // @ts-ignore
             window.UIZonesManager._zonePopupComponents = new Map();
-            // @ts-ignore
             window.UIZonesManager._deckZoneConfigs = new Map();
-            // @ts-ignore
             window.UIZonesManager._graveyardZoneConfigs = new Map();
-            // @ts-ignore
             window.UIZonesManager._exileZoneConfigs = new Map();
-            // @ts-ignore
             window.UIZonesManager._lifeZoneConfigs = new Map();
         }
 

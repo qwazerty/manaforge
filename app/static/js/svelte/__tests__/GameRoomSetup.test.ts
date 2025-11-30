@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import GameRoomSetup from '../GameRoomSetup.svelte';
 import type { ComponentType } from 'svelte';
-import { DeckStorage } from '../../lib/deck-storage';
+import { DeckStorage } from '@lib/deck-storage';
 
 const GameRoomSetupComponent = GameRoomSetup as unknown as ComponentType;
 

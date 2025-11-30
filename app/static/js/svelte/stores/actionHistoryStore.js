@@ -296,9 +296,7 @@ class ActionHistoryStore {
         }
 
         const preview = document.getElementById('card-preview-modal');
-        if (preview) {
-            GameCards.positionCardPreview(preview, event);
-        }
+        GameCards.positionCardPreview(preview, event);
     }
 
     static _handleCardPreviewHide() {
