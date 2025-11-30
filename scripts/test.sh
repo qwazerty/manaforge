@@ -26,7 +26,29 @@ print_error() {
 # Run Python tests with pytest
 run_python_tests() {
     print_header "Running Python Tests (pytest)"
-    if pytest tests/ -v; then
+    local pytest_cmd=()
+    if command -v pytest >/dev/null 2>&1; then
+        pytest_cmd=(pytest)
+    elif [[ -x "venv/bin/pytest" ]]; then
+        pytest_cmd=("venv/bin/pytest")
+    else
+        local python_cmd=""
+        if command -v python3 >/dev/null 2>&1; then
+            python_cmd=$(command -v python3)
+        elif command -v python >/dev/null 2>&1; then
+            python_cmd=$(command -v python)
+        fi
+
+        if [[ -z "$python_cmd" ]]; then
+            print_error "Python interpreter not found for running pytest"
+            FAILED=1
+            return
+        fi
+
+        pytest_cmd=("$python_cmd" -m pytest)
+    fi
+
+    if "${pytest_cmd[@]}" tests/ -v; then
         print_success "Python tests passed"
     else
         print_error "Python tests failed"
