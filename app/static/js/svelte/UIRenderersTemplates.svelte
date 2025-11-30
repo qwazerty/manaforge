@@ -121,7 +121,6 @@
             this._preloadCardImages(players);
             this._updateZoneOverlay(gameState, 'reveal');
             this._updateZoneOverlay(gameState, 'look');
-            this._ensureCommanderPopups(gameState);
 
             return true;
         }
@@ -244,14 +243,12 @@
                 this._updateStackOverlay(stack, gameState);
                 this._updateZoneOverlay(gameState, 'reveal');
                 this._updateZoneOverlay(gameState, 'look');
-                this._ensureCommanderPopups(gameState);
             } catch (error) {
                 this._destroyActionPanelComponent();
                 this._renderError(actionPanelContainer, 'Error', error.message);
                 this._updateStackOverlay([], null);
                 this._updateZoneOverlay(null, 'reveal');
                 this._updateZoneOverlay(null, 'look');
-                this._ensureCommanderPopups(null);
             }
         }
 
@@ -920,17 +917,6 @@
                 graveyard: this.generateGraveyardZone(graveyard, isOpponent),
                 exile: this.generateExileZone(exile, isOpponent)
             };
-        }
-
-        static _ensureCommanderPopups(gameState) {
-            if (typeof UIZonesManager === 'undefined' || !UIZonesManager) {
-                return;
-            }
-            try {
-                UIZonesManager.showCommanderPopups(gameState);
-            } catch (error) {
-                console.error('Failed to update commander popups:', error);
-            }
         }
 
         /**

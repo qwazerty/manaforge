@@ -1440,7 +1440,7 @@ const GameCards = {
             if (cardZone !== 'hand') {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.moveCard(${jsCardId}, ${jsCardZone}, "hand", ${jsUniqueCardId})`)}"><span class="icon">👋</span> Send to Hand</div>`;
             }
-            const battlefieldZones = ['reveal', 'reveal_zone', 'look', 'look_zone'];
+            const battlefieldZones = ['reveal', 'reveal_zone', 'look', 'look_zone', 'commander', 'commander_zone'];
             if (battlefieldZones.includes(cardZone) && !isTokenCard) {
                 menuHTML += `<div class="card-context-menu-item" onclick="${makeHandler(`GameCards.closeContextMenu(); GameActions.sendToBattlefield(${jsCardId}, ${jsCardZone}, ${jsUniqueCardId})`)}"><span class="icon">⚔️</span> Send to Battlefield</div>`;
             }
