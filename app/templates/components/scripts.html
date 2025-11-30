@@ -1,46 +1,46 @@
 <!-- External JavaScript modules for game logic -->
-<script src="{{ url_for('static', path='js/game-config.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-utils.js') }}"></script>
-<script src="{{ url_for('static', path='js/game-cards.js') }}"></script>
+<script src="{{ versioned_static('js/game-config.js') }}"></script>
+<script src="{{ versioned_static('js/game-utils.js') }}"></script>
+<script src="{{ versioned_static('js/game-cards.js') }}"></script>
 
 <!-- UI Module Dependencies (load in dependency order) -->
-<script src="{{ url_for('static', path='js/ui/ui-config.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-utils.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/HorizontalScrollManager.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-horizontal-scroll.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/zone-context-menu.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-card-manager.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-config.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-utils.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/HorizontalScrollManager.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-horizontal-scroll.js') }}"></script>
+<script src="{{ versioned_static('js/ui/zone-context-menu.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-card-manager.js') }}"></script>
 
-<script src="{{ url_for('static', path='js/ui/zone-data.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/DeckZone.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/GraveyardZone.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/ExileZone.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/LifeZone.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/CardAddTypePopover.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/CardAddCounterPopover.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/CardPowerToughnessPopover.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/PlayerCounterModal.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/ActionPanel.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/StackPopup.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/ZonePopup.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/ActionHistory.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/action-history-init.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/BattleChat.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/GameArena.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/CardSearchModal.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/zone-data.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/DeckZone.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/GraveyardZone.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/ExileZone.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/LifeZone.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/CardAddTypePopover.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/CardAddCounterPopover.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/CardPowerToughnessPopover.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/PlayerCounterModal.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/ActionPanel.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/StackPopup.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/ZonePopup.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/ActionHistory.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/action-history-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/BattleChat.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/GameArena.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/CardSearchModal.bundle.js') }}"></script>
 <!-- Unified Modules (replaces multiple old modules) -->
-<script src="{{ url_for('static', path='js/ui/ui-battle-chat.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/UIZonesManager.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-zones-manager-init.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/UIRenderersTemplates.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-renderers-templates-init.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/WebSocketManager.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/websocket-manager-init.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/ui-global.js') }}"></script>
-<script src="{{ url_for('static', path='js/card-search.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/GameCombat.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/game-combat-init.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/GameActions.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/game-actions-init.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/components/GameCore.bundle.js') }}"></script>
-<script src="{{ url_for('static', path='js/ui/game-core-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-battle-chat.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/UIZonesManager.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-zones-manager-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/UIRenderersTemplates.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-renderers-templates-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/WebSocketManager.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/websocket-manager-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/ui-global.js') }}"></script>
+<script src="{{ versioned_static('js/card-search.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/GameCombat.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/game-combat-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/GameActions.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/game-actions-init.js') }}"></script>
+<script src="{{ versioned_static('js/ui/components/GameCore.bundle.js') }}"></script>
+<script src="{{ versioned_static('js/ui/game-core-init.js') }}"></script>
