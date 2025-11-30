@@ -157,22 +157,63 @@
         return trimmed;
     }
 
+    function getLocalPlayerSeat() {
+        const seatFromUrl = GameUtils?.getPlayerFromUrl?.();
+        return seatFromUrl || getSelectedPlayer();
+    }
+
+    function isSpectatorSeat(seat) {
+        return typeof seat === 'string' && seat.trim().toLowerCase() === 'spectator';
+    }
+
+    function updateEndGameButtonState(player = null) {
+        if (typeof document === 'undefined') {
+            return;
+        }
+
+        const button = document.getElementById('end-game-btn');
+        if (!button) {
+            return;
+        }
+
+        const seat = player || getLocalPlayerSeat();
+        const normalizedSeat = normalizePlayerSeatKey(seat);
+        const spectator = isSpectatorSeat(seat);
+        const restrictControl = spectator || !normalizedSeat;
+        const isLocked = button.dataset?.locked === 'true';
+
+        button.classList.toggle('hidden', restrictControl);
+        button.setAttribute('aria-hidden', restrictControl ? 'true' : 'false');
+        button.setAttribute('aria-disabled', restrictControl ? 'true' : 'false');
+        button.title = restrictControl
+            ? 'Only seated players can end the game'
+            : 'End Game';
+
+        if (isLocked) {
+            return;
+        }
+
+        button.disabled = restrictControl;
+    }
+
     function updateSpectatorModeClass(player = null) {
         if (typeof document === 'undefined') {
             return;
         }
 
         const seat = player || getSelectedPlayer();
-        const isSpectator = seat === 'spectator';
+        const spectator = isSpectatorSeat(seat);
         const body = document.body;
 
         if (body) {
-            body.classList.toggle('spectator-mode', isSpectator);
+            body.classList.toggle('spectator-mode', spectator);
         }
 
         document.querySelectorAll('.game-container-1080').forEach((container) => {
-            container.classList.toggle('spectator-mode', isSpectator);
+            container.classList.toggle('spectator-mode', spectator);
         });
+
+        updateEndGameButtonState(seat);
     }
 
     function syncPersistentUi(state, { force = false } = {}) {
@@ -383,6 +424,14 @@
             return;
         }
 
+        const localSeat = getLocalPlayerSeat();
+        const normalizedSeat = normalizePlayerSeatKey(localSeat);
+        if (!normalizedSeat) {
+            alert('Only seated players can end the game.');
+            console.warn('Blocked end game request from non-player seat', localSeat);
+            return;
+        }
+
         const confirmed = confirm('Are you sure you want to end this game? This action cannot be undone.');
         if (!confirmed) {
             return;
@@ -407,6 +456,7 @@
             if (endGameBtn) {
                 endGameBtn.disabled = true;
                 endGameBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                endGameBtn.dataset.locked = 'true';
             }
         } catch (error) {
             console.error('Error ending game:', error);
@@ -472,9 +522,7 @@
             return;
         }
 
-        const playerFromUrl = typeof GameUtils?.getPlayerFromUrl === 'function'
-            ? GameUtils.getPlayerFromUrl()
-            : (config.playerId || 'player1');
+        const playerFromUrl = getLocalPlayerSeat() || config.playerId || 'player1';
         setSelectedPlayer(playerFromUrl);
         updateSpectatorModeClass(playerFromUrl);
         if (typeof window !== 'undefined' && window.gameData) {
