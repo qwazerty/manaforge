@@ -13,7 +13,7 @@
         "paths": {
             "@svelte/*": ["app/static/js/svelte/*"],
             "@ui/*": ["app/static/js/ui/*"],
-            "@static/*": ["app/static/js/*"]
+            "@lib/*": ["app/static/js/lib/*"]
         },
         "types": ["vitest/globals"]
     },

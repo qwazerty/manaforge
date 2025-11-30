@@ -26,4 +26,6 @@ This project uses Svelte 5 in Runes mode. When writing or migrating Svelte compo
     -   Use `mount(Component, { target: element })` from `svelte` (or `svelte/legacy` if using `createClassComponent` wrapper) instead of `new Component({ target: element })`.
 
 5.  **Imports & Paths**:
-    -   Avoid path aliases like `@static/...` in Svelte sources; use relative imports (e.g., `../../lib/deck-storage`) so the esbuild step resolves correctly in all environments.
+    -   Use path aliases for cleaner imports: `@lib/*`, `@svelte/*`, `@ui/*`.
+    -   Example: `import { DeckStorage } from '@lib/deck-storage';`
+    -   Aliases are defined in `tsconfig.json` (for TypeScript/IDE) and `tools/build-svelte.mjs` (for esbuild bundling).
