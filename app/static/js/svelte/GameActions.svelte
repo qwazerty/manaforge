@@ -581,12 +581,6 @@
 
         performGameAction('play_card', payload);
 
-        // Find card name for better user feedback
-        let cardName = cardId; // fallback to cardId if name not found
-        const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
-        if (cardElement) {
-            cardName = cardElement.getAttribute('data-card-name') || cardId;
-        }
     }
 
     function revealFaceDownCard(cardId, uniqueId) {
@@ -628,9 +622,6 @@
         if (!phaseId) return;
         performGameAction('change_phase', { phase: phaseId });
     
-        const phaseName = (typeof UIConfig !== 'undefined' && UIConfig.getPhaseDisplayName)
-            ? UIConfig.getPhaseDisplayName(phaseId)
-            : phaseId;
     }
 
     function tapCard(cardId, uniqueCardId) {
@@ -657,7 +648,6 @@
             };
 
             performGameAction('tap_card', tapData);
-            const actionText = newTappedState ? 'tapped' : 'untapped';
         } else {
             console.warn(`🃏 Card element not found for cardId: ${cardId}, uniqueCardId: ${uniqueCardId}`);
             performGameAction('tap_card', { card_id: cardId, unique_id: uniqueCardId });
@@ -734,7 +724,6 @@
         }
 
         performGameAction('delete_token', { unique_id: uniqueCardId });
-        const label = cardName || 'Token';
     }
 
     function moveAllHandToReveal() {
@@ -759,12 +748,9 @@
             return;
         }
 
-        // Move all cards from hand to reveal
-        let movedCount = 0;
         hand.forEach(card => {
             if (card.unique_id) {
                 moveCard(card.id || card.card_id, 'hand', 'reveal', card.unique_id);
-                movedCount++;
             }
         });
     }
@@ -791,12 +777,9 @@
             return;
         }
 
-        // Move all cards from reveal to hand
-        let movedCount = 0;
         revealZone.forEach(card => {
             if (card.unique_id) {
                 moveCard(card.id || card.card_id, 'reveal', 'hand', card.unique_id);
-                movedCount++;
             }
         });
     }
@@ -1043,8 +1026,6 @@
             amount: parsedAmount
         });
 
-        const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
-        const signed = parsedAmount > 0 ? `+${parsedAmount}` : `${parsedAmount}`;
     }
 
     function setPlayerCounter(playerId, counterType, value) {
@@ -1068,10 +1049,6 @@
             amount: parsedValue
         });
 
-        const formattedType = normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1);
-        const message = parsedValue <= 0
-            ? `Removed ${formattedType} counters`
-            : `${formattedType} set to ${parsedValue}`;
     }
 
     function adjustCommanderTax(playerId, amount) {
@@ -1081,7 +1058,6 @@
             amount: amount
         });
 
-        const signedAmount = amount > 0 ? `+${amount}` : `${amount}`;
     }
 
     function playOpponentCardFromZone(cardId, uniqueCardId, sourceZone, sourcePlayerId = null) {

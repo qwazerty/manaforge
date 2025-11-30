@@ -20,6 +20,9 @@
     let autoRefreshInterval = null;
     let persistentUiLoaded = false;
     let visibilityCleanup = null;
+    let moduleReadyTimer = null;
+    let gameInitialized = false;
+    let combatInitialized = false;
 
     const getGameState = () => getGameStateSnapshot();
     const getGameId = () => getGameIdSnapshot();
@@ -504,6 +507,9 @@
     }
 
     async function initializeGame() {
+        if (gameInitialized) {
+            return;
+        }
         const root = typeof document !== 'undefined'
             ? document.getElementById('game-interface-root')
             : null;
@@ -549,6 +555,40 @@
         // Auto-refresh will only start as fallback if WebSocket fails to connect
         // (handled by WebSocketManager on connection failure)
         setupVisibilityListener();
+        gameInitialized = true;
+    }
+
+    function areModulesReady() {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        const required = ['GameSocket', 'GameUI', 'GameActions', 'GameUtils', 'GameCards', 'GameCombat'];
+        return required.every((name) => typeof window[name] !== 'undefined');
+    }
+
+    function bootGameWhenReady() {
+        if (gameInitialized) {
+            return;
+        }
+        if (!areModulesReady()) {
+            if (!moduleReadyTimer) {
+                moduleReadyTimer = setTimeout(() => {
+                    moduleReadyTimer = null;
+                    bootGameWhenReady();
+                }, 120);
+            }
+            return;
+        }
+        initializeGame();
+        if (!combatInitialized && window.GameCombat && typeof window.GameCombat.init === 'function') {
+            try {
+                window.GameCombat.init();
+            } catch (error) {
+                console.error('GameCombat initialization failed', error);
+            } finally {
+                combatInitialized = true;
+            }
+        }
     }
 
     function attachDomReady() {
@@ -557,20 +597,7 @@
         }
 
         const runner = () => {
-            if (window.GameCore &&
-                window.GameSocket &&
-                window.GameUI &&
-                window.GameActions &&
-                window.GameUtils &&
-                window.GameCards) {
-                initializeGame();
-
-                if (window.GameCombat && typeof window.GameCombat.init === 'function') {
-                    window.GameCombat.init();
-                }
-            } else {
-                console.error('Some ManaForge game modules failed to load');
-            }
+            bootGameWhenReady();
         };
 
         if (document.readyState === 'loading') {
@@ -613,6 +640,10 @@
         const detachReady = attachDomReady();
         return () => {
             stopAutoRefresh();
+            if (moduleReadyTimer) {
+                clearTimeout(moduleReadyTimer);
+                moduleReadyTimer = null;
+            }
             if (visibilityCleanup) {
                 visibilityCleanup();
                 visibilityCleanup = null;
