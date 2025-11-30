@@ -29,6 +29,7 @@
         blockSyncHandle: null,
         lastSyncedAttackersPayload: null,
         lastSyncedBlockersPayload: null,
+        clickHandler: null,
     
         /**
          * Check if a card has vigilance
@@ -1065,8 +1066,8 @@
          * Initialize combat system
          */
         init() {
-            // Add click handlers for battlefield creatures
-            document.addEventListener('click', (event) => {
+            this.teardown();
+            const handler = (event) => {
                 const cardElement = event.target.closest('[data-card-unique-id]');
                 if (!cardElement) return;
             
@@ -1102,7 +1103,16 @@
                         this.assignBlocker(uniqueId);
                     }
                 }
-            });
+            };
+            document.addEventListener('click', handler);
+            this.clickHandler = handler;
+        },
+
+        teardown() {
+            if (this.clickHandler) {
+                document.removeEventListener('click', this.clickHandler);
+                this.clickHandler = null;
+            }
         }
     };
 
@@ -1126,5 +1136,10 @@
                 console.error('[GameCombat] init failed', error);
             }
         }
+        return () => {
+            if (typeof GameCombat?.teardown === 'function') {
+                GameCombat.teardown();
+            }
+        };
     });
 </script>

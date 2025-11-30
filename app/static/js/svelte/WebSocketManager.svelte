@@ -38,39 +38,103 @@
     let managerInitialized = false;
     let visibilityCleanup = null;
 
+    const PLAYER_ZONES_TO_TRACK = ['hand', 'battlefield', 'graveyard', 'exile', 'reveal_zone', 'look_zone'];
+
     /**
-     * Fast shallow comparison of game states to avoid expensive JSON.stringify
-     * Returns true if states are likely equal
+     * Shallow-ish comparison that still tracks battlefield state
      */
     function shallowEqualState(a, b) {
         if (a === b) return true;
         if (!a || !b) return false;
         
-        // Compare key structural properties first
         if (a.turn !== b.turn) return false;
         if (a.phase !== b.phase) return false;
         if (a.active_player !== b.active_player) return false;
         if (a.priority_player !== b.priority_player) return false;
-        
-        // Compare array lengths for quick inequality check
-        const aPlayers = a.players || [];
-        const bPlayers = b.players || [];
-        if (aPlayers.length !== bPlayers.length) return false;
-        
-        for (let i = 0; i < aPlayers.length; i++) {
-            const ap = aPlayers[i];
-            const bp = bPlayers[i];
-            if (!ap || !bp) return false;
-            if (ap.life !== bp.life) return false;
-            if ((ap.hand?.length || 0) !== (bp.hand?.length || 0)) return false;
-            if ((ap.battlefield?.length || 0) !== (bp.battlefield?.length || 0)) return false;
-            if ((ap.graveyard?.length || 0) !== (bp.graveyard?.length || 0)) return false;
-        }
-        
-        // Compare stack
         if ((a.stack?.length || 0) !== (b.stack?.length || 0)) return false;
-        
-        return true;
+
+        const aPlayers = Array.isArray(a.players) ? a.players : [];
+        const bPlayers = Array.isArray(b.players) ? b.players : [];
+        if (aPlayers.length !== bPlayers.length) return false;
+
+        const signatureA = createStateSignature(a);
+        const signatureB = createStateSignature(b);
+        return signatureA === signatureB;
+    }
+
+    function createStateSignature(state) {
+        if (!state) {
+            return 'null';
+        }
+        const parts = [
+            `turn:${state.turn ?? 'n/a'}`,
+            `phase:${state.phase ?? 'none'}`,
+            `active:${state.active_player ?? 'n/a'}`,
+            `priority:${state.priority_player ?? 'n/a'}`,
+            `stack:${state.stack?.length || 0}`
+        ];
+
+        if (Array.isArray(state.stack) && state.stack.length) {
+            parts.push(
+                'stackEntries:' +
+                state.stack
+                    .map((entry) => `${entry?.id || entry?.card_id || entry?.unique_id || 'unknown'}:${entry?.status || entry?.zone || ''}`)
+                    .join(',')
+            );
+        }
+
+        (Array.isArray(state.players) ? state.players : []).forEach((player, index) => {
+            const manaPool = player?.mana_pool;
+            const manaSnapshot = Array.isArray(manaPool)
+                ? manaPool.join(',')
+                : manaPool && typeof manaPool === 'object'
+                    ? Object.keys(manaPool)
+                        .sort()
+                        .map((key) => `${key}:${manaPool[key]}`)
+                        .join(',')
+                    : '';
+            parts.push(`player${index}:${player?.life ?? 'life'}:${manaSnapshot}`);
+
+            PLAYER_ZONES_TO_TRACK.forEach((zone) => {
+                const cards = Array.isArray(player?.[zone]) ? player[zone] : [];
+                parts.push(`${zone}:${cards.length}`);
+                if (zone === 'battlefield') {
+                    parts.push(cards.map(summarizeCardState).join(','));
+                }
+            });
+        });
+
+        return parts.join('|');
+    }
+
+    function summarizeCardState(card) {
+        if (!card) {
+            return '';
+        }
+        const counters = serializeCounters(card.counters);
+        const annotations = [
+            card.tapped ? 'T' : '',
+            card.attacking ? `A${card.attacking === true ? '1' : card.attacking}` : '',
+            card.blocking ? `B${card.blocking}` : '',
+            card.damage ? `D${card.damage}` : '',
+            card.face_down ? 'FD' : '',
+            card.summoning_sick ? 'S' : ''
+        ].filter(Boolean).join('');
+        const stats = [
+            card.power ?? card.base_power ?? '',
+            card.toughness ?? card.base_toughness ?? ''
+        ].join('/');
+        return `${card.unique_id || card.id || card.card_id || 'card'}:${annotations}:${stats}:${counters}`;
+    }
+
+    function serializeCounters(counterData) {
+        if (!counterData || typeof counterData !== 'object') {
+            return '';
+        }
+        return Object.keys(counterData)
+            .sort()
+            .map((key) => `${key}:${counterData[key]}`)
+            .join(',');
     }
 
     onMount(() => {
