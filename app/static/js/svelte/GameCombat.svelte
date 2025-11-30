@@ -642,6 +642,91 @@
             }
         },
 
+        applyCombatVisualsFromState(gameState) {
+            if (!gameState || !gameState.players) return;
+
+            const combatState = gameState.combat_state || {};
+            const pendingAttackers = new Set(Array.isArray(combatState.pending_attackers) ? combatState.pending_attackers : []);
+            const pendingBlockers = combatState.pending_blockers || {};
+            const blockingPairs = new Map();
+
+            const getTranslate = (element) => (
+                element && element.getAttribute('data-is-opponent') === 'true' ? 20 : -20
+            );
+
+            gameState.players.forEach((player) => {
+                if (!player.battlefield) {
+                    return;
+                }
+                player.battlefield.forEach(card => {
+                    const cardElement = document.querySelector(`[data-card-unique-id="${card.unique_id}"]`);
+                    if (!cardElement) return;
+
+                    const isPendingAttacker = pendingAttackers.has(card.unique_id);
+                    const isAttacking = Boolean(card.attacking);
+                    if (isAttacking || isPendingAttacker) {
+                        cardElement.classList.add('attacking-creature');
+                        const translateY = getTranslate(cardElement);
+                        if (isAttacking && card.tapped) {
+                            cardElement.style.transform = `translateY(${translateY}px) rotate(90deg)`;
+                            cardElement.classList.add('combat-tapped');
+                        } else {
+                            cardElement.style.transform = `translateY(${translateY}px)`;
+                            cardElement.classList.remove('combat-tapped');
+                        }
+                        if (isPendingAttacker && !isAttacking) {
+                            cardElement.dataset.pendingAttacker = 'true';
+                        } else {
+                            delete cardElement.dataset.pendingAttacker;
+                        }
+                    } else {
+                        cardElement.classList.remove('attacking-creature');
+                        cardElement.style.transform = '';
+                        cardElement.classList.remove('combat-tapped');
+                        delete cardElement.dataset.pendingAttacker;
+                    }
+
+                    const pendingBlockTarget = pendingBlockers[card.unique_id];
+                    const isBlocking = Boolean(card.blocking);
+                    if (isBlocking || pendingBlockTarget) {
+                        cardElement.classList.add('blocking-creature');
+                        const attackerTarget = isBlocking ? card.blocking : pendingBlockTarget;
+                        if (attackerTarget) {
+                            blockingPairs.set(`${card.unique_id}->${attackerTarget}`, {
+                                blocker: card.unique_id,
+                                attacker: attackerTarget
+                            });
+                        }
+                    } else {
+                        cardElement.classList.remove('blocking-creature');
+                    }
+                });
+            });
+
+            this.clearArrows();
+            if (typeof this.drawBlockingArrow === 'function') {
+                blockingPairs.forEach(pair => {
+                    this.drawBlockingArrow(pair.blocker, pair.attacker);
+                });
+            }
+        },
+
+        redrawCombatArrowsFromState(gameState) {
+            if (!gameState || !gameState.players) return;
+
+            this.clearArrows();
+
+            gameState.players.forEach(player => {
+                if (player.battlefield) {
+                    player.battlefield.forEach(card => {
+                        if (card.blocking && typeof this.drawBlockingArrow === 'function') {
+                            this.drawBlockingArrow(card.unique_id, card.blocking);
+                        }
+                    });
+                }
+            });
+        },
+
         applyPendingAttackerVisuals(pendingAttackers) {
             if (!Array.isArray(pendingAttackers)) return;
 
