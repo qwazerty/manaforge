@@ -1,15 +1,46 @@
-/**
- * ManaForge Action History Module
- * Maintains and renders the recent game action history in the UI.
- */
+import { writable } from 'svelte/store';
 
-class UIActionHistory {
+const globalRef = typeof globalThis !== 'undefined' ? globalThis : window;
+const GLOBAL_STATE_KEY = '__manaforgeActionHistoryState';
+
+if (!globalRef[GLOBAL_STATE_KEY]) {
+    globalRef[GLOBAL_STATE_KEY] = {
+        entries: [],
+        entrySignatures: new Set(),
+        previewHandlers: null,
+        store: writable([])
+    };
+}
+
+const actionHistoryState = globalRef[GLOBAL_STATE_KEY];
+const actionHistoryEntriesStore = actionHistoryState.store;
+
+/**
+ * ManaForge Action History Store
+ * Maintains and exposes the recent game action history to Svelte components.
+ */
+class ActionHistoryStore {
     static MAX_ENTRIES = 5000;
-    static entries = [];
-    static entrySignatures = new Set();
-    static _actionHistoryComponent = null;
-    static _actionHistoryTarget = null;
-    static _previewHandlers = null;
+
+    static get entries() {
+        return actionHistoryState.entries;
+    }
+
+    static set entries(value) {
+        actionHistoryState.entries = Array.isArray(value) ? value : [];
+    }
+
+    static get entrySignatures() {
+        return actionHistoryState.entrySignatures;
+    }
+
+    static get _previewHandlers() {
+        return actionHistoryState.previewHandlers;
+    }
+
+    static set _previewHandlers(value) {
+        actionHistoryState.previewHandlers = value;
+    }
 
     /**
      * Add an entry to the action history.
@@ -198,95 +229,11 @@ class UIActionHistory {
         this._render();
     }
 
-    // ===== RENDERING =====
+    // ===== STATE UPDATES =====
 
     static _render() {
-        const component = this._ensureActionHistoryComponent();
-        if (!component) {
-            return;
-        }
-
-        try {
-            component.$set(this._buildComponentProps());
-        } catch (error) {
-            console.error('Failed to update action history component', error);
-        }
-    }
-
-    static _buildComponentProps() {
-        return {
-            entries: Array.isArray(this.entries) ? [...this.entries] : [],
-            panelIcon: '📜',
-            panelTitle: 'Action History',
-            previewHandlers: this._getCardPreviewHandlers()
-        };
-    }
-
-    static _ensureActionHistoryComponent() {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-
-        if (typeof ActionHistoryComponent === 'undefined') {
-            return null;
-        }
-
-        const container = document.getElementById('action-history-panel');
-        if (!container) {
-            this._destroyActionHistoryComponent();
-            return null;
-        }
-
-        if (this._actionHistoryComponent && this._actionHistoryTarget === container) {
-            return this._actionHistoryComponent;
-        }
-
-        this._destroyActionHistoryComponent();
-
-        try {
-            container.innerHTML = '';
-            const mount = typeof ActionHistoryComponent.mount === 'function'
-                ? ActionHistoryComponent.mount
-                : null;
-            if (!mount) {
-                throw new Error('ActionHistoryComponent.mount is not available');
-            }
-            this._actionHistoryComponent = mount(ActionHistoryComponent.default, {
-                target: container,
-                props: this._buildComponentProps()
-            });
-            this._actionHistoryTarget = container;
-        } catch (error) {
-            console.error('Failed to initialize action history component', error);
-            this._actionHistoryComponent = null;
-            this._actionHistoryTarget = null;
-        }
-
-        return this._actionHistoryComponent;
-    }
-
-    static _destroyActionHistoryComponent() {
-        if (this._actionHistoryComponent) {
-            try {
-                if (typeof ActionHistoryComponent?.unmount === 'function') {
-                    ActionHistoryComponent.unmount(this._actionHistoryComponent);
-                } else if (typeof this._actionHistoryComponent.$destroy === 'function') {
-                    this._actionHistoryComponent.$destroy();
-                }
-            } catch (error) {
-                console.error('Failed to destroy action history component', error);
-            }
-        }
-        this._actionHistoryComponent = null;
-        this._actionHistoryTarget = null;
-    }
-
-    /**
-     * Request a UI refresh for the action history panel.
-     * Useful when the container is re-rendered by another framework.
-     */
-    static refreshPanel() {
-        this._render();
+        const snapshot = Array.isArray(this.entries) ? [...this.entries] : [];
+        actionHistoryEntriesStore.set(snapshot);
     }
 
     static _getCardPreviewHandlers() {
@@ -1989,4 +1936,31 @@ class UIActionHistory {
     }
 }
 
-window.UIActionHistory = UIActionHistory;
+const actionHistoryEntries = {
+    subscribe: actionHistoryEntriesStore.subscribe
+};
+
+const addActionHistoryEntry = (...args) => ActionHistoryStore.addEntry(...args);
+const loadActionHistoryFromState = (...args) => ActionHistoryStore.loadFromState(...args);
+const mergeActionHistoryEntries = (...args) => ActionHistoryStore.mergeStateEntries(...args);
+const addActionHistoryFromActionResult = (...args) => ActionHistoryStore.addFromActionResult(...args);
+const addActionHistoryFailure = (...args) => ActionHistoryStore.addFailure(...args);
+const clearActionHistory = () => ActionHistoryStore.clear();
+const getActionHistoryPreviewHandlers = () => ActionHistoryStore._getCardPreviewHandlers();
+const buildActionHistoryTurnKey = (entry) => ActionHistoryStore._buildTurnKey(entry);
+const formatActionHistoryTurnLabel = (entry) => ActionHistoryStore._formatTurnLabel(entry);
+const formatActionHistoryTime = (timestamp) => ActionHistoryStore._formatTime(timestamp);
+
+export {
+    actionHistoryEntries,
+    addActionHistoryEntry,
+    addActionHistoryFailure,
+    addActionHistoryFromActionResult,
+    buildActionHistoryTurnKey,
+    clearActionHistory,
+    formatActionHistoryTime,
+    formatActionHistoryTurnLabel,
+    getActionHistoryPreviewHandlers,
+    loadActionHistoryFromState,
+    mergeActionHistoryEntries
+};
