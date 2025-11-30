@@ -6,12 +6,20 @@
     import ExileZone from './ExileZone.svelte';
     import LifeZone from './LifeZone.svelte';
     import PlayerCounterModal from './PlayerCounterModal.svelte';
+    import CommanderZones from './CommanderZones.svelte';
     import { buildCounterEntries } from './utils/player-counter-utils.js';
 
     let {
         gameState = null,
         selectedPlayer = 'player1'
     } = $props();
+
+    const COMMANDER_FORMATS = ['duel_commander', 'commander_multi'];
+
+    const isCommanderFormat = $derived(() => {
+        const format = gameState?.game_format || '';
+        return COMMANDER_FORMATS.includes(format);
+    });
 
     let gameBoardEl = null;
     let counterModal = $state({
@@ -889,6 +897,12 @@
 
     <div class="xl:col-span-1 space-y-3" id="right-sidebar">
         <div id="action-history-panel"></div>
+        {#if isCommanderFormat()}
+            <CommanderZones
+                gameState={gameState}
+                selectedPlayer={selectedPlayer}
+            />
+        {/if}
         <div id="battle-chat-panel"></div>
     </div>
     <PlayerCounterModal

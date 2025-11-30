@@ -9,19 +9,14 @@
         isOpponent = false,
         ownerId = '',
         persistent = false,
-        allowDrop = false,
-        allowCommanderControls = false,
-        commanderTax = 0
+        allowDrop = false
     } = $props();
 
     const panelId = $derived(() => popupKey ? `zone-popup-${popupKey}` : 'zone-popup');
     const bodyId = $derived(() => popupKey ? `zone-popup-body-${popupKey}` : 'zone-popup-body');
     const countId = $derived(() => popupKey ? `zone-popup-count-${popupKey}` : 'zone-popup-count');
 
-    const isCommanderPopup = $derived(() => baseZone === 'commander');
     const hasCards = $derived(() => Number(cardCount) > 0);
-    const allowCommanderDrop = $derived(() => isCommanderPopup() && allowCommanderControls && allowDrop);
-    const effectiveAllowDrop = $derived(() => allowCommanderDrop() || (!isCommanderPopup() && allowDrop));
 
     let searchQuery = $state('');
     let panelEl;
@@ -77,7 +72,7 @@
     };
 
     const handleDragOver = (event) => {
-        if (!effectiveAllowDrop()) {
+        if (!allowDrop) {
             return;
         }
         event.preventDefault();
@@ -87,7 +82,7 @@
     };
 
     const handleDragLeave = (event) => {
-        if (!effectiveAllowDrop()) {
+        if (!allowDrop) {
             return;
         }
         if (typeof UIZonesManager?.handlePopupDragLeave === 'function') {
@@ -96,7 +91,7 @@
     };
 
     const handleDrop = (event) => {
-        if (!effectiveAllowDrop()) {
+        if (!allowDrop) {
             return;
         }
         event.preventDefault();
@@ -106,9 +101,6 @@
     };
 
     const attachHorizontalScroll = () => {
-        if (isCommanderPopup()) {
-            return;
-        }
         const listEl = panelEl?.querySelector('.reveal-card-list');
         if (!listEl || listEl.dataset.wheelListenerAttached === 'true') {
             return;
@@ -177,89 +169,23 @@
     </div>
 
     <div class="stack-popup-body reveal-popup-body zone-popup-body" id={bodyId()}>
-        {#if isCommanderPopup()}
-            <div class="commander-popup-content">
-                <div class="commander-popup-tax">
-                    <span class="commander-tax-label">Commander Tax</span>
-                    <div class="commander-tax-value-group">
-                        {#if allowCommanderControls}
-                            <button
-                            class={`commander-tax-adjust-btn${commanderTax <= 0 ? ' commander-tax-adjust-btn-disabled' : ''}`}
-                            type="button"
-                            disabled={commanderTax <= 0}
-                            onclick={(event) => { event.stopPropagation(); GameActions.adjustCommanderTax(ownerId, -2); }}>
-                            -2
-                        </button>
-                    {/if}
-                    <span class="commander-tax-value">{commanderTax}</span>
-                    {#if allowCommanderControls}
-                        <button
-                            class="commander-tax-adjust-btn"
-                            type="button"
-                            onclick={(event) => { event.stopPropagation(); GameActions.adjustCommanderTax(ownerId, 2); }}>
-                            +2
-                        </button>
-                    {/if}
-                </div>
-            </div>
-
-            {#if hasCards()}
-                <div class="reveal-card-container commander-popup-card-container">
-                    <div
-                        class="reveal-card-list commander-popup-card-list"
-                        role="list"
-                        data-zone-context={baseZone}
-                        data-zone-owner={ownerId}
-                        data-card-count={cardCount}
-                        ondragover={handleDragOver}
-                        ondragleave={handleDragLeave}
-                        ondrop={handleDrop}>
-                        {@html cardsHtml}
-                    </div>
-                </div>
-            {:else if allowCommanderDrop()}
-                <div class="reveal-card-container commander-popup-card-container">
-                    <div
-                        class="reveal-card-list commander-popup-card-list commander-popup-card-list-empty"
-                        role="list"
-                        data-zone-context={baseZone}
-                        data-zone-owner={ownerId}
-                        data-card-count="0"
-                        ondragover={handleDragOver}
-                        ondragleave={handleDragLeave}
-                        ondrop={handleDrop}>
-                        <div class="commander-popup-empty">
-                            <span class="commander-popup-empty-icon">🧙</span>
-                            <div>No commander assigned</div>
-                        </div>
-                    </div>
-                    </div>
+        <div class="reveal-card-container">
+            <div
+                class={`reveal-card-list zone-card-list${!hasCards() ? ' zone-card-list-empty' : ''}`}
+                role="list"
+                data-zone-context={baseZone}
+                data-zone-owner={ownerId}
+                data-card-count={cardCount}
+                ondragover={handleDragOver}
+                ondragleave={handleDragLeave}
+                ondrop={handleDrop}>
+                {#if hasCards()}
+                    {@html cardsHtml}
                 {:else}
-                    <div class="commander-popup-empty">
-                        <span class="commander-popup-empty-icon">🧙</span>
-                        <div>No commander assigned</div>
-                    </div>
+                    <div class="reveal-empty">No cards in this zone</div>
                 {/if}
             </div>
-        {:else}
-            <div class="reveal-card-container">
-                <div
-                    class={`reveal-card-list zone-card-list${!hasCards() ? ' zone-card-list-empty' : ''}`}
-                    role="list"
-                    data-zone-context={baseZone}
-                    data-zone-owner={ownerId}
-                    data-card-count={cardCount}
-                    ondragover={handleDragOver}
-                    ondragleave={handleDragLeave}
-                    ondrop={handleDrop}>
-                    {#if hasCards()}
-                        {@html cardsHtml}
-                    {:else}
-                        <div class="reveal-empty">No cards in this zone</div>
-                    {/if}
-                </div>
-            </div>
-        {/if}
+        </div>
     </div>
 
     <div class="popup-search-empty hidden" bind:this={emptyStateEl}>No cards match your search</div>

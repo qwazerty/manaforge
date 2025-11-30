@@ -56,26 +56,6 @@
             return isOpponent ? 'player2' : 'player1';
         }
 
-        static _buildCommanderPopupTitle(playerData, isOpponent) {
-            const defaultTitle = isOpponent ? 'Opponent Commander' : 'Commander';
-            const playerName = typeof playerData?.name === 'string' ? playerData.name.trim() : '';
-            return playerName ? `Commander — ${playerName}` : defaultTitle;
-        }
-
-        static _createCommanderPopupConfig(playerData, playerIndex, isOpponent) {
-            if (!playerData) {
-                return null;
-            }
-
-            return {
-                popupKey: isOpponent ? 'opponent_commander' : 'commander',
-                playerData,
-                isOpponent,
-                ownerId: this._determinePlayerOwnerId(playerData, playerIndex, isOpponent),
-                title: this._buildCommanderPopupTitle(playerData, isOpponent)
-            };
-        }
-
         static _renderZoneLabel(zoneKey) {
             const info = this.ZONE_INFO[zoneKey];
             if (!info) {
@@ -298,120 +278,12 @@
             return `translate(${translateX}, ${translateY})`;
         }
 
-        /**
-         * Display commander popups for applicable formats (Commander/Duel Commander).
-         */
-        static showCommanderPopups(gameState) {
-            if (!gameState) {
-                this.hideCommanderPopups();
-                return;
-            }
-
-            const format = String(gameState.game_format || '').toLowerCase();
-            const commanderFormats = ['duel_commander', 'commander_multi'];
-            if (!commanderFormats.includes(format)) {
-                this.hideCommanderPopups();
-                return;
-            }
-
-            const players = Array.isArray(gameState.players) ? gameState.players : [];
-            if (!players.length) {
-                this.hideCommanderPopups();
-                return;
-            }
-
-            const selectedPlayer = this._getSelectedPlayer();
-
-            let controlledIndex = 0;
-            if (selectedPlayer === 'player2') {
-                controlledIndex = 1;
-            }
-
-            const opponentIndex = controlledIndex === 0 ? 1 : 0;
-
-            this.hideCommanderPopups();
-
-            const controlledPlayer = players[controlledIndex];
-            const controlledConfig = this._createCommanderPopupConfig(controlledPlayer, controlledIndex, false);
-            if (controlledConfig) {
-                this._openCommanderPopup(controlledConfig, selectedPlayer);
-            }
-
-            const opponentPlayer = players[opponentIndex];
-            const opponentConfig = players.length > 1
-                ? this._createCommanderPopupConfig(opponentPlayer, opponentIndex, true)
-                : null;
-            if (opponentConfig) {
-                this._openCommanderPopup(opponentConfig, selectedPlayer);
-            }
-        }
-
-        /**
-         * Hide commander popups if they are currently rendered.
-         */
-        static hideCommanderPopups() {
-            if (!this._zonePopupElements) {
-                return;
-            }
-
-            ['commander', 'opponent_commander'].forEach((key) => {
-                const elements = this._zonePopupElements.get(key);
-                if (elements?.panel) {
-                    elements.panel.classList.add('hidden');
-                    elements.panel.setAttribute('aria-hidden', 'true');
-                    elements.panel.dataset.appear = 'hidden';
-                }
-            });
-        }
-
-        /**
-         * Internal helper to open or refresh the commander popup.
-         */
-        static _openCommanderPopup(config, selectedPlayer) {
-            const { popupKey, playerData, isOpponent, ownerId, title } = config;
-            if (!playerData) {
-                return;
-            }
-
-            const commanderCards = Array.isArray(playerData.commander_zone)
-                ? playerData.commander_zone
-                : [];
-            const commanderTax = Number.isFinite(Number(playerData.commander_tax))
-                ? Number(playerData.commander_tax)
-                : 0;
-
-            const zoneInfo = {
-                title: title || (isOpponent ? 'Opponent Commander' : 'Commander'),
-                icon: '👑',
-                description: 'Commander zone',
-                persistent: true,
-                commanderTax,
-                allowTaxControls: this._shouldAllowCommanderControls(selectedPlayer, ownerId, isOpponent)
-            };
-
-            this._openZonePopup(popupKey, commanderCards, zoneInfo, isOpponent, ownerId);
-        }
-
-        static _shouldAllowCommanderControls(selectedPlayer, ownerId, isOpponent) {
-            if (isOpponent) {
-                return false;
-            }
-            if (!selectedPlayer || selectedPlayer === 'spectator') {
-                return false;
-            }
-            return selectedPlayer === ownerId;
-        }
-
         // ===== ZONE MODAL MANAGEMENT =====
     
         /**
          * Show zone modal for current player
          */
         static showZoneModal(zoneName) {
-            if (zoneName === 'commander') {
-                this.showCommanderPopups(GameCore.getGameState());
-                return;
-            }
             const gameState = GameCore.getGameState();
             if (!gameState) return;
 
@@ -427,10 +299,6 @@
          * Show opponent zone modal
          */
         static showOpponentZoneModal(zoneName) {
-            if (zoneName === 'opponent_commander') {
-                this.showCommanderPopups(GameCore.getGameState());
-                return;
-            }
             const gameState = GameCore.getGameState();
             if (!gameState) return;
 
