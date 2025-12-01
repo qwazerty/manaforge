@@ -19,8 +19,7 @@ class ZoneContextMenu {
                 { id: 'lookTopLibrary', label: 'Look Top Library', icon: '👁️', action: 'lookTopLibrary' },
                 { id: 'revealTopLibrary', label: 'Reveal Top Library', icon: '👁️', action: 'revealTopLibrary' },
                 { id: 'search', label: 'Search Library', icon: '🔍', action: 'searchZone' },
-                { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' },
-                { id: 'mulligan', label: 'Mulligan', icon: '🔄', action: 'mulligan' }
+                { id: 'shuffle', label: 'Shuffle Library', icon: '🔀', action: 'shuffleLibrary' }
             ]
         },
         graveyard: {
@@ -247,23 +246,8 @@ class ZoneContextMenu {
             case 'shuffleLibrary':
                 this.shuffleLibrary(isOpponent);
                 break;
-            case 'mulligan':
-                this.mulligan(isOpponent);
-                break;
             default:
                 console.warn(`Unknown action: ${actionType}`);
-        }
-    }
-
-    /**
-     * Mulligan
-     */
-    static mulligan(isOpponent = false) {
-        if (isOpponent) return; // Can't mulligan for opponent
-        if (window.GameActions && window.GameActions.performGameAction) {
-            window.GameActions.performGameAction('mulligan');
-        } else {
-            console.warn('GameActions not available for mulligan');
         }
     }
 
