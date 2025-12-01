@@ -214,6 +214,7 @@ class GameZone(str, Enum):
 
 class GamePhase(str, Enum):
     """Simplified game phases like Magic Arena."""
+    PREGAME = "pregame"  # Before game starts (coin flip, mulligans)
     BEGIN = "begin"
     MAIN1 = "main1"
     ATTACK = "attack"
@@ -236,6 +237,29 @@ class PhaseMode(str, Enum):
     """Phase handling configuration for the game."""
     CASUAL = "casual"
     STRICT = "strict"
+
+
+class GameStartPhase(str, Enum):
+    """Phases of the pre-game setup."""
+    COIN_FLIP = "coin_flip"           # Waiting for coin flip winner to choose
+    MULLIGANS = "mulligans"           # Mulligan decisions in progress
+    COMPLETE = "complete"             # Game has started normally
+
+
+class MulliganState(BaseModel):
+    """Track mulligan status for a single player."""
+    has_kept: bool = Field(
+        default=False,
+        description="Whether this player has decided to keep their hand"
+    )
+    mulligan_count: int = Field(
+        default=0,
+        description="Number of mulligans taken by this player"
+    )
+    is_deciding: bool = Field(
+        default=False,
+        description="Whether this player is currently making a mulligan decision"
+    )
 
 
 class Player(BaseModel):
@@ -400,6 +424,27 @@ class GameState(BaseModel):
     setup_complete: bool = Field(
         default=True,
         description="Indicates whether the pre-game deck validation step has finished"
+    )
+    # Game start phase tracking (coin flip and mulligans)
+    game_start_phase: GameStartPhase = Field(
+        default=GameStartPhase.COMPLETE,
+        description="Current phase of the pre-game setup (coin flip, mulligans, or complete)"
+    )
+    coin_flip_winner: Optional[int] = Field(
+        default=None,
+        description="Index of the player who won the coin flip (0 or 1)"
+    )
+    first_player: Optional[int] = Field(
+        default=None,
+        description="Index of the player who will take the first turn (0 or 1)"
+    )
+    mulligan_state: Dict[str, MulliganState] = Field(
+        default_factory=dict,
+        description="Mulligan status for each player"
+    )
+    mulligan_deciding_player: Optional[str] = Field(
+        default=None,
+        description="Player ID of who is currently deciding on mulligan"
     )
     deck_status: Dict[str, PlayerDeckStatus] = Field(
         default_factory=dict,

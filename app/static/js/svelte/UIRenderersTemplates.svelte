@@ -342,7 +342,10 @@
                 currentPhase,
                 readOnlyPhases: spectatorMode,
                 phaseModeLabel,
-                phaseClickHandler: this._createPhaseClickHandler()
+                phaseClickHandler: this._createPhaseClickHandler(),
+                // Add game start phase info
+                gameStartPhase: gameState?.game_start_phase || 'complete',
+                gameStartInfo: this._buildGameStartInfo(gameState, players)
             };
 
             if (spectatorMode) {
@@ -401,6 +404,12 @@
                 || (UIConfig?.CSS_CLASSES?.button?.primary)
                 || '';
 
+            // Game start phase handling
+            const gameStartPhase = gameState?.game_start_phase || 'complete';
+            const coinFlipWinner = gameState?.coin_flip_winner;
+            const mulliganDecidingPlayer = gameState?.mulligan_deciding_player;
+            const mulliganState = gameState?.mulligan_state || {};
+
             let passDisabled = true;
             let passLabel = '⏭️ Pass Phase';
             let passAction = 'pass_phase';
@@ -414,61 +423,105 @@
             if (controlledPlayerIndex === null) {
                 passTitle = 'Select a player to perform actions';
             } else {
-                const isStrictMode = phaseMode === 'strict';
-                const hasStack = stack.length > 0;
-                const isActivePlayer = controlledPlayerIndex === activePlayerIndex;
-                const isPriorityPlayer = controlledPlayerIndex === priorityPlayerIndex;
+                const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
                 const opponentSeatIndex = controlledPlayerIndex === 0 ? 1 : 0;
                 const opponentName = this._getPlayerDisplayName(
                     players[opponentSeatIndex],
                     this._getSeatFallbackName(opponentSeatIndex)
                 );
-                const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
 
-                // Check if we're at the end step with priority passing
-                if (currentPhase === 'end' && endStepPriorityPassed) {
-                    // Opponent has priority during the end step resolve
-                    if (!isActivePlayer) {
-                        passDisabled = false;
-                        passAction = 'pass_phase';
-                        passLabel = '✅ Resolve';
-                        passTitle = `Confirm end of turn (allowing ${activePlayerName} to proceed to next turn)`;
+                // Handle game start phases (coin flip and mulligans)
+                if (gameStartPhase === 'coin_flip') {
+                    // Coin flip phase - winner chooses to play or draw
+                    const isCoinFlipWinner = controlledPlayerIndex === coinFlipWinner;
+                    const winnerName = this._getPlayerDisplayName(
+                        players[coinFlipWinner],
+                        this._getSeatFallbackName(coinFlipWinner)
+                    );
+
+                    if (isCoinFlipWinner) {
+                        // Return special config for coin flip choice buttons
+                        return this._buildCoinFlipButtons(passClasses, winnerName);
                     } else {
                         passDisabled = true;
-                        passTitle = `Waiting for ${opponentName} to resolve the end step`;
+                        passLabel = '🎲 Waiting...';
+                        passTitle = `Waiting for ${winnerName} to choose Play First or Draw`;
                     }
-                } else if (isStrictMode && hasStack) {
-                    if (isPriorityPlayer) {
-                        passDisabled = false;
+                } else if (gameStartPhase === 'mulligans') {
+                    // Mulligan phase - alternating keep/mulligan decisions
+                    const isMyTurnToDecide = mulliganDecidingPlayer === controlledPlayerKey;
+                    const myMulliganState = mulliganState[controlledPlayerKey] || {};
+                    const hasKept = myMulliganState.has_kept || false;
+
+                    if (hasKept) {
+                        // Already kept, waiting for opponent
+                        passDisabled = true;
+                        passLabel = '✅ Hand Kept';
+                        passTitle = `Waiting for ${opponentName} to make mulligan decision`;
+                    } else if (isMyTurnToDecide) {
+                        // Return special config for keep/mulligan buttons
+                        return this._buildMulliganButtons(passClasses, myMulliganState);
+                    } else {
+                        // Not my turn to decide
+                        const decidingPlayerName = mulliganDecidingPlayer === 'player1'
+                            ? this._getPlayerDisplayName(players[0], 'Player 1')
+                            : this._getPlayerDisplayName(players[1], 'Player 2');
+                        passDisabled = true;
+                        passLabel = '⏳ Waiting...';
+                        passTitle = `Waiting for ${decidingPlayerName} to make mulligan decision`;
+                    }
+                } else {
+                    // Normal game phase handling
+                    const isStrictMode = phaseMode === 'strict';
+                    const hasStack = stack.length > 0;
+                    const isActivePlayer = controlledPlayerIndex === activePlayerIndex;
+                    const isPriorityPlayer = controlledPlayerIndex === priorityPlayerIndex;
+
+                    // Check if we're at the end step with priority passing
+                    if (currentPhase === 'end' && endStepPriorityPassed) {
+                        // Opponent has priority during the end step resolve
+                        if (!isActivePlayer) {
+                            passDisabled = false;
+                            passAction = 'pass_phase';
+                            passLabel = '✅ Resolve';
+                            passTitle = `Confirm end of turn (allowing ${activePlayerName} to proceed to next turn)`;
+                        } else {
+                            passDisabled = true;
+                            passTitle = `Waiting for ${opponentName} to resolve the end step`;
+                        }
+                    } else if (isStrictMode && hasStack) {
+                        if (isPriorityPlayer) {
+                            passDisabled = false;
+                            passAction = 'resolve_stack';
+                            passLabel = '🎯 Resolve';
+                            passTitle = 'Resolve the top spell on the stack';
+                        } else {
+                            passDisabled = true;
+                            passTitle = `Waiting for ${opponentName} to resolve the stack`;
+                        }
+                    } else if (hasStack) {
+                        passDisabled = !isActivePlayer;
                         passAction = 'resolve_stack';
                         passLabel = '🎯 Resolve';
-                        passTitle = 'Resolve the top spell on the stack';
+                        passTitle = passDisabled
+                            ? `Waiting for ${activePlayerName} to resolve the stack`
+                            : 'Resolve the top spell on the stack';
                     } else {
-                        passDisabled = true;
-                        passTitle = `Waiting for ${opponentName} to resolve the stack`;
-                    }
-                } else if (hasStack) {
-                    passDisabled = !isActivePlayer;
-                    passAction = 'resolve_stack';
-                    passLabel = '🎯 Resolve';
-                    passTitle = passDisabled
-                        ? `Waiting for ${activePlayerName} to resolve the stack`
-                        : 'Resolve the top spell on the stack';
-                } else {
-                    passDisabled = !isActivePlayer;
-                    passAction = 'pass_phase';
-                    passLabel = '⏭️ Pass Phase';
-                    passTitle = passDisabled
-                        ? `Waiting for ${activePlayerName} to pass the phase`
-                        : 'Pass current phase';
+                        passDisabled = !isActivePlayer;
+                        passAction = 'pass_phase';
+                        passLabel = '⏭️ Pass Phase';
+                        passTitle = passDisabled
+                            ? `Waiting for ${activePlayerName} to pass the phase`
+                            : 'Pass current phase';
 
-                    if (
-                        currentPhase === 'block' &&
-                        expectedCombatPlayer &&
-                        expectedCombatPlayer !== controlledPlayerKey
-                    ) {
-                        passDisabled = true;
-                        passTitle = `Waiting for ${opponentName} to confirm blockers`;
+                        if (
+                            currentPhase === 'block' &&
+                            expectedCombatPlayer &&
+                            expectedCombatPlayer !== controlledPlayerKey
+                        ) {
+                            passDisabled = true;
+                            passTitle = `Waiting for ${opponentName} to confirm blockers`;
+                        }
                     }
                 }
             }
@@ -513,6 +566,160 @@
                 className: passClasses,
                 onClick
             };
+        }
+
+        static _buildCoinFlipButtons(baseClasses, winnerName) {
+            /**
+             * Returns special button config for coin flip choice.
+             * Instead of a single passButton, we return an object that signals
+             * the ActionPanel to render two buttons: Play First and Draw.
+             */
+            return {
+                isCoinFlipChoice: true,
+                winnerName,
+                playButton: {
+                    label: '🎮 Play First',
+                    title: 'Choose to take the first turn',
+                    disabled: false,
+                    className: baseClasses,
+                    onClick: () => {
+                        if (typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
+                            GameActions.performGameAction('coin_flip_choice', { choice: 'play' });
+                        }
+                    }
+                },
+                drawButton: {
+                    label: '🃏 Draw',
+                    title: 'Let opponent go first (you will be on the draw)',
+                    disabled: false,
+                    className: baseClasses,
+                    onClick: () => {
+                        if (typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
+                            GameActions.performGameAction('coin_flip_choice', { choice: 'draw' });
+                        }
+                    }
+                }
+            };
+        }
+
+        static _buildMulliganButtons(baseClasses, mulliganState) {
+            /**
+             * Returns special button config for mulligan decision.
+             * Instead of a single passButton, we return an object that signals
+             * the ActionPanel to render two buttons: Keep and Mulligan.
+             */
+            const mulliganCount = mulliganState?.mulligan_count || 0;
+            const cardsToBottom = mulliganCount;
+
+            return {
+                isMulliganChoice: true,
+                mulliganCount,
+                keepButton: {
+                    label: '✅ Keep',
+                    title: cardsToBottom > 0
+                        ? `Keep this hand (you must put ${cardsToBottom} card(s) on bottom of library)`
+                        : 'Keep this hand',
+                    disabled: false,
+                    className: baseClasses,
+                    onClick: () => {
+                        if (typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
+                            GameActions.performGameAction('keep_hand');
+                        }
+                    }
+                },
+                mulliganButton: {
+                    label: '🔄 Mulligan',
+                    title: `Shuffle hand into library and draw 7 new cards (mulligan #${mulliganCount + 1})`,
+                    disabled: false,
+                    className: baseClasses,
+                    onClick: () => {
+                        if (typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
+                            GameActions.performGameAction('mulligan');
+                        }
+                    }
+                }
+            };
+        }
+
+        static _buildGameStartInfo(gameState, players) {
+            /**
+             * Build game start phase status information for display in the UI.
+             */
+            const gameStartPhase = gameState?.game_start_phase || 'complete';
+            const coinFlipWinner = gameState?.coin_flip_winner;
+            const firstPlayer = gameState?.first_player;
+            const mulliganState = gameState?.mulligan_state || {};
+            const mulliganDecidingPlayer = gameState?.mulligan_deciding_player;
+
+            if (gameStartPhase === 'complete') {
+                return null;
+            }
+
+            const getPlayerName = (index) => {
+                if (index === null || index === undefined || !players[index]) {
+                    return 'Unknown';
+                }
+                return this._getPlayerDisplayName(players[index], `Player ${index + 1}`);
+            };
+
+            if (gameStartPhase === 'coin_flip') {
+                const winnerName = getPlayerName(coinFlipWinner);
+                return {
+                    phase: 'coin_flip',
+                    icon: '🎲',
+                    title: 'Coin Flip',
+                    message: `${winnerName} won the coin flip!`,
+                    subMessage: 'Choose to play first or draw.',
+                    highlight: true
+                };
+            }
+
+            if (gameStartPhase === 'mulligans') {
+                const firstPlayerName = getPlayerName(firstPlayer);
+                const decidingPlayerName = mulliganDecidingPlayer === 'player1'
+                    ? getPlayerName(0)
+                    : getPlayerName(1);
+
+                // Build status for each player
+                const player1State = mulliganState['player1'] || {};
+                const player2State = mulliganState['player2'] || {};
+                const player1Name = getPlayerName(0);
+                const player2Name = getPlayerName(1);
+
+                let player1Status = player1State.has_kept
+                    ? `✅ Kept` + (player1State.mulligan_count > 0 ? ` (mulligan ${player1State.mulligan_count}x)` : '')
+                    : player1State.mulligan_count > 0
+                        ? `🔄 Mulligan ${player1State.mulligan_count}x`
+                        : '⏳ Deciding...';
+
+                let player2Status = player2State.has_kept
+                    ? `✅ Kept` + (player2State.mulligan_count > 0 ? ` (mulligan ${player2State.mulligan_count}x)` : '')
+                    : player2State.mulligan_count > 0
+                        ? `🔄 Mulligan ${player2State.mulligan_count}x`
+                        : '⏳ Deciding...';
+
+                // Mark who is currently deciding
+                if (mulliganDecidingPlayer === 'player1' && !player1State.has_kept) {
+                    player1Status = '🤔 Deciding...';
+                } else if (mulliganDecidingPlayer === 'player2' && !player2State.has_kept) {
+                    player2Status = '🤔 Deciding...';
+                }
+
+                return {
+                    phase: 'mulligans',
+                    icon: '🃏',
+                    title: 'Mulligan Phase',
+                    message: `${firstPlayerName} will play first.`,
+                    subMessage: `${decidingPlayerName} is deciding...`,
+                    playerStatuses: [
+                        { name: player1Name, status: player1Status },
+                        { name: player2Name, status: player2Status }
+                    ],
+                    highlight: true
+                };
+            }
+
+            return null;
         }
 
         static _collectBattlefieldTokenNames() {
