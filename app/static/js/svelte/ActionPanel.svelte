@@ -18,7 +18,10 @@
             message: 'Game controls are disabled while you are watching.'
         },
         phaseClickHandler = null,
-        replayControls = null
+        replayControls = null,
+        // New props for game start phase
+        gameStartPhase = 'complete',
+        gameStartInfo = null
     } = $props();
 
     const handlePrimaryButtonClick = (button) => {
@@ -42,6 +45,11 @@
         const disabledClasses = button.disabled ? ' opacity-40 cursor-not-allowed' : '';
         return `${button.className || ''}${disabledClasses}`;
     };
+
+    // Check if passButton is a special coin flip or mulligan choice
+    const isCoinFlipChoice = $derived(() => passButton?.isCoinFlipChoice === true);
+    const isMulliganChoice = $derived(() => passButton?.isMulliganChoice === true);
+    const isGameStartPhase = $derived(() => gameStartPhase !== 'complete');
 
     const normalizedPhase = $derived(() => currentPhase || 'begin');
     let timelinePhases = $state([]);
@@ -224,7 +232,80 @@
             Phase Mode: {phaseModeLabel}
         </div>
 
-        {#if passButton}
+        {#if gameStartInfo}
+            <!-- Game Start Phase Info Banner -->
+            <div class="mb-4 p-4 rounded-lg border-2 {gameStartInfo.phase === 'coin_flip' ? 'bg-purple-500/20 border-purple-500/40' : 'bg-blue-500/20 border-blue-500/40'}">
+                <div class="flex items-center justify-center gap-2 mb-2">
+                    <span class="text-2xl">{gameStartInfo.icon}</span>
+                    <span class="font-bold text-lg {gameStartInfo.phase === 'coin_flip' ? 'text-purple-300' : 'text-blue-300'}">{gameStartInfo.title}</span>
+                </div>
+                <p class="text-center text-arena-text font-medium">{gameStartInfo.message}</p>
+                {#if gameStartInfo.subMessage}
+                    <p class="text-center text-arena-text-dim text-sm mt-1">{gameStartInfo.subMessage}</p>
+                {/if}
+                {#if gameStartInfo.playerStatuses}
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        {#each gameStartInfo.playerStatuses as playerStatus}
+                            <div class="bg-arena-surface/50 rounded p-2 text-center">
+                                <div class="font-medium text-arena-text">{playerStatus.name}</div>
+                                <div class="text-arena-text-dim">{playerStatus.status}</div>
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
+        {/if}
+
+        {#if isCoinFlipChoice()}
+            <!-- Coin Flip Choice Buttons -->
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <button
+                        type="button"
+                        class={combineButtonClasses(passButton.playButton)}
+                        title={passButton.playButton.title}
+                        disabled={passButton.playButton.disabled}
+                        onclick={() => handlePrimaryButtonClick(passButton.playButton)}>
+                        {passButton.playButton.label}
+                    </button>
+                    <button
+                        type="button"
+                        class={combineButtonClasses(passButton.drawButton)}
+                        title={passButton.drawButton.title}
+                        disabled={passButton.drawButton.disabled}
+                        onclick={() => handlePrimaryButtonClick(passButton.drawButton)}>
+                        {passButton.drawButton.label}
+                    </button>
+                </div>
+            </div>
+        {:else if isMulliganChoice()}
+            <!-- Mulligan Choice Buttons -->
+            <div class="mb-4">
+                {#if passButton.mulliganCount > 0}
+                    <div class="text-center text-sm text-yellow-400 mb-2">
+                        ⚠️ You will put {passButton.mulliganCount} card(s) on bottom after keeping
+                    </div>
+                {/if}
+                <div class="grid grid-cols-2 gap-3">
+                    <button
+                        type="button"
+                        class={combineButtonClasses(passButton.keepButton)}
+                        title={passButton.keepButton.title}
+                        disabled={passButton.keepButton.disabled}
+                        onclick={() => handlePrimaryButtonClick(passButton.keepButton)}>
+                        {passButton.keepButton.label}
+                    </button>
+                    <button
+                        type="button"
+                        class={combineButtonClasses(passButton.mulliganButton)}
+                        title={passButton.mulliganButton.title}
+                        disabled={passButton.mulliganButton.disabled}
+                        onclick={() => handlePrimaryButtonClick(passButton.mulliganButton)}>
+                        {passButton.mulliganButton.label}
+                    </button>
+                </div>
+            </div>
+        {:else if passButton}
             <div class="flex items-center mb-3">
                 <button
                     type="button"
@@ -237,44 +318,46 @@
             </div>
         {/if}
 
-        {#if searchButton || tokenSearchButton}
-            <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {#if searchButton}
-                    <button
-                        type="button"
-                        class={combineButtonClasses(searchButton)}
-                        title={searchButton.title}
-                        disabled={searchButton.disabled}
-                        onclick={() => handlePrimaryButtonClick(searchButton)}>
-                        {searchButton.label}
-                    </button>
-                {/if}
-                {#if tokenSearchButton}
-                    <button
-                        type="button"
-                        class={combineButtonClasses(tokenSearchButton)}
-                        title={tokenSearchButton.title}
-                        disabled={tokenSearchButton.disabled}
-                        onclick={() => handlePrimaryButtonClick(tokenSearchButton)}>
-                        {tokenSearchButton.label}
-                    </button>
-                {/if}
-            </div>
-        {/if}
+        {#if !isGameStartPhase()}
+            {#if searchButton || tokenSearchButton}
+                <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {#if searchButton}
+                        <button
+                            type="button"
+                            class={combineButtonClasses(searchButton)}
+                            title={searchButton.title}
+                            disabled={searchButton.disabled}
+                            onclick={() => handlePrimaryButtonClick(searchButton)}>
+                            {searchButton.label}
+                        </button>
+                    {/if}
+                    {#if tokenSearchButton}
+                        <button
+                            type="button"
+                            class={combineButtonClasses(tokenSearchButton)}
+                            title={tokenSearchButton.title}
+                            disabled={tokenSearchButton.disabled}
+                            onclick={() => handlePrimaryButtonClick(tokenSearchButton)}>
+                            {tokenSearchButton.label}
+                        </button>
+                    {/if}
+                </div>
+            {/if}
 
-        {#if hasQuickButtons}
-            <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-                {#each quickButtons as button, index (button.id || index)}
-                    <button
-                        type="button"
-                        class={combineButtonClasses(button)}
-                        title={button.title}
-                        disabled={button.disabled}
-                        onclick={() => handlePrimaryButtonClick(button)}>
-                        {button.label}
-                    </button>
-                {/each}
-            </div>
+            {#if hasQuickButtons()}
+                <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+                    {#each quickButtons as button, index (button.id || index)}
+                        <button
+                            type="button"
+                            class={combineButtonClasses(button)}
+                            title={button.title}
+                            disabled={button.disabled}
+                            onclick={() => handlePrimaryButtonClick(button)}>
+                            {button.label}
+                        </button>
+                    {/each}
+                </div>
+            {/if}
         {/if}
     {/if}
 </div>

@@ -402,6 +402,38 @@ async def handle_mulligan(
     }
 
 
+@action_registry.register("keep_hand")
+async def handle_keep_hand(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle keep hand action during mulligan phase."""
+    return {
+        "broadcast_data": {}
+    }
+
+
+@action_registry.register("coin_flip_choice", required_fields=["choice"])
+async def handle_coin_flip_choice(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle coin flip winner's choice to play first or draw."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for coin_flip_choice"
+        )
+    
+    choice = request.get("choice")
+    if choice not in ["play", "draw"]:
+        raise HTTPException(
+            status_code=400, detail="choice must be 'play' or 'draw'"
+        )
+    
+    return {
+        "additional_data": {"choice": choice},
+        "broadcast_data": {"choice": choice}
+    }
+
+
 @action_registry.register("look_top_library")
 async def handle_look_top_library(
     game_id: str, request: Optional[Dict], current_state: GameState

@@ -11,7 +11,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from app.models.game import (
     Card, Deck, DeckCard, Player, GameState, GameAction,
     GamePhase, CombatState, CombatStep, CardType, GameSetupStatus,
-    PlayerDeckStatus, GameFormat, PhaseMode, current_utc_datetime
+    PlayerDeckStatus, GameFormat, PhaseMode, GameStartPhase, MulliganState,
+    current_utc_datetime
 )
 
 class SimpleGameEngine:
@@ -563,19 +564,34 @@ class SimpleGameEngine:
         self._initialize_commander_zone(player1, player1_deck)
         self._initialize_commander_zone(player2, player2_deck)
         
+        # Draw initial 7 cards for each player
         self._draw_cards(player1, 7)
         self._draw_cards(player2, 7)
+        
+        # Perform coin flip to determine who chooses
+        coin_flip_winner = random.randint(0, 1)
+        coin_flip_winner_id = f"player{coin_flip_winner + 1}"
         
         game_state = GameState(
             id=game_id,
             players=[player1, player2],
-            active_player=0,
-            phase=GamePhase.BEGIN,
-            round=1,
+            active_player=0,  # Will be set after coin flip choice
+            phase=GamePhase.PREGAME,  # Stay in pregame until mulligans complete
+            round=0,  # Round 0 = pregame
+            turn=0,  # Turn 0 = pregame
             players_played_this_round=[False, False],
             game_format=setup.game_format,
             phase_mode=setup.phase_mode,
             setup_complete=True,
+            # Game start phase fields
+            game_start_phase=GameStartPhase.COIN_FLIP,
+            coin_flip_winner=coin_flip_winner,
+            first_player=None,  # Not yet decided
+            mulligan_state={
+                "player1": MulliganState(),
+                "player2": MulliganState()
+            },
+            mulligan_deciding_player=None,
             deck_status={
                 "player1": setup.player_status["player1"],
                 "player2": setup.player_status["player2"]
@@ -585,7 +601,16 @@ class SimpleGameEngine:
         
         self.games[game_id] = game_state
         self._pending_decks.pop(game_id, None)
-        self._log_phase_history_entry(game_state, GamePhase.BEGIN)
+        
+        # Log coin flip result
+        self.record_action_history(game_id, {
+            "action": "coin_flip",
+            "player": coin_flip_winner_id,
+            "success": True,
+            "message": f"{game_state.players[coin_flip_winner].name} wins the coin flip!",
+            "origin": "engine"
+        })
+        
         self._record_replay_step(game_id, None, game_state)
         return game_state
     
@@ -706,6 +731,8 @@ class SimpleGameEngine:
             "shuffle_library": self._shuffle_library,
             "untap_all": self._untap_all,
             "mulligan": self._mulligan,
+            "keep_hand": self._keep_hand,
+            "coin_flip_choice": self._coin_flip_choice,
             "look_top_library": self._look_top_library,
             "reveal_top_library": self._reveal_top_library,
             "target_card": self._target_card,
@@ -1897,18 +1924,232 @@ class SimpleGameEngine:
             f"({untapped_count} cards untapped)"
         )
 
-    def _mulligan(self, game_state: GameState, action: GameAction) -> None:
-        """Handle mulligan action."""
-        player = self._get_player(game_state, action.player_id)
+    def _coin_flip_choice(self, game_state: GameState, action: GameAction) -> None:
+        """Handle the coin flip winner's choice to play first or draw."""
+        if game_state.game_start_phase != GameStartPhase.COIN_FLIP:
+            raise ValueError("Not in coin flip phase")
         
+        player_id = action.player_id
+        player_index = self._get_player_index(game_state, player_id)
+        
+        if player_index is None:
+            raise ValueError(f"Player {player_id} not found")
+        
+        if player_index != game_state.coin_flip_winner:
+            raise ValueError("Only the coin flip winner can make this choice")
+        
+        choice = action.additional_data.get("choice")
+        if choice not in ["play", "draw"]:
+            raise ValueError("Choice must be 'play' or 'draw'")
+        
+        # Set first player based on choice
+        if choice == "play":
+            game_state.first_player = player_index
+        else:
+            # Let the other player go first
+            game_state.first_player = 1 - player_index
+        
+        game_state.active_player = game_state.first_player
+        game_state.priority_player = game_state.first_player
+        
+        # Transition to mulligan phase
+        game_state.game_start_phase = GameStartPhase.MULLIGANS
+        
+        # Set the first player to make mulligan decision
+        first_player_id = f"player{game_state.first_player + 1}"
+        game_state.mulligan_deciding_player = first_player_id
+        game_state.mulligan_state[first_player_id].is_deciding = True
+        
+        choice_action = "play first" if choice == "play" else "draw (let opponent go first)"
+        first_player_name = game_state.players[game_state.first_player].name
+        
+        print(f"Player {player_id} chose to {choice_action}. {first_player_name} will go first.")
+        
+        self.record_action_history(game_state.id, {
+            "action": "coin_flip_choice",
+            "player": player_id,
+            "success": True,
+            "choice": choice,
+            "first_player": first_player_id,
+            "message": f"{game_state.players[player_index].name} chose to {choice_action}",
+            "origin": "engine"
+        })
+
+    def _mulligan(self, game_state: GameState, action: GameAction) -> None:
+        """Handle mulligan action during the mulligan phase."""
+        player_id = action.player_id
+        player = self._get_player(game_state, player_id)
+        
+        # Check if we're in mulligan phase
+        if game_state.game_start_phase == GameStartPhase.MULLIGANS:
+            # Verify it's this player's turn to decide
+            if game_state.mulligan_deciding_player != player_id:
+                raise ValueError(f"It's not {player_id}'s turn to make a mulligan decision")
+            
+            mulligan_state = game_state.mulligan_state.get(player_id)
+            if not mulligan_state:
+                raise ValueError(f"No mulligan state for player {player_id}")
+            
+            if mulligan_state.has_kept:
+                raise ValueError(f"Player {player_id} has already kept their hand")
+        
+        # Perform the mulligan: return hand to library and reshuffle
         player.library.extend(player.hand)
         player.hand = []
-        
         random.shuffle(player.library)
         
+        # Draw 7 new cards
         self._draw_cards(player, 7)
         
-        print(f"Player {action.player_id} took a mulligan.")
+        # Update mulligan state
+        if game_state.game_start_phase == GameStartPhase.MULLIGANS:
+            mulligan_state = game_state.mulligan_state[player_id]
+            mulligan_state.mulligan_count += 1
+            mulligan_state.is_deciding = False
+            
+            player_name = player.name
+            mulligan_count = mulligan_state.mulligan_count
+            
+            print(f"Player {player_id} ({player_name}) took mulligan #{mulligan_count}.")
+            
+            self.record_action_history(game_state.id, {
+                "action": "mulligan",
+                "player": player_id,
+                "success": True,
+                "mulligan_count": mulligan_count,
+                "message": f"{player_name} mulligans (mulligan #{mulligan_count})",
+                "origin": "engine"
+            })
+            
+            # Advance to next player's mulligan decision
+            self._advance_mulligan_decision(game_state, player_id)
+        else:
+            # Legacy mulligan (outside of mulligan phase)
+            print(f"Player {player_id} took a mulligan.")
+
+    def _keep_hand(self, game_state: GameState, action: GameAction) -> None:
+        """Handle the keep hand action during mulligan phase."""
+        if game_state.game_start_phase != GameStartPhase.MULLIGANS:
+            raise ValueError("Not in mulligan phase")
+        
+        player_id = action.player_id
+        
+        # Verify it's this player's turn to decide
+        if game_state.mulligan_deciding_player != player_id:
+            raise ValueError(f"It's not {player_id}'s turn to make a mulligan decision")
+        
+        mulligan_state = game_state.mulligan_state.get(player_id)
+        if not mulligan_state:
+            raise ValueError(f"No mulligan state for player {player_id}")
+        
+        if mulligan_state.has_kept:
+            raise ValueError(f"Player {player_id} has already kept their hand")
+        
+        # Mark as kept
+        mulligan_state.has_kept = True
+        mulligan_state.is_deciding = False
+        
+        player = self._get_player(game_state, player_id)
+        player_name = player.name
+        mulligan_count = mulligan_state.mulligan_count
+        
+        # Note: Player needs to put back cards equal to mulligan count
+        # This is done manually by the player in this simulator
+        
+        print(f"Player {player_id} ({player_name}) keeps hand (mulligan count: {mulligan_count}).")
+        
+        self.record_action_history(game_state.id, {
+            "action": "keep_hand",
+            "player": player_id,
+            "success": True,
+            "mulligan_count": mulligan_count,
+            "message": f"{player_name} keeps hand" + (f" (must put {mulligan_count} card(s) on bottom)" if mulligan_count > 0 else ""),
+            "origin": "engine"
+        })
+        
+        # Advance to next player's mulligan decision or start the game
+        self._advance_mulligan_decision(game_state, player_id)
+
+    def _advance_mulligan_decision(self, game_state: GameState, current_player_id: str) -> None:
+        """Advance to the next player who needs to make a mulligan decision."""
+        player1_state = game_state.mulligan_state.get("player1", MulliganState())
+        player2_state = game_state.mulligan_state.get("player2", MulliganState())
+        
+        # Check if both players have kept
+        if player1_state.has_kept and player2_state.has_kept:
+            self._complete_mulligan_phase(game_state)
+            return
+        
+        # Determine who decides next based on alternating order
+        # The first player always gets first chance to decide each round
+        first_player_index = game_state.first_player if game_state.first_player is not None else 0
+        first_player_id = f"player{first_player_index + 1}"
+        second_player_id = f"player{2 - first_player_index}"
+        
+        first_state = game_state.mulligan_state.get(first_player_id, MulliganState())
+        second_state = game_state.mulligan_state.get(second_player_id, MulliganState())
+        
+        # Logic for alternating mulligans:
+        # - If first player hasn't kept and hasn't just decided, they decide
+        # - Otherwise, if second player hasn't kept, they decide
+        # - If second player just decided and first player still hasn't kept, back to first
+        
+        if current_player_id == first_player_id:
+            # First player just decided, now check second player
+            if not second_state.has_kept:
+                game_state.mulligan_deciding_player = second_player_id
+                game_state.mulligan_state[second_player_id].is_deciding = True
+            elif not first_state.has_kept:
+                # Second already kept, back to first
+                game_state.mulligan_deciding_player = first_player_id
+                game_state.mulligan_state[first_player_id].is_deciding = True
+            else:
+                self._complete_mulligan_phase(game_state)
+        else:
+            # Second player just decided, now check first player
+            if not first_state.has_kept:
+                game_state.mulligan_deciding_player = first_player_id
+                game_state.mulligan_state[first_player_id].is_deciding = True
+            elif not second_state.has_kept:
+                # First already kept, back to second
+                game_state.mulligan_deciding_player = second_player_id
+                game_state.mulligan_state[second_player_id].is_deciding = True
+            else:
+                self._complete_mulligan_phase(game_state)
+
+    def _complete_mulligan_phase(self, game_state: GameState) -> None:
+        """Complete the mulligan phase and start the actual game."""
+        game_state.game_start_phase = GameStartPhase.COMPLETE
+        game_state.mulligan_deciding_player = None
+        
+        # Reset is_deciding flags
+        for player_id in game_state.mulligan_state:
+            game_state.mulligan_state[player_id].is_deciding = False
+        
+        # Set active player to first player
+        first_player_index = game_state.first_player if game_state.first_player is not None else 0
+        game_state.active_player = first_player_index
+        game_state.priority_player = first_player_index
+        
+        # Now transition from PREGAME to BEGIN phase and start turn 1
+        game_state.phase = GamePhase.BEGIN
+        game_state.turn = 1
+        game_state.round = 1
+        
+        first_player_name = game_state.players[first_player_index].name
+        
+        print(f"Mulligan phase complete. {first_player_name} takes the first turn.")
+        
+        self.record_action_history(game_state.id, {
+            "action": "game_start",
+            "player": f"player{first_player_index + 1}",
+            "success": True,
+            "message": f"Game started! {first_player_name} takes the first turn.",
+            "origin": "engine"
+        })
+        
+        # Log the begin phase entry
+        self._log_phase_history_entry(game_state, GamePhase.BEGIN)
 
     def _look_top_library(self, game_state: GameState, action: GameAction) -> None:
         """Handle look top library action by moving the top card to look zone."""
