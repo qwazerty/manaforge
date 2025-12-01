@@ -56,6 +56,7 @@
         if (a.phase !== b.phase) return false;
         if (a.active_player !== b.active_player) return false;
         if (a.priority_player !== b.priority_player) return false;
+        if (Boolean(a.end_step_priority_passed) !== Boolean(b.end_step_priority_passed)) return false;
         if ((a.stack?.length || 0) !== (b.stack?.length || 0)) return false;
 
         const aPlayers = Array.isArray(a.players) ? a.players : [];
@@ -76,6 +77,7 @@
             `phase:${state.phase ?? 'none'}`,
             `active:${state.active_player ?? 'n/a'}`,
             `priority:${state.priority_player ?? 'n/a'}`,
+            `endStepPriority:${state.end_step_priority_passed ?? false}`,
             `stack:${state.stack?.length || 0}`
         ];
 
