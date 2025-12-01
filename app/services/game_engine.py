@@ -1911,22 +1911,19 @@ class SimpleGameEngine:
         print(f"Player {action.player_id} took a mulligan.")
 
     def _look_top_library(self, game_state: GameState, action: GameAction) -> None:
-        """Handle look top library action without removing the card."""
+        """Handle look top library action by moving the top card to look zone."""
         player = self._get_player(game_state, action.player_id)
-        look_zone = self._get_zone_list(game_state, player, "look_zone")
         
-        # Find how many cards are already in look zone
-        current_count = len(look_zone)
-        
-        if current_count >= len(player.library):
-            print(f"Player {action.player_id} has already looked at all cards in their library.")
+        if not player.library:
+            print(f"Player {action.player_id} has no cards in their library.")
             return
 
-        # Get the next card from library (at index = current_count)
-        next_card = player.library[current_count]
-        look_zone.append(next_card.model_copy(deep=True))
+        # Move the top card from library to look zone
+        top_card = player.library.pop(0)
+        look_zone = self._get_zone_list(game_state, player, "look_zone")
+        look_zone.append(top_card)
 
-        print(f"Player {action.player_id} looked at {next_card.name} (card #{current_count + 1} from top of library).")
+        print(f"Player {action.player_id} looked at {top_card.name} from top of library.")
 
     def _reveal_top_library(self, game_state: GameState, action: GameAction) -> None:
         """Handle reveal top library action by moving the card to the reveal zone."""
