@@ -140,21 +140,23 @@
         <span class="mr-2">{headerIcon}</span>{headerTitle}
     </h4>
 
-    <div class="grid grid-cols-2 gap-2 mb-4">
-        <div class="text-center">
-            <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
-                <div class="text-blue-300 font-semibold text-sm">Turn</div>
-                <div class="text-lg font-bold text-arena-accent">{gameInfo.turn}</div>
+    {#if !isGameStartPhase()}
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="text-center">
+                <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
+                    <div class="text-blue-300 font-semibold text-sm">Turn</div>
+                    <div class="text-lg font-bold text-arena-accent">{gameInfo.turn}</div>
+                </div>
+            </div>
+            <div class="text-center">
+                <div class="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
+                    <div class="text-yellow-300 font-semibold text-sm">Active</div>
+                    <div class="text-lg font-bold text-arena-accent">{gameInfo.active}</div>
+                </div>
             </div>
         </div>
-        <div class="text-center">
-            <div class="bg-yellow-500/20 rounded-lg p-3 border border-yellow-500/30">
-                <div class="text-yellow-300 font-semibold text-sm">Active</div>
-                <div class="text-lg font-bold text-arena-accent">{gameInfo.active}</div>
-            </div>
-        </div>
-    </div>
-    {#if timelinePhases.length}
+    {/if}
+    {#if timelinePhases.length && !isGameStartPhase()}
         <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
             <div class="grid grid-cols-7 gap-1">
                 {#each timelinePhases as phase (phase.id)}

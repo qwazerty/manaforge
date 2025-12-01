@@ -1013,6 +1013,10 @@ class SimpleGameEngine:
     
     def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing to the next phase (without ending turn)."""
+        # Cannot pass phase during game start phases (coin flip or mulligans)
+        if game_state.game_start_phase != GameStartPhase.COMPLETE:
+            return
+        
         phases = list(GamePhase)
         current_index = phases.index(game_state.phase)
         
@@ -1075,6 +1079,10 @@ class SimpleGameEngine:
     
     def _change_phase(self, game_state: GameState, action: GameAction) -> None:
         """Directly change the current game phase."""
+        # Cannot change phase during game start phases (coin flip or mulligans)
+        if game_state.game_start_phase != GameStartPhase.COMPLETE:
+            return
+        
         desired_phase = action.additional_data.get("phase")
         if not desired_phase:
             raise ValueError("phase is required for change_phase action")
