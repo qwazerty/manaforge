@@ -550,7 +550,18 @@ async def get_game_ui_data(game_id: str) -> dict:
         'chat_log': [
             safe_model_dump(entry)
             for entry in getattr(game_state, 'chat_log', [])
-        ]
+        ],
+        # Game start phase fields (coin flip and mulligans)
+        'game_start_phase': game_state.game_start_phase.value if hasattr(game_state.game_start_phase, 'value') else game_state.game_start_phase,
+        'coin_flip_winner': game_state.coin_flip_winner,
+        'first_player': game_state.first_player,
+        'mulligan_state': {
+            player_id: safe_model_dump(state)
+            for player_id, state in getattr(game_state, 'mulligan_state', {}).items()
+        },
+        'mulligan_deciding_player': game_state.mulligan_deciding_player,
+        'end_step_priority_passed': getattr(game_state, 'end_step_priority_passed', False),
+        'combat_state': safe_model_dump(getattr(game_state, 'combat_state', {})) if hasattr(getattr(game_state, 'combat_state', None), 'model_dump') else getattr(game_state, 'combat_state', {})
     }
 
 
