@@ -1389,7 +1389,7 @@
 
             const safeName = GameUtils.escapeHtml(playerName || 'Player');
             const actionName = zoneType === 'look' ? 'lookTopLibrary' : 'revealTopLibrary';
-            const actionLabel = zoneType === 'look' ? 'Look another' : 'Reveal another';
+            const actionLabel = zoneType === 'look' ? 'Look from Library' : 'Reveal from Library';
             const panel = document.createElement('div');
             panel.id = `${zoneType}-popup-${playerId}`;
             panel.className = `stack-popup ${zoneType}-popup hidden`;
