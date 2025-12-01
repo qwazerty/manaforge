@@ -564,9 +564,7 @@ class SimpleGameEngine:
         self._initialize_commander_zone(player1, player1_deck)
         self._initialize_commander_zone(player2, player2_deck)
         
-        # Draw initial 7 cards for each player
-        self._draw_cards(player1, 7)
-        self._draw_cards(player2, 7)
+        # Note: Initial 7 cards will be drawn after coin flip choice
         
         # Perform coin flip to determine who chooses
         coin_flip_winner = random.randint(0, 1)
@@ -1960,6 +1958,12 @@ class SimpleGameEngine:
         game_state.active_player = game_state.first_player
         game_state.priority_player = game_state.first_player
         
+        # Draw initial 7 cards for each player (done after play/draw choice)
+        player1 = game_state.players[0]
+        player2 = game_state.players[1]
+        self._draw_cards(player1, 7)
+        self._draw_cards(player2, 7)
+        
         # Transition to mulligan phase
         game_state.game_start_phase = GameStartPhase.MULLIGANS
         
@@ -1970,15 +1974,11 @@ class SimpleGameEngine:
         
         choice_action = "play first" if choice == "play" else "draw (let opponent go first)"
         first_player_name = game_state.players[game_state.first_player].name
-        
-        print(f"Player {player_id} chose to {choice_action}. {first_player_name} will go first.")
-        
+                
         self.record_action_history(game_state.id, {
             "action": "coin_flip_choice",
             "player": player_id,
             "success": True,
-            "choice": choice,
-            "first_player": first_player_id,
             "message": f"{game_state.players[player_index].name} chose to {choice_action}",
             "origin": "engine"
         })
@@ -2014,18 +2014,13 @@ class SimpleGameEngine:
             mulligan_state = game_state.mulligan_state[player_id]
             mulligan_state.mulligan_count += 1
             mulligan_state.is_deciding = False
-            
-            player_name = player.name
             mulligan_count = mulligan_state.mulligan_count
-            
-            print(f"Player {player_id} ({player_name}) took mulligan #{mulligan_count}.")
-            
+                        
             self.record_action_history(game_state.id, {
                 "action": "mulligan",
                 "player": player_id,
                 "success": True,
                 "mulligan_count": mulligan_count,
-                "message": f"{player_name} mulligans (mulligan #{mulligan_count})",
                 "origin": "engine"
             })
             
@@ -2056,22 +2051,16 @@ class SimpleGameEngine:
         # Mark as kept
         mulligan_state.has_kept = True
         mulligan_state.is_deciding = False
-        
-        player = self._get_player(game_state, player_id)
-        player_name = player.name
         mulligan_count = mulligan_state.mulligan_count
         
         # Note: Player needs to put back cards equal to mulligan count
         # This is done manually by the player in this simulator
-        
-        print(f"Player {player_id} ({player_name}) keeps hand (mulligan count: {mulligan_count}).")
-        
+                
         self.record_action_history(game_state.id, {
             "action": "keep_hand",
             "player": player_id,
             "success": True,
             "mulligan_count": mulligan_count,
-            "message": f"{player_name} keeps hand" + (f" (must put {mulligan_count} card(s) on bottom)" if mulligan_count > 0 else ""),
             "origin": "engine"
         })
         
