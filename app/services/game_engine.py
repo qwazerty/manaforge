@@ -154,6 +154,11 @@ class SimpleGameEngine:
             game_state.combat_state.step = CombatStep.NONE
             game_state.combat_state.expected_player = None
 
+        # Reset end step priority tracking when entering the END phase
+        if new_phase == GamePhase.END:
+            game_state.end_step_priority_passed = False
+            game_state.priority_player = game_state.active_player
+
     def _start_combat_phase(self, game_state: GameState) -> None:
         """Initialize combat sub-step tracking when entering combat."""
         self._clear_combat_assignments(game_state)
@@ -972,16 +977,12 @@ class SimpleGameEngine:
             )
             self._resolve_combat_damage(game_state, combat_action)
         
-        current_player_index = int(action.player_id.replace('player', '')) - 1
-        game_state.players_played_this_round[current_player_index] = True
+        # Move to END phase first, then handle priority
+        if game_state.phase != GamePhase.END:
+            self._set_phase(game_state, GamePhase.END)
         
-        if all(game_state.players_played_this_round):
-            game_state.turn += 1
-            game_state.players_played_this_round = [False, False]
-            game_state.round += 1
-        
-        game_state.active_player = 1 - game_state.active_player
-        self._set_phase(game_state, GamePhase.BEGIN)
+        # Use the end step priority logic
+        self._handle_end_step_priority(game_state, action)
     
     def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing to the next phase (without ending turn)."""
@@ -996,16 +997,54 @@ class SimpleGameEngine:
                 active_player = game_state.players[game_state.active_player]
                 self._draw_cards(active_player, 1)
         else:
-            current_player_index = game_state.active_player
-            game_state.players_played_this_round[current_player_index] = True
-            
-            if all(game_state.players_played_this_round):
-                game_state.turn += 1
-                game_state.players_played_this_round = [False, False]
-                game_state.round += 1
-            
-            game_state.active_player = 1 - game_state.active_player
-            self._set_phase(game_state, GamePhase.BEGIN)
+            # We're in END phase - handle priority passing before ending turn
+            self._handle_end_step_priority(game_state, action)
+
+    def _handle_end_step_priority(self, game_state: GameState, action: GameAction) -> None:
+        """
+        Handle priority during the end step.
+        Both players must pass priority before moving to the next turn.
+        """
+        active_player_index = game_state.active_player
+        opponent_index = 1 - active_player_index
+        action_player_index = self._get_player_index(game_state, action.player_id)
+
+        # If there are spells on the stack, resolve them first
+        if game_state.stack:
+            return
+
+        # If active player passes priority first, give priority to opponent
+        if action_player_index == active_player_index and not game_state.end_step_priority_passed:
+            game_state.priority_player = opponent_index
+            game_state.end_step_priority_passed = True
+            print(f"End step: Active player passed, opponent has priority")
+            return
+
+        # Only the opponent can end the turn after active player has passed
+        if game_state.end_step_priority_passed and action_player_index == opponent_index:
+            self._end_current_turn(game_state)
+            return
+
+        # If active player tries to pass again while opponent has priority, ignore
+        if game_state.end_step_priority_passed and action_player_index == active_player_index:
+            print(f"End step: Active player tried to pass but opponent has priority")
+            return
+    
+    def _end_current_turn(self, game_state: GameState) -> None:
+        """End the current turn and move to the next player's turn."""
+        current_player_index = game_state.active_player
+        game_state.players_played_this_round[current_player_index] = True
+        
+        if all(game_state.players_played_this_round):
+            game_state.turn += 1
+            game_state.players_played_this_round = [False, False]
+            game_state.round += 1
+        
+        game_state.active_player = 1 - game_state.active_player
+        game_state.end_step_priority_passed = False  # Reset for next turn
+        game_state.priority_player = game_state.active_player
+        self._set_phase(game_state, GamePhase.BEGIN)
+        print(f"Turn ended, now player {game_state.active_player + 1}'s turn")
     
     def _change_phase(self, game_state: GameState, action: GameAction) -> None:
         """Directly change the current game phase."""

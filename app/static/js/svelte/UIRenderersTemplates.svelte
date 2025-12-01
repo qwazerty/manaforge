@@ -396,6 +396,7 @@
             const currentPhase = gameState?.phase || 'begin';
             const combatState = gameState?.combat_state || {};
             const expectedCombatPlayer = combatState.expected_player || null;
+            const endStepPriorityPassed = Boolean(gameState?.end_step_priority_passed);
             const passClasses = (UIConfig?.CSS_CLASSES?.button?.passPhase)
                 || (UIConfig?.CSS_CLASSES?.button?.primary)
                 || '';
@@ -424,7 +425,19 @@
                 );
                 const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
 
-                if (isStrictMode && hasStack) {
+                // Check if we're at the end step with priority passing
+                if (currentPhase === 'end' && endStepPriorityPassed) {
+                    // Opponent has priority during the end step resolve
+                    if (!isActivePlayer) {
+                        passDisabled = false;
+                        passAction = 'pass_phase';
+                        passLabel = '✅ Resolve';
+                        passTitle = `Confirm end of turn (allowing ${activePlayerName} to proceed to next turn)`;
+                    } else {
+                        passDisabled = true;
+                        passTitle = `Waiting for ${opponentName} to resolve the end step`;
+                    }
+                } else if (isStrictMode && hasStack) {
                     if (isPriorityPlayer) {
                         passDisabled = false;
                         passAction = 'resolve_stack';

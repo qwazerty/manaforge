@@ -239,3 +239,37 @@ def test_move_card_sends_attachments_to_owner_reveal_zone():
         for card in state.players[1].reveal_zone
     )
     assert all(card.attached_to is None for card in state.players[0].reveal_zone + state.players[1].reveal_zone)
+
+
+def test_end_step_priority_passing():
+    """Test that both players must pass priority during the end step."""
+    engine = SimpleGameEngine()
+    state = _build_game_state(phase=GamePhase.END, active_index=0)
+    engine.games[state.id] = state
+
+    # Initially, active player should have priority
+    assert state.priority_player == 0
+    assert not state.end_step_priority_passed
+
+    # Active player (player1) passes priority
+    action1 = GameAction(
+        player_id="player1",
+        action_type="pass_phase"
+    )
+    engine._pass_phase(state, action1)
+
+    # After active player passes, opponent should have priority
+    assert state.priority_player == 1
+    assert state.end_step_priority_passed
+
+    # Opponent (player2) resolves end step (confirms turn end)
+    action2 = GameAction(
+        player_id="player2",
+        action_type="pass_phase"
+    )
+    engine._pass_phase(state, action2)
+
+    # After opponent confirms, turn should end
+    assert state.active_player == 1  # Now player2's turn
+    assert state.phase == GamePhase.BEGIN
+    assert not state.end_step_priority_passed  # Reset for next turn

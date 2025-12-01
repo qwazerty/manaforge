@@ -387,6 +387,10 @@ class GameState(BaseModel):
         default_factory=list, description="Spells on the stack"
     )
     priority_player: int = Field(default=0, description="Player with priority")
+    end_step_priority_passed: bool = Field(
+        default=False,
+        description="Whether the opponent has passed priority during the end step"
+    )
     game_format: GameFormat = Field(
         default=GameFormat.STANDARD, description="Game format selection for this match"
     )
