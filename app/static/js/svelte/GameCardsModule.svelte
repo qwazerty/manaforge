@@ -120,6 +120,8 @@
             onClickAction = `onclick='GameCards.handleCardClick(${jsCardId}, ${jsUniqueCardId}, "${zone}"); event.stopPropagation();'`;
         } else if (allowInteractions && zone === 'hand') {
             onClickAction = `onclick='GameActions.playCardFromHand(${jsCardId}, ${jsUniqueCardId}); event.stopPropagation();'`;
+        } else if (allowInteractions && (zone === 'commander_zone' || zone === 'commander')) {
+            onClickAction = `onclick='GameActions.playCard(${jsCardId}, ${jsUniqueCardId}, "commander_zone"); event.stopPropagation();'`;
         }
 
         const enableDrop = zone === 'battlefield' || zone === 'lands' || zone === 'creatures' || zone === 'support' || zone === 'permanents';
