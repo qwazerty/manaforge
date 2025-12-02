@@ -1,5 +1,5 @@
 <script>
-    import { onMount } from 'svelte';
+    import ZoneContextMenu from './ZoneContextMenu.svelte';
 
     let {
         cards = [],
@@ -8,7 +8,8 @@
         overlayHtml = 'View<br>All',
         onClick = null
     } = $props();
-    let graveyardButton = null;
+
+    let zoneContextMenu = $state(null);
 
     const normalizedCards = () => (Array.isArray(cards) ? cards : []);
 
@@ -30,43 +31,21 @@
         }
     }
 
-    const attachContextMenu = () => {
-        if (!graveyardButton || !zoneIdentifier || typeof window === 'undefined' ||
-            !window.ZoneContextMenu || typeof window.ZoneContextMenu.attachToZone !== 'function') {
-            return;
+    function handleContextMenu(event) {
+        const isOpponent = zoneIdentifier.startsWith('opponent_');
+        if (zoneContextMenu) {
+            zoneContextMenu.show(zoneIdentifier, event, isOpponent);
         }
-        if (graveyardButton.dataset.zoneMenuAttached === 'true') {
-            return;
-        }
-        window.ZoneContextMenu.attachToZone(graveyardButton, zoneIdentifier);
-        graveyardButton.classList.add('zone-context-menu-enabled');
-        graveyardButton.dataset.zoneMenuAttached = 'true';
-    };
-
-    onMount(() => {
-        attachContextMenu();
-    });
-
-    $effect(() => {
-        const identifier = zoneIdentifier;
-        if (!identifier || !graveyardButton) {
-            return;
-        }
-        if (graveyardButton.dataset.zoneIdentifier !== identifier) {
-            graveyardButton.dataset.zoneMenuAttached = '';
-        }
-        graveyardButton.dataset.zoneIdentifier = identifier;
-        attachContextMenu();
-    });
+    }
 </script>
 
 <div class="graveyard-zone-stack flex flex-col items-center w-full">
     <button
-        bind:this={graveyardButton}
         type="button"
-        class="graveyard-cards-stack"
+        class="graveyard-cards-stack zone-context-menu-enabled"
         data-zone-context={zoneIdentifier}
-        onclick={handleClick}>
+        onclick={handleClick}
+        oncontextmenu={handleContextMenu}>
         {#if cards.length === 0}
             <div class="graveyard-empty">
                 <span>⚰️</span>
@@ -85,3 +64,5 @@
         <span class="cards-remaining">{cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''}</span>
     </div>
 </div>
+
+<ZoneContextMenu bind:this={zoneContextMenu} />

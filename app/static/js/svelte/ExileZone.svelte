@@ -1,5 +1,5 @@
 <script>
-    import { onMount } from 'svelte';
+    import ZoneContextMenu from './ZoneContextMenu.svelte';
 
     let {
         cards = [],
@@ -9,7 +9,8 @@
         topCard = null,
         onClick = null
     } = $props();
-    let exileButton = null;
+
+    let zoneContextMenu = $state(null);
 
     const stackMarkup = $derived(() => {
         if (cards.length === 0) return '';
@@ -23,43 +24,21 @@
         }
     }
 
-    const attachContextMenu = () => {
-        if (!exileButton || !zoneIdentifier || typeof window === 'undefined' ||
-            !window.ZoneContextMenu || typeof window.ZoneContextMenu.attachToZone !== 'function') {
-            return;
+    function handleContextMenu(event) {
+        const isOpponent = zoneIdentifier.startsWith('opponent_');
+        if (zoneContextMenu) {
+            zoneContextMenu.show(zoneIdentifier, event, isOpponent);
         }
-        if (exileButton.dataset.zoneMenuAttached === 'true') {
-            return;
-        }
-        window.ZoneContextMenu.attachToZone(exileButton, zoneIdentifier);
-        exileButton.classList.add('zone-context-menu-enabled');
-        exileButton.dataset.zoneMenuAttached = 'true';
-    };
-
-    onMount(() => {
-        attachContextMenu();
-    });
-
-    $effect(() => {
-        const identifier = zoneIdentifier;
-        if (!identifier || !exileButton) {
-            return;
-        }
-        if (exileButton.dataset.zoneIdentifier !== identifier) {
-            exileButton.dataset.zoneMenuAttached = '';
-        }
-        exileButton.dataset.zoneIdentifier = identifier;
-        attachContextMenu();
-    });
+    }
 </script>
 
 <div class="exile-zone-stack flex flex-col items-center w-full">
     <button
-        bind:this={exileButton}
         type="button"
-        class="exile-stack"
+        class="exile-stack zone-context-menu-enabled"
         data-zone-context={zoneIdentifier}
-        onclick={handleClick}>
+        onclick={handleClick}
+        oncontextmenu={handleContextMenu}>
         {#if cardsRemaining === 0}
             <div class="exile-empty">
                 <span>🌌</span>
@@ -83,3 +62,5 @@
         <span class="cards-remaining">{cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''}</span>
     </div>
 </div>
+
+<ZoneContextMenu bind:this={zoneContextMenu} />

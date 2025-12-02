@@ -1,5 +1,5 @@
 <script>
-    import { onMount } from 'svelte';
+    import ZoneContextMenu from './ZoneContextMenu.svelte';
 
     let {
         cardsRemaining = 0,
@@ -8,36 +8,8 @@
         overlayText = '',
         onClick = null
     } = $props();
-    let deckButton = null;
 
-    const attachContextMenu = () => {
-        if (!deckButton || !zoneIdentifier || typeof window === 'undefined' ||
-            !window.ZoneContextMenu || typeof window.ZoneContextMenu.attachToZone !== 'function') {
-            return;
-        }
-        if (deckButton.dataset.zoneMenuAttached === 'true') {
-            return;
-        }
-        window.ZoneContextMenu.attachToZone(deckButton, zoneIdentifier);
-        deckButton.classList.add('zone-context-menu-enabled');
-        deckButton.dataset.zoneMenuAttached = 'true';
-    };
-
-    onMount(() => {
-        attachContextMenu();
-    });
-
-    $effect(() => {
-        const currentIdentifier = zoneIdentifier;
-        if (!currentIdentifier || !deckButton) {
-            return;
-        }
-        if (deckButton.dataset.zoneIdentifier !== currentIdentifier) {
-            deckButton.dataset.zoneMenuAttached = '';
-        }
-        deckButton.dataset.zoneIdentifier = currentIdentifier;
-        attachContextMenu();
-    });
+    let zoneContextMenu = $state(null);
 
     const stackCards = $derived(() => {
         if (cardsRemaining === 0) return '';
@@ -50,25 +22,32 @@
             onClick(event);
         }
     }
+
+    function handleContextMenu(event) {
+        const isOpponent = zoneIdentifier.startsWith('opponent_');
+        if (zoneContextMenu) {
+            zoneContextMenu.show(zoneIdentifier, event, isOpponent);
+        }
+    }
 </script>
 
 <div class="deck-zone-stack-wrapper w-full flex flex-col items-center">
     {#if cardsRemaining === 0}
         <button
-            bind:this={deckButton}
             type="button"
-            class={deckClass}
+            class="{deckClass} zone-context-menu-enabled"
             data-zone-context={zoneIdentifier}
-            onclick={handleClick}>
+            onclick={handleClick}
+            oncontextmenu={handleContextMenu}>
             {@html UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
         </button>
     {:else}
         <button
-            bind:this={deckButton}
             type="button"
-            class={deckClass}
+            class="{deckClass} zone-context-menu-enabled"
             data-zone-context={zoneIdentifier}
-            onclick={handleClick}>
+            onclick={handleClick}
+            oncontextmenu={handleContextMenu}>
             {@html stackCards()}
             <div class="deck-click-overlay">
                 <span class="draw-hint">{overlayText}</span>
@@ -79,3 +58,5 @@
         <span class="cards-remaining">{cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''}</span>
     </div>
 </div>
+
+<ZoneContextMenu bind:this={zoneContextMenu} />

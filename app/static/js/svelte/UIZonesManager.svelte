@@ -797,24 +797,6 @@
             return { playerData, zone, playerIndex };
         }
 
-        /**
-         * Attach context menu to zone element
-         */
-        static _attachContextMenu(selector, zoneName) {
-            setTimeout(() => {
-                let element = document.querySelector(`${selector}[data-zone-context="${zoneName}"]`);
-                if (!element) {
-                    const candidates = document.querySelectorAll(selector);
-                    element = Array.from(candidates).find(candidate => candidate.dataset?.zoneContext === zoneName);
-                }
-                if (element && window.ZoneContextMenu && element.dataset.zoneMenuAttached !== 'true') {
-                    window.ZoneContextMenu.attachToZone(element, zoneName);
-                    element.classList.add('zone-context-menu-enabled');
-                    element.dataset.zoneMenuAttached = 'true';
-                }
-            }, 100);
-        }
-
         static _registerZoneConfig(type, config) {
             const key = `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
             if (type === 'deck') {
@@ -869,7 +851,6 @@
                     });
                     element.dataset.zoneHydrated = 'true';
                     this._deckZoneConfigs.delete(key);
-                    this._attachContextMenu('.deck-cards-stack', config.zoneIdentifier);
                 } catch (error) {
                     console.error('[UIZonesManager] Failed to hydrate deck zone', error);
                 }
@@ -909,7 +890,6 @@
                     });
                     element.dataset.zoneHydrated = 'true';
                     this._graveyardZoneConfigs.delete(key);
-                    this._attachContextMenu('.graveyard-cards-stack', config.zoneIdentifier);
                 } catch (error) {
                     console.error('[UIZonesManager] Failed to hydrate graveyard zone', error);
                 }
@@ -950,7 +930,6 @@
                     });
                     element.dataset.zoneHydrated = 'true';
                     this._exileZoneConfigs.delete(key);
-                    this._attachContextMenu('.exile-stack', config.zoneIdentifier);
                 } catch (error) {
                     console.error('[UIZonesManager] Failed to hydrate exile zone', error);
                 }
