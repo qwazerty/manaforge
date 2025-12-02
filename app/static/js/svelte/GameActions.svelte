@@ -561,19 +561,25 @@
     }
 
     function playCardFromHand(cardId, uniqueId, options = {}) {
+        playCard(cardId, uniqueId, 'hand', options);
+    }
+
+    function playCard(cardId, uniqueId, sourceZone = 'hand', options = {}) {
         CardPreviewModal.hide();
     
         const payload = { 
             card_id: cardId,
-            unique_id: uniqueId 
+            unique_id: uniqueId,
+            source_zone: sourceZone,
+            target_zone: 'battlefield'
         };
 
         if (options && options.faceDown) {
             payload.face_down = true;
         }
 
-        performGameAction('play_card', payload);
-
+        // Use move_card which now routes through _play_card for battlefield destinations
+        performGameAction('move_card', payload);
     }
 
     function revealFaceDownCard(cardId, uniqueId) {
@@ -1086,6 +1092,7 @@
         performGameAction,
         performHttpGameAction,
         playCardFromHand,
+        playCard,
         revealFaceDownCard,
         changePhase,
         clearTappedState,

@@ -721,12 +721,19 @@ class SimpleGameEngine:
                 raise ValueError(
                     "source_zone and target_zone (str) are required for move_card"
                 )
-            self._move_card(
-                game_state,
-                action,
-                source_zone_name=source_zone,
-                destination_zone_name=target_zone
-            )
+            
+            normalized_target = self._normalize_zone_name(target_zone)
+            
+            # Route through _play_card for battlefield destinations (handles stack logic)
+            if normalized_target == "battlefield":
+                self._play_card(game_state, action, source_zone=source_zone)
+            else:
+                self._move_card(
+                    game_state,
+                    action,
+                    source_zone_name=source_zone,
+                    destination_zone_name=target_zone
+                )
         else:
             raise ValueError(f"Unknown action_type: {action.action_type}")
 
@@ -877,38 +884,59 @@ class SimpleGameEngine:
             names = ", ".join(card.name for card in player.commander_zone)
             print(f"Player {player.id} commander zone initialized with {names}")
     
-    def _play_card(self, game_state: GameState, action: GameAction) -> None:
-        """Handle playing a card from hand."""
-        player = self._get_player(game_state, action.player_id)
+    def _resolve_play_destination(
+        self,
+        card: Card,
+        game_state: GameState,
+        face_down: bool = False
+    ) -> str:
+        """Determine where a card should go when played (stack or battlefield)."""
+        is_land = card.card_type == CardType.LAND
+        is_spell = card.card_type in [CardType.INSTANT, CardType.SORCERY]
+
+        # Face-down cards always go to stack first (treated as creatures)
+        if face_down:
+            return "stack"
+        # In strict mode, non-lands go to stack
+        if game_state.phase_mode == PhaseMode.STRICT and not is_land:
+            return "stack"
+        # Instants and sorceries always use the stack
+        if is_spell:
+            return "stack"
+        # Lands and permanents in relaxed mode go directly to battlefield
+        return "battlefield"
+
+    def _play_card(
+        self,
+        game_state: GameState,
+        action: GameAction,
+        source_zone: str = "hand"
+    ) -> None:
+        """Handle playing a card onto the battlefield (routes through stack if needed)."""
+        source_player_id = action.additional_data.get("source_player_id") or action.player_id
+        player = self._get_player(game_state, source_player_id)
         unique_id = action.additional_data.get("unique_id")
+        
+        normalized_source = self._normalize_zone_name(source_zone)
+        source_zone_list = self._get_zone_list(game_state, player, normalized_source)
 
         card_to_play = None
-        for card in player.hand:
+        for card in source_zone_list:
             if card.unique_id == unique_id:
                 card_to_play = card
                 break
         
         if not card_to_play:
             print(
-                f"Card with unique_id {unique_id} not found in hand of "
-                f"player {action.player_id}"
+                f"Card with unique_id {unique_id} not found in {normalized_source} of "
+                f"player {source_player_id}"
             )
             return
 
-        is_land = card_to_play.card_type == CardType.LAND
-        is_spell = card_to_play.card_type in [CardType.INSTANT, CardType.SORCERY]
-
         face_down_requested = bool(action.additional_data.get("face_down"))
-
-        # Face-down cards always go to stack first (treated as creatures)
-        if face_down_requested:
-            destination_zone = "stack"
-        elif game_state.phase_mode == PhaseMode.STRICT and not is_land:
-            destination_zone = "stack"
-        elif is_spell:
-            destination_zone = "stack"
-        else:
-            destination_zone = "battlefield"
+        destination_zone = self._resolve_play_destination(
+            card_to_play, game_state, face_down=face_down_requested
+        )
 
         card_to_play.face_down = face_down_requested
         card_to_play.face_down_owner = action.player_id if face_down_requested else None
@@ -916,7 +944,7 @@ class SimpleGameEngine:
         self._move_card(
             game_state,
             action,
-            source_zone_name="hand",
+            source_zone_name=normalized_source,
             destination_zone_name=destination_zone
         )
 
