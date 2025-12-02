@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
-import { buildAllSvelte } from './build-svelte.mjs';
+import {
+    buildAllSvelte,
+    bundleComponent,
+    compileComponentSource,
+    copyStoresDirectory,
+    copyUtilsDirectory,
+    listSvelteComponents
+} from './build-svelte.mjs';
 
 const WATCH_DIR = path.resolve('app/static/js/svelte');
 const DEBOUNCE_MS = 150;
@@ -9,7 +16,14 @@ const DEBOUNCE_MS = 150;
 const log = (message) => console.log(`[watch-svelte] ${message}`);
 
 let timer = null;
-const scheduleBuild = async () => {
+let pendingFiles = new Set();
+let knownComponents = [];
+
+const scheduleBuild = async (filename) => {
+    if (filename) {
+        pendingFiles.add(filename);
+    }
+
     if (timer) {
         clearTimeout(timer);
     }
@@ -19,8 +33,47 @@ const scheduleBuild = async () => {
 };
 
 const runBuild = async () => {
+    const files = Array.from(pendingFiles);
+    pendingFiles.clear();
+
     try {
-        await buildAllSvelte();
+        if (files.length === 0) {
+            knownComponents = await buildAllSvelte();
+            log('build complete');
+            return;
+        }
+
+        const svelteFiles = files.filter((file) => file.endsWith('.svelte'));
+        const utilsOrStoresChanged = files.some((file) => file.startsWith('utils') || file.startsWith('stores'));
+
+        if (svelteFiles.length === files.length && svelteFiles.length > 0) {
+            for (const file of svelteFiles) {
+                log(`incremental compile ${file}`);
+                await compileComponentSource(file);
+                bundleComponent(file);
+            }
+            log('incremental build complete');
+            return;
+        }
+
+        if (utilsOrStoresChanged) {
+            log('utils/stores changed, copying helpers and rebundling');
+            await copyUtilsDirectory();
+            await copyStoresDirectory();
+
+            if (!knownComponents.length) {
+                knownComponents = await listSvelteComponents();
+            }
+
+            for (const component of knownComponents) {
+                bundleComponent(component);
+            }
+            log('rebundle complete');
+            return;
+        }
+
+        // Fallback: do full rebuild (covers added/removed components, other files)
+        knownComponents = await buildAllSvelte();
         log('build complete');
     } catch (error) {
         log(`build failed: ${error.message}`);
@@ -28,7 +81,7 @@ const runBuild = async () => {
 };
 
 const startWatching = async () => {
-    await runBuild();
+    knownComponents = await buildAllSvelte();
 
     if (!fs.existsSync(WATCH_DIR)) {
         log('watch directory does not exist');
@@ -40,7 +93,7 @@ const startWatching = async () => {
             return;
         }
         log(`change detected (${eventType} ${filename})`);
-        scheduleBuild();
+        scheduleBuild(filename);
     });
 
     const cleanup = () => {
