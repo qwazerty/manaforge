@@ -1,8 +1,8 @@
-document.addEventListener('DOMContentLoaded', () => {
+import ErrorPage, { mount } from './components/ErrorPage.esm.js';
+
+const init = () => {
     const root = document.getElementById('error-root');
-    if (!root || typeof ErrorPageComponent === 'undefined') {
-        return;
-    }
+    if (!root) return;
 
     const dataEl = document.getElementById('error-props');
     let props = {};
@@ -15,8 +15,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-        ErrorPageComponent.mount(ErrorPageComponent.default, { target: root, props });
+        mount(ErrorPage, { target: root, props });
     } catch (error) {
         console.error('[error-page] failed to mount', error);
     }
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

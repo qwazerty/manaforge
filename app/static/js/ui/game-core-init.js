@@ -1,19 +1,19 @@
-(function bootstrapGameCore() {
-    if (typeof GameCoreComponent === 'undefined' || typeof GameCoreComponent.mount !== 'function') {
-        console.error('[GameCore] component bundle is missing');
-        return;
-    }
+import GameCore, { mount } from './components/GameCore.esm.js';
 
-    const target = document.getElementById('game-interface-root') || document.body;
-    if (!target) {
-        return;
-    }
+if (typeof document !== 'undefined') {
+    const init = () => {
+        const target = document.getElementById('game-interface-root') || document.body;
+        if (!target) return;
+        try {
+            mount(GameCore, { target });
+        } catch (error) {
+            console.error('[GameCore] failed to initialize', error);
+        }
+    };
 
-    try {
-        GameCoreComponent.mount(GameCoreComponent.default, {
-            target
-        });
-    } catch (error) {
-        console.error('[GameCore] failed to initialize', error);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-})();
+}

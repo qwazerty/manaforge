@@ -1,8 +1,8 @@
-document.addEventListener('DOMContentLoaded', () => {
+import DraftRoom, { mount } from './components/DraftRoom.esm.js';
+
+const init = () => {
     const root = document.getElementById('draft-room-root');
-    if (!root || typeof DraftRoomComponent === 'undefined') {
-        return;
-    }
+    if (!root) return;
 
     let room = null;
     if (root.dataset?.room) {
@@ -13,8 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    DraftRoomComponent.mount(DraftRoomComponent.default, {
-        target: root,
-        props: { room }
-    });
-});
+    try {
+        mount(DraftRoom, { target: root, props: { room } });
+    } catch (error) {
+        console.error('[draft-room] failed to mount', error);
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

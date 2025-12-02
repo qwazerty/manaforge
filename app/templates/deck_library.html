@@ -24,15 +24,11 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ versioned_static('js/ui/components/DeckLibrary.bundle.js') }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const root = document.getElementById('deck-library-root');
-        if (root && window.DeckLibraryComponent) {
-            DeckLibraryComponent.mount(DeckLibraryComponent.default, {
-                target: root
-            });
-        }
-    });
+<script type="module">
+    import DeckLibrary, { mount } from '{{ versioned_static('js/ui/components/DeckLibrary.esm.js') }}';
+    const root = document.getElementById('deck-library-root');
+    if (root) {
+        mount(DeckLibrary, { target: root });
+    }
 </script>
 {% endblock %}

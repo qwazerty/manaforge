@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { build as esbuild } from 'esbuild';
 import { compile } from 'svelte/compiler';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +15,21 @@ const PATH_ALIASES = {
     '@lib': path.resolve('app/static/js/lib'),
     '@svelte': path.resolve('app/static/js/svelte'),
     '@ui': path.resolve('app/static/js/ui'),
+};
+
+// Plugin to resolve relative imports from compiled components to svelte source directories
+const svelteRelativeImportsPlugin = {
+    name: 'svelte-relative-imports',
+    setup(build) {
+        // Redirect ./stores/, ./utils/, ./lib/ imports from components dir to svelte dir
+        build.onResolve({ filter: /^\.\/(?:stores|utils|lib)\// }, (args) => {
+            if (args.resolveDir.includes('ui/components')) {
+                const relativePath = args.path.slice(2); // remove './'
+                return { path: path.join(SVELTE_DIR, relativePath) };
+            }
+            return null;
+        });
+    }
 };
 
 const sanitizeGlobalName = (name) => {
@@ -40,109 +55,81 @@ export const compileComponentSource = async (fileName) => {
     });
 
     const rewrittenJs = compiled.js.code.replace(/(from\s+['"][^'"]+)\.svelte(['"])/g, '$1.js$2');
+    
+    // Check if createClassComponent is already imported
+    const hasCreateClassComponent = rewrittenJs.includes('createClassComponent');
+    
+    const helper = hasCreateClassComponent
+        ? `
+export function mount(component, options = {}) {
+    if (!component) throw new Error('mount requires a Svelte component');
+    if (!options.target) throw new Error('mount requires a target element');
+    return createClassComponent({ component, ...options });
+}
 
-    const code = `${rewrittenJs}\nimport { createClassComponent } from 'svelte/legacy';\n\nexport function mount(component, options = {}) {\n    if (!component) {\n        throw new Error('mount requires a Svelte component');\n    }\n    if (!options.target) {\n        throw new Error('mount requires a target element');\n    }\n    return createClassComponent({\n        component,\n        ...options\n    });\n}\n\nexport function unmount(instance) {\n    if (instance && typeof instance.$destroy === 'function') {\n        instance.$destroy();\n    }\n}`;
-    await fs.writeFile(jsOutputPath, code, 'utf8');
+export function unmount(instance) {
+    if (instance && typeof instance.$destroy === 'function') {
+        instance.$destroy();
+    }
+}
+`
+        : `
+import { createClassComponent } from 'svelte/legacy';
+
+export function mount(component, options = {}) {
+    if (!component) throw new Error('mount requires a Svelte component');
+    if (!options.target) throw new Error('mount requires a target element');
+    return createClassComponent({ component, ...options });
+}
+
+export function unmount(instance) {
+    if (instance && typeof instance.$destroy === 'function') {
+        instance.$destroy();
+    }
+}
+`;
+    await fs.writeFile(jsOutputPath, `${rewrittenJs}\n${helper}`, 'utf8');
 };
 
-export const bundleComponent = (fileName) => {
-    const baseName = path.basename(fileName, '.svelte');
-    const jsOutputPath = path.join(COMPONENT_DIR, `${baseName}.js`);
-    const bundlePath = path.join(COMPONENT_DIR, `${baseName}.bundle.js`);
-    const globalName = sanitizeGlobalName(baseName);
-    const aliasFlags = Object.entries(PATH_ALIASES)
-        .map(([alias, target]) => `--alias:${alias}=${target}`)
-        .join(' ');
-    const command = [
-        'npx esbuild',
-        `"${jsOutputPath}"`,
-        '--bundle --format=iife',
-        `--global-name=${globalName}`,
-        `--outfile="${bundlePath}"`,
-        '--sourcemap',
-        aliasFlags
-    ].join(' ');
-
-    console.log(`[build-svelte] esbuild: ${command}`);
-    execSync(command, { stdio: 'inherit' });
-};
-
-export const copyUtilsDirectory = async () => {
-    const srcUtilsDir = path.join(SVELTE_DIR, 'utils');
-    const destUtilsDir = path.join(COMPONENT_DIR, 'utils');
-
-    try {
-        const stats = await fs.stat(srcUtilsDir);
-        if (!stats.isDirectory()) {
-            return;
-        }
-    } catch {
-        // utils directory doesn't exist, skip
+export const bundleAllComponents = async (entryFiles) => {
+    if (!entryFiles.length) {
+        console.warn('[build-svelte] No entry files to bundle');
         return;
     }
+    for (const entry of entryFiles) {
+        const baseName = path.basename(entry, '.js');
+        const globalName = sanitizeGlobalName(baseName);
+        const outfileBundle = path.join(COMPONENT_DIR, `${baseName}.bundle.js`);
+        const outfileEsm = path.join(COMPONENT_DIR, `${baseName}.esm.js`);
 
-    await fs.mkdir(destUtilsDir, { recursive: true });
+        await esbuild({
+            entryPoints: [entry],
+            bundle: true,
+            format: 'iife',
+            globalName,
+            outfile: outfileBundle,
+            sourcemap: true,
+            platform: 'browser',
+            target: 'es2020',
+            legalComments: 'none',
+            alias: PATH_ALIASES,
+            plugins: [svelteRelativeImportsPlugin],
+            logLevel: 'error'
+        });
 
-    const entries = await fs.readdir(srcUtilsDir, { withFileTypes: true });
-    for (const entry of entries) {
-        if (entry.isFile() && entry.name.endsWith('.js')) {
-            const srcPath = path.join(srcUtilsDir, entry.name);
-            const destPath = path.join(destUtilsDir, entry.name);
-            await fs.copyFile(srcPath, destPath);
-            console.log(`[build-svelte] copied utility: ${entry.name}`);
-        }
-    }
-};
-
-export const copyStoresDirectory = async () => {
-    const srcStoresDir = path.join(SVELTE_DIR, 'stores');
-    const destStoresDir = path.join(COMPONENT_DIR, 'stores');
-
-    try {
-        const stats = await fs.stat(srcStoresDir);
-        if (!stats.isDirectory()) {
-            return;
-        }
-    } catch {
-        return;
-    }
-
-    await fs.mkdir(destStoresDir, { recursive: true });
-
-    const entries = await fs.readdir(srcStoresDir, { withFileTypes: true });
-    for (const entry of entries) {
-        if (entry.isFile() && entry.name.endsWith('.js')) {
-            const srcPath = path.join(srcStoresDir, entry.name);
-            const destPath = path.join(destStoresDir, entry.name);
-            await fs.copyFile(srcPath, destPath);
-            console.log(`[build-svelte] copied store: ${entry.name}`);
-        }
-    }
-};
-
-export const copyLibDirectory = async () => {
-    const srcLibDir = path.join(SVELTE_DIR, 'lib');
-    const destLibDir = path.join(COMPONENT_DIR, 'lib');
-
-    try {
-        const stats = await fs.stat(srcLibDir);
-        if (!stats.isDirectory()) {
-            return;
-        }
-    } catch {
-        return;
-    }
-
-    await fs.mkdir(destLibDir, { recursive: true });
-
-    const entries = await fs.readdir(srcLibDir, { withFileTypes: true });
-    for (const entry of entries) {
-        if (entry.isFile() && entry.name.endsWith('.js')) {
-            const srcPath = path.join(srcLibDir, entry.name);
-            const destPath = path.join(destLibDir, entry.name);
-            await fs.copyFile(srcPath, destPath);
-            console.log(`[build-svelte] copied lib: ${entry.name}`);
-        }
+        await esbuild({
+            entryPoints: [entry],
+            bundle: true,
+            format: 'esm',
+            outfile: outfileEsm,
+            sourcemap: true,
+            platform: 'browser',
+            target: 'es2020',
+            legalComments: 'none',
+            alias: PATH_ALIASES,
+            plugins: [svelteRelativeImportsPlugin],
+            logLevel: 'error'
+        });
     }
 };
 
@@ -156,11 +143,6 @@ export const listSvelteComponents = async () => {
 export const buildAllSvelte = async () => {
     await fs.mkdir(COMPONENT_DIR, { recursive: true });
 
-    // Copy utility files first so they can be resolved during bundling
-    await copyUtilsDirectory();
-    await copyStoresDirectory();
-    await copyLibDirectory();
-
     const components = await listSvelteComponents();
 
     if (components.length === 0) {
@@ -168,19 +150,19 @@ export const buildAllSvelte = async () => {
         return;
     }
 
-    console.log('[build-svelte] components to build:', components);
+    console.log('[build-svelte] components to build (esm):', components);
 
     console.log('[build-svelte] compiling sources');
+    const entryFiles = [];
     for (const component of components) {
         console.log(`[build-svelte] compiling ${component}`);
         await compileComponentSource(component);
+        const baseName = path.basename(component, '.svelte');
+        entryFiles.push(path.join(COMPONENT_DIR, `${baseName}.js`));
     }
 
-    console.log('[build-svelte] bundling outputs');
-    for (const component of components) {
-        console.log(`[build-svelte] bundling ${component}`);
-        bundleComponent(component);
-    }
+    console.log('[build-svelte] bundling outputs (esm, splitting)');
+    await bundleAllComponents(entryFiles);
 
     return components;
 };

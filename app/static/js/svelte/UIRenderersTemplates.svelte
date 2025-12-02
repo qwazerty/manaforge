@@ -2,10 +2,32 @@
 
 <script>
     import { onMount } from 'svelte';
+    import { createClassComponent } from 'svelte/legacy';
     import {
         getGameStateSnapshot,
         getSelectedPlayerSnapshot
     } from './stores/gameCoreStore.js';
+
+    // Import child components for dynamic mounting
+    import GameArena from './GameArena.svelte';
+    import ActionPanel from './ActionPanel.svelte';
+    import StackPopup from './StackPopup.svelte';
+    import ZonePopup from './ZonePopup.svelte';
+    import DeckZone from './DeckZone.svelte';
+    import GraveyardZone from './GraveyardZone.svelte';
+    import ExileZone from './ExileZone.svelte';
+    import LifeZone from './LifeZone.svelte';
+
+    // Helper to mount Svelte 5 components dynamically
+    const mountComponent = (Component, options) => {
+        return createClassComponent({ component: Component, ...options });
+    };
+
+    const unmountComponent = (instance) => {
+        if (instance && typeof instance.$destroy === 'function') {
+            instance.$destroy();
+        }
+    };
 
     const getGameState = () => {
         if (typeof GameCore?.getGameState === 'function') {
@@ -181,34 +203,25 @@
         }
 
         static _renderGameArenaSvelte(container, props) {
-            if (typeof GameArenaComponent === 'undefined') {
-                container.innerHTML = `
-                    <div class="arena-card rounded-xl p-6 text-center">
-                        <h3 class="text-red-400 font-bold mb-2">⚠️ Game Arena</h3>
-                        <p class="text-arena-text-dim">Unable to load the arena component.</p>
-                    </div>
-                `;
-                return;
-            }
-
             if (!this._gameArenaComponent || this._gameArenaTarget !== container) {
                 this._destroyGameArenaComponent();
                 container.innerHTML = '';
 
-                const mount = typeof GameArenaComponent.mount === 'function'
-                    ? GameArenaComponent.mount
-                    : null;
-
-                if (!mount) {
-                    console.error('GameArenaComponent.mount is not available');
-                    return;
+                try {
+                    this._gameArenaComponent = mountComponent(GameArena, {
+                        target: container,
+                        props
+                    });
+                    this._gameArenaTarget = container;
+                } catch (error) {
+                    console.error('[UIRenderersTemplates] Failed to mount GameArena', error);
+                    container.innerHTML = `
+                        <div class="arena-card rounded-xl p-6 text-center">
+                            <h3 class="text-red-400 font-bold mb-2">⚠️ Game Arena</h3>
+                            <p class="text-arena-text-dim">Unable to load the arena component.</p>
+                        </div>
+                    `;
                 }
-
-                this._gameArenaComponent = mount(GameArenaComponent.default, {
-                    target: container,
-                    props
-                });
-                this._gameArenaTarget = container;
             } else if (typeof this._gameArenaComponent.$set === 'function') {
                 this._gameArenaComponent.$set(props);
             }
@@ -253,32 +266,24 @@
         }
 
         static _renderActionPanelSvelte(container, props) {
-            if (typeof ActionPanelComponent === 'undefined') {
-                container.innerHTML = `
-                    <div class="text-center py-4 text-arena-text-dim text-sm">
-                        Unable to load action panel
-                    </div>
-                `;
-                return;
-            }
-
             if (!this._actionPanelComponent || this._actionPanelTarget !== container) {
                 this._destroyActionPanelComponent();
                 container.innerHTML = '';
 
-                const mount = typeof ActionPanelComponent.mount === 'function'
-                    ? ActionPanelComponent.mount
-                    : null;
-                if (!mount) {
-                    console.error('ActionPanelComponent.mount is not available');
-                    return;
+                try {
+                    this._actionPanelComponent = mountComponent(ActionPanel, {
+                        target: container,
+                        props
+                    });
+                    this._actionPanelTarget = container;
+                } catch (error) {
+                    console.error('[UIRenderersTemplates] Failed to mount ActionPanel', error);
+                    container.innerHTML = `
+                        <div class="text-center py-4 text-arena-text-dim text-sm">
+                            Unable to load action panel
+                        </div>
+                    `;
                 }
-
-                this._actionPanelComponent = mount(ActionPanelComponent.default, {
-                    target: container,
-                    props
-                });
-                this._actionPanelTarget = container;
             } else if (typeof this._actionPanelComponent.$set === 'function') {
                 this._actionPanelComponent.$set(props);
             }
@@ -286,11 +291,7 @@
 
         static _destroyActionPanelComponent() {
             if (this._actionPanelComponent) {
-                if (typeof ActionPanelComponent?.unmount === 'function') {
-                    ActionPanelComponent.unmount(this._actionPanelComponent);
-                } else if (typeof this._actionPanelComponent.$destroy === 'function') {
-                    this._actionPanelComponent.$destroy();
-                }
+                unmountComponent(this._actionPanelComponent);
                 this._actionPanelComponent = null;
                 this._actionPanelTarget = null;
             }
@@ -298,11 +299,7 @@
 
         static _destroyGameArenaComponent() {
             if (this._gameArenaComponent) {
-                if (typeof GameArenaComponent?.unmount === 'function') {
-                    GameArenaComponent.unmount(this._gameArenaComponent);
-                } else if (typeof this._gameArenaComponent.$destroy === 'function') {
-                    this._gameArenaComponent.$destroy();
-                }
+                unmountComponent(this._gameArenaComponent);
                 this._gameArenaComponent = null;
                 this._gameArenaTarget = null;
             }
@@ -1181,10 +1178,6 @@
         }
 
         static _ensureStackPopupComponent() {
-            if (typeof StackPopupComponent === 'undefined') {
-                return null;
-            }
-
             if (this._stackPopupComponent) {
                 return this._stackPopupComponent;
             }
@@ -1197,14 +1190,7 @@
             document.body.appendChild(target);
 
             try {
-                const mount = typeof StackPopupComponent.mount === 'function'
-                    ? StackPopupComponent.mount
-                    : null;
-                if (!mount) {
-                    throw new Error('StackPopupComponent.mount is not available');
-                }
-
-                this._stackPopupComponent = mount(StackPopupComponent.default, {
+                this._stackPopupComponent = mountComponent(StackPopup, {
                     target,
                     props: {
                         stack: [],
@@ -1247,11 +1233,7 @@
                 }
             }
             try {
-                if (typeof StackPopupComponent?.unmount === 'function') {
-                    StackPopupComponent.unmount(this._stackPopupComponent);
-                } else if (typeof this._stackPopupComponent.$destroy === 'function') {
-                    this._stackPopupComponent.$destroy();
-                }
+                unmountComponent(this._stackPopupComponent);
             } catch (error) {
                 console.error('Failed to destroy stack popup', error);
             }

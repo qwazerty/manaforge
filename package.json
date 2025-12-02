@@ -12,6 +12,7 @@
     "build:css": "tailwindcss -i ./app/static/css/tailwind.css -o ./app/static/css/dist/manaforge.css --minify",
     "build:svelte": "node tools/build-svelte.mjs",
     "dev:svelte": "node tools/watch-svelte.mjs",
+    "test:build": "npm run build:svelte",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

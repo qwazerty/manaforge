@@ -1,10 +1,9 @@
-document.addEventListener('DOMContentLoaded', () => {
+import FormatStats, { mount } from './components/FormatStats.esm.js';
+
+const init = () => {
     const root = document.getElementById('format-stats-root');
     const dataEl = document.getElementById('format-stats-props');
-
-    if (!root || typeof FormatStatsComponent === 'undefined') {
-        return;
-    }
+    if (!root) return;
 
     let stats = null;
     if (dataEl?.textContent) {
@@ -16,11 +15,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-        FormatStatsComponent.mount(FormatStatsComponent.default, {
+        mount(FormatStats, {
             target: root,
             props: { stats }
         });
     } catch (error) {
         console.error('[format-stats] failed to mount component', error);
     }
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

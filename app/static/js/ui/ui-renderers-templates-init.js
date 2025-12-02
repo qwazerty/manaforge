@@ -1,19 +1,19 @@
-(function bootstrapUIRenderersTemplates() {
-    if (typeof UIRenderersTemplatesComponent === 'undefined' || typeof UIRenderersTemplatesComponent.mount !== 'function') {
-        console.error('[UIRenderersTemplates] component bundle is missing');
-        return;
-    }
+import UIRenderersTemplates, { mount } from './components/UIRenderersTemplates.esm.js';
 
-    const target = document.body;
-    if (!target) {
-        return;
-    }
+if (typeof document !== 'undefined') {
+    const init = () => {
+        const target = document.body;
+        if (!target) return;
+        try {
+            mount(UIRenderersTemplates, { target });
+        } catch (error) {
+            console.error('[UIRenderersTemplates] failed to initialize', error);
+        }
+    };
 
-    try {
-        UIRenderersTemplatesComponent.mount(UIRenderersTemplatesComponent.default, {
-            target
-        });
-    } catch (error) {
-        console.error('[UIRenderersTemplates] failed to initialize', error);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-})();
+}

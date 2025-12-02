@@ -2,22 +2,22 @@
  * ManaForge Card Context Menu Initialization
  * Bootstraps the CardContextMenu Svelte component
  */
-(function bootstrapCardContextMenu() {
-    if (typeof CardContextMenuComponent === 'undefined' || typeof CardContextMenuComponent.mount !== 'function') {
-        console.error('[CardContextMenu] component bundle is missing');
-        return;
-    }
+import CardContextMenu, { mount } from './components/CardContextMenu.esm.js';
 
-    const target = document.body;
-    if (!target) {
-        return;
-    }
+if (typeof document !== 'undefined') {
+    const init = () => {
+        const target = document.body;
+        if (!target) return;
+        try {
+            mount(CardContextMenu, { target });
+        } catch (error) {
+            console.error('[CardContextMenu] failed to initialize', error);
+        }
+    };
 
-    try {
-        CardContextMenuComponent.mount(CardContextMenuComponent.default, {
-            target
-        });
-    } catch (error) {
-        console.error('[CardContextMenu] failed to initialize', error);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-})();
+}
