@@ -16,7 +16,7 @@
         setPageVisible,
         setSelectedPlayer
     } from './stores/gameCoreStore.js';
-    import { loadActionHistoryFromState } from './stores/actionHistoryStore.js';
+    import { loadActionHistoryFromState, addActionHistoryEntry } from './stores/actionHistoryStore.js';
 
     let autoRefreshInterval = null;
     let persistentUiLoaded = false;
@@ -466,12 +466,23 @@
         }
 
         try {
-            const response = await fetch(`/api/v1/games/${id}`, {
-                method: 'DELETE'
-            });
+            const response = await fetch(
+                `/api/v1/games/${id}?player_id=${encodeURIComponent(normalizedSeat)}`,
+                {
+                    method: 'DELETE'
+                }
+            );
             if (!response.ok) {
                 throw new Error('Failed to end game');
             }
+
+            addActionHistoryEntry({
+                action: 'end_game',
+                player: normalizedSeat,
+                success: true,
+                details: { message: 'Game ended' },
+                origin: 'local'
+            });
 
             stopAutoRefresh();
             if (window.websocket) {

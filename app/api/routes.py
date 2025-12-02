@@ -330,11 +330,33 @@ async def list_games() -> List[Dict[str, Any]]:
 
 
 @router.delete("/games/{game_id}")
-async def end_game(game_id: str) -> Dict[str, Any]:
+async def end_game(game_id: str, player_id: Optional[str] = Query(None)) -> Dict[str, Any]:
     """End a game and remove it from the active games list."""
-    success = game_engine.end_game(game_id)
-    if not success:
+    game_state = game_engine.games.get(game_id)
+    if not game_state:
         raise HTTPException(status_code=404, detail="Game not found")
+
+    player_label = None
+    if player_id:
+        for player in getattr(game_state, "players", []):
+            if getattr(player, "id", None) == player_id:
+                player_label = getattr(player, "name", player_id)
+                break
+        player_label = player_label or player_id
+    else:
+        player_label = "system"
+
+    action_info = {
+        "action": "end_game",
+        "player": player_id or "system",
+        "success": True,
+        "message": f"Game ended by {player_label}"
+    }
+
+    await broadcast_game_update(game_id, game_state, action_info)
+
+    game_engine.end_game(game_id)
+
     return {"success": True, "message": f"Game {game_id} has been ended"}
 
 
