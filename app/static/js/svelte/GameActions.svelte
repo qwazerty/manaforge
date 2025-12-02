@@ -561,10 +561,7 @@
     }
 
     function playCardFromHand(cardId, uniqueId, options = {}) {
-        // Close hover preview when playing a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         const payload = { 
             card_id: cardId,
@@ -580,9 +577,7 @@
     }
 
     function revealFaceDownCard(cardId, uniqueId) {
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
 
         performGameAction('reveal_face_down_card', {
             card_id: cardId,
@@ -621,10 +616,7 @@
     }
 
     function tapCard(cardId, uniqueCardId) {
-        // Close hover preview when tapping a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
@@ -651,10 +643,7 @@
     }
 
     function sendToGraveyard(cardId, sourceZone, uniqueCardId = null, callback = null) {
-        // Close hover preview when moving a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         if (uniqueCardId) {
             clearTappedState(uniqueCardId);
@@ -664,10 +653,7 @@
     }
 
     function sendToExile(cardId, sourceZone, uniqueCardId = null, callback = null) {
-        // Close hover preview when moving a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         if (uniqueCardId) {
             clearTappedState(uniqueCardId);
@@ -677,10 +663,7 @@
     }
 
     function showInRevealZone(cardId, sourceZone, uniqueCardId = null, callback = null) {
-        // Close hover preview when moving a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         if (uniqueCardId) {
             clearTappedState(uniqueCardId);
@@ -871,10 +854,7 @@
     }
 
     function duplicateCard(cardId, uniqueCardId, sourceZone = 'battlefield') {
-        // Close hover preview when duplicating a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         if (!uniqueCardId) {
             console.warn('Duplicate action requires a unique card identifier');
@@ -1154,10 +1134,7 @@
      * Uses the existing APIs based on the target zone.
      */
     function moveCard(cardId, sourceZone, targetZone, uniqueCardId = null, deckPosition = null, callback = null, positionIndex = null, options = null) {
-        // Close hover preview when moving a card
-        if (typeof GameCards !== 'undefined' && GameCards._closeActiveCardPreview) {
-            GameCards._closeActiveCardPreview();
-        }
+        CardPreviewModal.hide();
     
         const actionData = {
             card_id: cardId,

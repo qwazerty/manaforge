@@ -6,14 +6,6 @@ const CARD_BACK_IMAGE = '/static/images/card-back.jpg';
 
 const GameCards = {
     draggedCardElement: null,
-    _hoverPreviewInitialized: false,
-    _hoveredCardElement: null,
-    _hoverPreviewPointerEvent: null,
-    _hoverPreviewOpened: false,
-    _contextMenuOpen: false,
-    _boundHoverMouseOver: null,
-    _boundHoverMouseOut: null,
-    _boundHoverMouseMove: null,
     _lastContextPosition: null,
     _attachmentSelection: null,
     _attachmentTargets: [],
@@ -22,6 +14,7 @@ const GameCards = {
     _boundCloseAttachmentClick: null,
     _boundAttachmentMenuClose: null,
     _boundAttachmentMenuKeydown: null,
+    // Legacy keyword descriptions kept for backward compatibility (primary source is CardPreviewModal.svelte)
     keywordDescriptions: {
         "adapt":{"name":"Adapt","description":"If this creature has no +1/+1 counters on it, put N +1/+1 counters on it."},
         "islandwalk":{"name":"Islandwalk","description":"This creature can’t be blocked as long as defending player controls an Island."},
@@ -1067,256 +1060,9 @@ const GameCards = {
         return classes[counterType] || 'counter-generic';
     },
 
-    findCardData: function(cardId, cardName) {
-        const nodes = Array.from(document.querySelectorAll('[data-card-data]'));
-        const parse = (raw) => {
-            if (!raw) return null;
-            try {
-                return JSON.parse(
-                    raw
-                        .replace(/&quot;/g, '"')
-                        .replace(/&#39;/g, "'")
-                );
-            } catch (error) {
-                console.warn('Failed to parse card data attribute', error);
-                return null;
-            }
-        };
-
-        if (cardId) {
-            const byId = nodes.find(el => el.getAttribute('data-card-id') === cardId);
-            if (byId) {
-                const data = parse(byId.getAttribute('data-card-data'));
-                if (data) return data;
-            }
-        }
-
-        if (cardName) {
-            const byName = nodes.find(el => el.getAttribute('data-card-name') === cardName);
-            if (byName) {
-                const data = parse(byName.getAttribute('data-card-data'));
-                if (data) return data;
-            }
-        }
-
-        return null;
-    },
-
-    renderKeywordDetails: function(cardData) {
-        const keywords = this.extractKeywordsFromCard(cardData);
-        if (!keywords.length) {
-            return ``;
-        }
-
-        const list = keywords.map(info => `
-            <div class="card-keyword-entry">
-                <div class="card-keyword-name">${info.name}</div>
-                <div class="card-keyword-description">${info.description}</div>
-            </div>
-        `).join('');
-
-        return `
-            <div class="card-keyword-section">
-                <div class="card-keyword-list">
-                    ${list}
-                </div>
-            </div>
-        `;
-    },
-
-    extractKeywordsFromCard: function(cardData) {
-        if (!cardData) {
-            return [];
-        }
-
-        const keywordSet = new Set();
-        const gatherKeywords = (collection) => {
-            if (!Array.isArray(collection)) return;
-            collection.forEach(keyword => {
-                if (keyword) {
-                    keywordSet.add(String(keyword).toLowerCase());
-                }
-            });
-        };
-
-        gatherKeywords(cardData.keywords);
-        gatherKeywords(cardData.custom_keywords || cardData.customKeywords);
-
-        const textFragments = [];
-        const pushText = (value) => {
-            if (value) {
-                textFragments.push(String(value));
-            }
-        };
-
-        pushText(cardData.oracle_text || cardData.text);
-        pushText(cardData.type_line || cardData.typeLine);
-
-        if (Array.isArray(cardData.card_faces)) {
-            cardData.card_faces.forEach(face => {
-                gatherKeywords(face?.keywords);
-                pushText(face?.oracle_text || face?.text);
-            });
-        }
-
-        const fullText = textFragments.join('\n');
-        const normalizedText = fullText.toLowerCase();
-        const found = [];
-        const seen = new Set();
-
-        const buildRegex = (keyword) => {
-            const escaped = String(keyword)
-                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                .replace(/\s+/g, '\\s+');
-            return new RegExp(`\\b${escaped}\\b`, 'i');
-        };
-
-        Object.entries(this.keywordDescriptions).forEach(([key, info]) => {
-            if (seen.has(key)) {
-                return;
-            }
-
-            const names = [info.name, key].concat(info.aliases || []);
-            let matched = names.some(name => keywordSet.has(String(name).toLowerCase()));
-
-            if (!matched && normalizedText) {
-                if (info.patterns && info.patterns.length) {
-                    matched = info.patterns.some(pattern => {
-                        try {
-                            return new RegExp(pattern, 'i').test(fullText);
-                        } catch (error) {
-                            return false;
-                        }
-                    });
-                } else {
-                    matched = names.some(name => buildRegex(name).test(fullText));
-                }
-            }
-
-            if (matched) {
-                const keywordInfo = { ...info };
-
-                if (key === 'ward') {
-                    const match = fullText.match(/Ward\s*(?:—|-)?\s*({[^}]+}|[^\n]+)/i);
-                    if (match) {
-                        const rawCost = (match[1] || match[0] || '').replace(/Ward/i, '').replace(/—|-/g, '').trim();
-                        const wardCost = rawCost.length ? rawCost : 'cost';
-                        keywordInfo.description = `Ward — ${wardCost} (Whenever this permanent becomes the target of a spell or ability an opponent controls, counter it unless that player pays the ward cost.)`;
-                    }
-                }
-
-                if (key === 'equip') {
-                    const match = fullText.match(/Equip\s*({[^}]+})/i);
-                    if (match) {
-                        keywordInfo.description = `Equip ${match[1]} — Attach this Equipment to target creature you control. Activate only as a sorcery.`;
-                    }
-                }
-
-                found.push(keywordInfo);
-                const normalizedNames = names.map(name => String(name).toLowerCase());
-                normalizedNames.forEach(name => seen.add(name));
-                seen.add(key);
-            }
-        });
-
-        keywordSet.forEach(keyword => {
-            const normalized = String(keyword).toLowerCase();
-            if (seen.has(normalized)) {
-                return;
-            }
-
-            const displayName = String(keyword)
-                .split(/\s+/)
-                .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-                .join(' ');
-
-            found.push({
-                name: displayName,
-                description: `Description for ${displayName} is not yet available.`
-            });
-            seen.add(normalized);
-        });
-
-        return found;
-    },
-
-    showCardPreview: function(cardId, cardName, imageUrl, event = null, cardData = null) {
-        const existingPreview = document.getElementById('card-preview-modal');
-        if (existingPreview) {
-            existingPreview.remove();
-            this.removeCardPreviewListeners();
-        }
-
-        const preview = document.createElement('div');
-        preview.id = 'card-preview-modal';
-        preview.className = 'card-preview-modal show';
-
-        const resolvedCardData = cardData || this.findCardData(cardId, cardName);
-        const keywordDetails = this.renderKeywordDetails(resolvedCardData);
-        const safeCardName = GameUtils.escapeHtml(cardName || 'Unknown');
-        const safeImageUrl = GameUtils.escapeHtml(imageUrl || '');
-
-        preview.innerHTML = `
-            <div class="card-preview-content">
-                ${imageUrl ? `
-                    <img src="${safeImageUrl}" alt="${safeCardName}" class="card-preview-image" />
-                ` : `
-                    <div class="card-preview-fallback">
-                        <div class="card-name">${safeCardName}</div>
-                    </div>
-                `}
-                <div class="card-preview-details">
-                    <h3>${safeCardName}</h3>
-                    ${keywordDetails}
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(preview);
-        this.addCardPreviewListeners();
-
-        const hasPointerPosition = event && typeof event.clientX === 'number' && typeof event.clientY === 'number';
-        if (hasPointerPosition) {
-            preview.classList.remove('card-preview-modal-centered');
-            this.positionCardPreview(preview, event);
-        } else {
-            preview.classList.add('card-preview-modal-centered');
-        }
-    },
-
-    positionCardPreview: function(previewElement, event) {
-        if (!previewElement || !event) {
-            return;
-        }
-
-        const previewRect = previewElement.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        let x = event.clientX + 150;
-        let y = event.clientY - 50;
-
-        if (x + previewRect.width > viewportWidth) {
-            x = event.clientX - previewRect.width - 150;
-        }
-        if (y + previewRect.height > viewportHeight) {
-            y = event.clientY - previewRect.height + 50;
-        }
-
-        x = Math.max(10, Math.min(x, viewportWidth - previewRect.width - 10));
-        y = Math.max(10, Math.min(y, viewportHeight - previewRect.height - 10));
-
-        previewElement.style.position = 'fixed';
-        previewElement.style.left = `${x}px`;
-        previewElement.style.top = `${y}px`;
-        previewElement.style.transform = 'none';
-    },
-
     showCardContextMenu: function(event, cardElement) {
         event.preventDefault();
-        this._closeActiveCardPreview();
-        this._hoveredCardElement = null;
-        this._hoverPreviewPointerEvent = null;
+        CardPreviewModal.hide();
         this._lastContextPosition = {
             x: event?.clientX || 0,
             y: event?.clientY || 0
@@ -1539,7 +1285,7 @@ const GameCards = {
         menu.style.left = `${x}px`;
         menu.style.top = `${y}px`;
         menu.style.visibility = 'visible';
-        this._contextMenuOpen = true;
+        CardPreviewModal.setContextMenuOpen(true);
 
         if (!this._boundCloseContextMenu) {
             this._boundCloseContextMenu = this.closeContextMenu.bind(this);
@@ -1548,8 +1294,7 @@ const GameCards = {
     },
 
     toggleCardTarget: function(uniqueCardId) {
-        // Close hover preview when toggling target
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
         
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (cardElement) {
@@ -1573,27 +1318,7 @@ const GameCards = {
         if (this._boundCloseContextMenu) {
             document.removeEventListener('click', this._boundCloseContextMenu);
         }
-        this._contextMenuOpen = false;
-    },
-
-    handleCardPreviewClick: function(event) {
-        this._closeActiveCardPreview();
-    },
-
-    handleCardPreviewKeydown: function(event) {
-        if (event.key === 'Escape') {
-            this._closeActiveCardPreview();
-        }
-    },
-
-    _closeActiveCardPreview: function() {
-        const preview = document.getElementById('card-preview-modal');
-        if (preview) {
-            preview.remove();
-        }
-        this.removeCardPreviewListeners();
-        this._hoverPreviewOpened = false;
-        this._hoverPreviewPointerEvent = null;
+        CardPreviewModal.setContextMenuOpen(false);
     },
 
     _getAttachmentsFromState: function(hostUniqueId) {
@@ -1884,39 +1609,13 @@ const GameCards = {
             modal.remove();
         }
         this.closeAttachmentContextMenu();
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
     },
 
-    // Add properties to store bound references
-    _boundHandleCardPreviewClick: null,
-    _boundHandleCardPreviewKeydown: null,
     _boundCloseContextMenu: null,
 
-    addCardPreviewListeners: function() {
-        // Use persistent bound references
-        if (!this._boundHandleCardPreviewClick) {
-            this._boundHandleCardPreviewClick = this.handleCardPreviewClick.bind(this);
-        }
-        if (!this._boundHandleCardPreviewKeydown) {
-            this._boundHandleCardPreviewKeydown = this.handleCardPreviewKeydown.bind(this);
-        }
-        setTimeout(() => {
-            document.addEventListener('click', this._boundHandleCardPreviewClick);
-            document.addEventListener('keydown', this._boundHandleCardPreviewKeydown);
-        }, 100);
-    },
-
-    removeCardPreviewListeners: function() {
-        if (this._boundHandleCardPreviewClick) {
-            document.removeEventListener('click', this._boundHandleCardPreviewClick);
-        }
-        if (this._boundHandleCardPreviewKeydown) {
-            document.removeEventListener('keydown', this._boundHandleCardPreviewKeydown);
-        }
-    },
-
     startAttachmentSelection: function(cardId, uniqueCardId) {
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
         this.closeContextMenu();
         this.cancelAttachmentSelection();
 
@@ -2008,151 +1707,8 @@ const GameCards = {
         }
     },
 
-    initializeHoverPreview: function() {
-        if (this._hoverPreviewInitialized) {
-            return;
-        }
-
-        this._boundHoverMouseOver = this.handleHoverMouseOver.bind(this);
-        this._boundHoverMouseOut = this.handleHoverMouseOut.bind(this);
-        this._boundHoverMouseMove = this.handleHoverMouseMove.bind(this);
-
-        document.addEventListener('mouseover', this._boundHoverMouseOver, true);
-        document.addEventListener('mouseout', this._boundHoverMouseOut, true);
-        document.addEventListener('mousemove', this._boundHoverMouseMove, true);
-
-        this._hoverPreviewInitialized = true;
-    },
-
-    handleHoverMouseOver: function(event) {
-        if (this._contextMenuOpen) {
-            return;
-        }
-
-        const cardElement = event.target.closest('[data-card-id]');
-        if (!cardElement) {
-            return;
-        }
-
-        const related = event.relatedTarget;
-        if (related && cardElement.contains(related)) {
-            return;
-        }
-
-        this._hoveredCardElement = cardElement;
-        this._hoverPreviewPointerEvent = event;
-
-        this.openHoverPreview(cardElement, event);
-    },
-
-    handleHoverMouseOut: function(event) {
-        const cardElement = event.target.closest('[data-card-id]');
-        if (!cardElement) {
-            return;
-        }
-
-        const related = event.relatedTarget;
-        if (related && cardElement.contains(related)) {
-            return;
-        }
-
-        if (this._hoveredCardElement === cardElement) {
-            this._hoveredCardElement = null;
-            this._hoverPreviewPointerEvent = null;
-        }
-
-        if (this._hoverPreviewOpened) {
-            this.closeHoverPreview();
-        }
-    },
-
-    handleHoverMouseMove: function(event) {
-        if (this._contextMenuOpen) {
-            return;
-        }
-
-        const cardElement = event.target.closest('[data-card-id]');
-        if (cardElement) {
-            this._hoverPreviewPointerEvent = event;
-        }
-
-        // Check if the hovered card still exists in the DOM
-        if (this._hoveredCardElement && !document.contains(this._hoveredCardElement)) {
-            this._hoveredCardElement = null;
-            this._hoverPreviewPointerEvent = null;
-            if (this._hoverPreviewOpened) {
-                this.closeHoverPreview();
-            }
-            return;
-        }
-
-        const preview = document.getElementById('card-preview-modal');
-        if (this._hoverPreviewOpened && preview && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
-            this.positionCardPreview(preview, event);
-        } else if (!this._hoverPreviewOpened && cardElement && cardElement === this._hoveredCardElement) {
-            this.openHoverPreview(cardElement, event);
-        }
-    },
-
-    openHoverPreview: function(cardElement, pointerEvent) {
-        if (!cardElement || this._contextMenuOpen) {
-            return;
-        }
-
-        if (this._hoverPreviewOpened && this._hoveredCardElement === cardElement) {
-            return;
-        }
-
-        const cardId = cardElement.getAttribute('data-card-id');
-        const cardName = cardElement.getAttribute('data-card-name');
-        const cardImage = cardElement.getAttribute('data-card-image');
-        const rawData = cardElement.getAttribute('data-card-data') || null;
-        let cardData = null;
-
-        if (rawData) {
-            try {
-                cardData = JSON.parse(
-                    rawData
-                        .replace(/&quot;/g, '"')
-                        .replace(/&#39;/g, "'")
-                );
-            } catch (error) {
-                console.warn('Unable to parse card data attribute for preview', error);
-            }
-        }
-
-        const positionEvent = pointerEvent && typeof pointerEvent.clientX === 'number' && typeof pointerEvent.clientY === 'number'
-            ? pointerEvent
-            : this.buildCardCenterEvent(cardElement);
-
-        this.showCardPreview(cardId, cardName, cardImage, positionEvent, cardData);
-        this._hoverPreviewOpened = true;
-        this._hoverPreviewPointerEvent = positionEvent;
-    },
-
-    closeHoverPreview: function() {
-        if (!this._hoverPreviewOpened) {
-            return;
-        }
-
-        this._closeActiveCardPreview();
-    },
-
-    buildCardCenterEvent: function(cardElement) {
-        if (!cardElement) {
-            return { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
-        }
-
-        const rect = cardElement.getBoundingClientRect();
-        return {
-            clientX: rect.left + rect.width / 2,
-            clientY: rect.top + rect.height / 2
-        };
-    },
-
     flipCard: function(cardId, uniqueCardId) {
-        // Close hover preview when flipping a card
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
         
         GameActions.performGameAction('flip_card', {
             card_id: cardId,
@@ -2169,7 +1725,7 @@ const GameCards = {
     },
 
     handleDragStart: function(event, cardElement) {
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
 
         const cardId = cardElement.getAttribute('data-card-id');
         const cardZone = cardElement.getAttribute('data-card-zone');
@@ -2228,7 +1784,7 @@ const GameCards = {
     },
 
     showTypePopover: function(uniqueCardId, cardId) {
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
         const anchor = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (typeof UICardManager !== 'undefined' && typeof UICardManager.openTypePopover === 'function') {
             UICardManager.openTypePopover(uniqueCardId, cardId, anchor);
@@ -2238,7 +1794,7 @@ const GameCards = {
     },
 
     showCounterPopover: function(uniqueCardId, cardId) {
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
         const anchor = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (typeof UICardManager !== 'undefined' && typeof UICardManager.openCounterPopover === 'function') {
             UICardManager.openCounterPopover(uniqueCardId, cardId, anchor);
@@ -2248,7 +1804,7 @@ const GameCards = {
     },
 
     showPowerToughnessPopover: function(uniqueCardId, cardId) {
-        this._closeActiveCardPreview();
+        CardPreviewModal.hide();
         const anchor = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
         if (typeof UICardManager !== 'undefined' && typeof UICardManager.openPowerPopover === 'function') {
             UICardManager.openPowerPopover(uniqueCardId, cardId, anchor);
@@ -2269,5 +1825,4 @@ const GameCards = {
     }
 };
 
-GameCards.initializeHoverPreview();
 window.GameCards = GameCards;
