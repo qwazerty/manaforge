@@ -14,27 +14,33 @@
     } | tojson | e }}'>
 
     <div class="mx-auto px-4 py-3 flex flex-col h-full">
-        <!-- Fullscreen Button -->
-        <button id="fullscreen-btn"
-            title="Fullscreen"
-            class="absolute right-4 top-4 bg-arena-accent hover:bg-arena-accent-dark text-black px-3 py-2 rounded-lg shadow transition-colors focus:outline-none z-20"
-            onclick="GameUI.toggleFullscreen()">
-            🔲
-        </button>
-        <!-- Export Replay Button -->
-        <button id="export-replay-btn"
-            title="Export Replay"
-            class="absolute right-16 top-4 bg-arena-accent hover:bg-arena-accent-dark text-black px-3 py-2 rounded-lg shadow transition-colors focus:outline-none z-20"
-            onclick="GameCore.exportReplay()">
-            💾
-        </button>
-        <!-- End Game Button -->
-        <button id="end-game-btn"
-            title="End Game"
-            class="absolute right-28 top-4 bg-red-900 hover:bg-red-950 text-white px-3 py-2 rounded-lg shadow transition-colors focus:outline-none z-20"
-            onclick="GameCore.endGame()">
-            ❌
-        </button>
+        <!-- Game Control Buttons -->
+        <div class="absolute right-4 top-4 flex gap-2 z-20">
+            <button id="end-game-btn"
+                title="End Game"
+                class="bg-red-900 hover:bg-red-950 text-white px-3 py-2 rounded-lg shadow transition-colors focus:outline-none"
+                onclick="GameCore.endGame()">
+                ❌
+            </button>
+            <button id="restart-game-btn"
+                title="Restart Game"
+                class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg shadow transition-colors focus:outline-none"
+                onclick="GameCore.restartGame()">
+                🔄
+            </button>
+            <button id="export-replay-btn"
+                title="Export Replay"
+                class="bg-arena-accent hover:bg-arena-accent-dark text-black px-3 py-2 rounded-lg shadow transition-colors focus:outline-none"
+                onclick="GameCore.exportReplay()">
+                💾
+            </button>
+            <button id="fullscreen-btn"
+                title="Fullscreen"
+                class="bg-arena-accent hover:bg-arena-accent-dark text-black px-3 py-2 rounded-lg shadow transition-colors focus:outline-none"
+                onclick="GameUI.toggleFullscreen()">
+                🔲
+            </button>
+        </div>
         <div id="game-arena-root" class="flex-grow">
             <!-- GameArena.svelte will render the grid layout -->
         </div>

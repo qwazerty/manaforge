@@ -175,29 +175,40 @@
             return;
         }
 
-        const button = document.getElementById('end-game-btn');
-        if (!button) {
-            return;
-        }
-
         const seat = player || getLocalPlayerSeat();
         const normalizedSeat = normalizePlayerSeatKey(seat);
         const spectator = isSpectatorSeat(seat);
         const restrictControl = spectator || !normalizedSeat;
-        const isLocked = button.dataset?.locked === 'true';
+        const buttons = [
+            {
+                element: document.getElementById('end-game-btn'),
+                title: restrictControl
+                    ? 'Only seated players can end the game'
+                    : 'End Game'
+            },
+            {
+                element: document.getElementById('restart-game-btn'),
+                title: restrictControl
+                    ? 'Only seated players can restart the game'
+                    : 'Restart Game'
+            }
+        ];
 
-        button.classList.toggle('hidden', restrictControl);
-        button.setAttribute('aria-hidden', restrictControl ? 'true' : 'false');
-        button.setAttribute('aria-disabled', restrictControl ? 'true' : 'false');
-        button.title = restrictControl
-            ? 'Only seated players can end the game'
-            : 'End Game';
+        buttons.forEach(({ element, title }) => {
+            if (!element) {
+                return;
+            }
 
-        if (isLocked) {
-            return;
-        }
+            const isLocked = element.dataset?.locked === 'true';
+            element.classList.toggle('hidden', restrictControl);
+            element.setAttribute('aria-hidden', restrictControl ? 'true' : 'false');
+            element.setAttribute('aria-disabled', restrictControl ? 'true' : 'false');
+            element.title = title;
 
-        button.disabled = restrictControl;
+            if (!isLocked) {
+                element.disabled = restrictControl;
+            }
+        });
     }
 
     function updateSpectatorModeClass(player = null) {
@@ -276,6 +287,41 @@
         };
     }
 
+    /**
+     * Applies a new game state to the UI, regenerating all visual components.
+     * @param {Object} state - The game state object
+     * @param {Object} options - Options for UI sync
+     * @param {boolean} options.forceSync - Force persistent UI sync
+     */
+    function applyGameStateToUi(state, { forceSync = false } = {}) {
+        if (!state) {
+            return;
+        }
+
+        setGameState(state);
+        syncPersistentUi(state, { force: forceSync });
+
+        if (window.GameUI) {
+            GameUI.generateLeftArea();
+            GameUI.generateGameBoard();
+            GameUI.generateActionPanel();
+        }
+
+        if (typeof ZoneManager !== 'undefined' && typeof ZoneManager.updateZoneCounts === 'function') {
+            ZoneManager.updateZoneCounts();
+        }
+
+        if (window.GameCombat && typeof window.GameCombat.onPhaseChange === 'function') {
+            window.GameCombat.onPhaseChange(state?.phase);
+        }
+
+        if (window.WebSocketManager && typeof window.WebSocketManager._applyCombatAnimations === 'function') {
+            setTimeout(() => {
+                window.WebSocketManager._applyCombatAnimations(state);
+            }, 60);
+        }
+    }
+
     async function loadGameState() {
         const id = getGameId();
         if (!id) {
@@ -288,24 +334,7 @@
         }
 
         const state = await response.json();
-        setGameState(state);
-
-        syncPersistentUi(state, { force: true });
-
-        if (window.GameUI) {
-            GameUI.generateLeftArea();
-            GameUI.generateGameBoard();
-            GameUI.generateActionPanel();
-        }
-
-        if (window.GameCombat && typeof window.GameCombat.onPhaseChange === 'function') {
-            window.GameCombat.onPhaseChange(state?.phase);
-        }
-        if (window.WebSocketManager && typeof window.WebSocketManager._applyCombatAnimations === 'function') {
-            setTimeout(() => {
-                window.WebSocketManager._applyCombatAnimations(state);
-            }, 60);
-        }
+        applyGameStateToUi(state, { forceSync: true });
     }
 
     async function refreshGameData() {
@@ -457,9 +486,72 @@
                 endGameBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 endGameBtn.dataset.locked = 'true';
             }
+
+            const restartBtn = document.getElementById('restart-game-btn');
+            if (restartBtn) {
+                restartBtn.disabled = true;
+                restartBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                restartBtn.dataset.locked = 'true';
+            }
         } catch (error) {
             console.error('Error ending game:', error);
             alert('Failed to end game. Please try again.');
+        }
+    }
+
+    async function restartGame() {
+        const id = getGameId();
+        if (!id) {
+            console.error('No game ID available');
+            return;
+        }
+
+        const localSeat = getLocalPlayerSeat();
+        const normalizedSeat = normalizePlayerSeatKey(localSeat);
+        if (!normalizedSeat) {
+            alert('Only seated players can restart the game.');
+            console.warn('Blocked restart request from non-player seat', localSeat);
+            return;
+        }
+
+        const confirmed = confirm('Restart the game with the same players and decks?');
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/games/${id}/restart`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                const detail = await response.text();
+                throw new Error(detail || 'Failed to restart game');
+            }
+
+            const result = await response.json();
+            const state = result.game_state || result;
+
+            applyGameStateToUi(state, { forceSync: true });
+
+            if (window.WebSocketManager && typeof window.WebSocketManager.requestGameState === 'function') {
+                window.WebSocketManager.requestGameState();
+            }
+
+            document.body.classList.remove('game-ended');
+
+            [
+                document.getElementById('end-game-btn'),
+                document.getElementById('restart-game-btn')
+            ].forEach((btn) => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.dataset.locked = 'false';
+                }
+            });
+        } catch (error) {
+            console.error('Error restarting game:', error);
+            alert('Failed to restart game. Please try again.');
         }
     }
 
@@ -613,6 +705,7 @@
         updateSpectatorModeClass,
         exportReplay,
         endGame,
+        restartGame,
         getGameState,
         getGameId,
         getSelectedPlayer,
