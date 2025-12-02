@@ -2,8 +2,6 @@ services:
   backend:
     build: .
     restart: always
-    expose:
-      - "8000"
 
   proxy:
     image: nginx:1.29-alpine
