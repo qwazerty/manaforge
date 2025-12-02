@@ -20,7 +20,7 @@ ManaForge is a functional web-based platform for playing Magic The Gathering onl
 # Start the application with Docker Compose
 docker compose up --build -d
 
-# The application will be available at http://localhost:8000
+# The nginx reverse proxy listens on http://localhost:8000
 ```
 
 ### Local Development
@@ -54,6 +54,12 @@ npm run dev:css              # watch mode during development
 npm run build:svelte         # bundle all Svelte components
 npm run dev:svelte           # watch Svelte sources and rebuild on change
 ```
+
+### Reverse Proxy and Service Split
+- The app uses a single FastAPI backend with server-rendered templates, so a hard frontend/backend split isn't necessary yet.
+- A lightweight nginx reverse proxy now fronts the backend: it serves `/static` assets directly with caching and forwards everything else (including WebSockets) to FastAPI.
+- `docker-compose.yml` runs the proxy on host port `8000`; the backend stays internal.
+- For live reload, `docker-compose-dev.yml` also starts the proxy on `8000` and exposes the backend at `8001` if you need to hit it directly.
 
 ## Features
 
