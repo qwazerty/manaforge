@@ -397,8 +397,13 @@ async def handle_mulligan(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle mulligan action."""
+    # Get the player's mulligan count (will be incremented by engine, so +1 for display)
+    player_id = request.get("player_id", "player1") if request else "player1"
+    mulligan_state = current_state.mulligan_state.get(player_id)
+    mulligan_count = (mulligan_state.mulligan_count + 1) if mulligan_state else 1
+    
     return {
-        "broadcast_data": {}
+        "broadcast_data": {"mulligan_count": mulligan_count}
     }
 
 
@@ -407,8 +412,13 @@ async def handle_keep_hand(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle keep hand action during mulligan phase."""
+    # Get the player's mulligan count
+    player_id = request.get("player_id", "player1") if request else "player1"
+    mulligan_state = current_state.mulligan_state.get(player_id)
+    mulligan_count = mulligan_state.mulligan_count if mulligan_state else 0
+    
     return {
-        "broadcast_data": {}
+        "broadcast_data": {"mulligan_count": mulligan_count}
     }
 
 
@@ -428,9 +438,15 @@ async def handle_coin_flip_choice(
             status_code=400, detail="choice must be 'play' or 'draw'"
         )
     
+    # Get player name for the message
+    player_id = request.get("player_id", "player1")
+    player_index = 0 if player_id == "player1" else 1
+    player_name = current_state.players[player_index].name if player_index < len(current_state.players) else player_id
+    choice_action = "play first" if choice == "play" else "draw (let opponent go first)"
+    
     return {
         "additional_data": {"choice": choice},
-        "broadcast_data": {"choice": choice}
+        "broadcast_data": {"message": f"{player_name} chose to {choice_action}"}
     }
 
 

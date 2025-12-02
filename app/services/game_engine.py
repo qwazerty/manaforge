@@ -1974,14 +1974,7 @@ class SimpleGameEngine:
         
         choice_action = "play first" if choice == "play" else "draw (let opponent go first)"
         first_player_name = game_state.players[game_state.first_player].name
-                
-        self.record_action_history(game_state.id, {
-            "action": "coin_flip_choice",
-            "player": player_id,
-            "success": True,
-            "message": f"{game_state.players[player_index].name} chose to {choice_action}",
-            "origin": "engine"
-        })
+        # Note: Action history is recorded by websocket handler, no need to duplicate here
 
     def _mulligan(self, game_state: GameState, action: GameAction) -> None:
         """Handle mulligan action during the mulligan phase."""
@@ -2015,14 +2008,7 @@ class SimpleGameEngine:
             mulligan_state.mulligan_count += 1
             mulligan_state.is_deciding = False
             mulligan_count = mulligan_state.mulligan_count
-                        
-            self.record_action_history(game_state.id, {
-                "action": "mulligan",
-                "player": player_id,
-                "success": True,
-                "mulligan_count": mulligan_count,
-                "origin": "engine"
-            })
+            # Note: Action history is recorded by websocket handler
             
             # Advance to next player's mulligan decision
             self._advance_mulligan_decision(game_state, player_id)
@@ -2055,14 +2041,7 @@ class SimpleGameEngine:
         
         # Note: Player needs to put back cards equal to mulligan count
         # This is done manually by the player in this simulator
-                
-        self.record_action_history(game_state.id, {
-            "action": "keep_hand",
-            "player": player_id,
-            "success": True,
-            "mulligan_count": mulligan_count,
-            "origin": "engine"
-        })
+        # Note: Action history is recorded by websocket handler
         
         # Advance to next player's mulligan decision or start the game
         self._advance_mulligan_decision(game_state, player_id)
