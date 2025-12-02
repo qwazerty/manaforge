@@ -995,9 +995,8 @@
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', entryId);
         }
-        // Close previews
-        if (window.GameCards && typeof window.GameCards.closeHoverPreview === 'function') {
-            window.GameCards.closeHoverPreview();
+        if (window.CardPreviewModal) {
+            window.CardPreviewModal.hide();
         }
     }
 
@@ -1168,31 +1167,26 @@
     }
 
     function handleMouseEnter(e, entry) {
-        if (window.GameCards) {
-            window.GameCards.showCardPreview(
+        if (window.CardPreviewModal) {
+            window.CardPreviewModal.show(
                 entry.card.id, 
                 entry.card.name, 
                 entry.card.image_url || entry.card.image, 
                 e, 
                 entry.card
             );
-            // Ensure closeHoverPreview works by setting the flag
-            window.GameCards._hoverPreviewOpened = true;
         }
     }
 
     function handleMouseMove(e) {
-        if (window.GameCards) {
-            const preview = document.getElementById('card-preview-modal');
-            if (preview) {
-                window.GameCards.positionCardPreview(preview, e);
-            }
+        if (window.CardPreviewModal) {
+            window.CardPreviewModal.updatePosition(e);
         }
     }
 
     function handleMouseLeave() {
-        if (window.GameCards) {
-            window.GameCards.closeHoverPreview();
+        if (window.CardPreviewModal) {
+            window.CardPreviewModal.hide();
         }
     }
 

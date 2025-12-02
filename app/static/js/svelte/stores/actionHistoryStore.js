@@ -257,10 +257,7 @@ class ActionHistoryStore {
             return;
         }
 
-        if (
-            typeof GameCards === 'undefined' ||
-            typeof GameCards.showCardPreview !== 'function'
-        ) {
+        if (typeof CardPreviewModal === 'undefined') {
             return;
         }
 
@@ -270,7 +267,7 @@ class ActionHistoryStore {
         }
 
         const pointerEvent = this._ensurePointerEvent(event, element);
-        GameCards.showCardPreview(
+        CardPreviewModal.show(
             payload.cardId,
             payload.cardName,
             payload.previewImage,
@@ -280,10 +277,7 @@ class ActionHistoryStore {
     }
 
     static _handleCardPreviewMove(event) {
-        if (
-            typeof GameCards === 'undefined' ||
-            typeof GameCards.positionCardPreview !== 'function'
-        ) {
+        if (typeof CardPreviewModal === 'undefined') {
             return;
         }
 
@@ -295,16 +289,12 @@ class ActionHistoryStore {
             return;
         }
 
-        const preview = document.getElementById('card-preview-modal');
-        GameCards.positionCardPreview(preview, event);
+        CardPreviewModal.updatePosition(event);
     }
 
     static _handleCardPreviewHide() {
-        if (
-            typeof GameCards !== 'undefined' &&
-            typeof GameCards._closeActiveCardPreview === 'function'
-        ) {
-            GameCards._closeActiveCardPreview();
+        if (typeof CardPreviewModal !== 'undefined') {
+            CardPreviewModal.hide();
         }
     }
 

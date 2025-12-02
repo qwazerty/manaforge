@@ -9,10 +9,10 @@ import {
 
 declare global {
     interface Window {
-        GameCards?: {
-            showCardPreview?: ReturnType<typeof vi.fn>;
-            positionCardPreview?: ReturnType<typeof vi.fn>;
-            _closeActiveCardPreview?: ReturnType<typeof vi.fn>;
+        CardPreviewModal?: {
+            show?: ReturnType<typeof vi.fn>;
+            updatePosition?: ReturnType<typeof vi.fn>;
+            hide?: ReturnType<typeof vi.fn>;
         };
     }
 }
@@ -23,7 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
     clearActionHistory();
-    delete window.GameCards;
+    delete window.CardPreviewModal;
 });
 
 describe('ActionHistory', () => {
@@ -58,16 +58,16 @@ describe('ActionHistory', () => {
         expect(screen.getByText(/Tour 3/i)).toBeTruthy();
     });
 
-    it('connects preview interactions to GameCards helpers', async () => {
+    it('connects preview interactions to CardPreviewModal helpers', async () => {
         const show = vi.fn();
         const move = vi.fn();
         const hide = vi.fn();
         const user = userEvent.setup();
 
-        window.GameCards = {
-            showCardPreview: show,
-            positionCardPreview: move,
-            _closeActiveCardPreview: hide
+        window.CardPreviewModal = {
+            show: show,
+            updatePosition: move,
+            hide: hide
         };
 
         addActionHistoryEntry({
