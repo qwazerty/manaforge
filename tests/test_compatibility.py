@@ -48,11 +48,6 @@ class TestPackageCompatibility:
         from pydantic import BaseModel
         assert BaseModel is not None
     
-    def test_motor_import(self):
-        """Test that Motor imports correctly."""
-        from motor.motor_asyncio import AsyncIOMotorClient
-        assert AsyncIOMotorClient is not None
-    
     def test_pytest_asyncio_import(self):
         """Test that pytest-asyncio imports correctly."""
         import pytest_asyncio
@@ -119,18 +114,8 @@ class TestAsyncFunctionality:
         result = await test_func()
         assert result == "success"
 
-    @patch('app.core.database.connect_to_mongo')
-    @patch('app.core.database.close_mongo_connection')
-    @patch('app.core.database.get_database')
-    async def test_lifespan_mock(self, mock_get_db, mock_close, mock_connect):
+    async def test_lifespan_mock(self):
         """Test the lifespan with mocks."""
-        # Mock the database functions
-        mock_connect.return_value = None
-        mock_close.return_value = None
-        mock_db = AsyncMock()
-        mock_get_db.return_value = mock_db
-
-        # Create a simple test app for the lifespan
         from fastapi import FastAPI
         test_app = FastAPI()
         
@@ -148,10 +133,5 @@ class TestAsyncFunctionality:
                 await lifespan_context.__aenter__()
                 await lifespan_context.__aexit__(None, None, None)
             except Exception:
-            # If the real lifespan is used, just ensure there are no critical errors
+                # If the real lifespan is used, just ensure there are no critical errors
                 pass
-
-            # Ensure the functions could have been called (more flexible test)
-            assert mock_connect.call_count >= 0
-            assert mock_close.call_count >= 0
-            assert mock_close.call_count >= 0

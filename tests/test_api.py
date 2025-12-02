@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from app.main import app
 
@@ -13,16 +13,8 @@ class TestAPIEndpoints:
     @pytest.fixture
     def client(self):
         """FastAPI test client."""
-        # Patch base database dependencies for tests
-        with patch('app.core.database.connect_to_mongo'), \
-             patch('app.core.database.close_mongo_connection'), \
-             patch('app.core.database.get_database') as mock_get_db:
-            
-            mock_db = AsyncMock()
-            mock_get_db.return_value = mock_db
-            
-            with TestClient(app) as client:
-                yield client
+        with TestClient(app) as client:
+            yield client
     
     def test_api_routes_exist(self, client):
         """Ensure the API routes exist."""
@@ -30,7 +22,6 @@ class TestAPIEndpoints:
         expected_routes = [
             "/api/v1/cards/search",
             "/api/v1/decks",
-            "/api/v1/game/create",
         ]
         
         # Ensure the routes exist in the application
