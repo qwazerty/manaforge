@@ -164,11 +164,13 @@ async def game_room(
     game_interface_url = request.app.url_path_for("game_interface", game_id=game_id)
     setup_api_url = request.app.url_path_for("get_game_setup_status", game_id=game_id)
     submit_api_url = request.app.url_path_for("submit_player_deck", game_id=game_id)
-    game_room_url = str(request.url_for("game_room", game_id=game_id))
+
+    # Keep share links relative so they inherit the correct host, port, and protocol
+    game_room_path = request.url_for("game_room", game_id=game_id).path
     share_links = {
-        "player1": f"{game_room_url}?player=player1",
-        "player2": f"{game_room_url}?player=player2",
-        "spectator": f"{game_room_url}?player=spectator"
+        "player1": f"{game_room_path}?player=player1",
+        "player2": f"{game_room_path}?player=player2",
+        "spectator": f"{game_room_path}?player=spectator"
     }
     context = {
         "request": request,
@@ -179,7 +181,7 @@ async def game_room(
         "game_interface_url": game_interface_url,
         "setup_api_url": setup_api_url,
         "submit_api_url": submit_api_url,
-        "game_room_url": game_room_url,
+        "game_room_url": game_room_path,
         "share_links": share_links
     }
     return templates.TemplateResponse(request, "game_room.html", context)
