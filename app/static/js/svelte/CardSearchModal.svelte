@@ -1,19 +1,71 @@
+<script module>
+    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+    function normalizeTokenFilterList(filter) {
+        if (!Array.isArray(filter)) {
+            return [];
+        }
+        return filter
+            .map((value) => String(value || '').trim())
+            .filter((value) => value.length > 0);
+    }
+
+    const api = {
+        _open: false,
+        _submitHandler: null,
+        _tokenHints: [],
+        _targetZone: 'hand',
+        _instance: null,
+
+        show(zone = 'hand') {
+            this._targetZone = zone;
+            this._open = true;
+            if (this._instance) {
+                this._instance.open(zone, this._submitHandler, this._tokenHints);
+            }
+        },
+
+        hide() {
+            this._open = false;
+            if (this._instance) {
+                this._instance.close();
+            }
+        },
+
+        setSubmitHandler(handler) {
+            this._submitHandler = typeof handler === 'function' ? handler : null;
+        },
+
+        setTokenFilter(filter) {
+            this._tokenHints = normalizeTokenFilterList(filter);
+            if (this._instance) {
+                this._instance.setTokenHints(this._tokenHints);
+            }
+        },
+
+        _registerInstance(instance) {
+            this._instance = instance;
+        }
+    };
+
+    if (isBrowser) {
+        window.CardSearchModal = api;
+        window.showCardSearch = (zone = 'hand') => api.show(zone);
+        window.hideCardSearch = () => api.hide();
+    }
+
+    export { api };
+</script>
+
 <script>
     import { onDestroy, onMount, tick } from 'svelte';
 
     const SEARCH_DELAY = 200;
     const MIN_QUERY_LENGTH = 2;
+    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
-    let {
-        open: incomingOpen = false,
-        targetZone: incomingTargetZone = 'hand',
-        submitHandler = null,
-        onClose = null,
-        tokenHints: incomingTokenHints = []
-    } = $props();
-
-    let open = $state(incomingOpen);
-    let targetZone = $state(incomingTargetZone || 'hand');
+    let isOpen = $state(false);
+    let targetZone = $state('hand');
     let query = $state('');
     let results = $state([]);
     let loading = $state(false);
@@ -23,10 +75,10 @@
     let selectedIndex = $state(-1);
     let isSubmitting = $state(false);
     let searchTimer = null;
-    let searchInput = null;
-    let resultRefs = [];
-    let customSubmit = $state(typeof submitHandler === 'function' ? submitHandler : null);
-    let tokenHintNames = $state(dedupeTokenHints(incomingTokenHints));
+    let searchInput = $state(null);
+    let resultRefs = $state([]);
+    let customSubmit = $state(null);
+    let tokenHintNames = $state([]);
 
     const zoneLabels = {
         hand: 'the hand',
@@ -35,6 +87,31 @@
         exile: 'the exile',
         library: 'the library'
     };
+
+    function openModal(zone = 'hand', submitHandler = null, tokenHints = []) {
+        targetZone = zone;
+        customSubmit = typeof submitHandler === 'function' ? submitHandler : null;
+        tokenHintNames = dedupeTokenHints(tokenHints);
+        if (tokenHintNames.length) {
+            tokenOnly = true;
+        }
+        isOpen = true;
+        focusSearchInput();
+    }
+
+    function closeModal() {
+        isOpen = false;
+        if (isBrowser && window.CardSearchModal) {
+            window.CardSearchModal._open = false;
+        }
+    }
+
+    function setTokenHintsExternal(hints) {
+        tokenHintNames = dedupeTokenHints(hints);
+        if (tokenHintNames.length) {
+            tokenOnly = true;
+        }
+    }
 
     function normalizeTokenHint(value) {
         if (value === null || value === undefined) {
@@ -69,45 +146,22 @@
     }
 
     $effect(() => {
-        open = incomingOpen;
-    });
-
-    $effect(() => {
-        targetZone = incomingTargetZone || 'hand';
-    });
-
-    $effect(() => {
-        customSubmit = typeof submitHandler === 'function' ? submitHandler : null;
-    });
-
-    $effect(() => {
-        tokenHintNames = dedupeTokenHints(incomingTokenHints);
-    });
-
-    $effect(() => {
-        if (tokenHintNames.length) {
-            tokenOnly = true;
-        }
-    });
-
-    $effect(() => {
-        if (!open) {
+        if (!isOpen) {
             resetState();
             return;
         }
-
         focusSearchInput();
     });
 
     $effect(() => {
-        if (!open) return;
+        if (!isOpen || !isBrowser) return;
         const handler = (event) => handleKeydown(event);
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     });
 
     $effect(() => {
-        if (!open) return;
+        if (!isOpen) return;
         const active = resultRefs[selectedIndex];
         if (active && typeof active.scrollIntoView === 'function') {
             active.scrollIntoView({ block: 'nearest' });
@@ -123,11 +177,21 @@
     });
 
     onMount(() => {
+        if (isBrowser && window.CardSearchModal) {
+            window.CardSearchModal._registerInstance({
+                open: openModal,
+                close: closeModal,
+                setTokenHints: setTokenHintsExternal
+            });
+        }
         return () => clearSearchTimer();
     });
 
     onDestroy(() => {
         clearSearchTimer();
+        if (isBrowser && window.CardSearchModal) {
+            window.CardSearchModal._instance = null;
+        }
     });
 
     function resetState() {
@@ -154,15 +218,14 @@
         searchInput?.focus();
     }
 
-    function closeModal() {
-        open = false;
-        if (typeof onClose === 'function') {
-            onClose();
+    function handleBackdropClick(event) {
+        if (event.target === event.currentTarget) {
+            closeModal();
         }
     }
 
-    function handleBackdropClick(event) {
-        if (event.target === event.currentTarget) {
+    function handleBackdropKeydown(event) {
+        if (event.key === 'Escape') {
             closeModal();
         }
     }
@@ -227,21 +290,16 @@
         }
     }
 
-    function clearTokenHints(event) {
+    function clearTokenHintsAction(event) {
         event?.preventDefault();
-        if (
-            typeof window !== 'undefined' &&
-            window.CardSearchModal &&
-            typeof window.CardSearchModal.setTokenFilter === 'function'
-        ) {
-            window.CardSearchModal.setTokenFilter([]);
-        } else {
-            tokenHintNames = [];
+        tokenHintNames = [];
+        if (isBrowser && window.CardSearchModal) {
+            window.CardSearchModal._tokenHints = [];
         }
     }
 
     function handleKeydown(event) {
-        if (!open) return;
+        if (!isOpen) return;
 
         if (event.key === 'Escape') {
             event.preventDefault();
@@ -272,7 +330,7 @@
         loading = true;
         error = '';
 
-        const params = new URLSearchParams({ q: term, limit: 50 });
+        const params = new URLSearchParams({ q: term, limit: '50' });
         if (tokenFlag) {
             params.set('tokens_only', 'true');
         }
@@ -295,17 +353,17 @@
                 );
             }
 
-            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && open) {
+            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && isOpen) {
                 results = cardList;
             }
         } catch (err) {
             console.error('[CardSearchModal] search failed', err);
-            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && open) {
+            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && isOpen) {
                 error = 'Search failed. Please try again.';
                 results = [];
             }
         } finally {
-            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && open) {
+            if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && isOpen) {
                 loading = false;
             }
         }
@@ -395,8 +453,16 @@
     }
 </script>
 
-{#if open}
-<div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" on:click={handleBackdropClick}>
+{#if isOpen}
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div 
+    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+    onclick={handleBackdropClick}
+    onkeydown={handleBackdropKeydown}
+    role="dialog"
+    aria-modal="true"
+    aria-label="Card Search"
+    tabindex="-1">
     <div class="bg-arena-surface shadow-2xl rounded-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden border border-arena-accent/30">
         <header class="flex items-center justify-between p-4 border-b border-arena-surface-light">
             <div>
@@ -406,7 +472,7 @@
                     Add to <span class="text-arena-accent">{zoneLabel(targetZone)}</span>
                 </h2>
             </div>
-            <button class="text-arena-muted hover:text-white transition-colors" on:click={closeModal} aria-label="Close search modal">
+            <button class="text-arena-muted hover:text-white transition-colors" onclick={closeModal} aria-label="Close search modal">
                 ✕
             </button>
         </header>
@@ -417,7 +483,7 @@
                     <input
                         bind:this={searchInput}
                         value={query}
-                        on:input={handleInput}
+                        oninput={handleInput}
                         class="w-full px-4 py-3 bg-arena-surface-light border border-arena-accent/30 rounded-lg text-white placeholder-arena-muted focus:outline-none focus:ring-2 focus:ring-arena-accent/50 text-base"
                         type="text"
                         autocomplete="off"
@@ -430,11 +496,11 @@
                     {/if}
                 </div>
                 <label class="flex items-center gap-2 text-sm text-arena-text cursor-pointer select-none">
-                    <input type="checkbox" class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent" checked={tokenOnly} on:change={handleTokenToggle} />
+                    <input type="checkbox" class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent" checked={tokenOnly} onchange={handleTokenToggle} />
                     <span>Tokens only</span>
                 </label>
                 <label class="flex items-center gap-2 text-sm text-arena-text cursor-pointer select-none">
-                    <input type="checkbox" class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent" checked={exactMatch} on:change={handleExactMatchToggle} />
+                    <input type="checkbox" class="rounded border-arena-accent/40 bg-arena-surface w-4 h-4 accent-arena-accent" checked={exactMatch} onchange={handleExactMatchToggle} />
                     <span>Exact match</span>
                 </label>
             </div>
@@ -447,7 +513,7 @@
                         <button
                             type="button"
                             class="text-[11px] underline text-arena-text-dim hover:text-white transition-colors"
-                            on:click={clearTokenHints}>
+                            onclick={clearTokenHintsAction}>
                             Clear filter
                         </button>
                     </div>
@@ -456,7 +522,7 @@
                             <button
                                 type="button"
                                 class="px-3 py-1.5 rounded-full border border-arena-accent/60 bg-arena-accent/20 text-sm font-medium text-white transition hover:border-arena-accent hover:bg-arena-accent/40 hover:text-white"
-                                on:click={() => applyTokenHint(token)}>
+                                onclick={() => applyTokenHint(token)}>
                                 {token}
                             </button>
                         {/each}
@@ -494,7 +560,7 @@
                             {#each results as card, index}
                                 <button
                                     class={`rounded-lg overflow-hidden shadow-lg border-2 transition-transform ${selectedIndex === index ? 'border-arena-accent scale-[1.03]' : 'border-transparent hover:border-arena-accent/60 hover:scale-[1.01]'}`}
-                                    on:click={() => submitCard(card)}
+                                    onclick={() => submitCard(card)}
                                     bind:this={resultRefs[index]}
                                 >
                                     {#if card?.image_url}

@@ -23,7 +23,7 @@ const sanitizeGlobalName = (name) => {
     return `${safe.charAt(0).toUpperCase()}${safe.slice(1)}Component`;
 };
 
-const compileComponentSource = async (fileName) => {
+export const compileComponentSource = async (fileName) => {
     const inputPath = path.join(SVELTE_DIR, fileName);
     const baseName = path.basename(fileName, '.svelte');
     const jsOutputPath = path.join(COMPONENT_DIR, `${baseName}.js`);
@@ -45,7 +45,7 @@ const compileComponentSource = async (fileName) => {
     await fs.writeFile(jsOutputPath, code, 'utf8');
 };
 
-const bundleComponent = (fileName) => {
+export const bundleComponent = (fileName) => {
     const baseName = path.basename(fileName, '.svelte');
     const jsOutputPath = path.join(COMPONENT_DIR, `${baseName}.js`);
     const bundlePath = path.join(COMPONENT_DIR, `${baseName}.bundle.js`);
@@ -67,7 +67,7 @@ const bundleComponent = (fileName) => {
     execSync(command, { stdio: 'inherit' });
 };
 
-const copyUtilsDirectory = async () => {
+export const copyUtilsDirectory = async () => {
     const srcUtilsDir = path.join(SVELTE_DIR, 'utils');
     const destUtilsDir = path.join(COMPONENT_DIR, 'utils');
 
@@ -94,7 +94,7 @@ const copyUtilsDirectory = async () => {
     }
 };
 
-const copyStoresDirectory = async () => {
+export const copyStoresDirectory = async () => {
     const srcStoresDir = path.join(SVELTE_DIR, 'stores');
     const destStoresDir = path.join(COMPONENT_DIR, 'stores');
 
@@ -120,6 +120,13 @@ const copyStoresDirectory = async () => {
     }
 };
 
+export const listSvelteComponents = async () => {
+    const entries = await fs.readdir(SVELTE_DIR, { withFileTypes: true });
+    return entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.svelte'))
+        .map((entry) => entry.name);
+};
+
 export const buildAllSvelte = async () => {
     await fs.mkdir(COMPONENT_DIR, { recursive: true });
 
@@ -127,10 +134,7 @@ export const buildAllSvelte = async () => {
     await copyUtilsDirectory();
     await copyStoresDirectory();
 
-    const entries = await fs.readdir(SVELTE_DIR, { withFileTypes: true });
-    const components = entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.svelte'))
-        .map((entry) => entry.name);
+    const components = await listSvelteComponents();
 
     if (components.length === 0) {
         console.warn('[build-svelte] No Svelte components found');
@@ -150,6 +154,8 @@ export const buildAllSvelte = async () => {
         console.log(`[build-svelte] bundling ${component}`);
         bundleComponent(component);
     }
+
+    return components;
 };
 
 if (fileURLToPath(import.meta.url) === __filename) {
