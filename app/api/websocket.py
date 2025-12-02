@@ -227,6 +227,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 action_type = message.get("action")
                 request_data = message.get("data", {})
                 request_data['action_type'] = action_type
+                request_data['player_id'] = player_id  # Ensure player_id is always set
                 
                 print(
                     f"[WS] Processing game action: {action_type} from {player_id}"
