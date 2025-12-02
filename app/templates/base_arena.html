@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ManaForge{% endblock %}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='images/favicon.svg') }}">
+    {# Use a path-only favicon URL so the current origin/port/proto is reused #}
+    <link rel="icon" type="image/svg+xml" href="{{ request.url_for('static', path='images/favicon.svg').path }}">
     
     <!-- Tailwind CSS (locally built) -->
     <link rel="stylesheet" href="{{ versioned_static('css/dist/manaforge.css') }}">

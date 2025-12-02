@@ -15,6 +15,29 @@
     const gameInterfaceUrl = config?.gameInterfaceUrl || '';
     const shareLinks = config?.shareLinks || {};
 
+    const buildAbsoluteShareLinks = (links = {}) => {
+        if (!isBrowser) return links || {};
+
+        const origin = window.location.origin;
+        return Object.entries(links || {}).reduce((acc, [key, value]) => {
+            if (!value) {
+                acc[key] = '';
+                return acc;
+            }
+
+            try {
+                acc[key] = new URL(value, origin).toString();
+            } catch (error) {
+                console.warn('[GameRoomSetup] Unable to normalize share link', key, error);
+                acc[key] = value;
+            }
+
+            return acc;
+        }, {});
+    };
+
+    const resolvedShareLinks = buildAbsoluteShareLinks(shareLinks);
+
     let status = $state(config?.initialStatus || {});
     let lastUpdateLabel = $state('just now');
     let selectedGameFormat = $state(config?.initialStatus?.game_format || 'modern');
@@ -436,7 +459,7 @@
     };
 
     const copyShareLink = async (role) => {
-        const link = shareLinks?.[role];
+        const link = resolvedShareLinks?.[role];
         if (!link) {
             setShareFeedback('No link available for this role.', 'red');
             return;
@@ -1054,7 +1077,7 @@
                                         type="text"
                                         readonly
                                         class="flex-1 bg-arena-surface-light border border-arena-accent/20 rounded px-3 py-2 text-xs text-arena-text truncate focus:outline-none"
-                                        value={shareLinks?.[role.key] || ''}
+                                        value={resolvedShareLinks?.[role.key] || ''}
                                     />
                                     <button
                                         type="button"
