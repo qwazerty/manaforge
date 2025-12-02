@@ -1,19 +1,19 @@
-(function bootstrapGameActions() {
-    if (typeof GameActionsComponent === 'undefined' || typeof GameActionsComponent.mount !== 'function') {
-        console.error('[GameActions] component bundle is missing');
-        return;
-    }
+import GameActions, { mount } from './components/GameActions.esm.js';
 
-    const target = document.body;
-    if (!target) {
-        return;
-    }
+if (typeof document !== 'undefined') {
+    const init = () => {
+        const target = document.body;
+        if (!target) return;
+        try {
+            mount(GameActions, { target });
+        } catch (error) {
+            console.error('[GameActions] failed to initialize', error);
+        }
+    };
 
-    try {
-        GameActionsComponent.mount(GameActionsComponent.default, {
-            target
-        });
-    } catch (error) {
-        console.error('[GameActions] failed to initialize', error);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-})();
+}

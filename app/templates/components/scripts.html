@@ -1,51 +1,34 @@
 <!-- External JavaScript modules for game logic -->
 <script src="{{ versioned_static('js/game-config.js') }}"></script>
 <script src="{{ versioned_static('js/game-utils.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GameCardsModule.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/game-cards-init.js') }}"></script>
 
-<!-- UI Module Dependencies (load in dependency order) -->
+<!-- UI Module Dependencies -->
 <script src="{{ versioned_static('js/ui/ui-config.js') }}"></script>
 <script src="{{ versioned_static('js/ui/ui-utils.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/HorizontalScrollManager.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/ui-horizontal-scroll.js') }}"></script>
-
 <script src="{{ versioned_static('js/ui/zone-data.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/DeckZone.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GraveyardZone.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/ExileZone.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/LifeZone.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardAddTypePopover.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardAddCounterPopover.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardPowerToughnessPopover.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardManager.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/card-manager-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/PlayerCounterModal.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardPreviewModal.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/card-preview-modal-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardContextMenu.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/card-context-menu-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/ActionPanel.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/StackPopup.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/ZonePopup.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/ActionHistory.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/action-history-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/BattleChat.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GameArena.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardSearchModal.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/card-search-modal-init.js') }}"></script>
-<!-- Unified Modules (replaces multiple old modules) -->
-<script src="{{ versioned_static('js/ui/ui-battle-chat.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/UIZonesManager.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/ui-zones-manager-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/UIRenderersTemplates.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/ui-renderers-templates-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/WebSocketManager.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/websocket-manager-init.js') }}"></script>
+
+<!-- Svelte entries (ES modules) -->
+<script type="module" src="{{ versioned_static('js/ui/game-cards-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-horizontal-scroll.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/card-manager-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/card-preview-modal-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/card-context-menu-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/action-history-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/card-search-modal-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-battle-chat.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-zones-manager-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-renderers-templates-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/websocket-manager-init.js') }}"></script>
 <script src="{{ versioned_static('js/ui/ui-global.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GameCombat.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/game-combat-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GameActions.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/game-actions-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GameCore.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/game-core-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/game-combat-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/game-actions-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/game-core-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-deck-manager.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-home-page.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-error-page.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-game-lobby.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-replay-room.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-draft-lobby.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-draft-room.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-format-stats.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-replay-lobby.js') }}"></script>

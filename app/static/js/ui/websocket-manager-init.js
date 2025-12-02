@@ -1,19 +1,19 @@
-(function bootstrapWebSocketManager() {
-    if (typeof WebSocketManagerComponent === 'undefined' || typeof WebSocketManagerComponent.mount !== 'function') {
-        console.error('[WebSocketManager] component bundle is missing');
-        return;
-    }
+import WebSocketManager, { mount } from './components/WebSocketManager.esm.js';
 
-    const target = document.body;
-    if (!target) {
-        return;
-    }
+if (typeof document !== 'undefined') {
+    const init = () => {
+        const target = document.body;
+        if (!target) return;
+        try {
+            mount(WebSocketManager, { target });
+        } catch (error) {
+            console.error('[WebSocketManager] failed to initialize', error);
+        }
+    };
 
-    try {
-        WebSocketManagerComponent.mount(WebSocketManagerComponent.default, {
-            target
-        });
-    } catch (error) {
-        console.error('[WebSocketManager] failed to initialize', error);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-})();
+}

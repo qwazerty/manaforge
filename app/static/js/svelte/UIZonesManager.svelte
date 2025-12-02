@@ -2,6 +2,26 @@
 
 <script>
     import { onMount } from 'svelte';
+    import { createClassComponent } from 'svelte/legacy';
+
+    // Import zone components for dynamic mounting
+    import DeckZone from './DeckZone.svelte';
+    import GraveyardZone from './GraveyardZone.svelte';
+    import ExileZone from './ExileZone.svelte';
+    import LifeZone from './LifeZone.svelte';
+    import ZonePopup from './ZonePopup.svelte';
+    import PlayerCounterModal from './PlayerCounterModal.svelte';
+
+    // Helper to mount Svelte 5 components dynamically
+    const mountComponent = (Component, options) => {
+        return createClassComponent({ component: Component, ...options });
+    };
+
+    const unmountComponent = (instance) => {
+        if (instance && typeof instance.$destroy === 'function') {
+            instance.$destroy();
+        }
+    };
 
     /**
      * ManaForge Unified Zones Manager Module
@@ -819,9 +839,6 @@
         }
 
         static _hydrateDeckZones() {
-            if (typeof DeckZoneComponent === 'undefined') {
-                return;
-            }
             document.querySelectorAll('[data-zone-type="deck"]').forEach((element) => {
                 if (element.dataset.zoneHydrated === 'true') {
                     return;
@@ -833,13 +850,7 @@
                 }
                 try {
                     element.innerHTML = '';
-                    const mount = typeof DeckZoneComponent.mount === 'function'
-                        ? DeckZoneComponent.mount
-                        : null;
-                    if (!mount) {
-                        throw new Error('DeckZoneComponent.mount is not available');
-                    }
-                    mount(DeckZoneComponent.default, {
+                    mountComponent(DeckZone, {
                         target: element,
                         props: {
                             cardsRemaining: config.cardsRemaining,
@@ -858,9 +869,6 @@
         }
 
         static _hydrateGraveyardZones() {
-            if (typeof GraveyardZoneComponent === 'undefined') {
-                return;
-            }
             document.querySelectorAll('[data-zone-type="graveyard"]').forEach((element) => {
                 if (element.dataset.zoneHydrated === 'true') {
                     return;
@@ -872,13 +880,7 @@
                 }
                 try {
                     element.innerHTML = '';
-                    const mount = typeof GraveyardZoneComponent.mount === 'function'
-                        ? GraveyardZoneComponent.mount
-                        : null;
-                    if (!mount) {
-                        throw new Error('GraveyardZoneComponent.mount is not available');
-                    }
-                    mount(GraveyardZoneComponent.default, {
+                    mountComponent(GraveyardZone, {
                         target: element,
                         props: {
                             cards: config.graveyardArray,
@@ -897,9 +899,6 @@
         }
 
         static _hydrateExileZones() {
-            if (typeof ExileZoneComponent === 'undefined') {
-                return;
-            }
             document.querySelectorAll('[data-zone-type="exile"]').forEach((element) => {
                 if (element.dataset.zoneHydrated === 'true') {
                     return;
@@ -911,13 +910,7 @@
                 }
                 try {
                     element.innerHTML = '';
-                    const mount = typeof ExileZoneComponent.mount === 'function'
-                        ? ExileZoneComponent.mount
-                        : null;
-                    if (!mount) {
-                        throw new Error('ExileZoneComponent.mount is not available');
-                    }
-                    mount(ExileZoneComponent.default, {
+                    mountComponent(ExileZone, {
                         target: element,
                         props: {
                             cards: config.exileArray,
@@ -937,9 +930,6 @@
         }
 
         static _hydrateLifeZones() {
-            if (typeof LifeZoneComponent === 'undefined') {
-                return;
-            }
             document.querySelectorAll('[data-zone-type="life"]').forEach((element) => {
                 if (element.dataset.zoneHydrated === 'true') {
                     return;
@@ -951,13 +941,7 @@
                 }
                 try {
                     element.innerHTML = '';
-                    const mount = typeof LifeZoneComponent.mount === 'function'
-                        ? LifeZoneComponent.mount
-                        : null;
-                    if (!mount) {
-                        throw new Error('LifeZoneComponent.mount is not available');
-                    }
-                    mount(LifeZoneComponent.default, {
+                    mountComponent(LifeZone, {
                         target: element,
                         props: {
                             life: config.life,
@@ -981,11 +965,6 @@
          * Generate zone modal HTML
          */
         static _openZonePopup(popupKey, cards, zoneInfo, isOpponent, ownerId) {
-            if (typeof ZonePopupComponent === 'undefined') {
-                console.error('[UIZonesManager] ZonePopupComponent not available');
-                return;
-            }
-
             return this._openZonePopupSvelte(popupKey, cards, zoneInfo, isOpponent, ownerId);
         }
 

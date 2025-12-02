@@ -1,12 +1,17 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const root = document.getElementById('home-root');
-    if (!root || typeof HomePageComponent === 'undefined') {
-        return;
-    }
+import HomePage, { mount } from './components/HomePage.esm.js';
 
+const init = () => {
+    const root = document.getElementById('home-root');
+    if (!root) return;
     try {
-        HomePageComponent.mount(HomePageComponent.default, { target: root });
+        mount(HomePage, { target: root });
     } catch (error) {
         console.error('[home-page] failed to mount homepage component', error);
     }
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

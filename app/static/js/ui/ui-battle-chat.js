@@ -3,6 +3,9 @@
  * Hydrates the chat sidebar with the BattleChat Svelte component.
  */
 
+import BattleChat, { mount as mountBattleChat, unmount as unmountBattleChat } from './components/BattleChat.esm.js';
+import { mountComponent, unmountComponent } from './component-mount.js';
+
 class UIBattleChat {
     static MAX_MESSAGES = 500;
     static messages = [];
@@ -168,19 +171,6 @@ class UIBattleChat {
         if (typeof document === 'undefined') {
             return null;
         }
-        if (typeof BattleChatComponent === 'undefined') {
-            const container = document.getElementById('battle-chat-panel');
-            if (container && !container.dataset.chatFallbackRendered) {
-                container.innerHTML = `
-                    <div class="arena-card rounded-lg p-4 text-center text-sm">
-                        Unable to load chat panel
-                    </div>
-                `;
-                container.dataset.chatFallbackRendered = 'true';
-            }
-            return null;
-        }
-
         const container = document.getElementById('battle-chat-panel');
         if (!container) {
             this._destroyComponent();
@@ -194,13 +184,8 @@ class UIBattleChat {
         this._destroyComponent();
         try {
             container.innerHTML = '';
-            const mount = typeof BattleChatComponent.mount === 'function'
-                ? BattleChatComponent.mount
-                : null;
-            if (!mount) {
-                throw new Error('BattleChatComponent.mount is not available');
-            }
-            this._component = mount(BattleChatComponent.default, {
+            const mountFn = mountBattleChat ?? ((comp, opts) => mountComponent(comp, opts));
+            this._component = mountFn(BattleChat, {
                 target: container,
                 props: this._buildProps()
             });
@@ -217,11 +202,8 @@ class UIBattleChat {
     static _destroyComponent() {
         if (this._component) {
             try {
-                if (typeof BattleChatComponent?.unmount === 'function') {
-                    BattleChatComponent.unmount(this._component);
-                } else if (typeof this._component.$destroy === 'function') {
-                    this._component.$destroy();
-                }
+                const unmountFn = unmountBattleChat ?? unmountComponent;
+                unmountFn(this._component);
             } catch (error) {
                 console.error('Failed to destroy battle chat component', error);
             }

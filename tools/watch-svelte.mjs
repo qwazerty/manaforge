@@ -3,10 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import {
     buildAllSvelte,
-    bundleComponent,
     compileComponentSource,
-    copyStoresDirectory,
-    copyUtilsDirectory,
+    bundleAllComponents,
     listSvelteComponents
 } from './build-svelte.mjs';
 
@@ -44,31 +42,17 @@ const runBuild = async () => {
         }
 
         const svelteFiles = files.filter((file) => file.endsWith('.svelte'));
-        const utilsOrStoresChanged = files.some((file) => file.startsWith('utils') || file.startsWith('stores'));
 
         if (svelteFiles.length === files.length && svelteFiles.length > 0) {
+            const entryFiles = [];
             for (const file of svelteFiles) {
                 log(`incremental compile ${file}`);
                 await compileComponentSource(file);
-                bundleComponent(file);
+                const baseName = path.basename(file, '.svelte');
+                entryFiles.push(path.join('app/static/js/ui/components', `${baseName}.js`));
             }
+            await bundleAllComponents(entryFiles);
             log('incremental build complete');
-            return;
-        }
-
-        if (utilsOrStoresChanged) {
-            log('utils/stores changed, copying helpers and rebundling');
-            await copyUtilsDirectory();
-            await copyStoresDirectory();
-
-            if (!knownComponents.length) {
-                knownComponents = await listSvelteComponents();
-            }
-
-            for (const component of knownComponents) {
-                bundleComponent(component);
-            }
-            log('rebundle complete');
             return;
         }
 

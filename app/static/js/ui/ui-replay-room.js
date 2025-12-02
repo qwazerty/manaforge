@@ -1,12 +1,18 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const root = document.getElementById('replay-app');
-    if (!root || typeof ReplayRoomComponent === 'undefined') {
-        return;
-    }
+import ReplayRoom, { mount } from './components/ReplayRoom.esm.js';
 
+const init = () => {
+    const root = document.getElementById('replay-app');
+    if (!root) return;
     const gameId = root.dataset.gameId || 'local';
-    ReplayRoomComponent.mount(ReplayRoomComponent.default, {
-        target: root,
-        props: { gameId }
-    });
-});
+    try {
+        mount(ReplayRoom, { target: root, props: { gameId } });
+    } catch (error) {
+        console.error('[replay-room] failed to mount', error);
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

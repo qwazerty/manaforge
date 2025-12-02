@@ -1,19 +1,19 @@
-(function bootstrapUIZonesManager() {
-    if (typeof UIZonesManagerComponent === 'undefined' || typeof UIZonesManagerComponent.mount !== 'function') {
-        console.error('[UIZonesManager] component bundle is missing');
-        return;
-    }
+import UIZonesManager, { mount } from './components/UIZonesManager.esm.js';
 
-    const target = document.body;
-    if (!target) {
-        return;
-    }
+if (typeof document !== 'undefined') {
+    const init = () => {
+        const target = document.body;
+        if (!target) return;
+        try {
+            mount(UIZonesManager, { target });
+        } catch (error) {
+            console.error('[UIZonesManager] failed to initialize', error);
+        }
+    };
 
-    try {
-        UIZonesManagerComponent.mount(UIZonesManagerComponent.default, {
-            target
-        });
-    } catch (error) {
-        console.error('[UIZonesManager] failed to initialize', error);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-})();
+}

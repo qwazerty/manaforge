@@ -8,12 +8,8 @@
 
 {% block extra_js %}
 <script src="{{ versioned_static('js/game-utils.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/GameCardsModule.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/game-cards-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardPreviewModal.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/card-preview-modal-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/CardSearchModal.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/card-search-modal-init.js') }}"></script>
-<script src="{{ versioned_static('js/ui/components/DeckManager.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/ui-deck-manager.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/game-cards-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/card-preview-modal-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/card-search-modal-init.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-deck-manager.js') }}"></script>
 {% endblock %}

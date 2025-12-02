@@ -28,11 +28,10 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ versioned_static('js/ui/components/GameRoomSetup.bundle.js') }}"></script>
-<script>
-(function () {
+<script type="module">
+    import GameRoomSetup, { mount } from '{{ versioned_static('js/ui/components/GameRoomSetup.esm.js') }}';
     const root = document.getElementById('game-setup-root');
-    if (!root) return;
+    if (!root) throw new Error('game-setup-root not found');
 
     const config = (() => {
         if (window.gameRoomConfig) return window.gameRoomConfig;
@@ -45,12 +44,10 @@
         }
     })();
 
-    if (!config?.gameId || typeof GameRoomSetupComponent === 'undefined') {
+    if (!config?.gameId) {
         root.innerHTML = '<div class="max-w-2xl mx-auto bg-red-950/60 border border-red-500/40 rounded-xl p-6 text-sm text-red-50">Unable to load duel room.</div>';
-        return;
+    } else {
+        mount(GameRoomSetup, { target: root, props: { config } });
     }
-
-    GameRoomSetupComponent.mount(GameRoomSetupComponent.default, { target: root, props: { config } });
-})();
 </script>
 {% endblock %}

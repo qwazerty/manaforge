@@ -10,6 +10,5 @@
 <script id="error-props" type="application/json">
 {{ {"message": message} | tojson }}
 </script>
-<script src="{{ versioned_static('js/ui/components/ErrorPage.bundle.js') }}"></script>
-<script src="{{ versioned_static('js/ui/ui-error-page.js') }}"></script>
+<script type="module" src="{{ versioned_static('js/ui/ui-error-page.js') }}"></script>
 {% endblock %}
