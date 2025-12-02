@@ -439,6 +439,13 @@ export function generateTypeOverlay(card) {
     return `<div class="card-type-overlay" title="Custom types: ${escapeHtml(displayTypes.join(', '))}">${displayTypes.join(' • ')}</div>`;
 }
 
+export function generateCommanderOverlay(card) {
+    if (!card) return '';
+    const isCommander = card.is_commander || card.isCommander;
+    if (!isCommander) return '';
+    return `<div class="card-commander-overlay" title="Commander"><i class="ms ms-commander"></i></div>`;
+}
+
 export function generateCardOverlayStack(card) {
     const keywordOverlay = generateKeywordOverlay(card);
     const typeOverlay = generateTypeOverlay(card);

@@ -876,6 +876,7 @@ class SimpleGameEngine:
 
             commander_copy.unique_id = uuid.uuid4().hex
             commander_copy.owner_id = player.id
+            commander_copy.is_commander = True
             commander_copy.tapped = False
             commander_copy.targeted = False
             player.commander_zone.append(commander_copy)
