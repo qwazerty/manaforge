@@ -1076,41 +1076,33 @@
                 return this._zonePopupComponents.get(popupKey);
             }
 
-            if (typeof ZonePopupComponent === 'undefined') {
-                console.error('[UIZonesManager] ZonePopupComponent is not available');
-                return null;
-            }
-
-            const mount = typeof ZonePopupComponent.mount === 'function'
-                ? ZonePopupComponent.mount
-                : null;
-
-            if (!mount) {
-                console.error('[UIZonesManager] ZonePopupComponent.mount is not available');
-                return null;
-            }
-
             const container = document.createElement('div');
             document.body.appendChild(container);
 
-            const instance = mount(ZonePopupComponent.default, {
-                target: container,
-                props: {
-                    popupKey,
-                    title: zoneInfo?.title || 'Zone',
-                    icon: zoneInfo?.icon || '🗂️',
-                    cardCount: 0,
-                    cardsHtml: '',
-                    baseZone: popupKey.replace('opponent_', ''),
-                    isOpponent,
-                    ownerId: isOpponent ? 'player2' : 'player1',
-                    persistent: zoneInfo?.persistent === true
-                }
-            });
+            try {
+                const instance = mountComponent(ZonePopup, {
+                    target: container,
+                    props: {
+                        popupKey,
+                        title: zoneInfo?.title || 'Zone',
+                        icon: zoneInfo?.icon || '🗂️',
+                        cardCount: 0,
+                        cardsHtml: '',
+                        baseZone: popupKey.replace('opponent_', ''),
+                        isOpponent,
+                        ownerId: isOpponent ? 'player2' : 'player1',
+                        persistent: zoneInfo?.persistent === true
+                    }
+                });
 
-            this._getZonePopupElements(popupKey);
-            this._zonePopupComponents.set(popupKey, { instance, container });
-            return this._zonePopupComponents.get(popupKey);
+                this._getZonePopupElements(popupKey);
+                this._zonePopupComponents.set(popupKey, { instance, container });
+                return this._zonePopupComponents.get(popupKey);
+            } catch (error) {
+                console.error('[UIZonesManager] Failed to mount ZonePopup', error);
+                container.remove();
+                return null;
+            }
         }
 
         static _getZonePopupElements(popupKey) {
