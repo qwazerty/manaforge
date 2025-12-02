@@ -2,13 +2,10 @@
 Decorators and utilities for API routes.
 """
 
-from functools import wraps
-from typing import Callable, Optional, Dict
+from typing import Optional, List
 import time
-from fastapi import HTTPException
 
-from app.models.game import GameAction, GameState
-from app.services.game_engine import SimpleGameEngine
+from app.models.game import GameState
 
 
 async def broadcast_game_update(
@@ -58,66 +55,6 @@ async def broadcast_game_update(
         
     except Exception as e:
         print(f"Error broadcasting game update: {e}")
-
-
-def game_action_handler(action_type: str):
-    """
-    Decorator that centralizes common game action logic:
-    - Game existence validation
-    - Player ID extraction
-    - Action creation and processing
-    - WebSocket broadcasting
-    - Error handling
-    """
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        async def wrapper(
-            game_id: str,
-            request: Optional[Dict] = None,
-            game_engine: SimpleGameEngine = None
-        ):
-            if game_id not in game_engine.games:
-                raise HTTPException(status_code=404, detail="Game not found")
-            
-            current_state = game_engine.games[game_id]
-            
-            if request and "player_id" in request:
-                player_id = request["player_id"]
-            else:
-                if action_type in ["pass_priority", "resolve_stack"]:
-                    player_id = f"player{current_state.priority_player}"
-                else:
-                    player_id = str(current_state.active_player)
-            
-            action_data = await func(game_id, request, current_state)
-            
-            action = GameAction(
-                player_id=player_id,
-                action_type=action_type,
-                **action_data
-            )
-            
-            try:
-                game_state = game_engine.process_action(game_id, action)
-                
-                broadcast_info = {
-                    "action": action_type,
-                    "player": player_id,
-                    "success": True
-                }
-                broadcast_info.update(action_data.get("broadcast_data", {}))
-                
-                await broadcast_game_update(game_id, game_state, broadcast_info)
-                
-                return {"success": True, "game_state": game_state}
-                
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-            except Exception as e:
-                return {"success": False, "error": str(e)}
-        
-        return wrapper
-    return decorator
 
 
 class ActionRegistry:
