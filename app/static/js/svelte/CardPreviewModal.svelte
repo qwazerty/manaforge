@@ -262,16 +262,6 @@
     const hasKeywords = $derived(keywords && keywords.length > 0);
 
     // ===== HELPER FUNCTIONS =====
-    function escapeHtml(str) {
-        if (str === null || str === undefined) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
     function extractKeywordsFromCard(card) {
         if (!card) return [];
 
@@ -372,14 +362,22 @@
         return found;
     }
 
+    function decodeHtmlEntities(str) {
+        if (!str) return str;
+        return str
+            .replace(/&#39;/g, "'")
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
+    }
+
     function findCardDataInDom(cardId, cardNameValue) {
         const nodes = Array.from(document.querySelectorAll('[data-card-data]'));
         const parse = (raw) => {
             if (!raw) return null;
             try {
-                return JSON.parse(
-                    raw.replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-                );
+                return JSON.parse(decodeHtmlEntities(raw));
             } catch {
                 return null;
             }
@@ -409,7 +407,7 @@
         const resolvedCardData = cardDataParam || findCardDataInDom(cardId, cardNameValue);
         
         cardData = resolvedCardData;
-        cardName = cardNameValue || 'Unknown';
+        cardName = decodeHtmlEntities(cardNameValue) || 'Unknown';
         imageUrl = cardImage || '';
         
         const hasPointerPosition = event && typeof event.clientX === 'number' && typeof event.clientY === 'number';
@@ -623,16 +621,16 @@
             {#if imageUrl}
                 <img 
                     src={imageUrl} 
-                    alt={escapeHtml(cardName)} 
+                    alt={cardName} 
                     class="card-preview-image" 
                 />
             {:else}
                 <div class="card-preview-fallback">
-                    <div class="card-name">{escapeHtml(cardName)}</div>
+                    <div class="card-name">{cardName}</div>
                 </div>
             {/if}
             <div class="card-preview-details">
-                <h3>{escapeHtml(cardName)}</h3>
+                <h3>{cardName}</h3>
                 {#if hasKeywords}
                     <div class="card-keyword-section">
                         <div class="card-keyword-list">
