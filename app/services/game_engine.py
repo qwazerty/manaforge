@@ -31,6 +31,7 @@ class SimpleGameEngine:
         self.games: dict[str, GameState] = {}
         self.game_setups: dict[str, GameSetupStatus] = {}
         self._pending_decks: dict[str, dict[str, Deck]] = {}
+        self._submitted_decks: dict[str, dict[str, Deck]] = {}
         self.replays: dict[str, List[Dict[str, Any]]] = {}
 
     def end_game(self, game_id: str) -> bool:
@@ -44,6 +45,8 @@ class SimpleGameEngine:
             found = True
         if game_id in self._pending_decks:
             del self._pending_decks[game_id]
+        if game_id in self._submitted_decks:
+            del self._submitted_decks[game_id]
         # Keep replays for export even after game ends
         return found
 
@@ -547,6 +550,10 @@ class SimpleGameEngine:
             player2_id,
             getattr(player2_status, "player_name", None) if player2_status else None
         )
+        self._submitted_decks[game_id] = {
+            "player1": player1_deck.model_copy(deep=True),
+            "player2": player2_deck.model_copy(deep=True)
+        }
 
         player1 = Player(
             id=player1_id,
@@ -611,6 +618,41 @@ class SimpleGameEngine:
         
         self._record_replay_step(game_id, None, game_state)
         return game_state
+    
+    def restart_game(self, game_id: str) -> GameState:
+        """
+        Restart an existing game using the originally submitted decks.
+        This keeps player seats and names but resets the battlefield.
+        """
+        if game_id not in self.game_setups:
+            raise ValueError(f"Game setup {game_id} not found")
+
+        decks = self._submitted_decks.get(game_id)
+        if not decks:
+            raise ValueError(
+                "Original decks are not available for this game. "
+                "Start a new game instead."
+            )
+
+        player1_deck = decks.get("player1")
+        player2_deck = decks.get("player2")
+        if not player1_deck or not player2_deck:
+            raise ValueError("Both player decks are required to restart the game")
+
+        # Reset live state and replay timeline
+        self.games.pop(game_id, None)
+        self.replays[game_id] = []
+
+        setup = self.game_setups[game_id]
+        setup.status = "Game ready - both decks validated"
+        self._touch_setup(setup)
+
+        return self._initialize_game_from_setup(
+            game_id,
+            player1_deck.model_copy(deep=True),
+            player2_deck.model_copy(deep=True),
+            setup
+        )
     
     def create_game(
         self, game_id: str, player1_deck: Deck, player2_deck: Deck

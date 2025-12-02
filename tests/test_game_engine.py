@@ -273,3 +273,100 @@ def test_end_step_priority_passing():
     assert state.active_player == 1  # Now player2's turn
     assert state.phase == GamePhase.BEGIN
     assert not state.end_step_priority_passed  # Reset for next turn
+
+
+def test_restart_game_reuses_submitted_decks():
+    """Test that restart_game correctly reuses the originally submitted decks."""
+    from app.models.game import Deck, DeckCard, Card, CardType, GameFormat, PhaseMode
+
+    engine = SimpleGameEngine()
+    game_id = "test-restart"
+
+    # Create a game setup
+    setup = engine.create_game_setup(
+        game_id=game_id,
+        game_format=GameFormat.STANDARD,
+        phase_mode=PhaseMode.STRICT
+    )
+    assert setup.game_id == game_id
+
+    # Create minimal decks with proper Card objects
+    def make_deck_cards(prefix: str, count: int):
+        return [
+            DeckCard(
+                card=Card(
+                    id=f"{prefix}-{i}",
+                    unique_id=f"{prefix}-{i}",
+                    owner_id="",
+                    name=f"{prefix} Card {i}",
+                    mana_cost="",
+                    cmc=0,
+                    card_type=CardType.LAND,
+                    subtype="",
+                    text=""
+                ),
+                quantity=1
+            )
+            for i in range(count)
+        ]
+
+    deck1 = Deck(name="Test Deck 1", cards=make_deck_cards("d1", 60))
+    deck2 = Deck(name="Test Deck 2", cards=make_deck_cards("d2", 60))
+
+    # Submit both decks
+    engine.submit_player_deck(game_id, "player1", deck1)
+    engine.submit_player_deck(game_id, "player2", deck2)
+
+    # Verify game was initialized
+    assert game_id in engine.games
+    original_state = engine.games[game_id]
+
+    # Simulate some game progress
+    original_state.turn = 5
+
+    # Restart the game
+    new_state = engine.restart_game(game_id)
+
+    # Verify the game was reset
+    assert new_state.turn == 0
+    assert new_state.phase == GamePhase.PREGAME
+    assert len(new_state.players) == 2
+    assert new_state.players[0].name == "Player 1"
+    assert new_state.players[1].name == "Player 2"
+
+    # Verify decks are preserved
+    assert game_id in engine._submitted_decks
+    assert "player1" in engine._submitted_decks[game_id]
+    assert "player2" in engine._submitted_decks[game_id]
+
+
+def test_restart_game_fails_without_setup():
+    """Test that restart_game raises an error when game setup doesn't exist."""
+    engine = SimpleGameEngine()
+
+    try:
+        engine.restart_game("nonexistent-game")
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "not found" in str(e).lower()
+
+
+def test_restart_game_fails_without_submitted_decks():
+    """Test that restart_game raises an error when decks weren't submitted."""
+    from app.models.game import GameFormat, PhaseMode
+
+    engine = SimpleGameEngine()
+    game_id = "test-no-decks"
+
+    # Create setup but don't submit decks
+    engine.create_game_setup(
+        game_id=game_id,
+        game_format=GameFormat.STANDARD,
+        phase_mode=PhaseMode.STRICT
+    )
+
+    try:
+        engine.restart_game(game_id)
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "not available" in str(e).lower() or "decks" in str(e).lower()

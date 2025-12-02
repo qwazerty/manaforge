@@ -338,6 +338,25 @@ async def end_game(game_id: str) -> Dict[str, Any]:
     return {"success": True, "message": f"Game {game_id} has been ended"}
 
 
+@router.post("/games/{game_id}/restart")
+async def restart_game(game_id: str) -> Dict[str, Any]:
+    """
+    Restart a game using the originally submitted decks and player seats.
+    """
+    try:
+        game_state = game_engine.restart_game(game_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    await broadcast_game_update(
+        game_id,
+        game_state,
+        {"action": "restart_game", "player": "system", "success": True}
+    )
+
+    return {"success": True, "game_state": game_state.model_dump(mode="json")}
+
+
 @router.get("/games/{game_id}/setup")
 async def get_game_setup_status(game_id: str) -> GameSetupStatus:
     """Get game setup status (for deck import phase)."""
