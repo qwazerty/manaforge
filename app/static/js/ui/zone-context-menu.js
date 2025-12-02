@@ -88,7 +88,8 @@ class ZoneContextMenu {
 
         const filteredActions = (menuConfig.actions || []).filter((action) => {
             if (isSpectator) {
-                return action.action === 'searchZone';
+                // Spectators can browse public zones but not the library
+                return action.action === 'searchZone' && baseZoneName !== 'deck';
             }
             if (isOpponent) {
                 return action.action === 'searchZone';
@@ -225,6 +226,10 @@ class ZoneContextMenu {
             console.warn('Action is restricted for this context');
             return;
         }
+        if (isSpectator && actionType === 'searchZone' && baseZoneName === 'deck') {
+            console.warn('Spectators cannot search the library');
+            return;
+        }
 
         switch (actionType) {
             case 'drawCard':
@@ -280,6 +285,10 @@ class ZoneContextMenu {
      * Search a zone (library, graveyard, exile)
      */
     static searchZone(zoneName, isOpponent = false) {
+        if (!isOpponent && zoneName === 'deck' && window.ZoneManager && typeof window.ZoneManager.markLibrarySearchRequiresShuffle === 'function') {
+            window.ZoneManager.markLibrarySearchRequiresShuffle();
+        }
+
         if (isOpponent) {
             // Show opponent zone modal
             if (window.ZoneManager && window.ZoneManager.showOpponentZoneModal) {
@@ -289,6 +298,14 @@ class ZoneContextMenu {
                 console.warn('ZoneManager.showOpponentZoneModal not available');
             }
         } else {
+            const currentPlayer = (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function')
+                ? GameCore.getSelectedPlayer()
+                : null;
+            if (currentPlayer === 'spectator' && zoneName === 'deck') {
+                console.warn('Spectators cannot search the library');
+                return;
+            }
+
             // Show player zone modal
             if (window.ZoneManager && window.ZoneManager.showZoneModal) {
                 const modalZoneName = zoneName === 'deck' ? 'deck' : zoneName;

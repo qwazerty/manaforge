@@ -423,9 +423,13 @@
             return ZoneData.getDeckZoneConfig(deckCards, isOpponent);
         }
         const cardsRemaining = Array.isArray(deckCards) ? deckCards.length : 0;
+        const selectedPlayer = typeof GameCore?.getSelectedPlayer === 'function'
+            ? GameCore.getSelectedPlayer()
+            : null;
+        const isSpectator = selectedPlayer === 'spectator';
         return {
             cardsRemaining,
-            overlayText: isOpponent ? 'View' : 'Draw',
+            overlayText: isSpectator ? '' : (isOpponent ? 'View' : 'Draw'),
             onClick: null,
             deckClass: isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack',
             zoneIdentifier: isOpponent ? 'opponent_deck' : 'deck'
