@@ -33,6 +33,7 @@
     let hasAttachments = $state(false);
     let cardTypeAttr = $state('');
     let cardOwnerId = $state('');
+    let isCommander = $state(false);
     
     // Derived states
     let normalizedZone = $derived(() => {
@@ -128,6 +129,7 @@
         isTokenCard = Boolean(cardData?.is_token);
         isDoubleFaced = cardData.is_double_faced && cardData.card_faces && cardData.card_faces.length > 1;
         isFaceDown = Boolean(cardData?.face_down || cardData?.is_face_down || cardData?.faceDown);
+        isCommander = Boolean(cardData?.is_commander || cardData?.isCommander);
         
         const faceDownOwnerId = cardData?.face_down_owner || cardData?.face_down_owner_id || cardData?.faceDownOwner || cardData?.faceDownOwnerId;
         const selectedPlayer = getSelectedPlayer();
@@ -270,6 +272,9 @@
                 break;
             case 'showInReveal':
                 showInReveal();
+                break;
+            case 'sendToCommanderZone':
+                sendToCommanderZone();
                 break;
             case 'deleteToken':
                 deleteToken();
@@ -442,6 +447,12 @@
     function showInReveal() {
         if (typeof GameActions !== 'undefined') {
             GameActions.showInRevealZone(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function sendToCommanderZone() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.moveCard(cardId, cardZone, "commander_zone", uniqueCardId);
         }
     }
 
@@ -647,6 +658,12 @@
                 <div class="card-context-menu-divider"></div>
 
                 <!-- Move actions -->
+                {#if isCommander && !['commander', 'commander_zone'].includes(cardZone)}
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToCommanderZone')}>
+                        <span class="icon"><i class="ms ms-commander"></i></span> Send to Commander Zone
+                    </button>
+                {/if}
+
                 {#if cardZone !== 'hand'}
                     <button class="card-context-menu-item" onclick={() => handleAction('sendToHand')}>
                         <span class="icon">👋</span> Send to Hand

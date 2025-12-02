@@ -107,6 +107,10 @@ class Card(BaseModel):
         default_factory=list,
         description="Manual card type overrides that influence battlefield grouping"
     )
+    is_commander: bool = Field(
+        default=False,
+        description="Whether this card is a commander"
+    )
     # Double-faced card support
     is_double_faced: bool = Field(
         default=False, description="Whether this card has multiple faces"

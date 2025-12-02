@@ -24,6 +24,7 @@
         generatePowerToughnessOverlay,
         generateKeywordOverlay,
         generateTypeOverlay,
+        generateCommanderOverlay,
         generateCardOverlayStack,
         getAttachmentsFromState,
         escapeHtml,
@@ -146,6 +147,7 @@
         const countersHtml = generateCountersHtml(card);
         const powerToughnessHtml = generatePowerToughnessOverlay(card);
         const overlayStack = generateCardOverlayStack(card);
+        const commanderHtml = generateCommanderOverlay(card);
 
         return `
             <div class="${cardClass}${tappedClass}${combatTappedClass}${targetedClass}${attackingClass}${blockingClass}" 
@@ -183,12 +185,14 @@
                         ${overlayStack}
                         ${countersHtml}
                         ${powerToughnessHtml}
+                        ${commanderHtml}
                     </div>
                 ` : `
                     <div class="card-fallback relative" aria-label="${displayCardLabel}">
                         ${overlayStack}
                         ${countersHtml}
                         ${powerToughnessHtml}
+                        ${commanderHtml}
                     </div>
                 `}
             </div>
@@ -735,6 +739,7 @@
         getCustomTypes,
         generateKeywordOverlay,
         generateTypeOverlay,
+        generateCommanderOverlay,
         generateCardOverlayStack,
         getCounterIcon,
         getCounterClass,
