@@ -4,7 +4,6 @@
  */
 
 import BattleChat, { mount as mountBattleChat, unmount as unmountBattleChat } from './components/BattleChat.esm.js';
-import { mountComponent, unmountComponent } from './component-mount.js';
 
 class UIBattleChat {
     static MAX_MESSAGES = 500;
@@ -184,8 +183,7 @@ class UIBattleChat {
         this._destroyComponent();
         try {
             container.innerHTML = '';
-            const mountFn = mountBattleChat ?? ((comp, opts) => mountComponent(comp, opts));
-            this._component = mountFn(BattleChat, {
+            this._component = mountBattleChat(BattleChat, {
                 target: container,
                 props: this._buildProps()
             });
@@ -202,8 +200,7 @@ class UIBattleChat {
     static _destroyComponent() {
         if (this._component) {
             try {
-                const unmountFn = unmountBattleChat ?? unmountComponent;
-                unmountFn(this._component);
+                unmountBattleChat(this._component);
             } catch (error) {
                 console.error('Failed to destroy battle chat component', error);
             }

@@ -13,7 +13,6 @@ if (typeof document !== 'undefined') {
 
         try {
             mount(GameCardsModule, { target: mountPoint });
-            console.log('[game-cards-init] GameCards module initialized');
         } catch (error) {
             console.error('[game-cards-init] failed to initialize', error);
         }
