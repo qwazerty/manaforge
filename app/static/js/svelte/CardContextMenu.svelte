@@ -1,0 +1,750 @@
+<script>
+    import { onDestroy } from 'svelte';
+
+    /**
+     * ManaForge Card Context Menu
+     * Right-click context menu for card actions
+     * Migrated from game-cards.js showCardContextMenu
+     */
+
+    // Reactive state
+    let isOpen = $state(false);
+    let menuElement = $state(null);
+    let position = $state({ x: 0, y: 0 });
+    
+    // Card data
+    let cardId = $state('');
+    let cardName = $state('');
+    let cardImage = $state('');
+    let cardZone = $state('');
+    let uniqueCardId = $state('');
+    let cardData = $state(null);
+    let cardElement = $state(null);
+    
+    // Card state flags
+    let isTapped = $state(false);
+    let isTargeted = $state(false);
+    let isOpponent = $state(false);
+    let isTokenCard = $state(false);
+    let isDoubleFaced = $state(false);
+    let isFaceDown = $state(false);
+    let isFaceDownOwner = $state(false);
+    let hasAttachmentHost = $state(false);
+    let hasAttachments = $state(false);
+    let cardTypeAttr = $state('');
+    let cardOwnerId = $state('');
+    
+    // Derived states
+    let normalizedZone = $derived(() => {
+        let zone = (cardZone || '').toLowerCase();
+        if (zone.startsWith('opponent_')) {
+            zone = zone.replace('opponent_', '');
+        }
+        return zone;
+    });
+    
+    let isBattlefieldZone = $derived(() => {
+        return ['battlefield', 'permanents', 'lands', 'creatures', 'support'].includes(normalizedZone());
+    });
+    
+    let isSpellCard = $derived(() => {
+        const type = cardTypeAttr.toLowerCase();
+        return type === 'instant' || type === 'sorcery';
+    });
+    
+    let canPlayOpponentCard = $derived(() => {
+        const selectedPlayer = getSelectedPlayer();
+        const canControlZones = selectedPlayer === 'player1' || selectedPlayer === 'player2';
+        const isSpectator = selectedPlayer === 'spectator';
+        const opponentPlayableZones = ['graveyard', 'exile', 'reveal', 'reveal_zone', 'look', 'look_zone'];
+        return canControlZones && !isSpectator && isOpponent && opponentPlayableZones.includes(normalizedZone());
+    });
+
+    // Helpers
+    function getSelectedPlayer() {
+        if (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function') {
+            return GameCore.getSelectedPlayer();
+        }
+        return null;
+    }
+
+    function getGameState() {
+        if (typeof GameCore !== 'undefined' && typeof GameCore.getGameState === 'function') {
+            return GameCore.getGameState();
+        }
+        return null;
+    }
+
+    function escapeHtml(text) {
+        if (typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function') {
+            return GameUtils.escapeHtml(text);
+        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Public API
+    export function show(event, element) {
+        if (!element) return;
+        
+        // Hide card preview
+        if (typeof CardPreviewModal !== 'undefined') {
+            CardPreviewModal.hide();
+        }
+        
+        // Cancel any attachment selection
+        if (typeof GameCards !== 'undefined' && typeof GameCards.cancelAttachmentSelection === 'function') {
+            GameCards.cancelAttachmentSelection();
+        }
+
+        // Extract card data from element
+        cardElement = element;
+        cardId = element.getAttribute('data-card-id') || '';
+        cardName = element.getAttribute('data-card-name') || '';
+        cardImage = element.getAttribute('data-card-image') || '';
+        cardZone = element.getAttribute('data-card-zone') || 'unknown';
+        uniqueCardId = element.getAttribute('data-card-unique-id') || '';
+        cardOwnerId = element.getAttribute('data-card-owner') || '';
+        cardTypeAttr = (element.getAttribute('data-card-type') || '').toLowerCase();
+        
+        isTapped = element.getAttribute('data-card-tapped') === 'true';
+        isTargeted = element.classList.contains('targeted');
+        isOpponent = element.getAttribute('data-is-opponent') === 'true';
+        
+        const attachedTo = element.getAttribute('data-attached-to') || '';
+        hasAttachmentHost = Boolean(attachedTo && attachedTo.trim().length);
+        
+        const attachmentChildren = Array.from(document.querySelectorAll(`[data-attached-to="${uniqueCardId}"]`));
+        hasAttachments = attachmentChildren.length > 0;
+        
+        // Parse card data
+        try {
+            cardData = JSON.parse(element.getAttribute('data-card-data') || '{}');
+        } catch (e) {
+            cardData = {};
+        }
+        
+        isTokenCard = Boolean(cardData?.is_token);
+        isDoubleFaced = cardData.is_double_faced && cardData.card_faces && cardData.card_faces.length > 1;
+        isFaceDown = Boolean(cardData?.face_down || cardData?.is_face_down || cardData?.faceDown);
+        
+        const faceDownOwnerId = cardData?.face_down_owner || cardData?.face_down_owner_id || cardData?.faceDownOwner || cardData?.faceDownOwnerId;
+        const selectedPlayer = getSelectedPlayer();
+        isFaceDownOwner = isFaceDown && selectedPlayer && faceDownOwnerId && faceDownOwnerId.toLowerCase() === selectedPlayer.toLowerCase();
+
+        // Position menu
+        position = { x: event.clientX + 10, y: event.clientY };
+        isOpen = true;
+        
+        // Store position for attachment modal
+        if (typeof GameCards !== 'undefined') {
+            GameCards._lastContextPosition = { x: event.clientX, y: event.clientY };
+        }
+
+        // Wait for render then adjust position
+        requestAnimationFrame(() => {
+            adjustPosition();
+        });
+
+        // Add click listener to close
+        document.addEventListener('click', handleOutsideClick);
+        document.addEventListener('keydown', handleKeydown);
+        
+        // Notify CardPreviewModal that context menu is open
+        if (typeof CardPreviewModal !== 'undefined') {
+            CardPreviewModal.setContextMenuOpen(true);
+        }
+    }
+
+    export function hide() {
+        isOpen = false;
+        cardElement = null;
+        document.removeEventListener('click', handleOutsideClick);
+        document.removeEventListener('keydown', handleKeydown);
+        
+        if (typeof CardPreviewModal !== 'undefined') {
+            CardPreviewModal.setContextMenuOpen(false);
+        }
+    }
+
+    function adjustPosition() {
+        if (!menuElement) return;
+        
+        const rect = menuElement.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        let x = position.x;
+        let y = position.y;
+        
+        if (x + rect.width > viewportWidth) {
+            x = position.x - rect.width - 20;
+        }
+        if (y + rect.height > viewportHeight) {
+            y = viewportHeight - rect.height - 10;
+        }
+        
+        x = Math.max(10, x);
+        y = Math.max(10, y);
+        
+        position = { x, y };
+    }
+
+    function handleOutsideClick(event) {
+        if (menuElement && !menuElement.contains(event.target)) {
+            hide();
+        }
+    }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            hide();
+        }
+    }
+
+    // Action handlers
+    function handleAction(action, ...args) {
+        hide();
+        
+        switch (action) {
+            case 'target':
+                toggleTarget();
+                break;
+            case 'flip':
+                flipCard();
+                break;
+            case 'play':
+                playCard();
+                break;
+            case 'playFaceDown':
+                playCardFaceDown();
+                break;
+            case 'playFromLibrary':
+                playFromLibrary();
+                break;
+            case 'tap':
+                tapCard();
+                break;
+            case 'duplicate':
+                duplicateCard();
+                break;
+            case 'attach':
+                startAttachment();
+                break;
+            case 'showAttachments':
+                showAttachments();
+                break;
+            case 'detach':
+                detachCard();
+                break;
+            case 'addType':
+                addType();
+                break;
+            case 'addCounter':
+                addCounter();
+                break;
+            case 'overridePT':
+                overridePowerToughness();
+                break;
+            case 'reveal':
+                revealFaceDown();
+                break;
+            case 'sendToHand':
+                sendToHand();
+                break;
+            case 'sendToBattlefield':
+                sendToBattlefield();
+                break;
+            case 'sendToGraveyard':
+                sendToGraveyard();
+                break;
+            case 'sendToExile':
+                sendToExile();
+                break;
+            case 'sendToTopLibrary':
+                sendToTopLibrary();
+                break;
+            case 'sendToBottomLibrary':
+                sendToBottomLibrary();
+                break;
+            case 'showInReveal':
+                showInReveal();
+                break;
+            case 'deleteToken':
+                deleteToken();
+                break;
+            case 'showAllHandReveal':
+                showAllHandReveal();
+                break;
+            case 'sendAllToHand':
+                sendAllToHand(args[0]);
+                break;
+            case 'sendAllToBattlefield':
+                sendAllToBattlefield(args[0]);
+                break;
+            case 'sendAllToGraveyard':
+                sendAllToGraveyard(args[0]);
+                break;
+            case 'sendAllToExile':
+                sendAllToExile(args[0]);
+                break;
+            case 'sendAllToTopLibrary':
+                sendAllToTopLibrary(args[0]);
+                break;
+            case 'sendAllToBottomLibrary':
+                sendAllToBottomLibrary(args[0]);
+                break;
+            case 'playOpponentCard':
+                playOpponentCard();
+                break;
+        }
+    }
+
+    function toggleTarget() {
+        if (typeof CardPreviewModal !== 'undefined') CardPreviewModal.hide();
+        
+        if (cardElement) {
+            const wasTargeted = cardElement.classList.toggle('targeted');
+            cardElement.setAttribute('data-card-targeted', wasTargeted.toString());
+            
+            if (typeof GameActions !== 'undefined') {
+                GameActions.performGameAction('target_card', {
+                    unique_id: uniqueCardId,
+                    card_id: cardId,
+                    targeted: wasTargeted
+                });
+            }
+        }
+    }
+
+    function flipCard() {
+        if (typeof CardPreviewModal !== 'undefined') CardPreviewModal.hide();
+        if (typeof GameActions !== 'undefined') {
+            GameActions.performGameAction('flip_card', {
+                card_id: cardId,
+                unique_id: uniqueCardId
+            });
+        }
+    }
+
+    function playCard() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.playCardFromHand(cardId, uniqueCardId);
+        }
+    }
+
+    function playCardFaceDown() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.playCardFromHand(cardId, uniqueCardId, { faceDown: true });
+        }
+    }
+
+    function playFromLibrary() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.performGameAction("play_card_from_library", { unique_id: uniqueCardId });
+        }
+        if (typeof UIZonesManager !== 'undefined') {
+            UIZonesManager.closeZoneModal("deck");
+        }
+    }
+
+    function tapCard() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.tapCard(cardId, uniqueCardId);
+        }
+    }
+
+    function duplicateCard() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.duplicateCard(cardId, uniqueCardId, cardZone);
+        }
+    }
+
+    function startAttachment() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.startAttachmentSelection(cardId, uniqueCardId);
+        }
+    }
+
+    function showAttachments() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.showAttachmentsModal(uniqueCardId, cardName);
+        }
+    }
+
+    function detachCard() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.detachCard(cardId, uniqueCardId);
+        }
+    }
+
+    function addType() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.showTypePopover(uniqueCardId, cardId);
+        }
+    }
+
+    function addCounter() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.showCounterPopover(uniqueCardId, cardId);
+        }
+    }
+
+    function overridePowerToughness() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.showPowerToughnessPopover(uniqueCardId, cardId);
+        }
+    }
+
+    function revealFaceDown() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.revealFaceDownCard(cardId, uniqueCardId);
+        }
+    }
+
+    function sendToHand() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.moveCard(cardId, cardZone, "hand", uniqueCardId);
+        }
+    }
+
+    function sendToBattlefield() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendToBattlefield(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function sendToGraveyard() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendToGraveyard(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function sendToExile() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendToExile(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function sendToTopLibrary() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendToTopLibrary(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function sendToBottomLibrary() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendToBottomLibrary(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function showInReveal() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.showInRevealZone(cardId, cardZone, uniqueCardId);
+        }
+    }
+
+    function deleteToken() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.deleteToken(uniqueCardId, cardName);
+        }
+    }
+
+    function showAllHandReveal() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.moveAllHandToReveal();
+        }
+    }
+
+    function sendAllToHand(zone) {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendAllZoneToHand(zone);
+        }
+    }
+
+    function sendAllToBattlefield(zone) {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendAllZoneToBattlefield(zone);
+        }
+    }
+
+    function sendAllToGraveyard(zone) {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendAllZoneToGraveyard(zone);
+        }
+    }
+
+    function sendAllToExile(zone) {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendAllZoneToExile(zone);
+        }
+    }
+
+    function sendAllToTopLibrary(zone) {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendAllZoneToTopLibrary(zone);
+        }
+    }
+
+    function sendAllToBottomLibrary(zone) {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.sendAllZoneToBottomLibrary(zone);
+        }
+    }
+
+    function playOpponentCard() {
+        if (typeof GameActions !== 'undefined') {
+            GameActions.playOpponentCardFromZone(cardId, uniqueCardId, cardZone, cardOwnerId);
+        }
+    }
+
+    // Count cards in zone for bulk actions
+    function getZoneCardCount(zoneName) {
+        const gameState = getGameState();
+        const selectedPlayer = getSelectedPlayer();
+        if (!gameState?.players || !selectedPlayer || selectedPlayer === 'spectator') {
+            return 0;
+        }
+        const playerIndex = selectedPlayer === 'player2' ? 1 : 0;
+        const player = gameState.players[playerIndex];
+        const zoneKey = zoneName === 'reveal' ? 'reveal_zone' : zoneName === 'look' ? 'look_zone' : zoneName;
+        return Array.isArray(player?.[zoneKey]) ? player[zoneKey].length : 0;
+    }
+
+    let revealCardCount = $derived(getZoneCardCount('reveal'));
+    let lookCardCount = $derived(getZoneCardCount('look'));
+
+    // Zone label helper
+    function getZoneLabel(zone) {
+        const labels = {
+            graveyard: 'Graveyard',
+            exile: 'Exile',
+            reveal: 'Reveal',
+            reveal_zone: 'Reveal'
+        };
+        return labels[zone] || 'Zone';
+    }
+
+    // Export API to window
+    const CardContextMenuAPI = {
+        show,
+        hide
+    };
+
+    if (typeof window !== 'undefined') {
+        window.CardContextMenu = CardContextMenuAPI;
+    }
+
+    onDestroy(() => {
+        hide();
+        if (window.CardContextMenu === CardContextMenuAPI) {
+            delete window.CardContextMenu;
+        }
+    });
+</script>
+
+{#if isOpen}
+    <div 
+        class="card-context-menu"
+        bind:this={menuElement}
+        style="left: {position.x}px; top: {position.y}px;"
+        role="menu"
+        aria-label="Card actions"
+    >
+        {#if cardImage}
+            <div class="card-context-image">
+                <img src={cardImage} alt={cardName} />
+            </div>
+        {/if}
+
+        <div class="card-context-actions">
+            <div class="card-context-header">
+                <h3>{cardName || 'Unknown'}</h3>
+            </div>
+            <div class="card-context-menu-divider"></div>
+
+            <!-- Target action -->
+            <button class="card-context-menu-item" onclick={() => handleAction('target')}>
+                <span class="icon">{isTargeted ? '❌' : '🎯'}</span>
+                {isTargeted ? 'Untarget' : 'Target'}
+            </button>
+
+            <!-- Flip for double-faced cards -->
+            {#if isDoubleFaced && !isOpponent}
+                {@const currentFace = cardData?.current_face || 0}
+                <button class="card-context-menu-item" onclick={() => handleAction('flip')}>
+                    <span class="icon">🔄</span>
+                    Flip to {currentFace === 0 ? 'Back' : 'Front'}
+                </button>
+            {/if}
+
+            {#if !isOpponent}
+                <!-- Hand zone actions -->
+                {#if cardZone === 'hand'}
+                    <button class="card-context-menu-item" onclick={() => handleAction('play')}>
+                        <span class="icon">▶️</span> Play Card
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('playFaceDown')}>
+                        <span class="icon">🙈</span> Play Face Down
+                    </button>
+                {/if}
+
+                <!-- Deck zone actions -->
+                {#if cardZone === 'deck'}
+                    <button class="card-context-menu-item" onclick={() => handleAction('playFromLibrary')}>
+                        <span class="icon">⚔️</span> Put on Battlefield
+                    </button>
+                {/if}
+
+                <!-- Battlefield zone actions -->
+                {#if isBattlefieldZone()}
+                    <button class="card-context-menu-item" onclick={() => handleAction('tap')}>
+                        <span class="icon">{isTapped ? '⤴️' : '🔄'}</span>
+                        {isTapped ? 'Untap' : 'Tap'}
+                    </button>
+
+                    <button class="card-context-menu-item" onclick={() => handleAction('duplicate')}>
+                        <span class="icon">🪄</span> Duplicate
+                    </button>
+
+                    <button class="card-context-menu-item" onclick={() => handleAction('attach')}>
+                        <span class="icon">🧲</span> Attach to other card
+                    </button>
+
+                    {#if hasAttachments}
+                        <button class="card-context-menu-item" onclick={() => handleAction('showAttachments')}>
+                            <span class="icon">👁️</span> Show attached cards
+                        </button>
+                    {/if}
+
+                    {#if hasAttachmentHost}
+                        <button class="card-context-menu-item" onclick={() => handleAction('detach')}>
+                            <span class="icon">🔓</span> Detach
+                        </button>
+                    {/if}
+
+                    <div class="card-context-menu-divider"></div>
+
+                    <button class="card-context-menu-item" onclick={() => handleAction('addType')}>
+                        <span class="icon">🧬</span> Add Type
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('addCounter')}>
+                        <span class="icon">🔢</span> Add Counter
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('overridePT')}>
+                        <span class="icon">💪</span> Override Power/Toughness
+                    </button>
+                {/if}
+
+                <!-- Reveal face-down card -->
+                {#if isFaceDown && isFaceDownOwner && cardZone !== 'hand'}
+                    <button class="card-context-menu-item" onclick={() => handleAction('reveal')}>
+                        <span class="icon">👁️</span> Reveal Card
+                    </button>
+                {/if}
+
+                <div class="card-context-menu-divider"></div>
+
+                <!-- Move actions -->
+                {#if cardZone !== 'hand'}
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToHand')}>
+                        <span class="icon">👋</span> Send to Hand
+                    </button>
+                {/if}
+
+                {#if ['reveal', 'reveal_zone', 'look', 'look_zone', 'commander', 'commander_zone'].includes(cardZone) && !isTokenCard}
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToBattlefield')}>
+                        <span class="icon">⚔️</span> Send to Battlefield
+                    </button>
+                {/if}
+
+                {#if isTokenCard}
+                    <button class="card-context-menu-item" onclick={() => handleAction('deleteToken')}>
+                        <span class="icon">🗑️</span> Delete Token
+                    </button>
+                {:else}
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToGraveyard')}>
+                        <span class="icon">⚰️</span> Send to Graveyard
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToExile')}>
+                        <span class="icon">✨</span> Send to Exile
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToTopLibrary')}>
+                        <span class="icon">⬆️</span> Send to Top Library
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToBottomLibrary')}>
+                        <span class="icon">⬇️</span> Send to Bottom Library
+                    </button>
+                {/if}
+
+                {#if cardZone !== 'reveal'}
+                    <button class="card-context-menu-item" onclick={() => handleAction('showInReveal')}>
+                        <span class="icon">👁️</span> Show in Reveal Zone
+                    </button>
+                {/if}
+
+                <!-- Bulk actions for hand -->
+                {#if cardZone === 'hand'}
+                    <div class="card-context-menu-divider"></div>
+                    <button class="card-context-menu-item" onclick={() => handleAction('showAllHandReveal')}>
+                        <span class="icon">👁️</span> Show all Hand in Reveal Zone
+                    </button>
+                {/if}
+
+                <!-- Bulk actions for reveal zone -->
+                {#if (cardZone === 'reveal' || cardZone === 'reveal_zone') && revealCardCount >= 2}
+                    <div class="card-context-menu-divider"></div>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToHand', 'reveal')}>
+                        <span class="icon">👋</span> Send all to Hand
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToBattlefield', 'reveal')}>
+                        <span class="icon">⚔️</span> Send all to Battlefield
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToGraveyard', 'reveal')}>
+                        <span class="icon">⚰️</span> Send all to Graveyard
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToExile', 'reveal')}>
+                        <span class="icon">✨</span> Send all to Exile
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToTopLibrary', 'reveal')}>
+                        <span class="icon">🔀</span> Send all to Top Library (random)
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToBottomLibrary', 'reveal')}>
+                        <span class="icon">🔀</span> Send all to Bottom Library (random)
+                    </button>
+                {/if}
+
+                <!-- Bulk actions for look zone -->
+                {#if (cardZone === 'look' || cardZone === 'look_zone') && lookCardCount >= 2}
+                    <div class="card-context-menu-divider"></div>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToHand', 'look')}>
+                        <span class="icon">👋</span> Send all to Hand
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToGraveyard', 'look')}>
+                        <span class="icon">⚰️</span> Send all to Graveyard
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToExile', 'look')}>
+                        <span class="icon">✨</span> Send all to Exile
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToTopLibrary', 'look')}>
+                        <span class="icon">🔀</span> Send all to Top Library (random)
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToBottomLibrary', 'look')}>
+                        <span class="icon">🔀</span> Send all to Bottom Library (random)
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendAllToBattlefield', 'look')}>
+                        <span class="icon">⚔️</span> Send all to Battlefield
+                    </button>
+                {/if}
+            {/if}
+
+            <!-- Opponent card actions -->
+            {#if canPlayOpponentCard()}
+                <button class="card-context-menu-item" onclick={() => handleAction('playOpponentCard')}>
+                    <span class="icon">🪄</span> Play from {getZoneLabel(normalizedZone())}
+                </button>
+            {/if}
+        </div>
+    </div>
+{/if}
