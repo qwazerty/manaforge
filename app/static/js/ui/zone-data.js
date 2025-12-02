@@ -24,7 +24,7 @@ class ZoneData {
             onClick = isOpponent
                 ? () => UIZonesManager.showOpponentZoneModal('deck')
                 : () => UIZonesManager.showZoneModal('deck');
-            overlayText = 'View';
+            overlayText = '';
         } else if (!isOpponent) {
             onClick = () => GameActions.drawCard();
             overlayText = 'Draw';

@@ -16,6 +16,7 @@
         static _graveyardZoneConfigs = new Map();
         static _exileZoneConfigs = new Map();
         static _lifeZoneConfigs = new Map();
+        static _pendingLibraryShuffle = false;
         static _zoneConfigCounter = 0;
         // ===== CONSTANTS =====
         static CARD_TYPE_ICONS = {
@@ -280,12 +281,23 @@
 
         // ===== ZONE MODAL MANAGEMENT =====
     
+        static markLibrarySearchRequiresShuffle() {
+            this._pendingLibraryShuffle = true;
+        }
+
         /**
          * Show zone modal for current player
          */
         static showZoneModal(zoneName) {
             const gameState = GameCore.getGameState();
             if (!gameState) return;
+
+            const selectedPlayer = this._getSelectedPlayer();
+            const baseZone = typeof zoneName === 'string' ? zoneName.replace('opponent_', '') : '';
+            if (selectedPlayer === 'spectator' && baseZone === 'deck') {
+                console.warn('[UIZonesManager] Spectators cannot search the library');
+                return;
+            }
 
             const { playerData, zone } = this._getPlayerZoneData(gameState, zoneName, false);
             if (!playerData) return;
@@ -302,6 +314,13 @@
             const gameState = GameCore.getGameState();
             if (!gameState) return;
 
+            const selectedPlayer = this._getSelectedPlayer();
+            const baseZone = typeof zoneName === 'string' ? zoneName.replace('opponent_', '') : '';
+            if (selectedPlayer === 'spectator' && baseZone === 'deck') {
+                console.warn('[UIZonesManager] Spectators cannot search the library');
+                return;
+            }
+
             const { playerData, zone } = this._getPlayerZoneData(gameState, zoneName, true);
             if (!playerData) return;
         
@@ -316,8 +335,25 @@
          * Close zone modal
          */
         static closeZoneModal(zoneName) {
-            if (this._zonePopupElements && this._zonePopupElements.has(zoneName)) {
-                const elements = this._zonePopupElements.get(zoneName);
+            const normalizedZone = typeof zoneName === 'string' ? zoneName : '';
+            const isOpponentZone = normalizedZone.startsWith('opponent_');
+            const baseZone = normalizedZone.replace('opponent_', '');
+            const shouldShuffleLibrary = this._pendingLibraryShuffle && baseZone === 'deck' && !isOpponentZone;
+
+            const triggerLibraryShuffle = () => {
+                if (!shouldShuffleLibrary) {
+                    return;
+                }
+                this._pendingLibraryShuffle = false;
+                if (typeof GameActions?.performGameAction === 'function') {
+                    GameActions.performGameAction('shuffle_library');
+                } else {
+                    console.warn('[UIZonesManager] GameActions.performGameAction not available for shuffle');
+                }
+            };
+
+            if (this._zonePopupElements && this._zonePopupElements.has(normalizedZone)) {
+                const elements = this._zonePopupElements.get(normalizedZone);
                 if (elements?.panel) {
                     if (elements.panel.dataset.persistent === 'true') {
                         return;
@@ -327,14 +363,16 @@
                     elements.panel.dataset.appear = 'hidden';
                     delete elements.panel.dataset.userMoved;
                 }
+                triggerLibraryShuffle();
                 return;
             }
 
-            const modal = document.getElementById(`zone-modal-${zoneName}`);
+            const modal = document.getElementById(`zone-modal-${normalizedZone}`);
             if (modal) {
                 modal.classList.remove('active');
                 setTimeout(() => modal.remove(), 300);
             }
+            triggerLibraryShuffle();
         }
 
         /**
