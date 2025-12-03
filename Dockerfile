@@ -49,5 +49,5 @@ EXPOSE 8000
 USER user
 
 # Run the application
-# Default command runs uvicorn without dev reload, using 4 worker processes
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Default command runs uvicorn without dev reload
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
