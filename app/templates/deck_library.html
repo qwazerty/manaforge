@@ -25,7 +25,7 @@
 
 {% block extra_js %}
 <script type="module">
-    import DeckLibrary, { mount } from '{{ versioned_static('js/ui/components/DeckLibrary.esm.js') }}';
+    import DeckLibrary, { mount } from '/static/js/ui/components/DeckLibrary.esm.js';
     const root = document.getElementById('deck-library-root');
     if (root) {
         mount(DeckLibrary, { target: root });

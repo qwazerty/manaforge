@@ -2,8 +2,6 @@
 Main FastAPI application.
 """
 
-import hashlib
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,20 +41,6 @@ app.include_router(websocket_router)
 app.include_router(draft_router)
 
 templates = Jinja2Templates(directory="app/templates")
-
-# Cache-busting: generate a unique version hash at startup
-# This forces browsers to reload JS/CSS when the app restarts
-_startup_time = str(time.time()).encode()
-_asset_version = hashlib.md5(_startup_time).hexdigest()[:8]
-templates.env.globals["asset_version"] = _asset_version
-
-
-def versioned_static(path: str) -> str:
-    """Generate a static URL with cache-busting query string."""
-    return f"/static/{path}?v={_asset_version}"
-
-
-templates.env.globals["versioned_static"] = versioned_static
 
 
 @app.get("/")

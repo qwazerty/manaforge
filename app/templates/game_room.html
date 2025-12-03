@@ -29,7 +29,7 @@
 
 {% block extra_js %}
 <script type="module">
-    import GameRoomSetup, { mount } from '{{ versioned_static('js/ui/components/GameRoomSetup.esm.js') }}';
+    import GameRoomSetup, { mount } from '/static/js/ui/components/GameRoomSetup.esm.js';
     const root = document.getElementById('game-setup-root');
     if (!root) throw new Error('game-setup-root not found');
 
