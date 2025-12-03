@@ -430,23 +430,41 @@
 
     function updatePosition(event) {
         if (!isOpen || !previewElement || isCentered) return;
-        
+
+        // Keep a consistent offset from the pointer while guaranteeing the preview
+        // stays fully inside the viewport. If there's no room on the right, flip
+        // to the left but keep the same offset distance.
         const rect = previewElement.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+        const viewportWidth = document.documentElement.clientWidth;
+        const viewportHeight = document.documentElement.clientHeight;
 
-        let x = event.clientX + 150;
-        let y = event.clientY - 50;
+        const margin = 10;          // small gutter so the popup never touches screen edges
+        const offsetX = 50;        // horizontal distance from the cursor/card
+        const offsetY = 50;         // vertical distance from the cursor/card
 
-        if (x + rect.width > viewportWidth) {
-            x = event.clientX - rect.width - 150;
+        // --- Horizontal placement
+        let x = event.clientX + offsetX; // default: to the right with +offset
+        if (x + rect.width > viewportWidth - margin) {
+            // Not enough room on the right, mirror to the left keeping the same offset
+            x = event.clientX - offsetX - rect.width;
         }
-        if (y + rect.height > viewportHeight) {
-            y = event.clientY - rect.height + 50;
+        // Clamp to viewport after deciding direction
+        if (x < margin) x = margin;
+        if (x + rect.width > viewportWidth - margin) {
+            x = viewportWidth - rect.width - margin;
         }
 
-        x = Math.max(10, Math.min(x, viewportWidth - rect.width - 10));
-        y = Math.max(10, Math.min(y, viewportHeight - rect.height - 10));
+        // --- Vertical placement
+        let y = event.clientY - offsetY; // default: slightly above the cursor
+        if (y + rect.height > viewportHeight - margin) {
+            // Not enough room below, move fully above keeping the offset
+            y = event.clientY - offsetY - rect.height;
+        }
+        // Clamp to viewport
+        if (y < margin) y = margin;
+        if (y + rect.height > viewportHeight - margin) {
+            y = viewportHeight - rect.height - margin;
+        }
 
         position = { x, y };
     }
