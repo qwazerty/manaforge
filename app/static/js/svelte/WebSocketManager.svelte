@@ -350,7 +350,7 @@
         let parsed = null;
         try {
             parsed = JSON.parse(event.data);
-        } catch (error) {
+        } catch {
             connectionState.lastError = 'Malformed message';
             return;
         }
@@ -358,8 +358,8 @@
         handleWebSocketMessage(parsed);
     }
 
-    function handleSocketError(error) {
-        connectionState.lastError = error?.message || 'WebSocket error';
+    function handleSocketError(_error) {
+        connectionState.lastError = _error?.message || 'WebSocket error';
         connectionState.status = 'error';
         
         // Start HTTP polling as fallback when WebSocket fails
@@ -661,7 +661,7 @@
         });
     }
 
-    function refreshGameUI(previousGameState = null) {
+    function refreshGameUI(_previousGameState = null) {
         UIRenderersTemplates?.renderGameArena?.();
         UIZonesManager?.updateZoneCounts?.();
         UIZonesManager?.refreshOpenZonePopups?.(getGameState());
@@ -853,7 +853,7 @@
         return storeSnapshots.selectedPlayer;
     }
 
-    function getGameId() {
+    function _getGameId() {
         if (typeof GameCore !== 'undefined' && typeof GameCore.getGameId === 'function') {
             return GameCore.getGameId();
         }
@@ -895,6 +895,7 @@
         return formatSeatFallback(playerKey);
     }
 
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const seatFallbackCache = new Map();
 
     function formatSeatFallback(playerKey) {

@@ -329,7 +329,7 @@
                                 bind:value={selectedFormat}
                                 class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
                             >
-                                {#each Object.entries(GAME_FORMAT_LABELS) as [value, label]}
+                                {#each Object.entries(GAME_FORMAT_LABELS) as [value, label] (value)}
                                     <option value={value}>{label}</option>
                                 {/each}
                             </select>
@@ -346,7 +346,7 @@
                                 bind:value={selectedPhaseMode}
                                 class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
                             >
-                                {#each Object.entries(PHASE_MODE_LABELS) as [value, label]}
+                                {#each Object.entries(PHASE_MODE_LABELS) as [value, label] (value)}
                                     <option value={value}>{label}</option>
                                 {/each}
                             </select>
@@ -431,7 +431,7 @@
                                 </div>
 
                                 <div class="flex flex-wrap gap-2 text-xs text-arena-text mb-2">
-                                    {#each ['player1', 'player2'] as seat}
+                                    {#each ['player1', 'player2'] as seat (seat)}
                                         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-arena-surface-light border border-arena-accent/10">
                                             {seat === 'player1' ? '🛡️' : '🎯'}
                                             {#if !game.player_status?.[seat]?.seat_claimed}

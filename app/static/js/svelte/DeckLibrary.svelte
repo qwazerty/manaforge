@@ -161,7 +161,7 @@
                 class="px-3 py-2 bg-arena-surface border border-arena-accent/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30 text-arena-text"
             >
                 <option value="all">All formats ({decks.length})</option>
-                {#each FORMAT_OPTIONS as formatKey}
+                {#each FORMAT_OPTIONS as formatKey (formatKey.key)}
                     <option value={formatKey.key}>
                         {formatLabel(formatKey.key)} ({formatCounts[formatKey.key] || 0})
                     </option>

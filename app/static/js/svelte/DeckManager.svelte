@@ -382,7 +382,7 @@
         return getCachedPrice(cardPrices, card);
     }
 
-    function normalizeName(name) {
+    function _normalizeName(name) {
         return typeof name === 'string' ? name.trim().toLowerCase() : '';
     }
 
@@ -458,6 +458,7 @@
 
     function groupEntriesForList(entriesWithColumn) {
         const filtered = entriesWithColumn.filter((entry) => filterEntries([entry], entry.__column).length > 0);
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const buckets = new Map();
         filtered.forEach((entry) => {
             const typeKey = classifyType(entry.card, entry.__column);
@@ -858,6 +859,7 @@
         const nextState = getDefaultState();
         nextState.deckName = deck.name || nextState.deckName;
         nextState.format = deck.format || state.format;
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const entryLookup = new Map();
 
         const appendEntry = (deckEntry, columnKey) => {
@@ -1127,7 +1129,7 @@
             await navigator.clipboard.writeText(lines.join('\n'));
             importStatus = { message: 'Deck copied to clipboard.', type: 'success' };
             triggerCopyToast('Deck copied to clipboard');
-        } catch (e) {
+        } catch {
             importStatus = { message: 'Unable to copy deck.', type: 'error' };
             triggerCopyToast('Unable to copy deck.');
         }
@@ -1144,6 +1146,7 @@
 
     function fetchPricesForDeck() {
         // Collect all unique card names in the deck
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const cardNames = new Set();
         Object.values(state.entries).forEach((entry) => {
             if (entry?.card?.name) {
@@ -1250,7 +1253,7 @@
         <span class="bg-arena-surface-dark px-1.5 py-0.5 rounded text-xs font-medium w-6 text-center flex-shrink-0">{entry.quantity}</span>
         <span class="font-medium text-arena-text truncate flex-1 min-w-0">{entry.card.name}</span>
         <span class="flex items-center gap-0.5 flex-shrink-0 w-24 justify-start">
-            {#each buildManaSymbols(entry.card.mana_cost) as symbol}
+            {#each buildManaSymbols(entry.card.mana_cost) as symbol, i (i)}
                 <i class={`ms ms-cost ${symbol.class}`}></i>
             {/each}
         </span>
@@ -1408,7 +1411,7 @@
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Colors</p>
                     <div class="flex flex-wrap gap-2 mt-2 text-sm">
-                        {#each COLOR_ORDER as color}
+                        {#each COLOR_ORDER as color (color)}
                             {#if stats.colors[color]}
                                 <span class="px-2 py-1 rounded-full text-xs font-semibold {COLOR_CLASSES[color]}">
                                     {COLOR_NAMES[color]} ({stats.colors[color]})
@@ -1420,7 +1423,7 @@
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Mana curve</p>
                     <div class="h-42 flex items-end gap-1 mt-2 h-24">
-                        {#each Object.entries(stats.manaCurve) as [label, count]}
+                        {#each Object.entries(stats.manaCurve) as [label, count] (label)}
                             <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end">
                                 <span class="text-xs text-arena-muted">{count}</span>
                                 <div class="w-full bg-gradient-to-t from-arena-accent/30 to-arena-accent rounded-t"
@@ -1435,7 +1438,7 @@
             <div>
                 <p class="text-sm font-semibold text-arena-muted uppercase tracking-wide mb-2">Type counts</p>
                 <div class="flex flex-wrap gap-2">
-                    {#each Object.entries(stats.typeCounts) as [type, count]}
+                    {#each Object.entries(stats.typeCounts) as [type, count] (type)}
                         <div class="px-3 py-2 rounded-lg bg-arena-surface border border-arena-accent/20 text-sm flex items-center gap-2">
                             <span class="font-semibold">{count}</span>
                             <span>{getTypeLabel(type)}</span>
@@ -1507,7 +1510,7 @@
                     <button onclick={() => showBasicLands = false} class="text-sm text-arena-text-dim hover:text-arena-accent">Close ✕</button>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    {#each Object.entries(BASIC_LAND_PRESETS) as [key, land]}
+                    {#each Object.entries(BASIC_LAND_PRESETS) as [key, land] (key)}
                         <button 
                             onclick={() => addBasicLand(key)}
                             class="group relative rounded-xl overflow-hidden border border-arena-accent/20 bg-black/40 hover:ring-2 hover:ring-arena-accent transition">
@@ -1525,7 +1528,7 @@
                 <div class="space-y-6">
                     <div class="grid md:grid-cols-2 gap-5">
                         <div class="space-y-4" role="list">
-                            {#each mainColumnsSplit.left as group}
+                            {#each mainColumnsSplit.left as group (group.label)}
                                 {@render listGroup(group)}
                             {/each}
                         </div>
@@ -1536,13 +1539,13 @@
                                 role="list"
                             >
                                 <div class="text-sm font-medium text-arena-accent">Sideboard ({stats.sideboardTotal})</div>
-                                {#each sideboardGroups as group}
+                                {#each sideboardGroups as group (group.label)}
                                     {@render listGroup(group)}
                                 {/each}
                             </div>
                         {:else}
                             <div class="space-y-4" role="list">
-                                {#each mainColumnsSplit.right as group}
+                                {#each mainColumnsSplit.right as group (group.label)}
                                     {@render listGroup(group)}
                                 {/each}
                             </div>
@@ -1551,7 +1554,7 @@
                 </div>
             {:else}
                 <div class="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
-                    {#each COLUMN_CONFIG as column}
+                    {#each COLUMN_CONFIG as column (column.key)}
                         {#if (column.key !== 'sideboard' || showSideboard) && (column.key !== 'commander' || showCommander || getColumnEntries('commander').length > 0)}
                             <div 
                                 class="flex-1 min-w-[200px] flex flex-col gap-3 p-2 rounded-lg transition-colors {activeDropColumn === column.key ? 'bg-arena-accent/10 ring-2 ring-arena-accent/40' : ''}"

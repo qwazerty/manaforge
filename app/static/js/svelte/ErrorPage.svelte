@@ -138,7 +138,7 @@
             </div>
 
             <div class="flex justify-center items-center space-x-2 mt-8 opacity-60">
-                                {#each MANA_SYMBOLS as symbol, index}
+                                {#each MANA_SYMBOLS as symbol, index (symbol)}
                     <i
                         class={`ms ms-${symbol.toLowerCase()} ms-cost ms-2x animate-float`}
                         style={`animation-delay: ${index * 200}ms`}

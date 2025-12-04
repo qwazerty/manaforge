@@ -242,7 +242,6 @@
                         {/if}
                     </div>
                 </div>
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     class="commander-zone-cards flex flex-col items-center gap-2 min-h-[90px] p-2 rounded bg-arena-surface/50 border border-arena-accent/20"
                     role={data.allowTaxControls ? "listbox" : "list"}

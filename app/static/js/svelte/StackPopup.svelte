@@ -531,7 +531,7 @@
                         </div>
                     </div>
                 {:else}
-                    {#each stackItems() as card, index}
+                    {#each stackItems() as card, index (card.unique_id || index)}
                         {#if card}
                             <div
                                 class={`stack-spell${card.targeted ? ' targeted' : ''}${isSpellClickable(card) ? '' : ' not-clickable'}`}

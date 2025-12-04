@@ -10,14 +10,14 @@
     import ExileZone from './ExileZone.svelte';
     import LifeZone from './LifeZone.svelte';
     import ZonePopup from './ZonePopup.svelte';
-    import PlayerCounterModal from './PlayerCounterModal.svelte';
+    import PlayerCounterModal from './PlayerCounterModal.svelte'; // eslint-disable-line no-unused-vars
 
     // Helper to mount Svelte 5 components dynamically
     const mountComponent = (Component, options) => {
         return createClassComponent({ component: Component, ...options });
     };
 
-    const unmountComponent = (instance) => {
+    const _unmountComponent = (instance) => {
         if (instance && typeof instance.$destroy === 'function') {
             instance.$destroy();
         }
@@ -175,7 +175,7 @@
         /**
          * Generate life total zone with enhanced life controls
          */
-        static generateLifeZone(playerData, playerId, titlePrefix) {
+        static generateLifeZone(playerData, playerId, _titlePrefix) {
             const config = ZoneData.getLifeZoneConfig(playerData, playerId);
             const ownerKey = playerId || 'player1';
             const zoneKey = this._registerZoneConfig('life', { ...config, ownerKey });
@@ -519,7 +519,7 @@
                 let data = null;
                 try {
                     data = JSON.parse(rawPayload);
-                } catch (parseError) {
+                } catch {
                     // Ignore drops that don't come from our drag source (e.g., external URLs)
                     console.warn('[UIZonesManager] ignoring non-JSON drop payload', rawPayload);
                     return;

@@ -315,7 +315,7 @@
             <span class="zone-context-menu-title">{menuTitle()}</span>
         </div>
         <div class="zone-context-menu-actions">
-            {#each filteredActions() as action}
+            {#each filteredActions() as action (action.action)}
                 <button 
                     class="zone-context-menu-action"
                     data-zone={zoneName}

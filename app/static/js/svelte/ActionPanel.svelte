@@ -247,7 +247,7 @@
                 {/if}
                 {#if gameStartInfo.playerStatuses}
                     <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-                        {#each gameStartInfo.playerStatuses as playerStatus}
+                        {#each gameStartInfo.playerStatuses as playerStatus (playerStatus.name)}
                             <div class="bg-arena-surface/50 rounded p-2 text-center">
                                 <div class="font-medium text-arena-text">{playerStatus.name}</div>
                                 <div class="text-arena-text-dim">{playerStatus.status}</div>

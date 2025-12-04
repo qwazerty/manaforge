@@ -84,6 +84,7 @@
     const groupedSets = $derived.by(() => {
         if (!cards?.length) return [];
         const coverageMap = buildCoverageMap(setCoverage);
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const groups = new Map();
 
         for (const card of cards) {
@@ -160,6 +161,7 @@
     }
 
     function buildCoverageMap(entries) {
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const map = new Map();
         (entries || []).forEach((entry) => {
             if (!entry || !entry.set_code) return;
@@ -210,6 +212,7 @@
         isLoading = true;
         errorMessage = '';
 
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const params = new URLSearchParams({
             page: page.toString(),
             page_size: '25',

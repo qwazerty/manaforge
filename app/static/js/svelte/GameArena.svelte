@@ -228,7 +228,7 @@
         return rawName || fallback;
     }
 
-    function findPlayerById(state, playerId) {
+    function _findPlayerById(state, playerId) {
         if (!state || !playerId) {
             return null;
         }
@@ -529,6 +529,7 @@
     }
 
     function buildAttachmentsMap(cards = []) {
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const indexLookup = new Map();
         cards.forEach((card, index) => {
             const uid = getCardUniqueId(card);
@@ -537,6 +538,7 @@
             }
         });
 
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const attachments = new Map();
         const parseOrder = (value) => {
             const parsed = parseInt(value, 10);
@@ -553,7 +555,7 @@
             attachments.set(hostId, list);
         });
 
-        attachments.forEach((list, hostId) => {
+        attachments.forEach((list, _hostId) => {
             list.sort((a, b) => {
                 const orderA = parseOrder(a?.attachment_order ?? a?.attachmentOrder);
                 const orderB = parseOrder(b?.attachment_order ?? b?.attachmentOrder);

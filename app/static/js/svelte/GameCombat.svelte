@@ -649,6 +649,7 @@
             const combatState = gameState.combat_state || {};
             const pendingAttackers = new Set(Array.isArray(combatState.pending_attackers) ? combatState.pending_attackers : []);
             const pendingBlockers = combatState.pending_blockers || {};
+            // eslint-disable-next-line svelte/prefer-svelte-reactivity
             const blockingPairs = new Map();
 
             const getTranslate = (element) => (

@@ -45,7 +45,7 @@
             if (value && typeof value === 'object') {
                 try {
                     sanitized[key] = JSON.parse(JSON.stringify(value));
-                } catch (_error) {
+                } catch {
                     sanitized[key] = value;
                 }
             } else {
@@ -707,7 +707,7 @@
         moveCard(cardId, sourceZone, 'library', uniqueCardId, 'bottom', callback);
     }
 
-    function deleteToken(uniqueCardId, cardName = 'Token') {
+    function deleteToken(uniqueCardId, _cardName = 'Token') {
         if (!uniqueCardId) {
             GameUI.logMessage('Token not found', 'error');
             return;

@@ -3,10 +3,10 @@
 <script>
     import { onMount } from 'svelte';
     import {
-        gameState,
-        gameId,
-        isPageVisible,
-        selectedPlayer,
+        gameState as _gameState,
+        gameId as _gameId,
+        isPageVisible as _isPageVisible,
+        selectedPlayer as _selectedPlayer,
         getGameStateSnapshot,
         getGameIdSnapshot,
         getPageVisibleSnapshot,

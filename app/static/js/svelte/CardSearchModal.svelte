@@ -121,6 +121,7 @@
     }
 
     function dedupeTokenHints(source) {
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const seen = new Set();
         const result = [];
         if (!Array.isArray(source)) {
@@ -330,6 +331,7 @@
         loading = true;
         error = '';
 
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const params = new URLSearchParams({ q: term, limit: '50' });
         if (tokenFlag) {
             params.set('tokens_only', 'true');
@@ -454,7 +456,6 @@
 </script>
 
 {#if isOpen}
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div 
     class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
     onclick={handleBackdropClick}
@@ -557,7 +558,7 @@
                             <span class="text-xs">Click a card or press Enter</span>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {#each results as card, index}
+                            {#each results as card, index (card.id || index)}
                                 <button
                                     class={`rounded-lg overflow-hidden shadow-lg border-2 transition-transform ${selectedIndex === index ? 'border-arena-accent scale-[1.03]' : 'border-transparent hover:border-arena-accent/60 hover:scale-[1.01]'}`}
                                     onclick={() => submitCard(card)}

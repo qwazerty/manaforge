@@ -254,7 +254,7 @@ export function getCounterClass(counterType) {
 }
 
 // ===== VISUAL STATE COMPUTATION =====
-export function computeCardVisualState(card, zone = 'unknown', isOpponent = false) {
+export function computeCardVisualState(card, _zone = 'unknown', isOpponent = false) {
     const isTapped = Boolean(card?.tapped);
     const isTargeted = Boolean(card?.targeted);
     const isAttacking = Boolean(card?.attacking);

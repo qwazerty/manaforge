@@ -57,7 +57,7 @@
                     Magic The Gathering web-based arena for duels and drafts
                 </p>
                 <div class="flex justify-center items-center space-x-2 text-arena-text-dim">
-                    {#each MANA_SYMBOLS as symbol, index}
+                    {#each MANA_SYMBOLS as symbol, index (symbol)}
                         <i
                             class={`ms ms-${symbol.toLowerCase()} ms-cost ms-2x animate-float`}
                             style={`animation-delay: ${index * 200}ms`}
@@ -73,7 +73,7 @@
                             <span class="text-3xl">⚔️</span>
                         </div>
                         <h2 class="font-magic text-2xl font-bold text-arena-accent mb-4">Enter the Arena</h2>
-                        {#each quickActions as action, i}
+                        {#each quickActions as action, i (action.href)}
                             <a
                                 href={action.href}
                                 class={`arena-button w-full py-3 px-6 rounded-lg font-semibold text-lg transition-all duration-300 inline-block text-center${i > 0 ? ' mt-4' : ''}`}
@@ -95,7 +95,7 @@
         </h2>
 
         <div class="grid md:grid-cols-3 gap-8">
-            {#each featureCards as feature}
+            {#each featureCards as feature (feature.title)}
                 <div class="text-center p-6 arena-card rounded-xl transition-transform duration-200 transform hover:-translate-y-1">
                     <div class="w-12 h-12 bg-accent-gradient rounded-lg flex items-center justify-center mx-auto mb-4 shadow-arena">
                         <span class="text-xl">{feature.icon}</span>
