@@ -626,26 +626,31 @@
     
         const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
 
-        if (cardElement) {
-            const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
-            const newTappedState = !isTapped;
-            const cardName = cardElement.getAttribute('data-card-name') || cardId;
-
-            cardElement.setAttribute('data-card-tapped', newTappedState.toString());
-            cardElement.classList.toggle('tapped', newTappedState);
-            cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
-
-            const tapData = {
-                card_id: cardId,
-                tapped: newTappedState,
-                unique_id: uniqueCardId
-            };
-
-            performGameAction('tap_card', tapData);
-        } else {
+        if (!cardElement) {
             console.warn(`🃏 Card element not found for cardId: ${cardId}, uniqueCardId: ${uniqueCardId}`);
             performGameAction('tap_card', { card_id: cardId, unique_id: uniqueCardId });
+            return;
         }
+
+        // Block tapping opponent's cards
+        if (cardElement.getAttribute('data-is-opponent') === 'true') {
+            GameUI.logMessage('Vous ne pouvez pas engager une carte adverse.', 'warning');
+            return;
+        }
+
+        const isTapped = cardElement.getAttribute('data-card-tapped') === 'true';
+        const newTappedState = !isTapped;
+        const cardName = cardElement.getAttribute('data-card-name') || cardId;
+
+        cardElement.setAttribute('data-card-tapped', newTappedState.toString());
+        cardElement.classList.toggle('tapped', newTappedState);
+        cardElement.title = `${cardName}${newTappedState ? ' (Tapped)' : ''}`;
+
+        performGameAction('tap_card', {
+            card_id: cardId,
+            tapped: newTappedState,
+            unique_id: uniqueCardId
+        });
     }
 
     function sendToGraveyard(cardId, sourceZone, uniqueCardId = null, callback = null) {
