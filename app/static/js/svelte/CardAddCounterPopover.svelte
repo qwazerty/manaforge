@@ -37,7 +37,7 @@
         return hasOther ? base : [...base, { value: 'other', label: 'Other' }];
     });
 
-    let selectedCounterType = $state(counterTypeOptions()?.[0]?.value || '');
+    let selectedCounterType = $state('');
     let customCounterType = $state('');
     let counterAmount = $state(1);
 
