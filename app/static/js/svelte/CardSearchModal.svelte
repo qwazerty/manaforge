@@ -237,6 +237,14 @@
         error = '';
         clearSearchTimer();
 
+        // Clear token hints when user types
+        if (query && tokenHintNames.length) {
+            tokenHintNames = [];
+            if (isBrowser && window.CardSearchModal) {
+                window.CardSearchModal._tokenHints = [];
+            }
+        }
+
         if (!query) {
             loading = false;
             results = [];
