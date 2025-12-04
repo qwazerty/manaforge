@@ -1365,17 +1365,6 @@ const GameCards = {
         } else {
             console.warn('[GameCards] Power/Toughness popover is unavailable.');
         }
-    },
-
-    // Backward compatibility shim
-    showCounterModal: function(uniqueCardId, cardId) {
-        this.showCounterPopover(uniqueCardId, cardId);
-    },
-
-    closeCounterModal: function() {
-        if (typeof UICardManager !== 'undefined' && typeof UICardManager.closeAll === 'function') {
-            UICardManager.closeAll();
-        }
     }
 };
 

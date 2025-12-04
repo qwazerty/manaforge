@@ -332,66 +332,6 @@ async def handle_pass_priority(
     }
 
 
-@action_registry.register("resolve_stack_spell")
-async def handle_resolve_stack_spell(
-    game_id: str, request: Optional[Dict], current_state: GameState
-) -> Dict[str, Any]:
-    """Handle resolve stack spell action."""
-    if not request:
-        raise HTTPException(
-            status_code=400, detail="Request body required for resolve_stack_spell"
-        )
-    
-    card_id = request.get("card_id")
-    stack_index = request.get("stack_index", 0)
-    
-    return {
-        "card_id": card_id,
-        "additional_data": {"stack_index": stack_index},
-        "broadcast_data": {"card": card_id, "stack_index": stack_index}
-    }
-
-
-@action_registry.register("counter_stack_spell")
-async def handle_counter_stack_spell(
-    game_id: str, request: Optional[Dict], current_state: GameState
-) -> Dict[str, Any]:
-    """Handle counter stack spell action."""
-    if not request:
-        raise HTTPException(
-            status_code=400, detail="Request body required for counter_stack_spell"
-        )
-    
-    card_id = request.get("card_id")
-    stack_index = request.get("stack_index", 0)
-    
-    return {
-        "card_id": card_id,
-        "additional_data": {"stack_index": stack_index},
-        "broadcast_data": {"card": card_id, "stack_index": stack_index}
-    }
-
-
-@action_registry.register("copy_stack_spell")
-async def handle_copy_stack_spell(
-    game_id: str, request: Optional[Dict], current_state: GameState
-) -> Dict[str, Any]:
-    """Handle copy stack spell action."""
-    if not request:
-        raise HTTPException(
-            status_code=400, detail="Request body required for copy_stack_spell"
-        )
-    
-    card_id = request.get("card_id")
-    stack_index = request.get("stack_index", 0)
-    
-    return {
-        "card_id": card_id,
-        "additional_data": {"stack_index": stack_index},
-        "broadcast_data": {"card": card_id, "stack_index": stack_index}
-    }
-
-
 @action_registry.register("mulligan")
 async def handle_mulligan(
     game_id: str, request: Optional[Dict], current_state: GameState
