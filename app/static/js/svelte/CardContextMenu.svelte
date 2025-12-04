@@ -31,7 +31,6 @@
     let isFaceDownOwner = $state(false);
     let hasAttachmentHost = $state(false);
     let hasAttachments = $state(false);
-    let cardTypeAttr = $state('');
     let cardOwnerId = $state('');
     let isCommander = $state(false);
     let hasArrows = $state(false);
@@ -47,11 +46,6 @@
     
     let isBattlefieldZone = $derived(() => {
         return ['battlefield', 'permanents', 'lands', 'creatures', 'support'].includes(normalizedZone());
-    });
-    
-    let isSpellCard = $derived(() => {
-        const type = cardTypeAttr.toLowerCase();
-        return type === 'instant' || type === 'sorcery';
     });
     
     let canPlayOpponentCard = $derived(() => {
@@ -77,15 +71,6 @@
         return null;
     }
 
-    function escapeHtml(text) {
-        if (typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function') {
-            return GameUtils.escapeHtml(text);
-        }
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     // Public API
     export function show(event, element) {
         if (!element) return;
@@ -108,7 +93,6 @@
         cardZone = element.getAttribute('data-card-zone') || 'unknown';
         uniqueCardId = element.getAttribute('data-card-unique-id') || '';
         cardOwnerId = element.getAttribute('data-card-owner') || '';
-        cardTypeAttr = (element.getAttribute('data-card-type') || '').toLowerCase();
         
         isTapped = element.getAttribute('data-card-tapped') === 'true';
         isTargeted = element.classList.contains('targeted');
