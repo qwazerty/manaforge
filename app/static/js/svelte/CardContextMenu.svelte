@@ -207,8 +207,6 @@
 
     // Action handlers
     function handleAction(action, ...args) {
-        hide();
-        
         switch (action) {
             case 'target':
                 toggleTarget();
@@ -304,6 +302,10 @@
                 playOpponentCard();
                 break;
         }
+
+        // Close the menu after the action so handlers that rely on
+        // the stored cardElement (e.g., target) can still access it.
+        hide();
     }
 
     function toggleTarget() {
