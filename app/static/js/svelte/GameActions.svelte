@@ -877,9 +877,6 @@
             unique_id: uniqueCardId,
             source_zone: sourceZone
         });
-
-        const cardElement = document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
-        const cardName = cardElement?.getAttribute('data-card-name') || cardId;
     }
 
     function attachCard(cardId, uniqueCardId, hostCardId, hostUniqueCardId) {
@@ -965,8 +962,7 @@
     
         // Find all tapped cards belonging to the current player and untap them visually
         const tappedCards = document.querySelectorAll('[data-card-tapped="true"]');
-        let untappedCount = 0;
-    
+
         tappedCards.forEach(cardElement => {
             const elementUniqueId = cardElement.getAttribute('data-card-unique-id');
             if (elementUniqueId && elementUniqueId.startsWith(playerPrefix)) {
@@ -976,8 +972,6 @@
                 // Update title
                 const cardName = cardElement.getAttribute('data-card-name');
                 cardElement.title = cardName || '';
-            
-                untappedCount++;
             }
         });
     }
@@ -1083,14 +1077,6 @@
                 destinationPlayerId: currentPlayer
             }
         );
-
-        const zoneLabels = {
-            graveyard: 'graveyard',
-            exile: 'exile',
-            reveal: 'reveal zone',
-            reveal_zone: 'reveal zone'
-        };
-        const zoneLabel = zoneLabels[baseSourceZone] || 'zone';
     }
 
     const GameActions = {
