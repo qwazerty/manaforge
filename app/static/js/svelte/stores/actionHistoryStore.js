@@ -436,9 +436,32 @@ class ActionHistoryStore {
                 }
             });
         } else if (typeof rawDetails === 'object') {
-            Object.entries(rawDetails).forEach(([key, value]) => {
-                addDetail(key, value, key);
-            });
+            // Special handling for targeting arrows: source_id → target_id
+            if (rawDetails.source_id && rawDetails.target_id) {
+                const arrowDetail = this._buildArrowAssignmentDetail(
+                    rawDetails.source_id,
+                    rawDetails.target_id,
+                    registerRef
+                );
+                if (arrowDetail) {
+                    items.push(arrowDetail);
+                }
+            } else if (rawDetails.source_id && !rawDetails.target_id) {
+                // Remove arrow case - just show the source card
+                const sourceRef = this._convertValueToCardRef(rawDetails.source_id, 'source');
+                if (sourceRef) {
+                    const registeredSource = registerRef(sourceRef);
+                    items.push({
+                        label: '',
+                        cardRef: registeredSource,
+                        hideLabel: true
+                    });
+                }
+            } else {
+                Object.entries(rawDetails).forEach(([key, value]) => {
+                    addDetail(key, value, key);
+                });
+            }
         } else {
             items.push({ label: '', value: String(rawDetails) });
         }
@@ -1214,6 +1237,31 @@ class ActionHistoryStore {
         }
 
         return detail;
+    }
+
+    static _buildArrowAssignmentDetail(sourceId, targetId, registerRef) {
+        const sourceRef = this._convertValueToCardRef(sourceId, 'arrow_source');
+        const targetRef = this._convertValueToCardRef(targetId, 'arrow_target');
+
+        const registeredSource = sourceRef ? registerRef(sourceRef) : null;
+        const registeredTarget = targetRef ? registerRef(targetRef) : null;
+
+        if (!registeredSource && !registeredTarget) {
+            return null;
+        }
+
+        const assignment = {
+            sourceRef: registeredSource,
+            sourceFallback: sourceId || '',
+            targetRefs: registeredTarget ? [registeredTarget] : [],
+            targetFallbacks: !registeredTarget && targetId ? [targetId] : []
+        };
+
+        return {
+            label: '',
+            assignmentList: [assignment],
+            hideLabel: true
+        };
     }
 
     static _buildCardAssignmentDetail(obj, key, label, registerRef) {

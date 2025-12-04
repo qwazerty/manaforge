@@ -606,7 +606,8 @@ async def get_game_ui_data(game_id: str) -> dict:
         },
         'mulligan_deciding_player': game_state.mulligan_deciding_player,
         'end_step_priority_passed': getattr(game_state, 'end_step_priority_passed', False),
-        'combat_state': safe_model_dump(getattr(game_state, 'combat_state', {})) if hasattr(getattr(game_state, 'combat_state', None), 'model_dump') else getattr(game_state, 'combat_state', {})
+        'combat_state': safe_model_dump(getattr(game_state, 'combat_state', {})) if hasattr(getattr(game_state, 'combat_state', None), 'model_dump') else getattr(game_state, 'combat_state', {}),
+        'targeting_arrows': getattr(game_state, 'targeting_arrows', [])
     }
 
 

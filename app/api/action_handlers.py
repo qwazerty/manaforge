@@ -1236,3 +1236,65 @@ async def handle_preview_blockers(
             "blocking_assignments": blocking_assignments,
         },
     }
+
+
+@action_registry.register("add_targeting_arrow", required_fields=["source_id", "target_id"])
+async def handle_add_targeting_arrow(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle adding a targeting arrow between two cards."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for add_targeting_arrow"
+        )
+
+    source_id = request.get("source_id")
+    target_id = request.get("target_id")
+
+    if not source_id or not target_id:
+        raise HTTPException(
+            status_code=400, detail="source_id and target_id are required"
+        )
+
+    return {
+        "additional_data": {
+            "source_id": source_id,
+            "target_id": target_id,
+        },
+        "broadcast_data": {
+            "arrow_action": "add",
+            "source_id": source_id,
+            "target_id": target_id,
+        },
+    }
+
+
+@action_registry.register("remove_targeting_arrow", required_fields=["source_id"])
+async def handle_remove_targeting_arrow(
+    game_id: str, request: Optional[Dict], current_state: GameState
+) -> Dict[str, Any]:
+    """Handle removing targeting arrows from a card."""
+    if not request:
+        raise HTTPException(
+            status_code=400, detail="Request body required for remove_targeting_arrow"
+        )
+
+    source_id = request.get("source_id")
+    target_id = request.get("target_id")  # Optional, if None removes all arrows from source
+
+    if not source_id:
+        raise HTTPException(
+            status_code=400, detail="source_id is required"
+        )
+
+    return {
+        "additional_data": {
+            "source_id": source_id,
+            "target_id": target_id,
+        },
+        "broadcast_data": {
+            "arrow_action": "remove",
+            "source_id": source_id,
+            "target_id": target_id,
+        },
+    }

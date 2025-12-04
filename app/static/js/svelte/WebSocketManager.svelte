@@ -487,6 +487,9 @@
             case 'chat':
                 handleRemoteChat(message);
                 break;
+            case 'targeting_arrow':
+                handleTargetingArrow(message);
+                break;
             case 'player_status':
                 break;
             case 'connection_established':
@@ -612,6 +615,53 @@
         }
     }
 
+    function handleTargetingArrow(message) {
+        if (!window.GameCards) return;
+
+        const action = message.action;
+        const sourceId = message.source_id;
+        const targetId = message.target_id;
+
+        if (action === 'add' && sourceId && targetId) {
+            // Draw the arrow visually and add to store
+            if (typeof window.GameCards.drawTargetingArrow === 'function') {
+                window.GameCards.drawTargetingArrow(sourceId, targetId);
+            }
+            // Import and use the store function directly
+            import('./stores/gameCardsStore.js').then(({ addTargetingArrow }) => {
+                addTargetingArrow(sourceId, targetId);
+            });
+        } else if (action === 'remove' && sourceId) {
+            if (typeof window.GameCards.removeTargetingArrowElement === 'function') {
+                window.GameCards.removeTargetingArrowElement(sourceId, targetId);
+            }
+            import('./stores/gameCardsStore.js').then(({ removeTargetingArrow }) => {
+                removeTargetingArrow(sourceId, targetId);
+            });
+        } else if (action === 'clear' && sourceId) {
+            if (typeof window.GameCards.removeAllArrowsFromCardElement === 'function') {
+                window.GameCards.removeAllArrowsFromCardElement(sourceId);
+            }
+        } else if (action === 'clear_all') {
+            if (typeof window.GameCards.clearAllTargetingArrowElements === 'function') {
+                window.GameCards.clearAllTargetingArrowElements();
+            }
+        }
+    }
+
+    function sendTargetingArrow(action, sourceId, targetId = null) {
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        sendRawMessage({
+            type: 'targeting_arrow',
+            action: action,
+            source_id: sourceId,
+            target_id: targetId,
+            timestamp: Date.now()
+        });
+    }
+
     function refreshGameUI(previousGameState = null) {
         UIRenderersTemplates?.renderGameArena?.();
         UIZonesManager?.updateZoneCounts?.();
@@ -628,6 +678,17 @@
         ) {
             requestAnimationFrame(() => {
                 redrawCombatArrows(gameStateValue);
+            });
+        }
+
+        // Load and redraw targeting arrows from game state
+        if (window.GameCards && gameStateValue) {
+            requestAnimationFrame(() => {
+                if (typeof window.GameCards.loadArrowsFromGameState === 'function') {
+                    window.GameCards.loadArrowsFromGameState(gameStateValue);
+                } else if (typeof window.GameCards.redrawAllTargetingArrows === 'function') {
+                    window.GameCards.redrawAllTargetingArrows();
+                }
             });
         }
     }
@@ -884,6 +945,7 @@
             requestGameState,
             sendGameAction,
             sendChatMessage,
+            sendTargetingArrow,
             handleWebSocketMessage,
             connectWebSocket,
             sendArenaGameAction,

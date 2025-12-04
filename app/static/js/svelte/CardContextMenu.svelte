@@ -34,6 +34,7 @@
     let cardTypeAttr = $state('');
     let cardOwnerId = $state('');
     let isCommander = $state(false);
+    let hasArrows = $state(false);
     
     // Derived states
     let normalizedZone = $derived(() => {
@@ -134,6 +135,13 @@
         const faceDownOwnerId = cardData?.face_down_owner || cardData?.face_down_owner_id || cardData?.faceDownOwner || cardData?.faceDownOwnerId;
         const selectedPlayer = getSelectedPlayer();
         isFaceDownOwner = isFaceDown && selectedPlayer && faceDownOwnerId && faceDownOwnerId.toLowerCase() === selectedPlayer.toLowerCase();
+
+        // Check if this card has arrows
+        if (typeof GameCards !== 'undefined' && typeof GameCards.hasArrowsFromCard === 'function') {
+            hasArrows = GameCards.hasArrowsFromCard(uniqueCardId);
+        } else {
+            hasArrows = false;
+        }
 
         // Position menu
         position = { x: event.clientX + 10, y: event.clientY };
@@ -301,6 +309,12 @@
             case 'playOpponentCard':
                 playOpponentCard();
                 break;
+            case 'addArrow':
+                startArrowToCard();
+                break;
+            case 'removeArrows':
+                removeArrowsFromCard();
+                break;
         }
 
         // Close the menu after the action so handlers that rely on
@@ -371,6 +385,18 @@
     function startAttachment() {
         if (typeof GameCards !== 'undefined') {
             GameCards.startAttachmentSelection(cardId, uniqueCardId);
+        }
+    }
+
+    function startArrowToCard() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.startArrowSelection(cardId, uniqueCardId);
+        }
+    }
+
+    function removeArrowsFromCard() {
+        if (typeof GameCards !== 'undefined') {
+            GameCards.removeAllArrowsFromCardElement(uniqueCardId);
         }
     }
 
@@ -582,6 +608,20 @@
                 <span class="icon">{isTargeted ? '❌' : '🎯'}</span>
                 {isTargeted ? 'Untarget' : 'Target'}
             </button>
+
+            <!-- Arrow targeting - battlefield and stack cards -->
+            {#if isBattlefieldZone() || normalizedZone() === 'stack'}
+                <button class="card-context-menu-item" onclick={() => handleAction('addArrow')}>
+                    <span class="icon">➡️</span>
+                    Add Arrow to...
+                </button>
+                {#if hasArrows}
+                    <button class="card-context-menu-item" onclick={() => handleAction('removeArrows')}>
+                        <span class="icon">🚫</span>
+                        Remove Arrows
+                    </button>
+                {/if}
+            {/if}
 
             <!-- Flip for double-faced cards -->
             {#if isDoubleFaced && !isOpponent}

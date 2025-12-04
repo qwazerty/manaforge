@@ -40,7 +40,16 @@
         setAttachmentSelection,
         getAttachmentTargets,
         setAttachmentTargets,
-        clearAttachmentTargets
+        clearAttachmentTargets,
+        getArrowSelection,
+        setArrowSelection,
+        getArrowTargets,
+        setArrowTargets,
+        clearArrowTargets,
+        getTargetingArrows,
+        addTargetingArrow,
+        removeAllArrowsFromCard,
+        clearAllTargetingArrows
     } from './stores/gameCardsStore.js';
 
     // ===== REACTIVE STATE =====
@@ -49,6 +58,10 @@
     let boundCloseAttachmentClick = $state(null);
     let boundAttachmentMenuClose = $state(null);
     let boundAttachmentMenuKeydown = $state(null);
+
+    // Arrow selection handlers
+    let boundArrowClickHandler = $state(null);
+    let boundArrowKeydownHandler = $state(null);
 
     // ===== CARD RENDERING =====
     function renderCardWithLoadingState(
@@ -446,6 +459,205 @@
         }
     }
 
+    // ===== ARROW TARGETING MANAGEMENT =====
+    function startArrowSelection(cardId, uniqueCardId) {
+        if (typeof CardPreviewModal !== 'undefined') CardPreviewModal.hide();
+        closeContextMenu();
+        cancelArrowSelection();
+
+        // Find all cards on the battlefield or stack that could be targets (any card except the source)
+        const candidates = Array.from(
+            document.querySelectorAll('[data-card-unique-id]')
+        ).filter((el) => {
+            const uid = el.getAttribute('data-card-unique-id');
+            const zone = el.getAttribute('data-card-zone') || '';
+            // Allow targeting cards on battlefield zones and stack
+            const isValidZone = ['battlefield', 'creatures', 'lands', 'support', 'permanents', 'stack'].includes(zone);
+            return uid && uid !== uniqueCardId && isValidZone;
+        });
+
+        if (!candidates.length) {
+            console.warn('[GameCards] No valid arrow targets found.');
+            return;
+        }
+
+        setArrowSelection({ cardId, uniqueId: uniqueCardId });
+        setArrowTargets(candidates);
+        candidates.forEach((el) => el.classList.add('arrow-targetable'));
+
+        boundArrowClickHandler = handleArrowTargetClick;
+        boundArrowKeydownHandler = handleArrowKeydown;
+
+        document.addEventListener('click', boundArrowClickHandler, true);
+        document.addEventListener('keydown', boundArrowKeydownHandler);
+    }
+
+    function handleArrowTargetClick(event) {
+        const selection = getArrowSelection();
+        if (!selection) return;
+
+        const targetElement = event.target.closest('[data-card-unique-id]');
+        if (!targetElement) {
+            cancelArrowSelection();
+            return;
+        }
+
+        const targetUniqueId = targetElement.getAttribute('data-card-unique-id');
+        if (!targetUniqueId || targetUniqueId === selection.uniqueId) {
+            cancelArrowSelection();
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Add the arrow to the store and draw it locally
+        addTargetingArrow(selection.uniqueId, targetUniqueId);
+        drawTargetingArrow(selection.uniqueId, targetUniqueId);
+
+        // Send the arrow to the server via game action (will be persisted and broadcast)
+        if (typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
+            GameActions.performGameAction('add_targeting_arrow', {
+                source_id: selection.uniqueId,
+                target_id: targetUniqueId
+            });
+        }
+
+        cancelArrowSelection();
+    }
+
+    function handleArrowKeydown(event) {
+        if (event.key === 'Escape') cancelArrowSelection();
+    }
+
+    function cancelArrowSelection() {
+        const targets = getArrowTargets();
+        if (targets.length) {
+            targets.forEach((el) => el.classList.remove('arrow-targetable'));
+        }
+        clearArrowTargets();
+        setArrowSelection(null);
+
+        if (boundArrowClickHandler) {
+            document.removeEventListener('click', boundArrowClickHandler, true);
+        }
+        if (boundArrowKeydownHandler) {
+            document.removeEventListener('keydown', boundArrowKeydownHandler);
+        }
+    }
+    function drawTargetingArrow(sourceUniqueId, targetUniqueId) {
+        const source = document.querySelector(`[data-card-unique-id="${sourceUniqueId}"]`);
+        const target = document.querySelector(`[data-card-unique-id="${targetUniqueId}"]`);
+
+        if (!source || !target) return;
+
+        // Remove any existing arrow between these two cards
+        removeTargetingArrowElement(sourceUniqueId, targetUniqueId);
+
+        // Create arrow element
+        const arrow = document.createElement('div');
+        arrow.className = 'targeting-arrow';
+        arrow.dataset.source = sourceUniqueId;
+        arrow.dataset.target = targetUniqueId;
+
+        // Calculate positions
+        const sourceRect = source.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+
+        const startX = sourceRect.left + sourceRect.width / 2;
+        const startY = sourceRect.top + sourceRect.height / 2;
+        const endX = targetRect.left + targetRect.width / 2;
+        const endY = targetRect.top + targetRect.height / 2;
+
+        const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+        const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+
+        arrow.style.width = `${length}px`;
+        arrow.style.left = `${startX}px`;
+        arrow.style.top = `${startY}px`;
+        arrow.style.transform = `rotate(${angle}deg)`;
+        arrow.style.transformOrigin = '0 0';
+
+        document.body.appendChild(arrow);
+    }
+
+    function removeTargetingArrowElement(sourceUniqueId, targetUniqueId = null) {
+        const selector = targetUniqueId
+            ? `.targeting-arrow[data-source="${sourceUniqueId}"][data-target="${targetUniqueId}"]`
+            : `.targeting-arrow[data-source="${sourceUniqueId}"]`;
+        document.querySelectorAll(selector).forEach(arrow => arrow.remove());
+    }
+
+    function removeAllArrowsFromCardElement(uniqueId, broadcast = true) {
+        // Remove arrows where card is source or target
+        document.querySelectorAll(`.targeting-arrow[data-source="${uniqueId}"]`).forEach(arrow => arrow.remove());
+        document.querySelectorAll(`.targeting-arrow[data-target="${uniqueId}"]`).forEach(arrow => arrow.remove());
+        // Also update the store
+        removeAllArrowsFromCard(uniqueId);
+
+        // Send the removal to the server via game action (will be persisted and broadcast)
+        if (broadcast && typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
+            GameActions.performGameAction('remove_targeting_arrow', {
+                source_id: uniqueId
+            });
+        }
+    }
+
+    function clearAllTargetingArrowElements(broadcast = false) {
+        // Get all unique source IDs before clearing
+        const arrows = getTargetingArrows();
+        const sourceIds = [...new Set(arrows.map(a => a.sourceId))];
+
+        // Remove all DOM arrows
+        document.querySelectorAll('.targeting-arrow').forEach(arrow => arrow.remove());
+        clearAllTargetingArrows();
+
+        // Broadcast removal for each source if requested
+        if (broadcast && sourceIds.length > 0) {
+            sourceIds.forEach(sourceId => {
+                GameActions.performGameAction('remove_targeting_arrow', {
+                    source_id: sourceId
+                });
+            });
+        }
+    }
+
+    function redrawAllTargetingArrows() {
+        // Remove all DOM arrows
+        document.querySelectorAll('.targeting-arrow').forEach(arrow => arrow.remove());
+        // Redraw from store
+        const arrows = getTargetingArrows();
+        arrows.forEach(({ sourceId, targetId }) => {
+            drawTargetingArrow(sourceId, targetId);
+        });
+    }
+
+    function loadArrowsFromGameState(gameState) {
+        if (!gameState) return;
+
+        // Clear existing arrows
+        clearAllTargetingArrowElements();
+
+        // Load arrows from game state
+        const arrows = gameState.targeting_arrows || [];
+        arrows.forEach(arrow => {
+            const sourceId = arrow.source_id;
+            const targetId = arrow.target_id;
+            if (sourceId && targetId) {
+                addTargetingArrow(sourceId, targetId);
+                // Delay drawing to ensure DOM elements exist
+                requestAnimationFrame(() => {
+                    drawTargetingArrow(sourceId, targetId);
+                });
+            }
+        });
+    }
+
+    function hasArrowsFromCard(uniqueId) {
+        const arrows = getTargetingArrows();
+        return arrows.some(a => a.sourceId === uniqueId);
+    }
+
     function showAttachmentsModal(hostUniqueId, hostName = 'Attached Cards') {
         if (!hostUniqueId) return;
 
@@ -755,6 +967,18 @@
         handleAttachmentTargetClick,
         handleAttachmentKeydown,
         cancelAttachmentSelection,
+        // Arrow targeting functions
+        startArrowSelection,
+        handleArrowTargetClick,
+        handleArrowKeydown,
+        cancelArrowSelection,
+        drawTargetingArrow,
+        removeTargetingArrowElement,
+        removeAllArrowsFromCardElement,
+        clearAllTargetingArrowElements,
+        redrawAllTargetingArrows,
+        hasArrowsFromCard,
+        loadArrowsFromGameState,
         flipCard,
         handleDragStart,
         handleCardClick,
@@ -773,6 +997,7 @@
 
     onDestroy(() => {
         cancelAttachmentSelection();
+        cancelArrowSelection();
         closeAttachmentsModal();
         closeAttachmentContextMenu();
     });
