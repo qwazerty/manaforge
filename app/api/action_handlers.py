@@ -1243,18 +1243,8 @@ async def handle_add_targeting_arrow(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle adding a targeting arrow between two cards."""
-    if not request:
-        raise HTTPException(
-            status_code=400, detail="Request body required for add_targeting_arrow"
-        )
-
     source_id = request.get("source_id")
     target_id = request.get("target_id")
-
-    if not source_id or not target_id:
-        raise HTTPException(
-            status_code=400, detail="source_id and target_id are required"
-        )
 
     return {
         "additional_data": {
@@ -1274,18 +1264,8 @@ async def handle_remove_targeting_arrow(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle removing targeting arrows from a card."""
-    if not request:
-        raise HTTPException(
-            status_code=400, detail="Request body required for remove_targeting_arrow"
-        )
-
     source_id = request.get("source_id")
     target_id = request.get("target_id")  # Optional, if None removes all arrows from source
-
-    if not source_id:
-        raise HTTPException(
-            status_code=400, detail="source_id is required"
-        )
 
     return {
         "additional_data": {

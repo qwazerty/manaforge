@@ -18,6 +18,10 @@
         addActionHistoryFromActionResult,
         mergeActionHistoryEntries
     } from './stores/actionHistoryStore.js';
+    import {
+        addTargetingArrow,
+        removeTargetingArrow
+    } from './stores/gameCardsStore.js';
 
     /** @type {{ reconnectDelay?: number }} */
     const { reconnectDelay = 1000 } = $props();
@@ -623,28 +627,23 @@
         const targetId = message.target_id;
 
         if (action === 'add' && sourceId && targetId) {
-            // Draw the arrow visually and add to store
+            // Add to store and draw the arrow visually
+            addTargetingArrow(sourceId, targetId);
             if (typeof window.GameCards.drawTargetingArrow === 'function') {
                 window.GameCards.drawTargetingArrow(sourceId, targetId);
             }
-            // Import and use the store function directly
-            import('./stores/gameCardsStore.js').then(({ addTargetingArrow }) => {
-                addTargetingArrow(sourceId, targetId);
-            });
         } else if (action === 'remove' && sourceId) {
+            removeTargetingArrow(sourceId, targetId);
             if (typeof window.GameCards.removeTargetingArrowElement === 'function') {
                 window.GameCards.removeTargetingArrowElement(sourceId, targetId);
             }
-            import('./stores/gameCardsStore.js').then(({ removeTargetingArrow }) => {
-                removeTargetingArrow(sourceId, targetId);
-            });
         } else if (action === 'clear' && sourceId) {
             if (typeof window.GameCards.removeAllArrowsFromCardElement === 'function') {
-                window.GameCards.removeAllArrowsFromCardElement(sourceId);
+                window.GameCards.removeAllArrowsFromCardElement(sourceId, false);
             }
         } else if (action === 'clear_all') {
             if (typeof window.GameCards.clearAllTargetingArrowElements === 'function') {
-                window.GameCards.clearAllTargetingArrowElements();
+                window.GameCards.clearAllTargetingArrowElements(false);
             }
         }
     }
