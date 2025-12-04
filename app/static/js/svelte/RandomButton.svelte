@@ -201,10 +201,10 @@
     });
 </script>
 
-<div class="random-button-container relative">
+<div class="random-button-container relative inline-block w-full">
     <button
         type="button"
-        class={className || 'btn-secondary text-xs'}
+        class="{className} w-full"
         title="Roll dice or flip coin"
         onclick={toggleDropdown}
         disabled={isAnimating}
