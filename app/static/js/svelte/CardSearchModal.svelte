@@ -1,5 +1,5 @@
 <script module>
-    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+    const _isBrowserModule = typeof window !== 'undefined' && typeof document !== 'undefined';
 
     function normalizeTokenFilterList(filter) {
         if (!Array.isArray(filter)) {
@@ -48,7 +48,7 @@
         }
     };
 
-    if (isBrowser) {
+    if (_isBrowserModule) {
         window.CardSearchModal = api;
         window.showCardSearch = (zone = 'hand') => api.show(zone);
         window.hideCardSearch = () => api.hide();
