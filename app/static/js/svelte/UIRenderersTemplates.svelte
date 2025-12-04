@@ -46,7 +46,6 @@
     /**
      * ManaForge Unified Renderers and Templates Module
      * Combines rendering logic and HTML template generation
-     * Replaces ui-renderers.js + ui-templates.js + ui-game-interface.js (~445 lines → ~300 lines)
      */
 
     class UIRenderersTemplates {
@@ -903,6 +902,14 @@
                             GameActions.untapAll();
                         }
                     }
+                },
+                {
+                    id: 'random',
+                    label: '🎲 Random',
+                    title: 'Roll dice or flip coin',
+                    disabled: false,
+                    className: baseClass,
+                    isRandomButton: true
                 },
                 {
                     id: 'resolve-all-stack',

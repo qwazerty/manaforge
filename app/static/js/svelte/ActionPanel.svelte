@@ -351,15 +351,7 @@
             {#if hasQuickButtons()}
                 <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                     {#each quickButtons as button, index (button.id || index)}
-                        {#if button.id === 'untap-all'}
-                            <button
-                                type="button"
-                                class={combineButtonClasses(button)}
-                                title={button.title}
-                                disabled={button.disabled}
-                                onclick={() => handlePrimaryButtonClick(button)}>
-                                {button.label}
-                            </button>
+                        {#if button.isRandomButton}
                             <RandomButton className={button.className || ''} />
                         {:else}
                             <button

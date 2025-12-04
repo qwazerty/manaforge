@@ -26,7 +26,6 @@
     /**
      * ManaForge Unified Zones Manager Module
      * Combines zone generation and zone modal management
-     * Replaces ui-zones.js + zone-manager.js (691 lines → ~400 lines)
      */
 
     class UIZonesManager {
