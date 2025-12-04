@@ -20,8 +20,8 @@
     let playInterval = null;
 
     const totalSteps = $derived(() => Array.isArray(timeline) ? timeline.length : 0);
-    const displayTotalSteps = $derived(() => Math.max(totalSteps(), 0));
-    const displayStepIndex = $derived(() =>
+    const _displayTotalSteps = $derived(() => Math.max(totalSteps(), 0));
+    const _displayStepIndex = $derived(() =>
         totalSteps() > 0 ? Math.min(currentIndex + 1, totalSteps()) : 0
     );
     const currentState = $derived(() => (timeline[currentIndex]?.state) || null);
@@ -287,7 +287,7 @@
         destroyActionPanel();
     }
 
-    function handleProgressClick(event) {
+    function _handleProgressClick(event) {
         if (!hasTimeline()) return;
         const total = Math.max(totalSteps() - 1, 0);
         if (total <= 0) return;

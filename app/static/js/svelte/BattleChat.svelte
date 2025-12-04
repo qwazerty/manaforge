@@ -86,7 +86,7 @@
                                 <span class="font-semibold text-arena-accent">
                                     {message.sender || 'Unknown'}
                                 </span>
-                                {' '}
+                                &nbsp;
                                 <span class="whitespace-pre-line break-words">
                                     {message.message}
                                 </span>

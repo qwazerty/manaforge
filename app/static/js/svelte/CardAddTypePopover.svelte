@@ -5,7 +5,7 @@
         open = false,
         cardName = 'Card',
         cardId = '',
-        uniqueId = '',
+        uniqueId: _uniqueId = '',
         types = [],
         typeOptions = [],
         position = null,

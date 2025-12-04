@@ -7,7 +7,7 @@
      * Migrated from game-cards.js hover preview system
      */
 
-    const CARD_BACK_IMAGE = '/static/images/card-back.jpg';
+    const _CARD_BACK_IMAGE = '/static/images/card-back.jpg';
 
     // Reactive state
     let isOpen = $state(false);
@@ -265,6 +265,7 @@
     function extractKeywordsFromCard(card) {
         if (!card) return [];
 
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const keywordSet = new Set();
         const gatherKeywords = (collection) => {
             if (!Array.isArray(collection)) return;
@@ -296,6 +297,7 @@
         const fullText = textFragments.join('\n');
         const normalizedText = fullText.toLowerCase();
         const found = [];
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const seen = new Set();
 
         const buildRegex = (keyword) => {

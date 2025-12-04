@@ -107,7 +107,7 @@
         // Parse card data
         try {
             cardData = JSON.parse(element.getAttribute('data-card-data') || '{}');
-        } catch (e) {
+        } catch {
             cardData = {};
         }
         

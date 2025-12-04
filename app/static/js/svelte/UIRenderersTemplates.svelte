@@ -12,11 +12,11 @@
     import GameArena from './GameArena.svelte';
     import ActionPanel from './ActionPanel.svelte';
     import StackPopup from './StackPopup.svelte';
-    import ZonePopup from './ZonePopup.svelte';
-    import DeckZone from './DeckZone.svelte';
-    import GraveyardZone from './GraveyardZone.svelte';
-    import ExileZone from './ExileZone.svelte';
-    import LifeZone from './LifeZone.svelte';
+    import ZonePopup from './ZonePopup.svelte'; // eslint-disable-line no-unused-vars
+    import DeckZone from './DeckZone.svelte'; // eslint-disable-line no-unused-vars
+    import GraveyardZone from './GraveyardZone.svelte'; // eslint-disable-line no-unused-vars
+    import ExileZone from './ExileZone.svelte'; // eslint-disable-line no-unused-vars
+    import LifeZone from './LifeZone.svelte'; // eslint-disable-line no-unused-vars
 
     // Helper to mount Svelte 5 components dynamically
     const mountComponent = (Component, options) => {
@@ -733,6 +733,7 @@
             }
 
             const players = Array.isArray(gameState.players) ? gameState.players : [];
+            // eslint-disable-next-line svelte/prefer-svelte-reactivity
             const names = new Set();
             for (const player of players) {
                 const battlefield = Array.isArray(player?.battlefield) ? player.battlefield : [];
@@ -759,6 +760,7 @@
         }
 
         static _extractTokenNamesFromOracle(card) {
+            // eslint-disable-next-line svelte/prefer-svelte-reactivity
             const tokens = new Set();
         
             // Get oracle text from card or card faces
@@ -1086,7 +1088,7 @@
             const currentTurn = gameState.turn || 1;
             const currentPhase = gameState.phase || 'begin';
             const phaseDisplay = UIConfig.getPhaseDisplayName(currentPhase);
-            const players = Array.isArray(gameState.players) ? gameState.players : [];
+            const _players = Array.isArray(gameState.players) ? gameState.players : [];
 
             return `
                 <div class="grid grid-cols-2 gap-4 text-center">
@@ -1132,14 +1134,14 @@
          * Generate zone templates in the correct order
          */
         static _generateZoneTemplates(playerData, config, isOpponent) {
-            const { prefix, titlePrefix, zoneIds, playerId } = config;
+            const { prefix: _prefix, titlePrefix, zoneIds: _zoneIds, playerId } = config;
             const safePlayerData = playerData || {};
             const {
                 library = [],
                 deck = [],
                 graveyard = [],
                 exile = [],
-                life = 20
+                life: _life = 20
             } = safePlayerData;
         
             const deckData = library.length > 0 ? library : deck;
@@ -1268,6 +1270,7 @@
             }
 
             const players = Array.isArray(gameState?.players) ? gameState.players : [];
+            // eslint-disable-next-line svelte/prefer-svelte-reactivity
             const seen = new Set();
             const selectedPlayer = GameCore.getSelectedPlayer();
 
@@ -1834,7 +1837,7 @@
         /**
          * Preload card images for better performance
          */
-        static _preloadCardImages(players) {
+        static _preloadCardImages(_players) {
             // Implementation for preloading can be added here if needed
         }
 

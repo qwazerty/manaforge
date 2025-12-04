@@ -132,7 +132,7 @@
                 .map(mapSetEntry)
                 .filter(Boolean);
             sets = normalized;
-        } catch (error) {
+        } catch {
             sets = [];
         } finally {
             isLoadingSets = false;

@@ -622,15 +622,15 @@
             setDeckStatus('Connection issue while updating status.', 'red', 4000);
         } finally {
             isFetchingStatus = false;
-            if (pollingDisabled) {
-                return;
-            }
-            if (pendingImmediatePoll) {
-                pendingImmediatePoll = false;
-                pollSetupStatus();
-            } else {
-                scheduleNextPoll();
-            }
+        }
+        if (pollingDisabled) {
+            return;
+        }
+        if (pendingImmediatePoll) {
+            pendingImmediatePoll = false;
+            pollSetupStatus();
+        } else {
+            scheduleNextPoll();
         }
     };
 
@@ -1067,7 +1067,7 @@
                 <div class="bg-arena-surface/80 border border-arena-accent/20 rounded-lg p-4">
                     <p class="text-sm text-arena-muted uppercase tracking-wide mb-3">Share Room Links</p>
                     <div class="space-y-3 text-sm">
-                        {#each shareRoles as role}
+                        {#each shareRoles as role (role.key)}
                             {@const shareId = shareInputId(role.key)}
                             <div class="flex flex-col gap-2">
                                 <label for={shareId} class="text-arena-text-dim font-medium">{role.label}</label>
@@ -1165,7 +1165,7 @@
     </div>
 
     <div class="grid gap-6 md:grid-cols-2">
-        {#each ['player1', 'player2'] as seat}
+        {#each ['player1', 'player2'] as seat (seat)}
             {@const badge = buildBadge(seat)}
             <div class="arena-card rounded-xl p-6 space-y-4 border border-arena-accent/20">
                 <div class="flex items-center justify-between">
@@ -1255,7 +1255,7 @@
                             </p>
                         {:else}
                             <div class="space-y-2">
-                                {#each deckLibraryEntries as entry}
+                                {#each deckLibraryEntries as entry (entry.id)}
                                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-arena-accent/10 bg-arena-surface/70 rounded-lg p-3">
                                         <div>
                                             <p class="font-semibold text-arena-text">{entry.name}</p>
@@ -1366,7 +1366,7 @@
                         <span class="text-xs text-arena-muted">{deckPreviewCount} cards previewed</span>
                     </div>
                     <div class="grid gap-2 md:grid-cols-2 text-sm max-h-56 overflow-y-auto pr-2">
-                        {#each deckPreview.cards as entry, index}
+                        {#each deckPreview.cards as entry, index (entry.card?.id || index)}
                             <div class="flex justify-between items-center p-2 bg-arena-surface/40 rounded border border-arena-accent/10" data-index={index}>
                                 <span class="text-arena-text">{entry.quantity}x {entry.card?.name}</span>
                                 <span class="text-xs text-arena-muted">{entry.card?.mana_cost || '—'}</span>

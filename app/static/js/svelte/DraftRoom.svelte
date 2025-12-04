@@ -420,6 +420,7 @@
         }
         const { counts: targetCounts, samples } = buildDraftCardCounts(Array.isArray(cards) ? cards : []);
         const currentCounts = getDeckManagerCardCounts();
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const handled = new Set();
 
         Object.entries(targetCounts).forEach(([cardKey, desiredCount]) => {
@@ -456,6 +457,7 @@
         }
 
         try {
+            // eslint-disable-next-line svelte/prefer-svelte-reactivity
             const grouped = new Map();
             draftedCards.forEach((card) => {
                 if (!card) return;
@@ -496,7 +498,7 @@
         }
     }
 
-    async function refreshRoomState() {
+    async function _refreshRoomState() {
         const now = Date.now();
         if (now - lastRefreshAt < 300) {
             return;
@@ -594,7 +596,7 @@
         if (!raw) return null;
         try {
             return JSON.parse(raw);
-        } catch (error) {
+        } catch {
             return null;
         }
     }
@@ -616,7 +618,7 @@
         return 'Draft';
     }
 
-    function rarityBadge(card) {
+    function _rarityBadge(card) {
         const rarity = (card?.rarity || '').toLowerCase();
         if (!rarity) return null;
         const map = {

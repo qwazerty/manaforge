@@ -5,7 +5,7 @@
         open = false,
         cardName = 'Card',
         cardId = '',
-        uniqueId = '',
+        uniqueId: _uniqueId = '',
         powerToughness = null,
         position = null,
         onClose = noop,

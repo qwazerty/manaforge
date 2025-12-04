@@ -828,7 +828,7 @@ class ActionHistoryStore {
             return;
         }
 
-        const normalizedAction = entry.rawAction
+        const _normalizedAction = entry.rawAction
             ? String(entry.rawAction).toLowerCase()
             : '';
         const moveContext = this._resolveHandToLibraryMoveContext(entry);

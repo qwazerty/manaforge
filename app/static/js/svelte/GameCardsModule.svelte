@@ -66,11 +66,11 @@
     function renderCardWithLoadingState(
         card,
         cardClass = 'card-mini',
-        showTooltip = true,
+        _showTooltip = true,
         zone = 'unknown',
         isOpponent = false,
-        index = 0,
-        playerId = null,
+        _index = 0,
+        _playerId = null,
         options = {}
     ) {
         const cardId = card.id || card.name;
@@ -674,7 +674,7 @@
                         zone: parsed.zone || zoneAttr,
                         name: parsed.name || el.getAttribute('data-card-name') || parsed.id || 'Card'
                     };
-                } catch (_err) {
+                } catch {
                     return null;
                 }
             }).filter(Boolean);
