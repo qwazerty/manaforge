@@ -7,6 +7,7 @@ afterEach(() => {
 });
 
 if (typeof window !== 'undefined' && !('matchMedia' in window)) {
+    // @ts-ignore - polyfill for test environment
     window.matchMedia = () => ({
         matches: false,
         media: '',

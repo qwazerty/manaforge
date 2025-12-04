@@ -216,7 +216,7 @@
                             <span>Step progress</span>
                             <span class="font-mono text-xs text-arena-text-primary">{replayCurrentStep() + 1}/{replayTotalSteps()}</span>
                         </div>
-                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden cursor-pointer" onclick={handleProgressClick}>
+                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden cursor-pointer" role="slider" tabindex="0" aria-label="Replay progress" aria-valuenow={replayCurrentStep() + 1} aria-valuemin={1} aria-valuemax={replayTotalSteps()} onclick={handleProgressClick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProgressClick(e); }}>
                             <div class="h-full bg-gradient-to-r from-arena-accent to-yellow-400 transition-all duration-300" style={`width: ${replayProgress()}%`}></div>
                         </div>
                     </div>

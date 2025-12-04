@@ -5,6 +5,7 @@
         "moduleResolution": "Bundler",
         "allowJs": true,
         "checkJs": true,
+        "noEmit": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "skipLibCheck": true,
@@ -18,10 +19,18 @@
         "types": ["vitest/globals"]
     },
     "include": [
-        "app/static/js/**/*.ts",
-        "app/static/js/**/*.svelte",
-        "app/static/js/**/*.js",
+        "app/static/js/svelte/*.svelte",
+        "app/static/js/lib/**/*.ts",
         "setupTests.ts",
         "vitest.config.mts"
+    ],
+    "exclude": [
+        "app/static/js/ui/components/**",
+        "app/static/js/svelte/stores/**",
+        "app/static/js/svelte/utils/**",
+        "app/static/js/svelte/lib/**",
+        "app/static/js/**/*.bundle.js",
+        "app/static/js/**/*.esm.js",
+        "node_modules"
     ]
 }
