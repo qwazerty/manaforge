@@ -353,6 +353,54 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     "timestamp": time.time()
                 })
             
+            # Handle random animations (coin flip, dice rolls)
+            elif message.get("type") == "random_animation":
+                import random
+                animation_type = message.get("animation_type")
+                player_name = message.get("player", player_id)
+                
+                # Calculate result server-side
+                if animation_type == "coin":
+                    result = "Heads" if random.random() < 0.5 else "Tails"
+                    action_label = "Coin Flip"
+                    result_message = f"🪙 {result}"
+                elif animation_type == "d6":
+                    result = random.randint(1, 6)
+                    action_label = "D6 Roll"
+                    result_message = f"🎲 Rolled {result}"
+                elif animation_type == "d20":
+                    result = random.randint(1, 20)
+                    action_label = "D20 Roll"
+                    if result == 20:
+                        result_message = f"🎯 Rolled 20 - CRITICAL!"
+                    elif result == 1:
+                        result_message = f"🎯 Rolled 1 - CRITICAL FAIL!"
+                    else:
+                        result_message = f"🎯 Rolled {result}"
+                else:
+                    result = None
+                    action_label = "Random"
+                    result_message = f"Result: {result}"
+                
+                # Record in action history for persistence
+                from app.api.routes import game_engine
+                game_engine.record_action_history(game_id, {
+                    "action": action_label,
+                    "player": player_name,
+                    "success": True,
+                    "details": {"message": result_message},
+                    "origin": "server",
+                    "timestamp": time.time()
+                })
+                
+                await manager.broadcast_to_game(game_id, {
+                    "type": "random_animation",
+                    "animation_type": animation_type,
+                    "result": result,
+                    "player": player_name,
+                    "timestamp": time.time()
+                })
+            
             # Handle draft-specific messages
             elif game_id.startswith("draft-"):
                 from app.api.draft_routes import get_draft_engine
