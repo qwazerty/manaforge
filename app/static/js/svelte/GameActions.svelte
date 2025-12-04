@@ -917,27 +917,6 @@
         }
     }
 
-    function resolveStackSpell(cardId, stackIndex) {
-        performGameAction('resolve_stack_spell', { 
-            card_id: cardId,
-            stack_index: parseInt(stackIndex) || 0
-        });
-    }
-
-    function counterStackSpell(cardId, stackIndex) {
-        performGameAction('counter_stack_spell', { 
-            card_id: cardId,
-            stack_index: parseInt(stackIndex) || 0
-        });
-    }
-
-    function copyStackSpell(cardId, stackIndex) {
-        performGameAction('copy_stack_spell', { 
-            card_id: cardId,
-            stack_index: parseInt(stackIndex) || 0
-        });
-    }
-
     function drawCard() {
         performGameAction('draw_card');
     
@@ -1101,9 +1080,6 @@
         lookTopLibrary,
         revealTopLibrary,
         updateCardTappedState,
-        resolveStackSpell,
-        counterStackSpell,
-        copyStackSpell,
         drawCard,
         modifyLife,
         modifyPlayerCounter,

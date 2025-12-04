@@ -2,34 +2,32 @@
 
 ## CSS File Structure
 
-The CSS for ManaForge has been consolidated to improve maintainability, performance, and clarity. The new structure is based on loading a set of modular, purpose-driven stylesheets directly via `<link>` tags in the main `base_arena.html` template. The old practice of using `@import` has been removed.
+The CSS for ManaForge has been fully consolidated into a single Tailwind-based stylesheet for improved maintainability, performance, and clarity.
 
-### Final CSS Files
+### CSS Files
 
--   **`dist/manaforge.css`**: Generated Tailwind 4 bundle (built from `tailwind.css`) that provides the design tokens, utilities, and shared Arena helpers (mana symbols, gradients, nav links, etc.). Always load this first.
--   **`game-battlefield.css`**: Styles specific to the battlefield area where permanents reside.
--   **`game-core.css`**: Fundamental styles for the main game layout, containers, and core elements.
--   **`game-players.css`**: Styles for the player and opponent information displays (life, mana, etc.).
--   **`game-responsive.css`**: Contains all media queries and responsive adjustments for different screen sizes, particularly for 1080p height optimization.
--   **`game-stack.css`**: Styles for the game stack where spells and abilities are placed.
--   *(Migrated)* Shared UI elements such as context menus and action history now live in the Tailwind component layer (`tailwind.css`) and ship inside `dist/manaforge.css`.
+-   **`dist/manaforge.css`**: Generated Tailwind 4 bundle (built from `tailwind.css`) that provides all design tokens, utilities, and component styles. This includes:
+    - Arena helpers (mana symbols, gradients, nav links, etc.)
+    - Game core styles
+    - Battlefield layout styles
+    - Player information display styles
+    - Stack and popup styles
+    - Responsive adjustments
+    - Context menus and action history
+
+-   **`tailwind.css`**: Source file containing all custom CSS rules organized in Tailwind layers (`@layer base`, `@layer components`, `@layer utilities`).
 
 ### Loading Mechanism
 
-`manaforge.css` replaces the previous Tailwind CDN script and must be loaded before the legacy files to ensure variables/utilities are available. All other stylesheets are linked directly in the `<head>` of `app/templates/base_arena.html`, which allows for parallel downloading by the browser and straightforward dependency management.
+Only `manaforge.css` needs to be loaded in the `<head>` of templates:
 
 ```html
 <!-- In base_arena.html -->
-<link rel="stylesheet" href="{{ url_for('static', path='css/dist/manaforge.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-battlefield.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-stack.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-players.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-core.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='css/game-responsive.css') }}">
+<link rel="stylesheet" href="/static/css/dist/manaforge.css">
 ```
 
 ## Naming Conventions
 
 -   Classes generally follow a component-based approach (e.g., `.card-mini`, `.zone-modal`, `.player-info`).
 -   Utility classes are used where appropriate (e.g., `.hidden`).
--   CSS variables should be considered for common values like colors and spacing in future development.
+-   CSS custom properties (variables) are used for theming (colors, spacing, etc.).

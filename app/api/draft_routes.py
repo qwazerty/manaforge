@@ -2,7 +2,7 @@
 API routes for the draft feature.
 """
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from pydantic import BaseModel
 import random
 

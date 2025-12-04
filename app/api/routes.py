@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Optional, Any
 
 from app.models.game import (
-    Card, Deck, DeckCard, GameState, GameAction,
-    GameSetupStatus, PlayerDeckStatus, GameFormat, PhaseMode
+    Card, Deck, GameAction,
+    GameSetupStatus, GameFormat, PhaseMode
 )
 from app.services.card_service import CardService
 from app.services.game_engine import SimpleGameEngine
