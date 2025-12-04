@@ -47,6 +47,7 @@
         setArrowTargets,
         clearArrowTargets,
         getTargetingArrows,
+        addTargetingArrow,
         removeAllArrowsFromCard,
         clearAllTargetingArrows
     } from './stores/gameCardsStore.js';
