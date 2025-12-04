@@ -916,6 +916,22 @@
                             GameActions.performGameAction('resolve_all_stack');
                         }
                     }
+                },
+                {
+                    id: 'remove-all-arrows',
+                    label: '🚫 Remove All Arrows',
+                    title: 'Remove all targeting arrows',
+                    disabled: false,
+                    className: baseClass,
+                    onClick: () => {
+                        if (
+                            typeof window !== 'undefined' &&
+                            window.GameCards &&
+                            typeof window.GameCards.clearAllTargetingArrowElements === 'function'
+                        ) {
+                            window.GameCards.clearAllTargetingArrowElements(true);
+                        }
+                    }
                 }
             ];
         }

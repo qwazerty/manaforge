@@ -12,6 +12,11 @@ export const lastContextPosition = writable(null);
 export const attachmentSelection = writable(null);
 export const attachmentTargets = writable([]);
 
+// Arrow targeting stores
+export const arrowSelection = writable(null);  // { uniqueId, cardId } - source card for arrow
+export const arrowTargets = writable([]);  // List of targetable card elements
+export const targetingArrows = writable([]);  // Array of { sourceId, targetId } pairs
+
 // ===== ACCESSORS =====
 export function getDraggedCardElement() {
     return get(draggedCardElement);
@@ -47,4 +52,57 @@ export function setAttachmentTargets(targets) {
 
 export function clearAttachmentTargets() {
     attachmentTargets.set([]);
+}
+
+// ===== ARROW TARGETING ACCESSORS =====
+export function getArrowSelection() {
+    return get(arrowSelection);
+}
+
+export function setArrowSelection(selection) {
+    arrowSelection.set(selection);
+}
+
+export function getArrowTargets() {
+    return get(arrowTargets);
+}
+
+export function setArrowTargets(targets) {
+    arrowTargets.set(targets);
+}
+
+export function clearArrowTargets() {
+    arrowTargets.set([]);
+}
+
+export function getTargetingArrows() {
+    return get(targetingArrows);
+}
+
+export function setTargetingArrows(arrows) {
+    targetingArrows.set(arrows);
+}
+
+export function addTargetingArrow(sourceId, targetId) {
+    targetingArrows.update(arrows => [...arrows, { sourceId, targetId }]);
+}
+
+export function removeTargetingArrow(sourceId, targetId = null) {
+    targetingArrows.update(arrows => {
+        if (targetId) {
+            return arrows.filter(a => !(a.sourceId === sourceId && a.targetId === targetId));
+        }
+        // Remove all arrows from this source
+        return arrows.filter(a => a.sourceId !== sourceId);
+    });
+}
+
+export function removeAllArrowsFromCard(uniqueId) {
+    targetingArrows.update(arrows => 
+        arrows.filter(a => a.sourceId !== uniqueId && a.targetId !== uniqueId)
+    );
+}
+
+export function clearAllTargetingArrows() {
+    targetingArrows.set([]);
 }

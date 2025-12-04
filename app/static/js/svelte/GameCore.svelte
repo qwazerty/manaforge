@@ -320,6 +320,13 @@
                 window.WebSocketManager._applyCombatAnimations(state);
             }, 60);
         }
+
+        // Load targeting arrows from game state
+        if (window.GameCards && typeof window.GameCards.loadArrowsFromGameState === 'function') {
+            requestAnimationFrame(() => {
+                window.GameCards.loadArrowsFromGameState(state);
+            });
+        }
     }
 
     async function loadGameState() {

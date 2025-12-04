@@ -706,6 +706,8 @@ class SimpleGameEngine:
             "delete_token": self._delete_token,
             "attach_card": self._attach_card,
             "detach_card": self._detach_card,
+            "add_targeting_arrow": self._add_targeting_arrow,
+            "remove_targeting_arrow": self._remove_targeting_arrow,
         }
 
         if action.action_type in action_map:
@@ -823,6 +825,48 @@ class SimpleGameEngine:
                 return
 
         raise ValueError(f"Card with unique_id {unique_id} not found")
+
+    def _add_targeting_arrow(self, game_state: GameState, action: GameAction) -> None:
+        """Add a visual targeting arrow between two cards."""
+        source_id = action.additional_data.get("source_id")
+        target_id = action.additional_data.get("target_id")
+
+        if not source_id or not target_id:
+            raise ValueError("source_id and target_id are required for add_targeting_arrow")
+
+        # Check if arrow already exists
+        for arrow in game_state.targeting_arrows:
+            if arrow.get("source_id") == source_id and arrow.get("target_id") == target_id:
+                return  # Arrow already exists
+
+        game_state.targeting_arrows.append({
+            "source_id": source_id,
+            "target_id": target_id
+        })
+        print(f"Player {action.player_id} added arrow from {source_id} to {target_id}")
+
+    def _remove_targeting_arrow(self, game_state: GameState, action: GameAction) -> None:
+        """Remove targeting arrows from a card."""
+        source_id = action.additional_data.get("source_id")
+        target_id = action.additional_data.get("target_id")
+
+        if not source_id:
+            raise ValueError("source_id is required for remove_targeting_arrow")
+
+        if target_id:
+            # Remove specific arrow
+            game_state.targeting_arrows = [
+                a for a in game_state.targeting_arrows
+                if not (a.get("source_id") == source_id and a.get("target_id") == target_id)
+            ]
+            print(f"Player {action.player_id} removed arrow from {source_id} to {target_id}")
+        else:
+            # Remove all arrows from this source
+            game_state.targeting_arrows = [
+                a for a in game_state.targeting_arrows
+                if a.get("source_id") != source_id and a.get("target_id") != source_id
+            ]
+            print(f"Player {action.player_id} removed all arrows from/to {source_id}")
     
     def _shuffle_deck(self, deck_cards: List[DeckCard], owner_id: str) -> List[Card]:
         """

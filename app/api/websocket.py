@@ -341,6 +341,18 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     "connected_players": manager.get_connection_count(game_id)
                 }, exclude_websocket=websocket)
             
+            # Handle targeting arrows (visual-only, broadcast to all players)
+            elif message.get("type") == "targeting_arrow":
+                arrow_action = message.get("action")  # "add" or "remove" or "clear"
+                await manager.broadcast_to_game(game_id, {
+                    "type": "targeting_arrow",
+                    "action": arrow_action,
+                    "source_id": message.get("source_id"),
+                    "target_id": message.get("target_id"),
+                    "player": player_id,
+                    "timestamp": time.time()
+                })
+            
             # Handle draft-specific messages
             elif game_id.startswith("draft-"):
                 from app.api.draft_routes import get_draft_engine

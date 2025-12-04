@@ -462,6 +462,10 @@ class GameState(BaseModel):
         default_factory=list,
         description="Chat messages exchanged during the game session"
     )
+    targeting_arrows: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Visual targeting arrows between cards (source_id -> target_id)"
+    )
     created_at: datetime = Field(
         default_factory=current_utc_datetime,
         description="Timestamp for when the game started (UTC)"
