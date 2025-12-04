@@ -47,7 +47,6 @@
         setArrowTargets,
         clearArrowTargets,
         getTargetingArrows,
-        addTargetingArrow,
         removeAllArrowsFromCard,
         clearAllTargetingArrows
     } from './stores/gameCardsStore.js';
@@ -511,11 +510,11 @@
         event.preventDefault();
         event.stopPropagation();
 
-        // Add the arrow to the store and draw it locally
-        addTargetingArrow(selection.uniqueId, targetUniqueId);
+        // Draw the arrow locally immediately for responsiveness
         drawTargetingArrow(selection.uniqueId, targetUniqueId);
 
         // Send the arrow to the server via game action (will be persisted and broadcast)
+        // The store will be updated when we receive the broadcast back
         if (typeof GameActions !== 'undefined' && typeof GameActions.performGameAction === 'function') {
             GameActions.performGameAction('add_targeting_arrow', {
                 source_id: selection.uniqueId,

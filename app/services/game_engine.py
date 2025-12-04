@@ -843,7 +843,6 @@ class SimpleGameEngine:
             "source_id": source_id,
             "target_id": target_id
         })
-        print(f"Player {action.player_id} added arrow from {source_id} to {target_id}")
 
     def _remove_targeting_arrow(self, game_state: GameState, action: GameAction) -> None:
         """Remove targeting arrows from a card."""
@@ -859,14 +858,12 @@ class SimpleGameEngine:
                 a for a in game_state.targeting_arrows
                 if not (a.get("source_id") == source_id and a.get("target_id") == target_id)
             ]
-            print(f"Player {action.player_id} removed arrow from {source_id} to {target_id}")
         else:
-            # Remove all arrows from this source
+            # Remove all arrows from/to this source
             game_state.targeting_arrows = [
                 a for a in game_state.targeting_arrows
                 if a.get("source_id") != source_id and a.get("target_id") != source_id
             ]
-            print(f"Player {action.player_id} removed all arrows from/to {source_id}")
     
     def _shuffle_deck(self, deck_cards: List[DeckCard], owner_id: str) -> List[Card]:
         """
