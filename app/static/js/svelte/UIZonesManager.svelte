@@ -10,7 +10,6 @@
     import ExileZone from './ExileZone.svelte';
     import LifeZone from './LifeZone.svelte';
     import ZonePopup from './ZonePopup.svelte';
-    import PlayerCounterModal from './PlayerCounterModal.svelte'; // eslint-disable-line no-unused-vars
 
     // Helper to mount Svelte 5 components dynamically
     const mountComponent = (Component, options) => {

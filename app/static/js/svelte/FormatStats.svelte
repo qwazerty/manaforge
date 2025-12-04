@@ -43,8 +43,7 @@
     let selectedFormatLabel = $state('');
     let availability = $state('missing');
     let searchQuery = $state('');
-    let page = $state(1);
-    let totalPages = $state(0);
+    // Pagination removed: load all results at once
     let cardsTotal = $state(0);
     let cards = $state([]);
     let setCoverage = $state([]);
@@ -58,11 +57,7 @@
 
     const formats = $derived.by(() => (Array.isArray(stats?.all_formats) ? stats.all_formats : []));
     const availabilityMeta = $derived.by(() => AVAILABILITY_METADATA[availability] || AVAILABILITY_METADATA.missing);
-    const showPagination = $derived.by(() => !['missing', 'arena', 'paper'].includes(availability));
     const hasSelection = $derived.by(() => Boolean(selectedFormat));
-    const pageLabel = $derived.by(() =>
-        !showPagination ? 'Page 1 / 1' : `Page ${Math.max(page, 1)} / ${Math.max(totalPages || 1, 1)}`
-    );
     const panelTitle = $derived.by(() =>
         selectedFormatLabel ? `${availabilityMeta.title} for ${selectedFormatLabel}` : 'Select a format to explore cards'
     );
@@ -189,8 +184,6 @@
         if (!code) return;
         selectedFormat = code;
         selectedFormatLabel = label || code.toUpperCase();
-        page = 1;
-        totalPages = 0;
         searchQuery = '';
         cards = [];
         setCoverage = [];
@@ -204,7 +197,6 @@
         if (!selectedFormat) {
             cards = [];
             setCoverage = [];
-            totalPages = 0;
             cardsTotal = 0;
             return;
         }
@@ -214,8 +206,7 @@
 
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const params = new URLSearchParams({
-            page: page.toString(),
-            page_size: '25',
+            page_size: '9999',
             availability
         });
 
@@ -229,8 +220,6 @@
                 throw new Error(`Unable to load cards (status ${response.status})`);
             }
             const data = await response.json();
-            page = data.page ?? 1;
-            totalPages = data.total_pages ?? 1;
             selectedFormatLabel = data.format_label || selectedFormatLabel || selectedFormat.toUpperCase();
             cards = Array.isArray(data.results) ? data.results : [];
             setCoverage = Array.isArray(data.set_coverage) ? data.set_coverage : [];
@@ -240,7 +229,6 @@
             errorMessage = 'Something went wrong while loading the cards.';
             cards = [];
             setCoverage = [];
-            totalPages = 0;
             cardsTotal = 0;
         } finally {
             isLoading = false;
@@ -250,28 +238,14 @@
     function handleSearch(event) {
         event?.preventDefault();
         if (!selectedFormat) return;
-        page = 1;
         fetchCards();
     }
 
     function handleAvailabilityChange(event) {
         availability = event?.target?.value || 'missing';
         if (selectedFormat) {
-            page = 1;
             fetchCards();
         }
-    }
-
-    function goPrevious() {
-        if (!showPagination || page <= 1) return;
-        page -= 1;
-        fetchCards();
-    }
-
-    function goNext() {
-        if (!showPagination || page >= totalPages) return;
-        page += 1;
-        fetchCards();
     }
 
     function initCharts() {
@@ -588,24 +562,6 @@
                                 </div>
                             </details>
                         {/each}
-                    </div>
-                {/if}
-
-                {#if showPagination}
-                    <div class="mt-4 flex items-center justify-between">
-                        <button class="arena-button px-4 py-2 rounded-lg text-sm disabled:opacity-50" onclick={goPrevious} disabled={page <= 1}>
-                            ← Previous
-                        </button>
-                        <p class="text-sm text-arena-text-dim">{pageLabel}</p>
-                        <button class="arena-button px-4 py-2 rounded-lg text-sm disabled:opacity-50" onclick={goNext} disabled={page >= totalPages}>
-                            Next →
-                        </button>
-                    </div>
-                {:else}
-                    <div class="mt-4 flex items-center justify-between text-sm text-arena-text-dim">
-                        <span></span>
-                        <p>{pageLabel}</p>
-                        <span></span>
                     </div>
                 {/if}
 

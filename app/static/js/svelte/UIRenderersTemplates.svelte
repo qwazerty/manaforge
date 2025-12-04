@@ -12,11 +12,6 @@
     import GameArena from './GameArena.svelte';
     import ActionPanel from './ActionPanel.svelte';
     import StackPopup from './StackPopup.svelte';
-    import ZonePopup from './ZonePopup.svelte'; // eslint-disable-line no-unused-vars
-    import DeckZone from './DeckZone.svelte'; // eslint-disable-line no-unused-vars
-    import GraveyardZone from './GraveyardZone.svelte'; // eslint-disable-line no-unused-vars
-    import ExileZone from './ExileZone.svelte'; // eslint-disable-line no-unused-vars
-    import LifeZone from './LifeZone.svelte'; // eslint-disable-line no-unused-vars
 
     // Helper to mount Svelte 5 components dynamically
     const mountComponent = (Component, options) => {
