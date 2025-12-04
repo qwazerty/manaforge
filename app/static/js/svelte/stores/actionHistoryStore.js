@@ -151,6 +151,12 @@ class ActionHistoryStore {
                 continue;
             }
 
+            // Skip random animation entries - they are added by the client after the animation
+            const action = entry.action || '';
+            if (['Coin Flip', 'D6 Roll', 'D20 Roll'].includes(action)) {
+                continue;
+            }
+
             const signature = this._buildEntrySignature(entry);
             if (signature && this.entrySignatures.has(signature)) {
                 continue;

@@ -494,6 +494,9 @@
             case 'targeting_arrow':
                 handleTargetingArrow(message);
                 break;
+            case 'random_animation':
+                handleRandomAnimation(message);
+                break;
             case 'player_status':
                 break;
             case 'connection_established':
@@ -511,6 +514,13 @@
                 break;
             default:
                 break;
+        }
+    }
+
+    function handleRandomAnimation(message) {
+        const { animation_type, result, player } = message;
+        if (typeof window !== 'undefined' && window.RandomButton && typeof window.RandomButton.playAnimation === 'function') {
+            window.RandomButton.playAnimation(animation_type, result, player);
         }
     }
 
