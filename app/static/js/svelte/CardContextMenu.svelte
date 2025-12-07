@@ -34,6 +34,8 @@
     let cardOwnerId = $state('');
     let isCommander = $state(false);
     let hasArrows = $state(false);
+    let detectedTokens = $state([]);  // Tokens detected from oracle text
+    let cardSet = $state('');  // Set code of the card
     
     // Derived states
     let normalizedZone = $derived(() => {
@@ -125,6 +127,16 @@
             hasArrows = GameCards.hasArrowsFromCard(uniqueCardId);
         } else {
             hasArrows = false;
+        }
+
+        // Extract tokens from oracle text
+        cardSet = cardData?.set || cardData?.set_code || '';
+        if (typeof window.UIRenderersTemplates !== 'undefined' && 
+            typeof window.UIRenderersTemplates._extractTokenNamesFromOracle === 'function') {
+            const tokenSet = window.UIRenderersTemplates._extractTokenNamesFromOracle(cardData);
+            detectedTokens = Array.from(tokenSet);
+        } else {
+            detectedTokens = [];
         }
 
         // Position menu
@@ -299,6 +311,9 @@
             case 'removeArrows':
                 removeArrowsFromCard();
                 break;
+            case 'createToken':
+                createTokenFromCard(args[0]);
+                break;
         }
 
         // Close the menu after the action so handlers that rely on
@@ -381,6 +396,83 @@
     function removeArrowsFromCard() {
         if (typeof GameCards !== 'undefined') {
             GameCards.removeAllArrowsFromCardElement(uniqueCardId);
+        }
+    }
+
+    /**
+     * Create a token from the card's oracle text.
+     * Searches for the token with matching set and creates it on the battlefield.
+     */
+    async function createTokenFromCard(tokenName) {
+        if (!tokenName) return;
+        
+        const gameId = window?.gameData?.gameId;
+        const playerId = typeof GameCore !== 'undefined' ? GameCore.getSelectedPlayer() : null;
+        
+        if (!gameId || !playerId) {
+            console.error('[CardContextMenu] Missing game context for token creation');
+            return;
+        }
+
+        try {
+            // Search for the token with exact name match, prioritizing the card's set
+            // Token sets have 't' prefix (e.g., 'tmh3' for 'mh3' tokens)
+            const sourceSet = (cardSet || '').toLowerCase();
+            const tokenSetCode = sourceSet ? `t${sourceSet}` : '';
+            
+            // First try with the matching token set
+            let searchUrl = `/api/v1/cards/search?q=${encodeURIComponent(tokenName)}&tokens_only=true&exact=true&limit=20`;
+            if (tokenSetCode) {
+                searchUrl += `&set=${encodeURIComponent(tokenSetCode)}`;
+            }
+            
+            let response = await fetch(searchUrl);
+            let tokens = response.ok ? await response.json() : [];
+            
+            // If no result with specific set, search without set filter
+            if (!tokens.length && tokenSetCode) {
+                response = await fetch(`/api/v1/cards/search?q=${encodeURIComponent(tokenName)}&tokens_only=true&exact=true&limit=20`);
+                tokens = response.ok ? await response.json() : [];
+            }
+            
+            if (!tokens.length) {
+                console.warn(`[CardContextMenu] No token found for "${tokenName}"`);
+                return;
+            }
+            
+            // Sort tokens to prioritize matching set
+            if (sourceSet) {
+                tokens.sort((a, b) => {
+                    const aSet = (a.set || '').toLowerCase();
+                    const bSet = (b.set || '').toLowerCase();
+                    const aMatch = aSet === `t${sourceSet}` || aSet === sourceSet;
+                    const bMatch = bSet === `t${sourceSet}` || bSet === sourceSet;
+                    if (aMatch && !bMatch) return -1;
+                    if (!aMatch && bMatch) return 1;
+                    return 0;
+                });
+            }
+            
+            const selectedToken = tokens[0];
+            
+            // Create the token
+            const payload = {
+                action_type: 'create_token',
+                player_id: playerId,
+                scryfall_id: selectedToken.scryfall_id
+            };
+            
+            const createResponse = await fetch(`/api/v1/games/${gameId}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!createResponse.ok) {
+                console.error('[CardContextMenu] Failed to create token');
+            }
+        } catch (err) {
+            console.error('[CardContextMenu] Error creating token:', err);
         }
     }
 
@@ -669,6 +761,11 @@
                     <button class="card-context-menu-item" onclick={() => handleAction('addCounter')}>
                         <span class="icon">🔢</span> Add Counter
                     </button>
+                    {#each detectedTokens as tokenName (tokenName)}
+                        <button class="card-context-menu-item" onclick={() => handleAction('createToken', tokenName)}>
+                            <span class="icon">🎭</span> Add {tokenName} Token
+                        </button>
+                    {/each}
                     <button class="card-context-menu-item" onclick={() => handleAction('overridePT')}>
                         <span class="icon">💪</span> Override Power/Toughness
                     </button>

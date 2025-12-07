@@ -337,6 +337,15 @@ class CardService:
                 pool = [card for card in pool if self._is_token_card(card)]
                 if not pool:
                     continue
+                # Apply set filter for tokens as well
+                if normalized_set:
+                    pool = [
+                        card
+                        for card in pool
+                        if str(card.get("set") or "").lower() == normalized_set
+                    ]
+                    if not pool:
+                        continue
                 for card in pool:
                     results.append(card)
                     if limit and limit > 0 and len(results) >= limit:
