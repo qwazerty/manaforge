@@ -727,8 +727,21 @@
             }
 
             const players = Array.isArray(gameState.players) ? gameState.players : [];
+            // Map of token name -> Set of source sets
             // eslint-disable-next-line svelte/prefer-svelte-reactivity
-            const names = new Set();
+            const tokenMap = new Map();
+            
+            const addToken = (tokenName, sourceSet) => {
+                if (!tokenName) return;
+                const key = tokenName.toLowerCase();
+                if (!tokenMap.has(key)) {
+                    tokenMap.set(key, { name: tokenName, sourceSets: new Set() });
+                }
+                if (sourceSet) {
+                    tokenMap.get(key).sourceSets.add(sourceSet.toLowerCase());
+                }
+            };
+            
             for (const player of players) {
                 const battlefield = Array.isArray(player?.battlefield) ? player.battlefield : [];
                 for (const card of battlefield) {
@@ -736,21 +749,25 @@
                         continue;
                     }
                     const cardName = typeof card.name === 'string' ? card.name.trim() : '';
+                    const cardSet = card.set || card.set_code || '';
                 
                     // Check if the card itself is a token
                     if (cardName && this._isBattlefieldToken(card, cardName)) {
-                        names.add(cardName);
+                        addToken(cardName, cardSet);
                     }
                 
                     // Extract token names from oracle text
                     const oracleTokens = this._extractTokenNamesFromOracle(card);
                     for (const tokenName of oracleTokens) {
-                        names.add(tokenName);
+                        addToken(tokenName, cardSet);
                     }
                 }
             }
 
-            return Array.from(names).sort((a, b) => a.localeCompare(b));
+            // Convert to array with sourceSets as arrays, sorted by name
+            return Array.from(tokenMap.values())
+                .map(entry => ({ name: entry.name, sourceSets: Array.from(entry.sourceSets) }))
+                .sort((a, b) => a.name.localeCompare(b.name));
         }
 
         static _extractTokenNamesFromOracle(card) {
