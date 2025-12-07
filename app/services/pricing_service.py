@@ -8,6 +8,10 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
+import psycopg
+
+from app.core import db
+
 logger = logging.getLogger(__name__)
 
 # In-memory storage for pricing data
@@ -39,39 +43,85 @@ def load_pricing_data() -> None:
         logger.debug("Pricing data already loaded, skipping.")
         return
 
-    data_path = get_data_path()
-
-    # Load price guide
-    price_guide_path = data_path / "price_guide_1.json"
-    if price_guide_path.exists():
-        try:
-            with open(price_guide_path, "r", encoding="utf-8") as f:
-                _price_guide_data = json.load(f)
-            logger.info(
-                f"Loaded price guide data: {price_guide_path} ({price_guide_path.stat().st_size / 1024 / 1024:.1f} MB)"
+    try:
+        with db.connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, normalized_name, alt_names, id_category, id_expansion,
+                       id_metacard, date_added, price, price_avg, price_low, price_trend,
+                       price_avg1, price_avg7, price_avg30, price_avg_foil, price_low_foil,
+                       price_trend_foil, price_avg1_foil, price_avg7_foil, price_avg30_foil,
+                       data, product
+                FROM cardmarket_price
+                """
             )
-        except Exception as e:
-            logger.error(f"Failed to load price guide: {e}")
-            _price_guide_data = {"priceGuides": []}
-    else:
-        logger.warning(f"Price guide file not found: {price_guide_path}")
-        _price_guide_data = {"priceGuides": []}
+            price_rows = cur.fetchall()
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load pricing data from DB: {exc}") from exc
 
-    # Load products data
-    products_path = data_path / "products_singles_1.json"
-    if products_path.exists():
-        try:
-            with open(products_path, "r", encoding="utf-8") as f:
-                _products_data = json.load(f)
-            logger.info(
-                f"Loaded products data: {products_path} ({products_path.stat().st_size / 1024 / 1024:.1f} MB)"
-            )
-        except Exception as e:
-            logger.error(f"Failed to load products data: {e}")
-            _products_data = {"products": []}
-    else:
-        logger.warning(f"Products file not found: {products_path}")
-        _products_data = {"products": []}
+    # Map to legacy structures for minimal impact on call sites
+    price_guides: List[Dict[str, Any]] = []
+    products: List[Dict[str, Any]] = []
+
+    for row in price_rows:
+        (
+            pid,
+            name,
+            normalized_name,
+            alt_names,
+            id_category,
+            id_expansion,
+            id_metacard,
+            date_added,
+            price,
+            price_avg,
+            price_low,
+            price_trend,
+            price_avg1,
+            price_avg7,
+            price_avg30,
+            price_avg_foil,
+            price_low_foil,
+            price_trend_foil,
+            price_avg1_foil,
+            price_avg7_foil,
+            price_avg30_foil,
+            data_json,
+            product_json,
+        ) = row
+
+        # price guide entry shape
+        pg = {
+            "idProduct": pid,
+            "idCategory": id_category,
+            "avg": price_avg,
+            "low": price_low,
+            "trend": price_trend,
+            "avg1": price_avg1,
+            "avg7": price_avg7,
+            "avg30": price_avg30,
+            "avg-foil": price_avg_foil,
+            "low-foil": price_low_foil,
+            "trend-foil": price_trend_foil,
+            "avg1-foil": price_avg1_foil,
+            "avg7-foil": price_avg7_foil,
+            "avg30-foil": price_avg30_foil,
+        }
+        price_guides.append(pg)
+
+        # product entry shape (minimal fields we relied on)
+        prod = {
+            "idProduct": pid,
+            "name": name,
+            "idCategory": id_category,
+            "idExpansion": id_expansion,
+            "idMetacard": id_metacard,
+            "dateAdded": date_added,
+        }
+        products.append(prod)
+
+    _price_guide_data = {"priceGuides": price_guides}
+    _products_data = {"products": products}
 
     # Build optimized lookups
     _build_price_lookup()
@@ -79,7 +129,7 @@ def load_pricing_data() -> None:
 
     _is_loaded = True
     logger.info(
-        f"Pricing data loaded: {len(_price_by_product_id)} prices, {len(_product_ids_by_name)} product names indexed."
+        f"Pricing data loaded from DB: {len(_price_by_product_id)} prices, {len(_product_ids_by_name)} product names indexed."
     )
 
 
