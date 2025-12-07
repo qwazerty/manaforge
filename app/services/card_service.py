@@ -1127,7 +1127,7 @@ class CardService:
                 try:
                     deck_text = (await self._http_get_text(download_url)).strip()
                     if deck_text:
-                        return deck_text, deck_name
+                        return deck_text, deck_name, None
                 except ValueError:
                     continue
             raise ValueError("Deck appears to be empty or unsupported on Moxfield.")

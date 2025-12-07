@@ -1145,6 +1145,8 @@ async def handle_add_targeting_arrow(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle adding a targeting arrow between two cards."""
+    if request is None:
+        raise ValueError("Request data is required")
     source_id = request.get("source_id")
     target_id = request.get("target_id")
 
@@ -1166,6 +1168,8 @@ async def handle_remove_targeting_arrow(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle removing targeting arrows from a card."""
+    if request is None:
+        raise ValueError("Request data is required")
     source_id = request.get("source_id")
     target_id = request.get(
         "target_id"
