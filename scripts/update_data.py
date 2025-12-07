@@ -19,6 +19,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 import psycopg
+from psycopg import sql
 from psycopg.types.json import Jsonb
 
 
@@ -147,7 +148,10 @@ def _table_exists(cur: psycopg.Cursor, name: str) -> bool:
 
 
 def prepare_staging_schema(conn: psycopg.Connection) -> None:
-    """Create fresh staging tables (cards_new, cardmarket_price_new) with indexes."""
+    """Create fresh staging tables (cards_new, cardmarket_price_new) without indexes.
+    
+    Indexes are created after data import for better performance.
+    """
 
     stmts = [
         "DROP TABLE IF EXISTS cardmarket_price_new;",
@@ -202,13 +206,24 @@ def prepare_staging_schema(conn: psycopg.Connection) -> None:
             product jsonb
         );
         """,
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name ON cards_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_set ON cards_new (set);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_rarity ON cards_new (rarity);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_cmc ON cards_new (cmc);",
-        "CREATE INDEX IF NOT EXISTS idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cmp_new_price ON cardmarket_price_new (price);",
-        "CREATE INDEX IF NOT EXISTS idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
+    ]
+    with conn.cursor() as cur:
+        for stmt in stmts:
+            cur.execute(stmt)
+    conn.commit()
+
+
+def create_indexes_on_staging(conn: psycopg.Connection) -> None:
+    """Create indexes on staging tables after data import for better performance."""
+
+    stmts = [
+        "CREATE INDEX idx_cards_new_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX idx_cards_new_set ON cards_new (set);",
+        "CREATE INDEX idx_cards_new_rarity ON cards_new (rarity);",
+        "CREATE INDEX idx_cards_new_cmc ON cards_new (cmc);",
+        "CREATE INDEX idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
+        "CREATE INDEX idx_cmp_new_price ON cardmarket_price_new (price);",
+        "CREATE INDEX idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
@@ -219,20 +234,27 @@ def prepare_staging_schema(conn: psycopg.Connection) -> None:
 def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
     """Atomically swap staging into place, dropping the previous base if present."""
 
+    base_id = sql.Identifier(base)
+    base_old_id = sql.Identifier(f"{base}_old")
+    staging_id = sql.Identifier(staging)
+
     with conn.cursor() as cur:
         exists = _table_exists(cur, base)
         # drop lingering old table to avoid rename collision
-        cur.execute(f"DROP TABLE IF EXISTS {base}_old;")
+        cur.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(base_old_id))
 
         # rename current base to _old if it exists
         if exists:
-            cur.execute(f"ALTER TABLE {base} RENAME TO {base}_old;")
+            cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(base_id, sql.Identifier(f"{base}_old")))
 
         # move staging into place
-        cur.execute(f"ALTER TABLE {staging} RENAME TO {base};")
+        cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(staging_id, base_id))
 
         # drop old version if it was present
-        cur.execute(f"DROP TABLE IF EXISTS {base}_old;")
+        cur.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(base_old_id))
+
+        # analyze the new table for query planner optimization
+        cur.execute(sql.SQL("ANALYZE {}").format(base_id))
     conn.commit()
 
 
@@ -245,11 +267,11 @@ def upsert_jsonb(
     inserted = 0
     buffer: List[Tuple[str, Dict[str, Any]]] = []
 
-    sql = f"""
-        INSERT INTO {table} (id, data)
+    query = sql.SQL("""
+        INSERT INTO {} (id, data)
         VALUES (%s, %s)
         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-    """
+    """).format(sql.Identifier(table))
 
     with conn.cursor() as cur:
         for row in rows:
@@ -257,12 +279,12 @@ def upsert_jsonb(
             row_id, payload = row
             buffer.append((row_id, Jsonb(payload)))
             if len(buffer) >= batch_size:
-                cur.executemany(sql, buffer)
+                cur.executemany(query, buffer)
                 inserted += len(buffer)
                 buffer.clear()
 
         if buffer:
-            cur.executemany(sql, buffer)
+            cur.executemany(query, buffer)
             inserted += len(buffer)
 
     conn.commit()
@@ -437,8 +459,8 @@ def upsert_cardmarket_prices(
     rows: Iterable[Tuple[Any, ...]],
     batch_size: int,
 ) -> int:
-    sql = f"""
-        INSERT INTO {table} (
+    query = sql.SQL("""
+        INSERT INTO {} (
             id, name, normalized_name, alt_names, id_category, id_expansion, id_metacard, date_added,
             price, price_avg, price_low, price_trend, price_avg1, price_avg7, price_avg30,
             price_avg_foil, price_low_foil, price_trend_foil, price_avg1_foil, price_avg7_foil, price_avg30_foil,
@@ -472,7 +494,7 @@ def upsert_cardmarket_prices(
             price_avg30_foil = EXCLUDED.price_avg30_foil,
             data = EXCLUDED.data,
             product = EXCLUDED.product
-    """
+    """).format(sql.Identifier(table))
 
     inserted = 0
     buffer: List[Tuple[Any, ...]] = []
@@ -481,12 +503,12 @@ def upsert_cardmarket_prices(
         for row in rows:
             buffer.append(row)
             if len(buffer) >= batch_size:
-                cur.executemany(sql, buffer)
+                cur.executemany(query, buffer)
                 inserted += len(buffer)
                 buffer.clear()
 
         if buffer:
-            cur.executemany(sql, buffer)
+            cur.executemany(query, buffer)
             inserted += len(buffer)
 
     conn.commit()
@@ -499,8 +521,8 @@ def upsert_cards(
     rows: Iterable[Tuple[str, Dict[str, Any], Dict[str, Any]]],
     batch_size: int,
 ) -> int:
-    sql = f"""
-        INSERT INTO {table} (
+    query = sql.SQL("""
+        INSERT INTO {} (
             id, data, name, normalized_name, set, set_name, rarity, cmc,
             mana_cost, type_line, oracle_text, colors, power, toughness,
             loyalty, scryfall_id, oracle_id, released_at, image_url
@@ -529,7 +551,7 @@ def upsert_cards(
             oracle_id = EXCLUDED.oracle_id,
             released_at = EXCLUDED.released_at,
             image_url = EXCLUDED.image_url
-    """
+    """).format(sql.Identifier(table))
 
     inserted = 0
     buffer: List[Tuple[Any, ...]] = []
@@ -560,12 +582,12 @@ def upsert_cards(
                 )
             )
             if len(buffer) >= batch_size:
-                cur.executemany(sql, buffer)
+                cur.executemany(query, buffer)
                 inserted += len(buffer)
                 buffer.clear()
 
         if buffer:
-            cur.executemany(sql, buffer)
+            cur.executemany(query, buffer)
             inserted += len(buffer)
 
     conn.commit()
@@ -597,10 +619,14 @@ def import_into_postgres(
     else:
         print("  skipped Cardmarket (file missing)")
 
-    print("Swapping staging tables atomiquement…")
+    print("Creating indexes on staging tables…")
+    create_indexes_on_staging(conn)
+    print("  indexes created.")
+
+    print("Swapping staging tables atomically…")
     swap_tables(conn, "cards", "cards_new")
     swap_tables(conn, "cardmarket_price", "cardmarket_price_new")
-    print("Swap terminé.")
+    print("Swap complete.")
 
 
 # ---------------------------
