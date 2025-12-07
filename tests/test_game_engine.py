@@ -28,7 +28,7 @@ def _build_card(unique_id="card-001", card_type=CardType.LAND):
         cmc=0,
         card_type=card_type,
         subtype="",
-        text=""
+        text="",
     )
 
 
@@ -88,7 +88,7 @@ def test_add_custom_keyword_adds_only_unique_entries():
     action = GameAction(
         player_id="player1",
         action_type="add_custom_keyword",
-        additional_data={"unique_id": card.unique_id, "keyword": "Flying"}
+        additional_data={"unique_id": card.unique_id, "keyword": "Flying"},
     )
     engine._add_custom_keyword(state, action)
     assert card.custom_keywords == ["Flying"]
@@ -96,7 +96,7 @@ def test_add_custom_keyword_adds_only_unique_entries():
     duplicate_action = GameAction(
         player_id="player1",
         action_type="add_custom_keyword",
-        additional_data={"unique_id": card.unique_id, "keyword": "flying"}
+        additional_data={"unique_id": card.unique_id, "keyword": "flying"},
     )
     engine._add_custom_keyword(state, duplicate_action)
     assert card.custom_keywords == ["Flying"]
@@ -112,7 +112,7 @@ def test_remove_custom_keyword_is_case_insensitive():
     action = GameAction(
         player_id="player1",
         action_type="remove_custom_keyword",
-        additional_data={"unique_id": card.unique_id, "keyword": "FLYING"}
+        additional_data={"unique_id": card.unique_id, "keyword": "FLYING"},
     )
     engine._remove_custom_keyword(state, action)
     assert card.custom_keywords == ["Haste"]
@@ -127,7 +127,7 @@ def test_add_custom_type_ignores_duplicates():
     action = GameAction(
         player_id="player1",
         action_type="add_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": "creature"}
+        additional_data={"unique_id": card.unique_id, "card_type": "creature"},
     )
     engine._add_custom_type(state, action)
     assert card.custom_types == ["creature"]
@@ -135,7 +135,7 @@ def test_add_custom_type_ignores_duplicates():
     duplicate = GameAction(
         player_id="player1",
         action_type="add_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": "CREATURE"}
+        additional_data={"unique_id": card.unique_id, "card_type": "CREATURE"},
     )
     engine._add_custom_type(state, duplicate)
     assert card.custom_types == ["creature"]
@@ -151,7 +151,7 @@ def test_remove_custom_type_is_case_insensitive():
     action = GameAction(
         player_id="player1",
         action_type="remove_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": "LAND"}
+        additional_data={"unique_id": card.unique_id, "card_type": "LAND"},
     )
     engine._remove_custom_type(state, action)
     assert card.custom_types == ["creature"]
@@ -167,7 +167,7 @@ def test_set_custom_type_override_and_clear():
     add_action = GameAction(
         player_id="player1",
         action_type="add_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": "creature"}
+        additional_data={"unique_id": card.unique_id, "card_type": "creature"},
     )
     engine._add_custom_type(state, add_action)
     assert card.custom_types == ["creature"]
@@ -175,7 +175,7 @@ def test_set_custom_type_override_and_clear():
     second_action = GameAction(
         player_id="player1",
         action_type="add_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": "land"}
+        additional_data={"unique_id": card.unique_id, "card_type": "land"},
     )
     engine._add_custom_type(state, second_action)
     assert card.custom_types == ["creature", "land"]
@@ -184,7 +184,7 @@ def test_set_custom_type_override_and_clear():
     remove_action = GameAction(
         player_id="player1",
         action_type="remove_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": "CREATURE"}
+        additional_data={"unique_id": card.unique_id, "card_type": "CREATURE"},
     )
     engine._remove_custom_type(state, remove_action)
     assert card.custom_types == ["land"]
@@ -193,7 +193,7 @@ def test_set_custom_type_override_and_clear():
     clear_action = GameAction(
         player_id="player1",
         action_type="set_custom_type",
-        additional_data={"unique_id": card.unique_id, "card_type": None}
+        additional_data={"unique_id": card.unique_id, "card_type": None},
     )
     engine._set_custom_type(state, clear_action)
     assert card.custom_types == []
@@ -220,8 +220,8 @@ def test_move_card_sends_attachments_to_owner_reveal_zone():
         additional_data={
             "unique_id": host.unique_id,
             "source_zone": "battlefield",
-            "target_zone": "graveyard"
-        }
+            "target_zone": "graveyard",
+        },
     )
 
     engine._move_card(state, action, "battlefield", "graveyard")
@@ -231,14 +231,21 @@ def test_move_card_sends_attachments_to_owner_reveal_zone():
         card.unique_id in {aura.unique_id, stolen_equipment.unique_id}
         for card in state.players[0].graveyard
     )
-    assert all(card.unique_id != host.unique_id for card in state.players[0].battlefield)
+    assert all(
+        card.unique_id != host.unique_id for card in state.players[0].battlefield
+    )
 
-    assert any(card.unique_id == aura.unique_id for card in state.players[0].reveal_zone)
+    assert any(
+        card.unique_id == aura.unique_id for card in state.players[0].reveal_zone
+    )
     assert any(
         card.unique_id == stolen_equipment.unique_id
         for card in state.players[1].reveal_zone
     )
-    assert all(card.attached_to is None for card in state.players[0].reveal_zone + state.players[1].reveal_zone)
+    assert all(
+        card.attached_to is None
+        for card in state.players[0].reveal_zone + state.players[1].reveal_zone
+    )
 
 
 def test_end_step_priority_passing():
@@ -252,10 +259,7 @@ def test_end_step_priority_passing():
     assert not state.end_step_priority_passed
 
     # Active player (player1) passes priority
-    action1 = GameAction(
-        player_id="player1",
-        action_type="pass_phase"
-    )
+    action1 = GameAction(player_id="player1", action_type="pass_phase")
     engine._pass_phase(state, action1)
 
     # After active player passes, opponent should have priority
@@ -263,10 +267,7 @@ def test_end_step_priority_passing():
     assert state.end_step_priority_passed
 
     # Opponent (player2) resolves end step (confirms turn end)
-    action2 = GameAction(
-        player_id="player2",
-        action_type="pass_phase"
-    )
+    action2 = GameAction(player_id="player2", action_type="pass_phase")
     engine._pass_phase(state, action2)
 
     # After opponent confirms, turn should end
@@ -284,9 +285,7 @@ def test_restart_game_reuses_submitted_decks():
 
     # Create a game setup
     setup = engine.create_game_setup(
-        game_id=game_id,
-        game_format=GameFormat.STANDARD,
-        phase_mode=PhaseMode.STRICT
+        game_id=game_id, game_format=GameFormat.STANDARD, phase_mode=PhaseMode.STRICT
     )
     assert setup.game_id == game_id
 
@@ -303,9 +302,9 @@ def test_restart_game_reuses_submitted_decks():
                     cmc=0,
                     card_type=CardType.LAND,
                     subtype="",
-                    text=""
+                    text="",
                 ),
-                quantity=1
+                quantity=1,
             )
             for i in range(count)
         ]
@@ -360,9 +359,7 @@ def test_restart_game_fails_without_submitted_decks():
 
     # Create setup but don't submit decks
     engine.create_game_setup(
-        game_id=game_id,
-        game_format=GameFormat.STANDARD,
-        phase_mode=PhaseMode.STRICT
+        game_id=game_id, game_format=GameFormat.STANDARD, phase_mode=PhaseMode.STRICT
     )
 
     try:

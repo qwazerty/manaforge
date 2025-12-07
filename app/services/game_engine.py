@@ -9,11 +9,25 @@ import uuid
 import time
 from typing import List, Optional, Dict, Any, Tuple
 from app.models.game import (
-    Card, Deck, DeckCard, Player, GameState, GameAction,
-    GamePhase, CombatState, CombatStep, CardType, GameSetupStatus,
-    PlayerDeckStatus, GameFormat, PhaseMode, GameStartPhase, MulliganState,
-    current_utc_datetime
+    Card,
+    Deck,
+    DeckCard,
+    Player,
+    GameState,
+    GameAction,
+    GamePhase,
+    CombatState,
+    CombatStep,
+    CardType,
+    GameSetupStatus,
+    PlayerDeckStatus,
+    GameFormat,
+    PhaseMode,
+    GameStartPhase,
+    MulliganState,
+    current_utc_datetime,
 )
+
 
 class SimpleGameEngine:
     """Simplified MTG game engine for POC."""
@@ -21,12 +35,8 @@ class SimpleGameEngine:
     MAX_ACTION_HISTORY = 10000
     MAX_CHAT_MESSAGES = 1000
     MAX_PLAYER_NAME_LENGTH = 32
-    COMBAT_PHASES = {
-        GamePhase.ATTACK,
-        GamePhase.BLOCK,
-        GamePhase.DAMAGE
-    }
-    
+    COMBAT_PHASES = {GamePhase.ATTACK, GamePhase.BLOCK, GamePhase.DAMAGE}
+
     def __init__(self):
         self.games: dict[str, GameState] = {}
         self.game_setups: dict[str, GameSetupStatus] = {}
@@ -58,20 +68,19 @@ class SimpleGameEngine:
     def _touch_game_state(game_state: GameState) -> None:
         game_state.updated_at = current_utc_datetime()
 
-    def _record_replay_step(self, game_id: str, action: Optional[GameAction], game_state: GameState) -> None:
+    def _record_replay_step(
+        self, game_id: str, action: Optional[GameAction], game_state: GameState
+    ) -> None:
         """Record a step in the game replay timeline."""
         if game_id not in self.replays:
             self.replays[game_id] = []
-        
-        step = {
-            "timestamp": time.time(),
-            "state": game_state.model_dump(mode="json")
-        }
+
+        step = {"timestamp": time.time(), "state": game_state.model_dump(mode="json")}
         if action:
             step["action"] = action.model_dump(mode="json")
         else:
             step["action"] = {"action_type": "initial_setup", "player_id": "system"}
-            
+
         self.replays[game_id].append(step)
 
     def _set_phase(self, game_state: GameState, new_phase: GamePhase) -> None:
@@ -81,10 +90,7 @@ class SimpleGameEngine:
         self._handle_phase_transition(game_state, previous_phase, new_phase)
 
     def _log_phase_history_entry(
-        self,
-        game_state: GameState,
-        phase: GamePhase,
-        player_id: Optional[str] = None
+        self, game_state: GameState, phase: GamePhase, player_id: Optional[str] = None
     ) -> None:
         """Insert a synthetic history entry for engine-driven phase transitions."""
         if not game_state or not phase:
@@ -102,7 +108,7 @@ class SimpleGameEngine:
             "player": entry_player,
             "success": True,
             "phase": phase_value,
-            "origin": "engine"
+            "origin": "engine",
         }
 
         self.record_action_history(game_state.id, entry)
@@ -136,10 +142,7 @@ class SimpleGameEngine:
             combat_state.step = CombatStep.NONE
 
     def _handle_phase_transition(
-        self,
-        game_state: GameState,
-        previous_phase: GamePhase,
-        new_phase: GamePhase
+        self, game_state: GameState, previous_phase: GamePhase, new_phase: GamePhase
     ) -> None:
         """Handle side-effects when moving between phases."""
         was_combat = self._is_combat_phase(previous_phase)
@@ -178,7 +181,7 @@ class SimpleGameEngine:
             damage_resolved=False,
             expected_player=expected_player,
             pending_attackers=[],
-            pending_blockers={}
+            pending_blockers={},
         )
         game_state.priority_player = game_state.active_player
 
@@ -245,9 +248,7 @@ class SimpleGameEngine:
             self._cleanup_combat_state(game_state)
 
     def _handle_combat_priority_pass(
-        self,
-        game_state: GameState,
-        action: GameAction
+        self, game_state: GameState, action: GameAction
     ) -> None:
         """Advance combat sub-steps when players pass priority."""
         if not self._is_combat_phase(game_state.phase):
@@ -278,8 +279,7 @@ class SimpleGameEngine:
             self._transition_to_combat_damage(game_state)
         elif combat_state.step == CombatStep.COMBAT_DAMAGE:
             damage_action = GameAction(
-                player_id=action.player_id,
-                action_type="combat_damage"
+                player_id=action.player_id, action_type="combat_damage"
             )
             self._resolve_combat_damage(game_state, damage_action)
             combat_state.damage_resolved = True
@@ -302,7 +302,7 @@ class SimpleGameEngine:
         self,
         player_id: str,
         provided_name: Optional[str] = None,
-        fallback_name: Optional[str] = None
+        fallback_name: Optional[str] = None,
     ) -> str:
         candidate = provided_name if provided_name is not None else fallback_name
         if candidate is None:
@@ -317,12 +317,12 @@ class SimpleGameEngine:
         if not candidate:
             candidate = self._default_player_name(player_id)
         return candidate
-    
+
     def create_game_setup(
         self,
         game_id: str,
         game_format: GameFormat = GameFormat.STANDARD,
-        phase_mode: PhaseMode = PhaseMode.STRICT
+        phase_mode: PhaseMode = PhaseMode.STRICT,
     ) -> GameSetupStatus:
         """
         Create a new game setup (pre-game state before decks are submitted).
@@ -340,10 +340,10 @@ class SimpleGameEngine:
             ready=False,
             player_status={
                 "player1": PlayerDeckStatus(submitted=False, validated=False),
-                "player2": PlayerDeckStatus(submitted=False, validated=False)
-            }
+                "player2": PlayerDeckStatus(submitted=False, validated=False),
+            },
         )
-        
+
         self.game_setups[game_id] = setup
         self._pending_decks[game_id] = {}
         print(
@@ -352,11 +352,11 @@ class SimpleGameEngine:
         )
         self._touch_setup(setup)
         return setup
-    
+
     def get_game_setup_status(self, game_id: str) -> Optional[GameSetupStatus]:
         """Get the setup status for a game."""
         return self.game_setups.get(game_id)
-    
+
     def submit_player_deck(
         self, game_id: str, player_id: str, deck: Deck
     ) -> GameSetupStatus:
@@ -366,15 +366,15 @@ class SimpleGameEngine:
         """
         if game_id not in self.game_setups:
             raise ValueError(f"Game setup {game_id} not found")
-        
+
         setup = self.game_setups[game_id]
         deck.format = setup.game_format
         existing_status = setup.player_status.get(player_id)
         player_alias = self._sanitize_player_name(
             player_id,
-            getattr(existing_status, "player_name", None) if existing_status else None
+            getattr(existing_status, "player_name", None) if existing_status else None,
         )
-        
+
         # Validate deck
         main_card_count = sum(dc.quantity for dc in deck.cards)
         commander_count = len(getattr(deck, "commanders", []))
@@ -388,7 +388,7 @@ class SimpleGameEngine:
                 deck_name=deck.name,
                 player_name=player_alias,
                 card_count=total_card_count,
-                message=message
+                message=message,
             )
             setup.status = f"{player_id} submitted invalid deck"
             self._touch_setup(setup)
@@ -396,7 +396,9 @@ class SimpleGameEngine:
 
         if setup.game_format == GameFormat.DUEL_COMMANDER:
             if commander_count == 0:
-                return _reject_submission("Commander missing: Duel Commander decks must include exactly one commander.")
+                return _reject_submission(
+                    "Commander missing: Duel Commander decks must include exactly one commander."
+                )
             if commander_count > 1:
                 return _reject_submission(
                     f"Too many commanders ({commander_count}). Duel Commander decks must include exactly one commander."
@@ -415,27 +417,24 @@ class SimpleGameEngine:
             deck_name=deck.name,
             player_name=player_alias,
             card_count=total_card_count,
-            message="Deck validated successfully"
+            message="Deck validated successfully",
         )
-        
+
         # Store the deck temporarily
         if game_id not in self._pending_decks:
             self._pending_decks[game_id] = {}
         self._pending_decks[game_id][player_id] = deck
-        
+
         # Check if both players have submitted valid decks
-        all_validated = all(
-            status.validated 
-            for status in setup.player_status.values()
-        )
-        
+        all_validated = all(status.validated for status in setup.player_status.values())
+
         if all_validated:
             # Initialize the actual game
             player1_deck = self._pending_decks.get(game_id, {}).get("player1")
             player2_deck = self._pending_decks.get(game_id, {}).get("player2")
-            
+
             if player1_deck and player2_deck:
-                game_state = self._initialize_game_from_setup(
+                self._initialize_game_from_setup(
                     game_id, player1_deck, player2_deck, setup
                 )
                 setup.ready = True
@@ -449,16 +448,15 @@ class SimpleGameEngine:
             claimed_count = sum(
                 1 for status in setup.player_status.values() if status.seat_claimed
             )
-            setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+            setup.status = (
+                f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+            )
             self._touch_setup(setup)
-        
+
         return setup
 
     def claim_player_seat(
-        self,
-        game_id: str,
-        player_id: str,
-        player_name: Optional[str] = None
+        self, game_id: str, player_id: str, player_name: Optional[str] = None
     ) -> GameSetupStatus:
         """Claim a seat in the game room without submitting a deck yet."""
         if game_id not in self.game_setups:
@@ -473,17 +471,21 @@ class SimpleGameEngine:
             player_status = PlayerDeckStatus()
 
         sanitized_name = self._sanitize_player_name(
-            player_id,
-            player_name,
-            getattr(player_status, "player_name", None)
+            player_id, player_name, getattr(player_status, "player_name", None)
         )
         player_status.player_name = sanitized_name
 
         if not player_status.seat_claimed:
             player_status.seat_claimed = True
-            player_status.message = player_status.message or "Seat claimed. Awaiting deck submission."
-            claimed_count = sum(1 for status in setup.player_status.values() if status.seat_claimed)
-            submitted_count = sum(1 for status in setup.player_status.values() if status.submitted)
+            player_status.message = (
+                player_status.message or "Seat claimed. Awaiting deck submission."
+            )
+            claimed_count = sum(
+                1 for status in setup.player_status.values() if status.seat_claimed
+            )
+            submitted_count = sum(
+                1 for status in setup.player_status.values() if status.submitted
+            )
             if not setup.ready:
                 setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
 
@@ -497,12 +499,12 @@ class SimpleGameEngine:
         setup.player_status[player_id] = player_status
         self._touch_setup(setup)
         return setup
-    
+
     def update_game_settings(
         self,
         game_id: str,
         game_format: Optional[GameFormat] = None,
-        phase_mode: Optional[PhaseMode] = None
+        phase_mode: Optional[PhaseMode] = None,
     ) -> GameSetupStatus:
         """Update game settings before the game starts (before decks are validated)."""
         if game_id not in self.game_setups:
@@ -510,32 +512,39 @@ class SimpleGameEngine:
 
         setup = self.game_setups[game_id]
         modified = False
-        
+
         # Don't allow changes after game is ready
         if setup.ready:
             raise ValueError("Cannot change game settings after the game has started")
-        
+
         # Don't allow format changes after decks are submitted
         if game_format and game_format != setup.game_format:
-            submitted_any = any(status.submitted for status in setup.player_status.values())
+            submitted_any = any(
+                status.submitted for status in setup.player_status.values()
+            )
             if submitted_any:
-                raise ValueError("Cannot change game format after decks have been submitted")
+                raise ValueError(
+                    "Cannot change game format after decks have been submitted"
+                )
             setup.game_format = game_format
             modified = True
-        
+
         # Allow phase mode changes any time before game starts
         if phase_mode and phase_mode != setup.phase_mode:
             setup.phase_mode = phase_mode
             modified = True
-        
+
         if modified:
             self._touch_setup(setup)
-        
+
         return setup
-    
+
     def _initialize_game_from_setup(
-        self, game_id: str, player1_deck: Deck, player2_deck: Deck,
-        setup: GameSetupStatus
+        self,
+        game_id: str,
+        player1_deck: Deck,
+        player2_deck: Deck,
+        setup: GameSetupStatus,
     ) -> GameState:
         """Initialize the actual game state from validated decks."""
         player1_id = "player1"
@@ -544,39 +553,39 @@ class SimpleGameEngine:
         player2_status = setup.player_status.get(player2_id)
         player1_name = self._sanitize_player_name(
             player1_id,
-            getattr(player1_status, "player_name", None) if player1_status else None
+            getattr(player1_status, "player_name", None) if player1_status else None,
         )
         player2_name = self._sanitize_player_name(
             player2_id,
-            getattr(player2_status, "player_name", None) if player2_status else None
+            getattr(player2_status, "player_name", None) if player2_status else None,
         )
         self._submitted_decks[game_id] = {
             "player1": player1_deck.model_copy(deep=True),
-            "player2": player2_deck.model_copy(deep=True)
+            "player2": player2_deck.model_copy(deep=True),
         }
 
         player1 = Player(
             id=player1_id,
             name=player1_name,
             deck_name=player1_deck.name,
-            library=self._shuffle_deck(player1_deck.cards, player1_id)
+            library=self._shuffle_deck(player1_deck.cards, player1_id),
         )
         player2 = Player(
             id=player2_id,
             name=player2_name,
             deck_name=player2_deck.name,
-            library=self._shuffle_deck(player2_deck.cards, player2_id)
+            library=self._shuffle_deck(player2_deck.cards, player2_id),
         )
 
         self._initialize_commander_zone(player1, player1_deck)
         self._initialize_commander_zone(player2, player2_deck)
-        
+
         # Note: Initial 7 cards will be drawn after coin flip choice
-        
+
         # Perform coin flip to determine who chooses
         coin_flip_winner = random.randint(0, 1)
         coin_flip_winner_id = f"player{coin_flip_winner + 1}"
-        
+
         game_state = GameState(
             id=game_id,
             players=[player1, player2],
@@ -592,33 +601,33 @@ class SimpleGameEngine:
             game_start_phase=GameStartPhase.COIN_FLIP,
             coin_flip_winner=coin_flip_winner,
             first_player=None,  # Not yet decided
-            mulligan_state={
-                "player1": MulliganState(),
-                "player2": MulliganState()
-            },
+            mulligan_state={"player1": MulliganState(), "player2": MulliganState()},
             mulligan_deciding_player=None,
             deck_status={
                 "player1": setup.player_status["player1"],
-                "player2": setup.player_status["player2"]
-            }
+                "player2": setup.player_status["player2"],
+            },
         )
         self._touch_game_state(game_state)
-        
+
         self.games[game_id] = game_state
         self._pending_decks.pop(game_id, None)
-        
+
         # Log coin flip result
-        self.record_action_history(game_id, {
-            "action": "coin_flip",
-            "player": coin_flip_winner_id,
-            "success": True,
-            "message": f"{game_state.players[coin_flip_winner].name} wins the coin flip!",
-            "origin": "engine"
-        })
-        
+        self.record_action_history(
+            game_id,
+            {
+                "action": "coin_flip",
+                "player": coin_flip_winner_id,
+                "success": True,
+                "message": f"{game_state.players[coin_flip_winner].name} wins the coin flip!",
+                "origin": "engine",
+            },
+        )
+
         self._record_replay_step(game_id, None, game_state)
         return game_state
-    
+
     def restart_game(self, game_id: str) -> GameState:
         """
         Restart an existing game using the originally submitted decks.
@@ -651,7 +660,7 @@ class SimpleGameEngine:
             game_id,
             player1_deck.model_copy(deep=True),
             player2_deck.model_copy(deep=True),
-            setup
+            setup,
         )
 
     async def process_action(self, game_id: str, action: GameAction) -> GameState:
@@ -723,9 +732,9 @@ class SimpleGameEngine:
                 raise ValueError(
                     "source_zone and target_zone (str) are required for move_card"
                 )
-            
+
             normalized_target = self._normalize_zone_name(target_zone)
-            
+
             # Route through _play_card for battlefield destinations (handles stack logic)
             if normalized_target == "battlefield":
                 self._play_card(game_state, action, source_zone=source_zone)
@@ -734,7 +743,7 @@ class SimpleGameEngine:
                     game_state,
                     action,
                     source_zone_name=source_zone,
-                    destination_zone_name=target_zone
+                    destination_zone_name=target_zone,
                 )
         else:
             raise ValueError(f"Unknown action_type: {action.action_type}")
@@ -742,7 +751,7 @@ class SimpleGameEngine:
         self._touch_game_state(game_state)
         self._record_replay_step(game_id, action, game_state)
         return game_state
-    
+
     def record_action_history(self, game_id: str, entry: Dict[str, Any]) -> None:
         """Persist a single action history entry onto the game state."""
         game_state = self.games.get(game_id)
@@ -761,19 +770,20 @@ class SimpleGameEngine:
 
         active_index = getattr(game_state, "active_player", None)
         players = getattr(game_state, "players", [])
-        if (
-            isinstance(active_index, int)
-            and 0 <= active_index < len(players)
-        ):
+        if isinstance(active_index, int) and 0 <= active_index < len(players):
             active_player = players[active_index]
-            history_entry.setdefault("turn_player_id", getattr(active_player, "id", None))
-            history_entry.setdefault("turn_player_name", getattr(active_player, "name", None))
+            history_entry.setdefault(
+                "turn_player_id", getattr(active_player, "id", None)
+            )
+            history_entry.setdefault(
+                "turn_player_name", getattr(active_player, "name", None)
+            )
 
         history = game_state.action_history
         history.append(history_entry)
         if len(history) > self.MAX_ACTION_HISTORY:
             history.pop(0)
-    
+
     def add_chat_message(self, game_id: str, message: Dict[str, Any]) -> None:
         """Persist a chat message to the game state's chat log."""
         game_state = self.games.get(game_id)
@@ -783,14 +793,14 @@ class SimpleGameEngine:
         chat_entry = {
             "player": message.get("player"),
             "message": message.get("message"),
-            "timestamp": message.get("timestamp", time.time())
+            "timestamp": message.get("timestamp", time.time()),
         }
 
         chat_log = game_state.chat_log
         chat_log.append(chat_entry)
         if len(chat_log) > self.MAX_CHAT_MESSAGES:
             chat_log.pop(0)
-    
+
     def _target_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle targeting or untargeting a card using its persistent unique_id."""
         unique_id = action.additional_data.get("unique_id")
@@ -813,7 +823,7 @@ class SimpleGameEngine:
                             f"{card.name} in {zone_name}"
                         )
                         return
-        
+
         for spell in game_state.stack:
             if spell.unique_id == unique_id:
                 spell.targeted = targeted
@@ -832,19 +842,25 @@ class SimpleGameEngine:
         target_id = action.additional_data.get("target_id")
 
         if not source_id or not target_id:
-            raise ValueError("source_id and target_id are required for add_targeting_arrow")
+            raise ValueError(
+                "source_id and target_id are required for add_targeting_arrow"
+            )
 
         # Check if arrow already exists
         for arrow in game_state.targeting_arrows:
-            if arrow.get("source_id") == source_id and arrow.get("target_id") == target_id:
+            if (
+                arrow.get("source_id") == source_id
+                and arrow.get("target_id") == target_id
+            ):
                 return  # Arrow already exists
 
-        game_state.targeting_arrows.append({
-            "source_id": source_id,
-            "target_id": target_id
-        })
+        game_state.targeting_arrows.append(
+            {"source_id": source_id, "target_id": target_id}
+        )
 
-    def _remove_targeting_arrow(self, game_state: GameState, action: GameAction) -> None:
+    def _remove_targeting_arrow(
+        self, game_state: GameState, action: GameAction
+    ) -> None:
         """Remove targeting arrows from a card."""
         source_id = action.additional_data.get("source_id")
         target_id = action.additional_data.get("target_id")
@@ -855,22 +871,27 @@ class SimpleGameEngine:
         if target_id:
             # Remove specific arrow
             game_state.targeting_arrows = [
-                a for a in game_state.targeting_arrows
-                if not (a.get("source_id") == source_id and a.get("target_id") == target_id)
+                a
+                for a in game_state.targeting_arrows
+                if not (
+                    a.get("source_id") == source_id and a.get("target_id") == target_id
+                )
             ]
         else:
             # Remove all arrows from/to this source
             game_state.targeting_arrows = [
-                a for a in game_state.targeting_arrows
+                a
+                for a in game_state.targeting_arrows
                 if a.get("source_id") != source_id and a.get("target_id") != source_id
             ]
-    
+
     def _shuffle_deck(self, deck_cards: List[DeckCard], owner_id: str) -> List[Card]:
         """
         Convert deck list to shuffled list of Card objects with persistent unique IDs
         and owner ID.
         """
         import uuid
+
         cards = []
         for deck_card in deck_cards:
             for _ in range(deck_card.quantity):
@@ -878,10 +899,10 @@ class SimpleGameEngine:
                 card_copy.unique_id = uuid.uuid4().hex
                 card_copy.owner_id = owner_id
                 cards.append(card_copy)
-        
+
         random.shuffle(cards)
         return cards
-    
+
     def _draw_cards(self, player: Player, count: int) -> None:
         """Draw cards from library to hand."""
         for _ in range(min(count, len(player.library))):
@@ -890,7 +911,9 @@ class SimpleGameEngine:
                 self._clear_look_zone_for_card(player, card.unique_id)
                 player.hand.append(card)
 
-    def _clear_look_zone_for_card(self, player: Player, unique_id: Optional[str]) -> None:
+    def _clear_look_zone_for_card(
+        self, player: Player, unique_id: Optional[str]
+    ) -> None:
         """Remove a card from a player's look zone when it leaves the library."""
         if unique_id is None:
             return
@@ -899,7 +922,7 @@ class SimpleGameEngine:
             return
         filtered = [card for card in look_zone if card.unique_id != unique_id]
         player.look_zone = filtered
-    
+
     def _initialize_commander_zone(self, player: Player, deck: Deck) -> None:
         """Populate the command zone with designated commanders."""
         commanders = getattr(deck, "commanders", []) or []
@@ -925,12 +948,9 @@ class SimpleGameEngine:
         if player.commander_zone:
             names = ", ".join(card.name for card in player.commander_zone)
             print(f"Player {player.id} commander zone initialized with {names}")
-    
+
     def _resolve_play_destination(
-        self,
-        card: Card,
-        game_state: GameState,
-        face_down: bool = False
+        self, card: Card, game_state: GameState, face_down: bool = False
     ) -> str:
         """Determine where a card should go when played (stack or battlefield)."""
         is_land = card.card_type == CardType.LAND
@@ -949,16 +969,15 @@ class SimpleGameEngine:
         return "battlefield"
 
     def _play_card(
-        self,
-        game_state: GameState,
-        action: GameAction,
-        source_zone: str = "hand"
+        self, game_state: GameState, action: GameAction, source_zone: str = "hand"
     ) -> None:
         """Handle playing a card onto the battlefield (routes through stack if needed)."""
-        source_player_id = action.additional_data.get("source_player_id") or action.player_id
+        source_player_id = (
+            action.additional_data.get("source_player_id") or action.player_id
+        )
         player = self._get_player(game_state, source_player_id)
         unique_id = action.additional_data.get("unique_id")
-        
+
         normalized_source = self._normalize_zone_name(source_zone)
         source_zone_list = self._get_zone_list(game_state, player, normalized_source)
 
@@ -967,7 +986,7 @@ class SimpleGameEngine:
             if card.unique_id == unique_id:
                 card_to_play = card
                 break
-        
+
         if not card_to_play:
             print(
                 f"Card with unique_id {unique_id} not found in {normalized_source} of "
@@ -987,10 +1006,12 @@ class SimpleGameEngine:
             game_state,
             action,
             source_zone_name=normalized_source,
-            destination_zone_name=destination_zone
+            destination_zone_name=destination_zone,
         )
 
-    def _play_card_from_library(self, game_state: GameState, action: GameAction) -> None:
+    def _play_card_from_library(
+        self, game_state: GameState, action: GameAction
+    ) -> None:
         """Handle playing a card from the library."""
         player = self._get_player(game_state, action.player_id)
         unique_id = action.additional_data.get("unique_id")
@@ -1015,38 +1036,37 @@ class SimpleGameEngine:
             game_state,
             action,
             source_zone_name="library",
-            destination_zone_name=destination_zone
+            destination_zone_name=destination_zone,
         )
-    
+
     def _pass_turn(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing the turn (skips to end of turn)."""
         if self._is_combat_phase(game_state.phase):
             combat_action = GameAction(
-                player_id=action.player_id,
-                action_type="combat_damage"
+                player_id=action.player_id, action_type="combat_damage"
             )
             self._resolve_combat_damage(game_state, combat_action)
-        
+
         # Move to END phase first, then handle priority
         if game_state.phase != GamePhase.END:
             self._set_phase(game_state, GamePhase.END)
-        
+
         # Use the end step priority logic
         self._handle_end_step_priority(game_state, action)
-    
+
     def _pass_phase(self, game_state: GameState, action: GameAction) -> None:
         """Handle passing to the next phase (without ending turn)."""
         # Cannot pass phase during game start phases (coin flip or mulligans)
         if game_state.game_start_phase != GameStartPhase.COMPLETE:
             return
-        
+
         phases = list(GamePhase)
         current_index = phases.index(game_state.phase)
-        
+
         if current_index < len(phases) - 1:
             next_phase = phases[current_index + 1]
             self._set_phase(game_state, next_phase)
-            
+
             if next_phase == GamePhase.BEGIN:
                 active_player = game_state.players[game_state.active_player]
                 self._draw_cards(active_player, 1)
@@ -1054,7 +1074,9 @@ class SimpleGameEngine:
             # We're in END phase - handle priority passing before ending turn
             self._handle_end_step_priority(game_state, action)
 
-    def _handle_end_step_priority(self, game_state: GameState, action: GameAction) -> None:
+    def _handle_end_step_priority(
+        self, game_state: GameState, action: GameAction
+    ) -> None:
         """
         Handle priority during the end step.
         Both players must pass priority before moving to the next turn.
@@ -1068,96 +1090,101 @@ class SimpleGameEngine:
             return
 
         # If active player passes priority first, give priority to opponent
-        if action_player_index == active_player_index and not game_state.end_step_priority_passed:
+        if (
+            action_player_index == active_player_index
+            and not game_state.end_step_priority_passed
+        ):
             game_state.priority_player = opponent_index
             game_state.end_step_priority_passed = True
-            print(f"End step: Active player passed, opponent has priority")
+            print("End step: Active player passed, opponent has priority")
             return
 
         # Only the opponent can end the turn after active player has passed
-        if game_state.end_step_priority_passed and action_player_index == opponent_index:
+        if (
+            game_state.end_step_priority_passed
+            and action_player_index == opponent_index
+        ):
             self._end_current_turn(game_state)
             return
 
         # If active player tries to pass again while opponent has priority, ignore
-        if game_state.end_step_priority_passed and action_player_index == active_player_index:
-            print(f"End step: Active player tried to pass but opponent has priority")
+        if (
+            game_state.end_step_priority_passed
+            and action_player_index == active_player_index
+        ):
+            print("End step: Active player tried to pass but opponent has priority")
             return
-    
+
     def _end_current_turn(self, game_state: GameState) -> None:
         """End the current turn and move to the next player's turn."""
         current_player_index = game_state.active_player
         game_state.players_played_this_round[current_player_index] = True
-        
+
         if all(game_state.players_played_this_round):
             game_state.turn += 1
             game_state.players_played_this_round = [False, False]
             game_state.round += 1
-        
+
         game_state.active_player = 1 - game_state.active_player
         game_state.end_step_priority_passed = False  # Reset for next turn
         game_state.priority_player = game_state.active_player
         self._set_phase(game_state, GamePhase.BEGIN)
         print(f"Turn ended, now player {game_state.active_player + 1}'s turn")
-    
+
     def _change_phase(self, game_state: GameState, action: GameAction) -> None:
         """Directly change the current game phase."""
         # Cannot change phase during game start phases (coin flip or mulligans)
         if game_state.game_start_phase != GameStartPhase.COMPLETE:
             return
-        
+
         desired_phase = action.additional_data.get("phase")
         if not desired_phase:
             raise ValueError("phase is required for change_phase action")
-        
+
         try:
             target_phase = GamePhase(desired_phase)
         except ValueError as exc:
             raise ValueError(f"Invalid phase value: {desired_phase}") from exc
 
         self._set_phase(game_state, target_phase)
-        print(
-            f"Player {action.player_id} manually set phase to {target_phase.value}"
-        )
+        print(f"Player {action.player_id} manually set phase to {target_phase.value}")
 
     def _draw_card_action(self, game_state: GameState, action: GameAction) -> None:
         """Handle drawing a card."""
         player = self._get_player(game_state, action.player_id)
         self._draw_cards(player, 1)
-        
+
         # Auto-advance to main phase 1 if in begin phase
         if game_state.phase == GamePhase.BEGIN:
             self._set_phase(game_state, GamePhase.MAIN1)
             self._log_phase_history_entry(game_state, GamePhase.MAIN1)
-    
+
     def _get_player(self, game_state: GameState, player_id: str) -> Player:
         """Get player by ID."""
         for player in game_state.players:
             if player.id == player_id:
                 return player
         raise ValueError(f"Player {player_id} not found")
-    
+
     def _has_vigilance(self, card: Card) -> bool:
         """Check if a creature has vigilance."""
         text = (card.text or "").lower()
         return "vigilance" in text
-    
+
     def _declare_attackers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring attacking creatures."""
         if game_state.phase != GamePhase.ATTACK:
             return
-        
-        attacking_creature_ids = action.additional_data.get(
-            "attacking_creatures", []
-        )
+
+        attacking_creature_ids = action.additional_data.get("attacking_creatures", [])
         attacker_count = len(attacking_creature_ids)
-        
+
         player = self._get_player(game_state, action.player_id)
-        
+
         # First, clear all attacking status for this player
         for card in player.battlefield:
             card.attacking = False
-        
+
         # Then mark new attackers and tap them (unless they have vigilance)
         for unique_id in attacking_creature_ids:
             for card in player.battlefield:
@@ -1171,11 +1198,8 @@ class SimpleGameEngine:
                         f"(vigilance: {self._has_vigilance(card)})"
                     )
                     break
-        
-        print(
-            f"Player {action.player_id} declared "
-            f"{attacker_count} attackers"
-        )
+
+        print(f"Player {action.player_id} declared " f"{attacker_count} attackers")
 
         combat_state = game_state.combat_state
         combat_state.pending_attackers = []
@@ -1193,22 +1217,20 @@ class SimpleGameEngine:
             return
 
         self._transition_to_blockers(game_state)
-    
+
     def _declare_blockers(self, game_state: GameState, action: GameAction) -> None:
         """Handle declaring blocking creatures."""
         if game_state.phase != GamePhase.BLOCK:
             return
-        
-        blocking_assignments = action.additional_data.get(
-            "blocking_assignments", {}
-        )
-        
+
+        blocking_assignments = action.additional_data.get("blocking_assignments", {})
+
         player = self._get_player(game_state, action.player_id)
-        
+
         # First, clear all blocking status for this player
         for card in player.battlefield:
             card.blocking = None
-        
+
         # Then assign blockers to attackers
         # blocking_assignments format: { "blocker_unique_id": "attacker_unique_id" }
         for blocker_id, attacker_id in blocking_assignments.items():
@@ -1220,7 +1242,7 @@ class SimpleGameEngine:
                         f"to block attacker {attacker_id}"
                     )
                     break
-        
+
         print(
             f"Player {action.player_id} declared "
             f"{len(blocking_assignments)} blockers"
@@ -1249,9 +1271,7 @@ class SimpleGameEngine:
             return
 
         player = self._get_player(game_state, action.player_id)
-        valid_ids = {
-            card.unique_id for card in getattr(player, "battlefield", [])
-        }
+        valid_ids = {card.unique_id for card in getattr(player, "battlefield", [])}
         ordered_unique_ids = []
         for unique_id in attacking_creature_ids:
             if unique_id in valid_ids and unique_id not in ordered_unique_ids:
@@ -1297,14 +1317,12 @@ class SimpleGameEngine:
                 filtered_assignments[blocker_id] = attacker_id
 
         combat_state.pending_blockers = filtered_assignments
-    
-    def _resolve_combat_damage(
-        self, game_state: GameState, action: GameAction
-    ) -> None:
+
+    def _resolve_combat_damage(self, game_state: GameState, action: GameAction) -> None:
         """Resolve combat damage."""
         if game_state.phase != GamePhase.DAMAGE:
             return
-        
+
         print("Combat damage resolved")
         self._clear_combat_assignments(game_state)
 
@@ -1314,7 +1332,7 @@ class SimpleGameEngine:
         combat_state.expected_player = None
         combat_state.pending_attackers = []
         combat_state.pending_blockers = {}
-    
+
     def _resolve_spell_destination(self, owner: Player, spell: Card) -> str:
         """Move a resolved spell to its appropriate zone and return the zone name."""
         spell.targeted = False
@@ -1372,15 +1390,13 @@ class SimpleGameEngine:
         owner = self._get_player(game_state, spell.owner_id)
         destination_zone = self._resolve_spell_destination(owner, spell)
 
-        print(
-            f"Resolved {spell.name}, moved to {owner.id}'s {destination_zone}"
-        )
+        print(f"Resolved {spell.name}, moved to {owner.id}'s {destination_zone}")
 
         if game_state.stack:
             self._update_priority_from_stack(game_state)
         else:
             game_state.priority_player = game_state.active_player
-    
+
     def _pass_priority(self, game_state: GameState, action: GameAction) -> None:
         """Pass priority to the other player."""
         if game_state.stack:
@@ -1391,34 +1407,34 @@ class SimpleGameEngine:
             self._handle_combat_priority_pass(game_state, action)
         else:
             game_state.priority_player = game_state.active_player
-    
+
     def _modify_life(self, game_state: GameState, action: GameAction) -> None:
         """Modify a player's life total."""
         target_player_id = action.additional_data.get("target_player")
         amount = action.additional_data.get("amount")
-        
+
         if not target_player_id:
             raise ValueError("target_player is required for modify_life action")
         if amount is None:
             raise ValueError("amount is required for modify_life action")
-        
+
         target_player = None
         for player in game_state.players:
             if player.id == target_player_id:
                 target_player = player
                 break
-        
+
         if not target_player:
             raise ValueError(f"Player {target_player_id} not found")
-        
+
         old_life = target_player.life
         target_player.life = max(0, target_player.life + amount)
-        
+
         print(
             f"Player {target_player_id} life changed from {old_life} to "
             f"{target_player.life} (amount: {amount})"
         )
-    
+
     def _modify_player_counter(self, game_state: GameState, action: GameAction) -> None:
         """Apply a delta to a player's counter."""
         data = action.additional_data or {}
@@ -1427,9 +1443,13 @@ class SimpleGameEngine:
         amount = data.get("amount")
 
         if not target_player_id:
-            raise ValueError("target_player is required for modify_player_counter action")
+            raise ValueError(
+                "target_player is required for modify_player_counter action"
+            )
         if not counter_type:
-            raise ValueError("counter_type is required for modify_player_counter action")
+            raise ValueError(
+                "counter_type is required for modify_player_counter action"
+            )
         if amount is None:
             raise ValueError("amount is required for modify_player_counter action")
 
@@ -1439,7 +1459,9 @@ class SimpleGameEngine:
         try:
             amount_value = int(amount)
         except (TypeError, ValueError):
-            raise ValueError("amount must be an integer for modify_player_counter action")
+            raise ValueError(
+                "amount must be an integer for modify_player_counter action"
+            )
         new_value = current_value + amount_value
         if new_value <= 0:
             if normalized_counter in player.counters:
@@ -1482,14 +1504,18 @@ class SimpleGameEngine:
             f"Player {target_player_id} {normalized_counter} counters set to "
             f"{player.counters.get(normalized_counter, 0)}"
         )
-    
+
     def _adjust_commander_tax(self, game_state: GameState, action: GameAction) -> None:
         """Adjust the commander tax for a specific player."""
-        target_player_id = action.additional_data.get("target_player") or action.player_id
+        target_player_id = (
+            action.additional_data.get("target_player") or action.player_id
+        )
         amount = action.additional_data.get("amount")
 
         if not target_player_id:
-            raise ValueError("target_player is required for adjust_commander_tax action")
+            raise ValueError(
+                "target_player is required for adjust_commander_tax action"
+            )
         if amount is None:
             raise ValueError("amount is required for adjust_commander_tax action")
 
@@ -1502,34 +1528,34 @@ class SimpleGameEngine:
             f"Player {target_player_id} commander tax changed from {old_tax} to "
             f"{new_tax} (amount: {amount})"
         )
-    
+
     def _tap_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle tapping or untapping a card."""
         player = self._get_player(game_state, action.player_id)
         unique_id = action.additional_data.get("unique_id")
-        
+
         if not unique_id:
             raise ValueError("unique_id is required for tap_card action")
-        
+
         desired_tapped_state = action.additional_data.get("tapped")
-        
+
         card_found = None
         for card in player.battlefield:
             if card.unique_id == unique_id:
                 card_found = card
                 break
-        
+
         if not card_found:
             raise ValueError(
                 f"Card with unique_id {unique_id} not found on battlefield "
                 f"for player {action.player_id}"
             )
-        
+
         if desired_tapped_state is not None:
             card_found.tapped = desired_tapped_state
         else:
             card_found.tapped = not card_found.tapped
-        
+
         action_text = "tapped" if card_found.tapped else "untapped"
         print(f"Player {action.player_id} {action_text} {card_found.name}")
 
@@ -1544,7 +1570,9 @@ class SimpleGameEngine:
             if candidate.attached_to == host_unique_id:
                 removed = zone_cards.pop(index)
                 collected.append(removed)
-                collected.extend(self._extract_attachment_chain(zone_cards, removed.unique_id))
+                collected.extend(
+                    self._extract_attachment_chain(zone_cards, removed.unique_id)
+                )
                 continue
             index += 1
         return collected
@@ -1588,16 +1616,22 @@ class SimpleGameEngine:
             if normalized_destination != "stack" and getattr(card, "face_down", False):
                 card.face_down = False
                 card.face_down_owner = None
-        if normalized_destination in ["graveyard", "exile", "library", "reveal_zone", "commander_zone"]:
+        if normalized_destination in [
+            "graveyard",
+            "exile",
+            "library",
+            "reveal_zone",
+            "commander_zone",
+        ]:
             card.tapped = False
             card.targeted = False
-    
+
     def _move_card(
         self,
         game_state: GameState,
         action: GameAction,
         source_zone_name: str,
-        destination_zone_name: str
+        destination_zone_name: str,
     ) -> None:
         """
         Moves a card from a source zone to a destination zone for a specific player.
@@ -1605,7 +1639,9 @@ class SimpleGameEngine:
         unique_id = action.additional_data.get("unique_id")
         player_id = action.player_id
         source_player_id = action.additional_data.get("source_player_id") or player_id
-        destination_player_id = action.additional_data.get("destination_player_id") or player_id
+        destination_player_id = (
+            action.additional_data.get("destination_player_id") or player_id
+        )
 
         if not unique_id:
             raise ValueError(
@@ -1639,12 +1675,14 @@ class SimpleGameEngine:
                     card_found = game_state.stack.pop(i)
                     break
         else:
-            source_zone_list = self._get_zone_list(game_state, source_player, source_zone_name)
+            source_zone_list = self._get_zone_list(
+                game_state, source_player, source_zone_name
+            )
             for i, card in enumerate(source_zone_list):
                 if card.unique_id == unique_id:
                     card_found = source_zone_list.pop(i)
                     break
-       
+
         if not card_found:
             raise ValueError(
                 f"Card with unique_id {unique_id} not found in "
@@ -1690,9 +1728,7 @@ class SimpleGameEngine:
                 except ValueError:
                     reveal_owner = destination_player
                 reveal_zone = self._get_zone_list(
-                    game_state,
-                    reveal_owner,
-                    "reveal_zone"
+                    game_state, reveal_owner, "reveal_zone"
                 )
                 self._prepare_card_for_destination(attachment, "reveal_zone")
                 reveal_zone.append(attachment)
@@ -1715,17 +1751,17 @@ class SimpleGameEngine:
                 next_index += 1
 
         if (
-            destination_zone_name == "library" and
-            "deck_position" in action.additional_data
+            destination_zone_name == "library"
+            and "deck_position" in action.additional_data
         ):
             if action.additional_data["deck_position"] == "bottom":
                 insert_card_with_attachments(len(destination_zone_list))
             else:
                 insert_card_with_attachments(0)
         elif (
-            position_index is not None and
-            isinstance(position_index, int) and
-            0 <= position_index <= len(destination_zone_list)
+            position_index is not None
+            and isinstance(position_index, int)
+            and 0 <= position_index <= len(destination_zone_list)
         ):
             insert_card_with_attachments(position_index)
         else:
@@ -1735,9 +1771,15 @@ class SimpleGameEngine:
             self._update_priority_from_stack(game_state)
 
         if destination_zone_name == "battlefield" and attachments_to_move:
-            self._normalize_attachment_orders(destination_zone_list, card_found.unique_id)
+            self._normalize_attachment_orders(
+                destination_zone_list, card_found.unique_id
+            )
 
-        if previous_host_id and source_zone_name == "battlefield" and source_zone_list is not None:
+        if (
+            previous_host_id
+            and source_zone_name == "battlefield"
+            and source_zone_list is not None
+        ):
             self._normalize_attachment_orders(source_zone_list, previous_host_id)
 
         print(
@@ -1770,7 +1812,9 @@ class SimpleGameEngine:
 
         normalized_zone = self._normalize_zone_name(source_zone)
         if normalized_zone != "battlefield":
-            raise ValueError("duplicate_card action currently supports battlefield cards only")
+            raise ValueError(
+                "duplicate_card action currently supports battlefield cards only"
+            )
 
         player = self._get_player(game_state, action.player_id)
         zone = self._get_zone_list(game_state, player, normalized_zone)
@@ -1828,26 +1872,40 @@ class SimpleGameEngine:
         host_loc = self._find_battlefield_card(game_state, host_unique_id)
 
         if source_loc is None:
-            raise ValueError(f"Card with unique_id {unique_id} not found on any battlefield")
+            raise ValueError(
+                f"Card with unique_id {unique_id} not found on any battlefield"
+            )
         if host_loc is None:
-            raise ValueError(f"Host card with unique_id {host_unique_id} not found on any battlefield")
+            raise ValueError(
+                f"Host card with unique_id {host_unique_id} not found on any battlefield"
+            )
 
         source_player, source_battlefield, target_index = source_loc
         host_player, host_battlefield, _ = host_loc
 
         card_to_attach = source_battlefield.pop(target_index)
-        child_attachments = self._extract_attachment_chain(source_battlefield, unique_id)
+        child_attachments = self._extract_attachment_chain(
+            source_battlefield, unique_id
+        )
 
         # If source and host are the same battlefield, removal might have shifted the host index.
         host_index = next(
-            (idx for idx, card in enumerate(host_battlefield) if card.unique_id == host_unique_id),
-            None
+            (
+                idx
+                for idx, card in enumerate(host_battlefield)
+                if card.unique_id == host_unique_id
+            ),
+            None,
         )
         if host_index is None:
-            raise ValueError(f"Host card with unique_id {host_unique_id} disappeared during attach operation")
+            raise ValueError(
+                f"Host card with unique_id {host_unique_id} disappeared during attach operation"
+            )
 
         previous_host = card_to_attach.attached_to
-        existing_attachments = [card for card in host_battlefield if card.attached_to == host_unique_id]
+        existing_attachments = [
+            card for card in host_battlefield if card.attached_to == host_unique_id
+        ]
         resolved_order = len(existing_attachments)
         if raw_order is not None:
             try:
@@ -1885,12 +1943,16 @@ class SimpleGameEngine:
 
         target_loc = self._find_battlefield_card(game_state, unique_id)
         if target_loc is None:
-            raise ValueError(f"Card with unique_id {unique_id} not found on any battlefield")
+            raise ValueError(
+                f"Card with unique_id {unique_id} not found on any battlefield"
+            )
 
         owner_player, battlefield, target_index = target_loc
         target_card = battlefield[target_index]
         if not target_card:
-            raise ValueError(f"Card with unique_id {unique_id} disappeared during detach operation")
+            raise ValueError(
+                f"Card with unique_id {unique_id} disappeared during detach operation"
+            )
 
         previous_host = target_card.attached_to
 
@@ -1932,24 +1994,24 @@ class SimpleGameEngine:
     def _shuffle_library(self, game_state: GameState, action: GameAction) -> None:
         """Shuffle a player's library."""
         player = self._get_player(game_state, action.player_id)
-        
+
         random.shuffle(player.library)
-        
+
         print(
             f"Player {action.player_id} shuffled their library "
             f"({len(player.library)} cards)"
         )
-    
+
     def _untap_all(self, game_state: GameState, action: GameAction) -> None:
         """Untap all permanents controlled by a player."""
         player = self._get_player(game_state, action.player_id)
-        
+
         tapped_cards = [card for card in player.battlefield if card.tapped]
         untapped_count = len(tapped_cards)
-        
+
         for card in player.battlefield:
             card.tapped = False
-        
+
         print(
             f"Player {action.player_id} untapped all permanents "
             f"({untapped_count} cards untapped)"
@@ -1959,82 +2021,81 @@ class SimpleGameEngine:
         """Handle the coin flip winner's choice to play first or draw."""
         if game_state.game_start_phase != GameStartPhase.COIN_FLIP:
             raise ValueError("Not in coin flip phase")
-        
+
         player_id = action.player_id
         player_index = self._get_player_index(game_state, player_id)
-        
+
         if player_index is None:
             raise ValueError(f"Player {player_id} not found")
-        
+
         if player_index != game_state.coin_flip_winner:
             raise ValueError("Only the coin flip winner can make this choice")
-        
+
         choice = action.additional_data.get("choice")
         if choice not in ["play", "draw"]:
             raise ValueError("Choice must be 'play' or 'draw'")
-        
+
         # Set first player based on choice
         if choice == "play":
             game_state.first_player = player_index
         else:
             # Let the other player go first
             game_state.first_player = 1 - player_index
-        
+
         game_state.active_player = game_state.first_player
         game_state.priority_player = game_state.first_player
-        
+
         # Draw initial 7 cards for each player (done after play/draw choice)
         player1 = game_state.players[0]
         player2 = game_state.players[1]
         self._draw_cards(player1, 7)
         self._draw_cards(player2, 7)
-        
+
         # Transition to mulligan phase
         game_state.game_start_phase = GameStartPhase.MULLIGANS
-        
+
         # Set the first player to make mulligan decision
         first_player_id = f"player{game_state.first_player + 1}"
         game_state.mulligan_deciding_player = first_player_id
         game_state.mulligan_state[first_player_id].is_deciding = True
-        
-        choice_action = "play first" if choice == "play" else "draw (let opponent go first)"
-        first_player_name = game_state.players[game_state.first_player].name
+
         # Note: Action history is recorded by websocket handler, no need to duplicate here
 
     def _mulligan(self, game_state: GameState, action: GameAction) -> None:
         """Handle mulligan action during the mulligan phase."""
         player_id = action.player_id
         player = self._get_player(game_state, player_id)
-        
+
         # Check if we're in mulligan phase
         if game_state.game_start_phase == GameStartPhase.MULLIGANS:
             # Verify it's this player's turn to decide
             if game_state.mulligan_deciding_player != player_id:
-                raise ValueError(f"It's not {player_id}'s turn to make a mulligan decision")
-            
+                raise ValueError(
+                    f"It's not {player_id}'s turn to make a mulligan decision"
+                )
+
             mulligan_state = game_state.mulligan_state.get(player_id)
             if not mulligan_state:
                 raise ValueError(f"No mulligan state for player {player_id}")
-            
+
             if mulligan_state.has_kept:
                 raise ValueError(f"Player {player_id} has already kept their hand")
-        
+
         # Perform the mulligan: return hand to library and reshuffle
         player.library.extend(player.hand)
         player.hand = []
         random.shuffle(player.library)
-        
+
         # Draw 7 new cards
         self._draw_cards(player, 7)
-        
+
         # Update mulligan state
         if game_state.game_start_phase == GameStartPhase.MULLIGANS:
             mulligan_state = game_state.mulligan_state[player_id]
             mulligan_state.mulligan_count += 1
             mulligan_state.is_deciding = False
-            mulligan_count = mulligan_state.mulligan_count
             # Note: Action history is recorded by websocket handler
-            
+
             # Advance to next player's mulligan decision
             self._advance_mulligan_decision(game_state, player_id)
         else:
@@ -2045,56 +2106,59 @@ class SimpleGameEngine:
         """Handle the keep hand action during mulligan phase."""
         if game_state.game_start_phase != GameStartPhase.MULLIGANS:
             raise ValueError("Not in mulligan phase")
-        
+
         player_id = action.player_id
-        
+
         # Verify it's this player's turn to decide
         if game_state.mulligan_deciding_player != player_id:
             raise ValueError(f"It's not {player_id}'s turn to make a mulligan decision")
-        
+
         mulligan_state = game_state.mulligan_state.get(player_id)
         if not mulligan_state:
             raise ValueError(f"No mulligan state for player {player_id}")
-        
+
         if mulligan_state.has_kept:
             raise ValueError(f"Player {player_id} has already kept their hand")
-        
+
         # Mark as kept
         mulligan_state.has_kept = True
         mulligan_state.is_deciding = False
-        mulligan_count = mulligan_state.mulligan_count
-        
+
         # Note: Player needs to put back cards equal to mulligan count
         # This is done manually by the player in this simulator
         # Note: Action history is recorded by websocket handler
-        
+
         # Advance to next player's mulligan decision or start the game
         self._advance_mulligan_decision(game_state, player_id)
 
-    def _advance_mulligan_decision(self, game_state: GameState, current_player_id: str) -> None:
+    def _advance_mulligan_decision(
+        self, game_state: GameState, current_player_id: str
+    ) -> None:
         """Advance to the next player who needs to make a mulligan decision."""
         player1_state = game_state.mulligan_state.get("player1", MulliganState())
         player2_state = game_state.mulligan_state.get("player2", MulliganState())
-        
+
         # Check if both players have kept
         if player1_state.has_kept and player2_state.has_kept:
             self._complete_mulligan_phase(game_state)
             return
-        
+
         # Determine who decides next based on alternating order
         # The first player always gets first chance to decide each round
-        first_player_index = game_state.first_player if game_state.first_player is not None else 0
+        first_player_index = (
+            game_state.first_player if game_state.first_player is not None else 0
+        )
         first_player_id = f"player{first_player_index + 1}"
         second_player_id = f"player{2 - first_player_index}"
-        
+
         first_state = game_state.mulligan_state.get(first_player_id, MulliganState())
         second_state = game_state.mulligan_state.get(second_player_id, MulliganState())
-        
+
         # Logic for alternating mulligans:
         # - If first player hasn't kept and hasn't just decided, they decide
         # - Otherwise, if second player hasn't kept, they decide
         # - If second player just decided and first player still hasn't kept, back to first
-        
+
         if current_player_id == first_player_id:
             # First player just decided, now check second player
             if not second_state.has_kept:
@@ -2122,40 +2186,45 @@ class SimpleGameEngine:
         """Complete the mulligan phase and start the actual game."""
         game_state.game_start_phase = GameStartPhase.COMPLETE
         game_state.mulligan_deciding_player = None
-        
+
         # Reset is_deciding flags
         for player_id in game_state.mulligan_state:
             game_state.mulligan_state[player_id].is_deciding = False
-        
+
         # Set active player to first player
-        first_player_index = game_state.first_player if game_state.first_player is not None else 0
+        first_player_index = (
+            game_state.first_player if game_state.first_player is not None else 0
+        )
         game_state.active_player = first_player_index
         game_state.priority_player = first_player_index
-        
+
         # Now transition from PREGAME to BEGIN phase and start turn 1
         game_state.phase = GamePhase.BEGIN
         game_state.turn = 1
         game_state.round = 1
-        
+
         first_player_name = game_state.players[first_player_index].name
-        
+
         print(f"Mulligan phase complete. {first_player_name} takes the first turn.")
-        
-        self.record_action_history(game_state.id, {
-            "action": "game_start",
-            "player": f"player{first_player_index + 1}",
-            "success": True,
-            "message": f"Game started! {first_player_name} takes the first turn.",
-            "origin": "engine"
-        })
-        
+
+        self.record_action_history(
+            game_state.id,
+            {
+                "action": "game_start",
+                "player": f"player{first_player_index + 1}",
+                "success": True,
+                "message": f"Game started! {first_player_name} takes the first turn.",
+                "origin": "engine",
+            },
+        )
+
         # Log the begin phase entry
         self._log_phase_history_entry(game_state, GamePhase.BEGIN)
 
     def _look_top_library(self, game_state: GameState, action: GameAction) -> None:
         """Handle look top library action by moving the top card to look zone."""
         player = self._get_player(game_state, action.player_id)
-        
+
         if not player.library:
             print(f"Player {action.player_id} has no cards in their library.")
             return
@@ -2165,7 +2234,9 @@ class SimpleGameEngine:
         look_zone = self._get_zone_list(game_state, player, "look_zone")
         look_zone.append(top_card)
 
-        print(f"Player {action.player_id} looked at {top_card.name} from top of library.")
+        print(
+            f"Player {action.player_id} looked at {top_card.name} from top of library."
+        )
 
     def _reveal_top_library(self, game_state: GameState, action: GameAction) -> None:
         """Handle reveal top library action by moving the card to the reveal zone."""
@@ -2179,7 +2250,9 @@ class SimpleGameEngine:
         reveal_zone.append(top_card)
         self._clear_look_zone_for_card(player, top_card.unique_id)
 
-        print(f"Player {action.player_id} revealed {top_card.name} from the top of their library.")
+        print(
+            f"Player {action.player_id} revealed {top_card.name} from the top of their library."
+        )
 
     def _resolve_all_stack(self, game_state: GameState, action: GameAction) -> None:
         """Resolve all spells on the stack."""
@@ -2200,12 +2273,12 @@ class SimpleGameEngine:
 
             owner = self._get_player(game_state, spell.owner_id)
             destination_zone = self._resolve_spell_destination(owner, spell)
-            print(
-                f"Resolved {spell.name}, moved to {owner.id}'s {destination_zone}"
-            )
+            print(f"Resolved {spell.name}, moved to {owner.id}'s {destination_zone}")
 
         self._update_priority_from_stack(game_state)
-        print(f"All {resolved_count} spells resolved, priority returned to active player")
+        print(
+            f"All {resolved_count} spells resolved, priority returned to active player"
+        )
 
     def _flip_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle flipping a double-faced card."""
@@ -2252,7 +2325,7 @@ class SimpleGameEngine:
         # Update card properties from the new face data
         if card_found.current_face < len(card_found.card_faces):
             face_data = card_found.card_faces[card_found.current_face]
-            
+
             # Update card properties with face data
             if "name" in face_data:
                 card_found.name = face_data["name"]
@@ -2275,13 +2348,13 @@ class SimpleGameEngine:
                     card_found.card_type = CardType.ARTIFACT
                 elif "planeswalker" in type_line:
                     card_found.card_type = CardType.PLANESWALKER
-                
+
                 # Update subtype
                 if "—" in face_data["type_line"]:
                     card_found.subtype = face_data["type_line"].split("—")[1].strip()
                 elif " — " in face_data["type_line"]:
                     card_found.subtype = face_data["type_line"].split(" — ")[1].strip()
-            
+
             if "oracle_text" in face_data:
                 card_found.text = face_data["oracle_text"]
             if "power" in face_data:
@@ -2292,7 +2365,9 @@ class SimpleGameEngine:
                 card_found.image_url = face_data["image_url"]
 
         face_name = "back" if card_found.current_face == 1 else "front"
-        print(f"Player {action.player_id} flipped {card_found.name} to {face_name} face")
+        print(
+            f"Player {action.player_id} flipped {card_found.name} to {face_name} face"
+        )
 
     def _reveal_face_down_card(self, game_state: GameState, action: GameAction) -> None:
         """Reveal a face-down permanent without moving it."""
@@ -2309,11 +2384,20 @@ class SimpleGameEngine:
 
         card_found.face_down = False
         card_found.face_down_owner = None
-        print(f"Player {action.player_id} revealed {card_found.name} from face-down state")
+        print(
+            f"Player {action.player_id} revealed {card_found.name} from face-down state"
+        )
 
     def _find_card_by_unique_id(self, game_state: GameState, unique_id: str):
         for player in game_state.players:
-            for zone_name in ["hand", "battlefield", "graveyard", "exile", "library", "reveal_zone"]:
+            for zone_name in [
+                "hand",
+                "battlefield",
+                "graveyard",
+                "exile",
+                "library",
+                "reveal_zone",
+            ]:
                 zone = getattr(player, zone_name, [])
                 for card in zone:
                     if card.unique_id == unique_id:
@@ -2546,7 +2630,9 @@ class SimpleGameEngine:
         if counter_type == "loyalty" and card_found.card_type == CardType.PLANESWALKER:
             card_found.loyalty = card_found.counters["loyalty"]
 
-        print(f"Added {amount} {counter_type} counter(s) to {card_found.name}. Total: {card_found.counters[counter_type]}")
+        print(
+            f"Added {amount} {counter_type} counter(s) to {card_found.name}. Total: {card_found.counters[counter_type]}"
+        )
 
     def _remove_counter(self, game_state: GameState, action: GameAction) -> None:
         """Remove counters from a card."""
@@ -2588,7 +2674,9 @@ class SimpleGameEngine:
             card_found.counters[counter_type] = 0
 
         old_amount = card_found.counters[counter_type]
-        card_found.counters[counter_type] = max(0, card_found.counters[counter_type] - amount)
+        card_found.counters[counter_type] = max(
+            0, card_found.counters[counter_type] - amount
+        )
         removed_amount = old_amount - card_found.counters[counter_type]
 
         # Clean up counter type if it reaches 0
@@ -2599,7 +2687,11 @@ class SimpleGameEngine:
         if counter_type == "loyalty" and card_found.card_type == CardType.PLANESWALKER:
             card_found.loyalty = card_found.counters.get("loyalty", 0)
 
-        print(f"Removed {removed_amount} {counter_type} counter(s) from {card_found.name}. Total: {card_found.counters.get(counter_type, 0)}")
+        total_counters = card_found.counters.get(counter_type, 0)
+        print(
+            f"Removed {removed_amount} {counter_type} counter(s) from {card_found.name}. "
+            f"Total: {total_counters}"
+        )
 
     def _set_counter(self, game_state: GameState, action: GameAction) -> None:
         """Set the number of counters on a card to a specific amount."""
@@ -2649,7 +2741,9 @@ class SimpleGameEngine:
 
         print(f"Set {counter_type} counters on {card_found.name} to {amount}")
 
-    async def _search_and_add_card(self, game_state: GameState, action: GameAction) -> None:
+    async def _search_and_add_card(
+        self, game_state: GameState, action: GameAction
+    ) -> None:
         """Handle searching for a card and adding it to the specified zone."""
         from app.services.card_service import CardService
         import uuid
@@ -2672,25 +2766,26 @@ class SimpleGameEngine:
             if not card_data:
                 print(f"Card '{card_name}' not found in Scryfall database")
                 return
-            
+
             # Create card from Scryfall data
             from app.models.game import Card
+
             card = Card(**card_data)
-            
+
             # Generate unique ID and set owner
             card.unique_id = uuid.uuid4().hex
             card.owner_id = action.player_id
-            
+
             # Mark as token if requested
             if is_token:
                 card.is_token = True
-            
+
             # Add card to the specified zone
             target_zone_list = self._get_zone_list(game_state, player, target_zone)
             target_zone_list.append(card)
-            
+
             print(f"Player {action.player_id} added {card.name} to {target_zone}")
-            
+
         except Exception as e:
             print(f"Error searching and adding card '{card_name}': {e}")
 
@@ -2708,7 +2803,9 @@ class SimpleGameEngine:
 
         try:
             card_service = CardService()
-            card_data = await card_service.get_card_data_from_scryfall(scryfall_id, by_id=True)
+            card_data = await card_service.get_card_data_from_scryfall(
+                scryfall_id, by_id=True
+            )
 
             if not card_data:
                 print(f"Token with Scryfall ID '{scryfall_id}' not found")

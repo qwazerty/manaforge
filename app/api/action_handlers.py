@@ -14,9 +14,8 @@ async def handle_pass_phase(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle pass phase action."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
+
 
 @action_registry.register("change_phase", required_fields=["phase"])
 async def handle_change_phase(
@@ -44,13 +43,7 @@ async def handle_shuffle_library(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle shuffle library action."""
-    return {
-        "broadcast_data": {}
-    }
-
-
-
-
+    return {"broadcast_data": {}}
 
 
 @action_registry.register("draw_card")
@@ -58,9 +51,7 @@ async def handle_draw_card(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle draw card action."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
 
 
 @action_registry.register("play_card", required_fields=["card_id", "unique_id"])
@@ -72,7 +63,7 @@ async def handle_play_card(
         raise HTTPException(
             status_code=400, detail="Request body required for play_card"
         )
-    
+
     card_id = request.get("card_id")
     unique_id = request.get("unique_id")
     face_down = bool(request.get("face_down"))
@@ -87,10 +78,13 @@ async def handle_play_card(
     return {
         "card_id": card_id,
         "additional_data": additional_data,
-        "broadcast_data": broadcast_data
+        "broadcast_data": broadcast_data,
     }
 
-@action_registry.register("play_card_from_library", required_fields=["card_id", "unique_id"])
+
+@action_registry.register(
+    "play_card_from_library", required_fields=["card_id", "unique_id"]
+)
 async def handle_play_card_from_library(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -99,14 +93,14 @@ async def handle_play_card_from_library(
         raise HTTPException(
             status_code=400, detail="Request body required for play_card_from_library"
         )
-    
+
     card_id = request.get("card_id")
     unique_id = request.get("unique_id")
-    
+
     return {
         "card_id": card_id,
         "additional_data": {"unique_id": unique_id},
-        "broadcast_data": {"card": card_id, "unique_id": unique_id}
+        "broadcast_data": {"card": card_id, "unique_id": unique_id},
     }
 
 
@@ -129,8 +123,8 @@ async def handle_reveal_face_down_card(
         "broadcast_data": {
             "card": card_id,
             "unique_id": unique_id,
-            "revealed_face_down": True
-        }
+            "revealed_face_down": True,
+        },
     }
 
 
@@ -143,25 +137,22 @@ async def handle_tap_card(
         raise HTTPException(
             status_code=400, detail="Request body required for tap_card"
         )
-    
+
     card_id = request.get("card_id")
     unique_id = request.get("unique_id")
     tapped = request.get("tapped")
-    
+
     if not card_id:
         raise HTTPException(status_code=400, detail="card_id is required")
-    
+
     return {
         "card_id": card_id,
-        "additional_data": {
-            "unique_id": unique_id,
-            "tapped": tapped
-        } if tapped is not None else {"unique_id": unique_id},
-        "broadcast_data": {
-            "card": card_id,
-            "unique_id": unique_id,
-            "tapped": tapped
-        }
+        "additional_data": (
+            {"unique_id": unique_id, "tapped": tapped}
+            if tapped is not None
+            else {"unique_id": unique_id}
+        ),
+        "broadcast_data": {"card": card_id, "unique_id": unique_id, "tapped": tapped},
     }
 
 
@@ -170,9 +161,7 @@ async def handle_untap_all(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle untap all permanents action."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
 
 
 @action_registry.register("modify_life", required_fields=["target_player", "amount"])
@@ -184,26 +173,23 @@ async def handle_modify_life(
         raise HTTPException(
             status_code=400, detail="Request body required for modify_life"
         )
-    
+
     target_player = request.get("target_player")
     amount = request.get("amount")
-    
+
     if target_player is None:
         raise HTTPException(status_code=400, detail="target_player is required")
     if amount is None:
         raise HTTPException(status_code=400, detail="amount is required")
-    
+
     return {
-        "additional_data": {
-            "target_player": target_player,
-            "amount": amount
-        },
-        "broadcast_data": {"target": target_player, "amount": amount}
+        "additional_data": {"target_player": target_player, "amount": amount},
+        "broadcast_data": {"target": target_player, "amount": amount},
     }
 
+
 @action_registry.register(
-    "modify_player_counter",
-    required_fields=["target_player", "counter_type", "amount"]
+    "modify_player_counter", required_fields=["target_player", "counter_type", "amount"]
 )
 async def handle_modify_player_counter(
     game_id: str, request: Optional[Dict], current_state: GameState
@@ -229,18 +215,18 @@ async def handle_modify_player_counter(
         "additional_data": {
             "target_player": target_player,
             "counter_type": counter_type,
-            "amount": amount
+            "amount": amount,
         },
         "broadcast_data": {
             "target": target_player,
             "counter_type": counter_type,
-            "amount": amount
-        }
+            "amount": amount,
+        },
     }
 
+
 @action_registry.register(
-    "set_player_counter",
-    required_fields=["target_player", "counter_type", "amount"]
+    "set_player_counter", required_fields=["target_player", "counter_type", "amount"]
 )
 async def handle_set_player_counter(
     game_id: str, request: Optional[Dict], current_state: GameState
@@ -266,14 +252,15 @@ async def handle_set_player_counter(
         "additional_data": {
             "target_player": target_player,
             "counter_type": counter_type,
-            "amount": amount
+            "amount": amount,
         },
         "broadcast_data": {
             "target": target_player,
             "counter_type": counter_type,
-            "amount": amount
-        }
+            "amount": amount,
+        },
     }
+
 
 @action_registry.register("adjust_commander_tax", required_fields=["amount"])
 async def handle_adjust_commander_tax(
@@ -292,14 +279,8 @@ async def handle_adjust_commander_tax(
         raise HTTPException(status_code=400, detail="amount is required")
 
     return {
-        "additional_data": {
-            "amount": amount,
-            "target_player": target_player
-        },
-        "broadcast_data": {
-            "target": target_player,
-            "amount": amount
-        }
+        "additional_data": {"amount": amount, "target_player": target_player},
+        "broadcast_data": {"target": target_player, "amount": amount},
     }
 
 
@@ -308,18 +289,15 @@ async def handle_resolve_stack(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle resolve stack action."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
+
 
 @action_registry.register("resolve_all_stack")
 async def handle_resolve_all_stack(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle resolve all stack action - resolves all spells on the stack."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
 
 
 @action_registry.register("pass_priority")
@@ -327,9 +305,7 @@ async def handle_pass_priority(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle pass priority action."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
 
 
 @action_registry.register("mulligan")
@@ -341,10 +317,8 @@ async def handle_mulligan(
     player_id = request.get("player_id", "player1") if request else "player1"
     mulligan_state = current_state.mulligan_state.get(player_id)
     mulligan_count = (mulligan_state.mulligan_count + 1) if mulligan_state else 1
-    
-    return {
-        "broadcast_data": {"mulligan_count": mulligan_count}
-    }
+
+    return {"broadcast_data": {"mulligan_count": mulligan_count}}
 
 
 @action_registry.register("keep_hand")
@@ -356,10 +330,8 @@ async def handle_keep_hand(
     player_id = request.get("player_id", "player1") if request else "player1"
     mulligan_state = current_state.mulligan_state.get(player_id)
     mulligan_count = mulligan_state.mulligan_count if mulligan_state else 0
-    
-    return {
-        "broadcast_data": {"mulligan_count": mulligan_count}
-    }
+
+    return {"broadcast_data": {"mulligan_count": mulligan_count}}
 
 
 @action_registry.register("coin_flip_choice", required_fields=["choice"])
@@ -371,22 +343,24 @@ async def handle_coin_flip_choice(
         raise HTTPException(
             status_code=400, detail="Request body required for coin_flip_choice"
         )
-    
+
     choice = request.get("choice")
     if choice not in ["play", "draw"]:
-        raise HTTPException(
-            status_code=400, detail="choice must be 'play' or 'draw'"
-        )
-    
+        raise HTTPException(status_code=400, detail="choice must be 'play' or 'draw'")
+
     # Get player name for the message
     player_id = request.get("player_id", "player1")
     player_index = 0 if player_id == "player1" else 1
-    player_name = current_state.players[player_index].name if player_index < len(current_state.players) else player_id
+    player_name = (
+        current_state.players[player_index].name
+        if player_index < len(current_state.players)
+        else player_id
+    )
     choice_action = "play first" if choice == "play" else "draw (let opponent go first)"
-    
+
     return {
         "additional_data": {"choice": choice},
-        "broadcast_data": {"message": f"{player_name} chose to {choice_action}"}
+        "broadcast_data": {"message": f"{player_name} chose to {choice_action}"},
     }
 
 
@@ -395,9 +369,7 @@ async def handle_look_top_library(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle look top library action."""
-    return {
-        "broadcast_data": {}
-    }
+    return {"broadcast_data": {}}
 
 
 @action_registry.register("reveal_top_library")
@@ -405,15 +377,11 @@ async def handle_reveal_top_library(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
     """Handle reveal top library action."""
-    return {
-        "broadcast_data": {}
-    }
-
+    return {"broadcast_data": {}}
 
 
 @action_registry.register(
-    "move_card",
-    required_fields=["card_id", "source_zone", "target_zone", "unique_id"]
+    "move_card", required_fields=["card_id", "source_zone", "target_zone", "unique_id"]
 )
 async def handle_move_card(
     game_id: str, request: Optional[Dict], current_state: GameState
@@ -470,8 +438,7 @@ async def handle_move_card(
 
 
 @action_registry.register(
-    "attach_card",
-    required_fields=["unique_id", "host_unique_id"]
+    "attach_card", required_fields=["unique_id", "host_unique_id"]
 )
 async def handle_attach_card(
     game_id: str, request: Optional[Dict], current_state: GameState
@@ -497,11 +464,11 @@ async def handle_attach_card(
 
     additional_data: Dict[str, Any] = {
         "unique_id": unique_id,
-        "host_unique_id": host_unique_id
+        "host_unique_id": host_unique_id,
     }
     broadcast_data: Dict[str, Any] = {
         "unique_id": unique_id,
-        "host_unique_id": host_unique_id
+        "host_unique_id": host_unique_id,
     }
 
     if attachment_order is not None:
@@ -517,14 +484,11 @@ async def handle_attach_card(
     return {
         "card_id": card_id,
         "additional_data": additional_data,
-        "broadcast_data": broadcast_data
+        "broadcast_data": broadcast_data,
     }
 
 
-@action_registry.register(
-    "detach_card",
-    required_fields=["unique_id"]
-)
+@action_registry.register("detach_card", required_fields=["unique_id"])
 async def handle_detach_card(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -561,14 +525,11 @@ async def handle_detach_card(
     return {
         "card_id": card_id,
         "additional_data": additional_data,
-        "broadcast_data": broadcast_data
+        "broadcast_data": broadcast_data,
     }
 
 
-@action_registry.register(
-    "duplicate_card",
-    required_fields=["card_id", "unique_id"]
-)
+@action_registry.register("duplicate_card", required_fields=["card_id", "unique_id"])
 async def handle_duplicate_card(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -592,8 +553,8 @@ async def handle_duplicate_card(
             "card": card_id,
             "unique_id": unique_id,
             "source_zone": source_zone,
-            "duplicate": True
-        }
+            "duplicate": True,
+        },
     }
 
 
@@ -626,9 +587,8 @@ async def handle_target_card(
         },
     }
 
-@action_registry.register(
-    "flip_card", required_fields=["unique_id", "card_id"]
-)
+
+@action_registry.register("flip_card", required_fields=["unique_id", "card_id"])
 async def handle_flip_card(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -651,6 +611,7 @@ async def handle_flip_card(
             "card_id": card_id,
         },
     }
+
 
 @action_registry.register(
     "add_counter", required_fields=["unique_id", "card_id", "counter_type"]
@@ -684,10 +645,8 @@ async def handle_add_counter(
         },
     }
 
-@action_registry.register(
-    "set_power_toughness",
-    required_fields=["unique_id"]
-)
+
+@action_registry.register("set_power_toughness", required_fields=["unique_id"])
 async def handle_set_power_toughness(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -721,6 +680,7 @@ async def handle_set_power_toughness(
         "additional_data": additional_data,
         "broadcast_data": broadcast_data,
     }
+
 
 @action_registry.register(
     "remove_counter", required_fields=["unique_id", "card_id", "counter_type"]
@@ -829,9 +789,7 @@ async def handle_remove_custom_keyword(
     }
 
 
-@action_registry.register(
-    "add_custom_type", required_fields=["unique_id", "card_type"]
-)
+@action_registry.register("add_custom_type", required_fields=["unique_id", "card_type"])
 async def handle_add_custom_type(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -916,9 +874,7 @@ async def handle_remove_custom_type(
     }
 
 
-@action_registry.register(
-    "set_custom_type", required_fields=["unique_id"]
-)
+@action_registry.register("set_custom_type", required_fields=["unique_id"])
 async def handle_set_custom_type(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -967,6 +923,7 @@ async def handle_set_custom_type(
         },
     }
 
+
 @action_registry.register(
     "set_counter", required_fields=["unique_id", "card_id", "counter_type", "amount"]
 )
@@ -999,6 +956,7 @@ async def handle_set_counter(
         },
     }
 
+
 @action_registry.register(
     "search_and_add_card", required_fields=["card_name", "target_zone"]
 )
@@ -1014,11 +972,9 @@ async def handle_search_and_add_card(
     card_name = request.get("card_name")
     target_zone = request.get("target_zone")
     is_token = request.get("is_token", False)
-    
+
     if target_zone not in ["hand", "battlefield", "graveyard", "exile", "library"]:
-        raise HTTPException(
-            status_code=400, detail="Invalid target zone"
-        )
+        raise HTTPException(status_code=400, detail="Invalid target zone")
 
     return {
         "additional_data": {
@@ -1032,6 +988,7 @@ async def handle_search_and_add_card(
             "is_token": is_token,
         },
     }
+
 
 @action_registry.register("create_token", required_fields=["scryfall_id"])
 async def handle_create_token(
@@ -1054,6 +1011,7 @@ async def handle_create_token(
         },
     }
 
+
 @action_registry.register("delete_token", required_fields=["unique_id"])
 async def handle_delete_token(
     game_id: str, request: Optional[Dict], current_state: GameState
@@ -1074,6 +1032,7 @@ async def handle_delete_token(
             "unique_id": unique_id,
         },
     }
+
 
 @action_registry.register("declare_attackers", required_fields=["attacking_creatures"])
 async def handle_declare_attackers(
@@ -1099,6 +1058,7 @@ async def handle_declare_attackers(
             "attacking_creatures": attacking_creatures,
         },
     }
+
 
 @action_registry.register("declare_blockers", required_fields=["blocking_assignments"])
 async def handle_declare_blockers(
@@ -1178,7 +1138,9 @@ async def handle_preview_blockers(
     }
 
 
-@action_registry.register("add_targeting_arrow", required_fields=["source_id", "target_id"])
+@action_registry.register(
+    "add_targeting_arrow", required_fields=["source_id", "target_id"]
+)
 async def handle_add_targeting_arrow(
     game_id: str, request: Optional[Dict], current_state: GameState
 ) -> Dict[str, Any]:
@@ -1205,7 +1167,9 @@ async def handle_remove_targeting_arrow(
 ) -> Dict[str, Any]:
     """Handle removing targeting arrows from a card."""
     source_id = request.get("source_id")
-    target_id = request.get("target_id")  # Optional, if None removes all arrows from source
+    target_id = request.get(
+        "target_id"
+    )  # Optional, if None removes all arrows from source
 
     return {
         "additional_data": {

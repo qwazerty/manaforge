@@ -16,6 +16,7 @@ def current_utc_datetime() -> datetime:
 
 class CardType(str, Enum):
     """Card types in Magic The Gathering."""
+
     CREATURE = "creature"
     INSTANT = "instant"
     SORCERY = "sorcery"
@@ -27,6 +28,7 @@ class CardType(str, Enum):
 
 class Rarity(str, Enum):
     """Card rarities."""
+
     COMMON = "common"
     UNCOMMON = "uncommon"
     RARE = "rare"
@@ -35,6 +37,7 @@ class Rarity(str, Enum):
 
 class Color(str, Enum):
     """Magic colors."""
+
     WHITE = "W"
     BLUE = "U"
     BLACK = "B"
@@ -44,13 +47,14 @@ class Color(str, Enum):
 
 class Card(BaseModel):
     """A Magic The Gathering card."""
+
     id: str = Field(..., description="Unique card identifier")
     scryfall_id: Optional[str] = Field(
         default=None, description="Scryfall's unique ID for this card"
     )
     unique_id: str = Field(
         default_factory=lambda: f"card_{uuid.uuid4().hex}",
-        description="Unique instance identifier for a card in a game"
+        description="Unique instance identifier for a card in a game",
     )
     owner_id: Optional[str] = Field(
         default=None, description="ID of the player who owns this card instance"
@@ -61,9 +65,7 @@ class Card(BaseModel):
     card_type: CardType = Field(..., description="Primary card type")
     subtype: str = Field(default="", description="Card subtype")
     text: str = Field(default="", description="Card text/abilities")
-    power: Optional[int | str] = Field(
-        default=None, description="Creature power"
-    )
+    power: Optional[int | str] = Field(default=None, description="Creature power")
     toughness: Optional[int | str] = Field(
         default=None, description="Creature toughness"
     )
@@ -75,15 +77,9 @@ class Card(BaseModel):
     )
     colors: List[Color] = Field(default_factory=list, description="Card colors")
     rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
-    image_url: Optional[str] = Field(
-        default=None, description="Card image URL"
-    )
-    tapped: bool = Field(
-        default=False, description="Whether the card is tapped"
-    )
-    targeted: bool = Field(
-        default=False, description="Whether the card is targeted"
-    )
+    image_url: Optional[str] = Field(default=None, description="Card image URL")
+    tapped: bool = Field(default=False, description="Whether the card is tapped")
+    targeted: bool = Field(default=False, description="Whether the card is targeted")
     # Combat support
     attacking: bool = Field(
         default=False, description="Whether the creature is currently attacking"
@@ -93,23 +89,21 @@ class Card(BaseModel):
     )
     attached_to: Optional[str] = Field(
         default=None,
-        description="Unique ID of the host card this permanent is attached to"
+        description="Unique ID of the host card this permanent is attached to",
     )
     attachment_order: Optional[int] = Field(
-        default=None,
-        description="Ordering index among attachments on the host card"
+        default=None, description="Ordering index among attachments on the host card"
     )
     custom_keywords: List[str] = Field(
         default_factory=list,
-        description="Player-added keywords displayed directly on the card overlay"
+        description="Player-added keywords displayed directly on the card overlay",
     )
     custom_types: List[str] = Field(
         default_factory=list,
-        description="Manual card type overrides that influence battlefield grouping"
+        description="Manual card type overrides that influence battlefield grouping",
     )
     is_commander: bool = Field(
-        default=False,
-        description="Whether this card is a commander"
+        default=False, description="Whether this card is a commander"
     )
     # Double-faced card support
     is_double_faced: bool = Field(
@@ -121,39 +115,40 @@ class Card(BaseModel):
     card_faces: List[Dict[str, Any]] = Field(
         default_factory=list, description="Data for each face of the card"
     )
-    
+
     # Counter support
     counters: Dict[str, int] = Field(
-        default_factory=dict, description="Counters on this card (e.g., {'loyalty': 3, '+1/+1': 2})"
+        default_factory=dict,
+        description="Counters on this card (e.g., {'loyalty': 3, '+1/+1': 2})",
     )
-    
+
     # Planeswalker loyalty (separate from counters for easier access)
     loyalty: Optional[int] = Field(
         default=None, description="Current loyalty for planeswalkers"
     )
-    
+
     # Token support
-    is_token: bool = Field(
-        default=False, description="Whether this card is a token"
-    )
+    is_token: bool = Field(default=False, description="Whether this card is a token")
     face_down: bool = Field(
         default=False,
-        description="Whether the card is currently face-down with hidden information"
+        description="Whether the card is currently face-down with hidden information",
     )
     face_down_owner: Optional[str] = Field(
         default=None,
-        description="Player ID allowed to view details while the card remains face-down"
+        description="Player ID allowed to view details while the card remains face-down",
     )
-
 
 
 class DeckCard(BaseModel):
     """A card in a deck with quantity."""
+
     card: Card = Field(..., description="The card")
     quantity: int = Field(..., description="Number of copies in the deck")
 
+
 class GameFormat(str, Enum):
     """Supported game formats for deck construction."""
+
     STANDARD = "standard"
     MODERN = "modern"
     PIONEER = "pioneer"
@@ -166,24 +161,19 @@ class GameFormat(str, Enum):
 
 class Deck(BaseModel):
     """A Magic deck."""
+
     id: Optional[str] = Field(default=None, description="Deck ID")
     name: str = Field(..., description="Deck name")
     cards: List[DeckCard] = Field(
-        default_factory=list,
-        description="List of cards in the deck with quantities"
+        default_factory=list, description="List of cards in the deck with quantities"
     )
     sideboard: List[DeckCard] = Field(
-        default_factory=list,
-        description="Sideboard cards with quantities"
+        default_factory=list, description="Sideboard cards with quantities"
     )
     commanders: List[Card] = Field(
-        default_factory=list,
-        description="Commander cards assigned to this deck"
+        default_factory=list, description="Commander cards assigned to this deck"
     )
-    format: GameFormat = Field(
-        default=GameFormat.STANDARD,
-        description="Deck format"
-    )
+    format: GameFormat = Field(default=GameFormat.STANDARD, description="Deck format")
 
     @field_validator("cards", mode="before")
     @classmethod
@@ -208,6 +198,7 @@ class Deck(BaseModel):
 
 class GameZone(str, Enum):
     """Game zones where cards can be."""
+
     LIBRARY = "library"
     HAND = "hand"
     BATTLEFIELD = "battlefield"
@@ -218,6 +209,7 @@ class GameZone(str, Enum):
 
 class GamePhase(str, Enum):
     """Simplified game phases like Magic Arena."""
+
     PREGAME = "pregame"  # Before game starts (coin flip, mulligans)
     BEGIN = "begin"
     MAIN1 = "main1"
@@ -230,6 +222,7 @@ class GamePhase(str, Enum):
 
 class CombatStep(str, Enum):
     """Detailed combat sub-steps tracked by the engine."""
+
     NONE = "none"
     DECLARE_ATTACKERS = "declare_attackers"
     DECLARE_BLOCKERS = "declare_blockers"
@@ -239,35 +232,37 @@ class CombatStep(str, Enum):
 
 class PhaseMode(str, Enum):
     """Phase handling configuration for the game."""
+
     CASUAL = "casual"
     STRICT = "strict"
 
 
 class GameStartPhase(str, Enum):
     """Phases of the pre-game setup."""
-    COIN_FLIP = "coin_flip"           # Waiting for coin flip winner to choose
-    MULLIGANS = "mulligans"           # Mulligan decisions in progress
-    COMPLETE = "complete"             # Game has started normally
+
+    COIN_FLIP = "coin_flip"  # Waiting for coin flip winner to choose
+    MULLIGANS = "mulligans"  # Mulligan decisions in progress
+    COMPLETE = "complete"  # Game has started normally
 
 
 class MulliganState(BaseModel):
     """Track mulligan status for a single player."""
+
     has_kept: bool = Field(
-        default=False,
-        description="Whether this player has decided to keep their hand"
+        default=False, description="Whether this player has decided to keep their hand"
     )
     mulligan_count: int = Field(
-        default=0,
-        description="Number of mulligans taken by this player"
+        default=0, description="Number of mulligans taken by this player"
     )
     is_deciding: bool = Field(
         default=False,
-        description="Whether this player is currently making a mulligan decision"
+        description="Whether this player is currently making a mulligan decision",
     )
 
 
 class Player(BaseModel):
     """A player in a game."""
+
     id: str = Field(..., description="Player ID")
     name: str = Field(..., description="Player name")
     deck_name: Optional[str] = Field(
@@ -281,37 +276,33 @@ class Player(BaseModel):
     graveyard: List[Card] = Field(
         default_factory=list, description="Cards in graveyard"
     )
-    exile: List[Card] = Field(
-        default_factory=list, description="Cards in exile"
-    )
-    library: List[Card] = Field(
-        default_factory=list, description="Cards in library"
-    )
+    exile: List[Card] = Field(default_factory=list, description="Cards in exile")
+    library: List[Card] = Field(default_factory=list, description="Cards in library")
     commander_zone: List[Card] = Field(
-        default_factory=list,
-        description="Cards available in the commander zone"
+        default_factory=list, description="Cards available in the commander zone"
     )
     commander_tax: int = Field(
-        default=0,
-        description="Current commander tax (paid additional colorless mana)"
+        default=0, description="Current commander tax (paid additional colorless mana)"
     )
     reveal_zone: List[Card] = Field(
         default_factory=list, description="Cards in the player's reveal zone"
     )
     look_zone: List[Card] = Field(
-        default_factory=list, description="Cards the player has looked at from the library"
+        default_factory=list,
+        description="Cards the player has looked at from the library",
     )
     mana_pool: Dict[str, int] = Field(
         default_factory=dict, description="Available mana"
     )
     counters: Dict[str, int] = Field(
         default_factory=dict,
-        description="Counters applied to the player (poison, energy, etc.)"
+        description="Counters applied to the player (poison, energy, etc.)",
     )
 
 
 class PlayerDeckStatus(BaseModel):
     """Status information about a player's deck submission."""
+
     submitted: bool = Field(
         default=False, description="Whether the player has submitted a deck"
     )
@@ -334,90 +325,83 @@ class PlayerDeckStatus(BaseModel):
         default=None, description="Optional status message for the submission"
     )
 
+
 class GameSetupStatus(BaseModel):
     """Overview of the game setup process before the match starts."""
+
     game_id: str = Field(..., description="Game identifier")
     game_format: GameFormat = Field(..., description="Selected game format")
     phase_mode: PhaseMode = Field(..., description="Selected phase progression mode")
     status: str = Field(..., description="Human readable setup status")
     ready: bool = Field(
         default=False,
-        description="True when both decks are validated and the game is initialized"
+        description="True when both decks are validated and the game is initialized",
     )
     created_at: datetime = Field(
         default_factory=current_utc_datetime,
-        description="Timestamp for when the lobby was created (UTC)"
+        description="Timestamp for when the lobby was created (UTC)",
     )
     updated_at: datetime = Field(
         default_factory=current_utc_datetime,
-        description="Timestamp for the most recent change to the setup"
+        description="Timestamp for the most recent change to the setup",
     )
     player_status: Dict[str, PlayerDeckStatus] = Field(
-        default_factory=dict,
-        description="Per-player deck submission statuses"
+        default_factory=dict, description="Per-player deck submission statuses"
     )
+
 
 class CombatState(BaseModel):
     """Fine-grained combat phase tracking."""
-    step: CombatStep = Field(
-        default=CombatStep.NONE,
-        description="Current combat step"
-    )
+
+    step: CombatStep = Field(default=CombatStep.NONE, description="Current combat step")
     attackers_declared: bool = Field(
-        default=False,
-        description="Whether attackers have been confirmed this combat"
+        default=False, description="Whether attackers have been confirmed this combat"
     )
     blockers_declared: bool = Field(
-        default=False,
-        description="Whether blockers have been confirmed this combat"
+        default=False, description="Whether blockers have been confirmed this combat"
     )
     damage_resolved: bool = Field(
-        default=False,
-        description="Whether combat damage has been resolved"
+        default=False, description="Whether combat damage has been resolved"
     )
     expected_player: Optional[str] = Field(
-        default=None,
-        description="Player expected to act during this combat step"
+        default=None, description="Player expected to act during this combat step"
     )
     pending_attackers: List[str] = Field(
         default_factory=list,
-        description="Unique IDs of creatures currently selected as attackers"
+        description="Unique IDs of creatures currently selected as attackers",
     )
     pending_blockers: Dict[str, str] = Field(
         default_factory=dict,
-        description="Mapping of blocker unique IDs to the attackers they are assigned to"
+        description="Mapping of blocker unique IDs to the attackers they are assigned to",
     )
 
 
 class GameState(BaseModel):
     """Current state of a Magic game."""
+
     id: str = Field(..., description="Game ID")
     players: List[Player] = Field(..., description="Players in the game")
     active_player: int = Field(default=0, description="Index of active player")
     phase: GamePhase = Field(default=GamePhase.BEGIN, description="Current phase")
     combat_state: CombatState = Field(
         default_factory=CombatState,
-        description="State tracking for the combat phase and its sub-steps"
+        description="State tracking for the combat phase and its sub-steps",
     )
     turn: int = Field(
-        default=1,
-        description="Turn number (increments when both players have played)"
+        default=1, description="Turn number (increments when both players have played)"
     )
     round: int = Field(
-        default=1,
-        description="Round number (each player plays once per round)"
+        default=1, description="Round number (each player plays once per round)"
     )
     players_played_this_round: List[bool] = Field(
         default_factory=lambda: [False, False],
-        description="Track which players have played this round"
+        description="Track which players have played this round",
     )
-    stack: List[Card] = Field(
-        default_factory=list, description="Spells on the stack"
-    )
+    stack: List[Card] = Field(default_factory=list, description="Spells on the stack")
     priority_player: int = Field(default=0, description="Player with priority")
     end_step_priority_passed: bool = Field(
         default=False,
-        description="Whether the opponent has passed priority during the end step"
+        description="Whether the opponent has passed priority during the end step",
     )
     game_format: GameFormat = Field(
         default=GameFormat.STANDARD, description="Game format selection for this match"
@@ -427,66 +411,63 @@ class GameState(BaseModel):
     )
     setup_complete: bool = Field(
         default=True,
-        description="Indicates whether the pre-game deck validation step has finished"
+        description="Indicates whether the pre-game deck validation step has finished",
     )
     # Game start phase tracking (coin flip and mulligans)
     game_start_phase: GameStartPhase = Field(
         default=GameStartPhase.COMPLETE,
-        description="Current phase of the pre-game setup (coin flip, mulligans, or complete)"
+        description="Current phase of the pre-game setup (coin flip, mulligans, or complete)",
     )
     coin_flip_winner: Optional[int] = Field(
-        default=None,
-        description="Index of the player who won the coin flip (0 or 1)"
+        default=None, description="Index of the player who won the coin flip (0 or 1)"
     )
     first_player: Optional[int] = Field(
         default=None,
-        description="Index of the player who will take the first turn (0 or 1)"
+        description="Index of the player who will take the first turn (0 or 1)",
     )
     mulligan_state: Dict[str, MulliganState] = Field(
-        default_factory=dict,
-        description="Mulligan status for each player"
+        default_factory=dict, description="Mulligan status for each player"
     )
     mulligan_deciding_player: Optional[str] = Field(
-        default=None,
-        description="Player ID of who is currently deciding on mulligan"
+        default=None, description="Player ID of who is currently deciding on mulligan"
     )
     deck_status: Dict[str, PlayerDeckStatus] = Field(
         default_factory=dict,
-        description="Summary of the deck submissions used to start the game"
+        description="Summary of the deck submissions used to start the game",
     )
     action_history: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="Ordered history of in-game actions for UI rendering"
+        description="Ordered history of in-game actions for UI rendering",
     )
     chat_log: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="Chat messages exchanged during the game session"
+        description="Chat messages exchanged during the game session",
     )
     targeting_arrows: List[Dict[str, str]] = Field(
         default_factory=list,
-        description="Visual targeting arrows between cards (source_id -> target_id)"
+        description="Visual targeting arrows between cards (source_id -> target_id)",
     )
     created_at: datetime = Field(
         default_factory=current_utc_datetime,
-        description="Timestamp for when the game started (UTC)"
+        description="Timestamp for when the game started (UTC)",
     )
     updated_at: datetime = Field(
         default_factory=current_utc_datetime,
-        description="Timestamp for the most recent change to the game state"
+        description="Timestamp for the most recent change to the game state",
     )
 
 
 class GameAction(BaseModel):
     """An action taken in the game."""
+
     player_id: str = Field(..., description="Player taking the action")
     action_type: str = Field(..., description="Type of action")
-    card_id: Optional[str] = Field(
-        default=None, description="Card involved in action"
-    )
+    card_id: Optional[str] = Field(default=None, description="Card involved in action")
     target: Optional[str] = Field(default=None, description="Target of the action")
     additional_data: Dict[str, Any] = Field(
         default_factory=dict, description="Additional action data"
     )
+
 
 # Models for the draft feature
 class DraftType(str, Enum):
@@ -494,10 +475,12 @@ class DraftType(str, Enum):
     SEALED = "sealed"
     CUBE = "cube"
 
+
 class DraftState(str, Enum):
     WAITING = "waiting"
-    DRAFTING = "drafting" 
+    DRAFTING = "drafting"
     COMPLETED = "completed"
+
 
 class DraftPlayer(BaseModel):
     id: str
@@ -507,11 +490,13 @@ class DraftPlayer(BaseModel):
     drafted_cards: List[Card] = Field(default_factory=list)
     current_pack: List[Card] = Field(default_factory=list)
 
+
 class CubeConfiguration(BaseModel):
     cube_id: Optional[str] = None
     source_url: Optional[str] = None
     name: Optional[str] = None
     card_count: int = 0
+
 
 class DraftRoom(BaseModel):
     id: str
