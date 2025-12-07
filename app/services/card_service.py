@@ -7,11 +7,11 @@ from datetime import datetime
 from html import unescape
 from urllib.parse import urlparse, urljoin
 import json
-from pathlib import Path
 import aiohttp
 from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
+from app.core import db
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
@@ -37,68 +37,68 @@ def _normalize_name(name: str) -> str:
 
 
 def _load_local_oracle_data() -> None:
+    """Populate in-memory caches from Postgres cards table only."""
+
     global _LOCAL_ORACLE_LOADED
     if _LOCAL_ORACLE_LOADED:
         return
-    root = Path(__file__).resolve().parents[2]
-    oracle_path = root / "data" / "oracle-cards.json"
-    if not oracle_path or not oracle_path.exists():
-        _LOCAL_ORACLE_LOADED = True
-        return
+
+    def add_card(card: Dict[str, Any]) -> None:
+        def add_key(raw_name: Optional[str]) -> None:
+            key = _normalize_name(raw_name or "")
+            if not key:
+                return
+            bucket = _LOCAL_ORACLE_CACHE.setdefault(key, [])
+            bucket.append(card)
+
+        name = card.get("name")
+        printed_name = card.get("printed_name")
+
+        add_key(name)
+        add_key(printed_name)
+
+        face_names: List[str] = []
+        if isinstance(card.get("card_faces"), list):
+            for face in card["card_faces"]:
+                face_name = face.get("name")
+                printed_face_name = face.get("printed_name")
+                if isinstance(face_name, str):
+                    face_names.append(face_name)
+                if isinstance(printed_face_name, str):
+                    face_names.append(printed_face_name)
+
+        if isinstance(name, str) and "//" in name:
+            for part in name.split("//"):
+                face_names.append(part.strip())
+        if isinstance(printed_name, str) and "//" in printed_name:
+            for part in printed_name.split("//"):
+                face_names.append(part.strip())
+
+        for face_name in face_names:
+            add_key(face_name)
+
+        card_id = str(card.get("id") or "").strip()
+        if card_id and card_id not in _LOCAL_ORACLE_CACHE_BY_ID:
+            _LOCAL_ORACLE_CACHE_BY_ID[card_id] = card
+
+        oracle_id = str(card.get("oracle_id") or "").strip()
+        if oracle_id and oracle_id not in _LOCAL_ORACLE_CACHE_BY_ORACLE_ID:
+            _LOCAL_ORACLE_CACHE_BY_ORACLE_ID[oracle_id] = card
+
     try:
-        with oracle_path.open("r", encoding="utf-8") as f:
-            payload = json.load(f)
-        if isinstance(payload, list):
-            cards = payload
-        else:
-            cards = payload.get("data") or payload.get("cards") or []
-        for card in cards:
+        with db.connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT data FROM cards")
+            rows = cur.fetchall()
+            if not rows:
+                raise RuntimeError("cards table is empty; run data import first")
+            for (payload,) in rows:
+                if isinstance(payload, dict):
+                    add_card(payload)
+                else:
+                    raise RuntimeError("cards.data is not JSON")
+    except Exception as exc:  # pragma: no cover - startup fail fast
+        raise RuntimeError(f"Unable to load cards from database: {exc}") from exc
 
-            def add_key(raw_name: Optional[str]) -> None:
-                key = _normalize_name(raw_name or "")
-                if not key:
-                    return
-                bucket = _LOCAL_ORACLE_CACHE.setdefault(key, [])
-                bucket.append(card)
-
-            name = card.get("name")
-            printed_name = card.get("printed_name")
-
-            # Canonical name + printed name (for Universes Within, etc.)
-            add_key(name)
-            add_key(printed_name)
-
-            # Index each face name separately for double-faced/split cards
-            face_names = []
-            if isinstance(card.get("card_faces"), list):
-                for face in card["card_faces"]:
-                    face_name = face.get("name")
-                    printed_face_name = face.get("printed_name")
-                    if isinstance(face_name, str):
-                        face_names.append(face_name)
-                    if isinstance(printed_face_name, str):
-                        face_names.append(printed_face_name)
-
-            # Also index the split parts of "Front // Back" names
-            if isinstance(name, str) and "//" in name:
-                for part in name.split("//"):
-                    face_names.append(part.strip())
-            if isinstance(printed_name, str) and "//" in printed_name:
-                for part in printed_name.split("//"):
-                    face_names.append(part.strip())
-
-            for face_name in face_names:
-                add_key(face_name)
-
-            card_id = str(card.get("id") or "").strip()
-            if card_id and card_id not in _LOCAL_ORACLE_CACHE_BY_ID:
-                _LOCAL_ORACLE_CACHE_BY_ID[card_id] = card
-
-            oracle_id = str(card.get("oracle_id") or "").strip()
-            if oracle_id and oracle_id not in _LOCAL_ORACLE_CACHE_BY_ORACLE_ID:
-                _LOCAL_ORACLE_CACHE_BY_ORACLE_ID[oracle_id] = card
-    except Exception as exc:
-        print(f"Unable to load local oracle data: {exc}")
     _LOCAL_ORACLE_LOADED = True
 
 

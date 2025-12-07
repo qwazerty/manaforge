@@ -202,13 +202,13 @@ def prepare_staging_schema(conn: psycopg.Connection) -> None:
             product jsonb
         );
         """,
-        "CREATE INDEX idx_cards_new_normalized_name ON cards_new (normalized_name);",
-        "CREATE INDEX idx_cards_new_set ON cards_new (set);",
-        "CREATE INDEX idx_cards_new_rarity ON cards_new (rarity);",
-        "CREATE INDEX idx_cards_new_cmc ON cards_new (cmc);",
-        "CREATE INDEX idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
-        "CREATE INDEX idx_cmp_new_price ON cardmarket_price_new (price);",
-        "CREATE INDEX idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_set ON cards_new (set);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_rarity ON cards_new (rarity);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_cmc ON cards_new (cmc);",
+        "CREATE INDEX IF NOT EXISTS idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cmp_new_price ON cardmarket_price_new (price);",
+        "CREATE INDEX IF NOT EXISTS idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
