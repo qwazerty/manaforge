@@ -141,12 +141,19 @@ def prepare_documents(raw_docs: List[Dict[str, Any]], key_field: str) -> Iterabl
         yield str(key), doc
 
 
-def ensure_schema(conn: psycopg.Connection) -> None:
+def _table_exists(cur: psycopg.Cursor, name: str) -> bool:
+    cur.execute("SELECT to_regclass(%s)", (name,))
+    return cur.fetchone()[0] is not None
+
+
+def prepare_staging_schema(conn: psycopg.Connection) -> None:
+    """Create fresh staging tables (cards_new, cardmarket_price_new) with indexes."""
+
     stmts = [
-        "DROP TABLE IF EXISTS cardmarket_price;",
-        "DROP TABLE IF EXISTS cards;",
+        "DROP TABLE IF EXISTS cardmarket_price_new;",
+        "DROP TABLE IF EXISTS cards_new;",
         """
-        CREATE TABLE cards (
+        CREATE TABLE cards_new (
             id text PRIMARY KEY,
             data jsonb NOT NULL,
             name text,
@@ -169,7 +176,7 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         );
         """,
         """
-        CREATE TABLE cardmarket_price (
+        CREATE TABLE cardmarket_price_new (
             id bigint PRIMARY KEY,
             name text,
             normalized_name text,
@@ -195,17 +202,37 @@ def ensure_schema(conn: psycopg.Connection) -> None:
             product jsonb
         );
         """,
-        "CREATE INDEX idx_cards_normalized_name ON cards (normalized_name);",
-        "CREATE INDEX idx_cards_set ON cards (set);",
-        "CREATE INDEX idx_cards_rarity ON cards (rarity);",
-        "CREATE INDEX idx_cards_cmc ON cards (cmc);",
-        "CREATE INDEX idx_cmp_normalized_name ON cardmarket_price (normalized_name);",
-        "CREATE INDEX idx_cmp_price ON cardmarket_price (price);",
-        "CREATE INDEX idx_cmp_expansion ON cardmarket_price (id_expansion);",
+        "CREATE INDEX idx_cards_new_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX idx_cards_new_set ON cards_new (set);",
+        "CREATE INDEX idx_cards_new_rarity ON cards_new (rarity);",
+        "CREATE INDEX idx_cards_new_cmc ON cards_new (cmc);",
+        "CREATE INDEX idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
+        "CREATE INDEX idx_cmp_new_price ON cardmarket_price_new (price);",
+        "CREATE INDEX idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
             cur.execute(stmt)
+    conn.commit()
+
+
+def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
+    """Atomically swap staging into place, dropping the previous base if present."""
+
+    with conn.cursor() as cur:
+        exists = _table_exists(cur, base)
+        # drop lingering old table to avoid rename collision
+        cur.execute(f"DROP TABLE IF EXISTS {base}_old;")
+
+        # rename current base to _old if it exists
+        if exists:
+            cur.execute(f"ALTER TABLE {base} RENAME TO {base}_old;")
+
+        # move staging into place
+        cur.execute(f"ALTER TABLE {staging} RENAME TO {base};")
+
+        # drop old version if it was present
+        cur.execute(f"DROP TABLE IF EXISTS {base}_old;")
     conn.commit()
 
 
@@ -406,11 +433,12 @@ def build_cardmarket_rows(
 
 def upsert_cardmarket_prices(
     conn: psycopg.Connection,
+    table: str,
     rows: Iterable[Tuple[Any, ...]],
     batch_size: int,
 ) -> int:
-    sql = """
-        INSERT INTO cardmarket_price (
+    sql = f"""
+        INSERT INTO {table} (
             id, name, normalized_name, alt_names, id_category, id_expansion, id_metacard, date_added,
             price, price_avg, price_low, price_trend, price_avg1, price_avg7, price_avg30,
             price_avg_foil, price_low_foil, price_trend_foil, price_avg1_foil, price_avg7_foil, price_avg30_foil,
@@ -467,11 +495,12 @@ def upsert_cardmarket_prices(
 
 def upsert_cards(
     conn: psycopg.Connection,
+    table: str,
     rows: Iterable[Tuple[str, Dict[str, Any], Dict[str, Any]]],
     batch_size: int,
 ) -> int:
-    sql = """
-        INSERT INTO cards (
+    sql = f"""
+        INSERT INTO {table} (
             id, data, name, normalized_name, set, set_name, rarity, cmc,
             mana_cost, type_line, oracle_text, colors, power, toughness,
             loyalty, scryfall_id, oracle_id, released_at, image_url
@@ -550,23 +579,28 @@ def import_into_postgres(
     price_path: Path,
     batch_size: int,
 ) -> None:
-    ensure_schema(conn)
+    prepare_staging_schema(conn)
 
     print("Importing Scryfall cards into Postgres…")
     scryfall_docs = load_json_array(scryfall_path)
     card_rows = (extract_card_row(doc) for doc in scryfall_docs)
-    cards_inserted = upsert_cards(conn, card_rows, batch_size)
-    print(f"  cards upserted: {cards_inserted}")
+    cards_inserted = upsert_cards(conn, "cards_new", card_rows, batch_size)
+    print(f"  cards upserted (staging): {cards_inserted}")
 
     if products_path.exists() and price_path.exists():
         print("Importing Cardmarket price table…")
         product_docs = load_json_array(products_path)
         price_docs = load_json_array(price_path)
         rows = build_cardmarket_rows(product_docs, price_docs)
-        prices_inserted = upsert_cardmarket_prices(conn, rows, batch_size)
-        print(f"  cardmarket rows upserted: {prices_inserted}")
+        prices_inserted = upsert_cardmarket_prices(conn, "cardmarket_price_new", rows, batch_size)
+        print(f"  cardmarket rows upserted (staging): {prices_inserted}")
     else:
         print("  skipped Cardmarket (file missing)")
+
+    print("Swapping staging tables atomiquement…")
+    swap_tables(conn, "cards", "cards_new")
+    swap_tables(conn, "cardmarket_price", "cardmarket_price_new")
+    print("Swap terminé.")
 
 
 # ---------------------------
