@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Download card datasets and import them into PostgreSQL.
+"""Download Scryfall + Cardmarket datasets in memory and import into PostgreSQL.
 
 Features
-- Reads connection settings from a .env file (defaults to repo root) and env vars.
-- Downloads Scryfall bulk data + Cardmarket catalog/price files into ./data.
-- Creates minimal tables and upserts JSONB payloads.
+- Lit les credentials depuis .env / variables d'environnement.
+- Télécharge en mémoire (pas d'écriture disque), importe en staging, indexe puis swap atomique.
 """
 
 from __future__ import annotations
@@ -128,34 +127,6 @@ def fetch_cardmarket_payloads() -> Dict[str, List[Dict[str, Any]]]:
 # ---------------------------
 # Data loading
 # ---------------------------
-def load_json_array(path: Path) -> List[Dict[str, Any]]:
-    """Return the list contained in common payload shapes.
-
-    Supports:
-    - a top-level list
-    - dict with keys: data, cards, products, priceGuides
-    """
-
-    with path.open("r", encoding="utf-8") as fh:
-        payload = json.load(fh)
-
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        for key in ("data", "cards", "products", "priceGuides"):
-            if key in payload and isinstance(payload[key], list):
-                return payload[key]
-    raise ValueError(f"Unexpected JSON structure in {path}")
-
-
-def prepare_documents(raw_docs: List[Dict[str, Any]], key_field: str) -> Iterable[Tuple[str, Dict[str, Any]]]:
-    for doc in raw_docs:
-        if not isinstance(doc, dict):
-            continue
-        key = doc.get(key_field)
-        if key is None:
-            continue
-        yield str(key), doc
 
 
 def _table_exists(cur: psycopg.Cursor, name: str) -> bool:
@@ -272,39 +243,6 @@ def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
         # analyze the new table for query planner optimization
         cur.execute(sql.SQL("ANALYZE {}").format(base_id))
     conn.commit()
-
-
-def upsert_jsonb(
-    conn: psycopg.Connection,
-    table: str,
-    rows: Iterable[Tuple[str, Dict[str, Any]]],
-    batch_size: int,
-) -> int:
-    inserted = 0
-    buffer: List[Tuple[str, Dict[str, Any]]] = []
-
-    query = sql.SQL("""
-        INSERT INTO {} (id, data)
-        VALUES (%s, %s)
-        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-    """).format(sql.Identifier(table))
-
-    with conn.cursor() as cur:
-        for row in rows:
-            # psycopg needs explicit JSON adaptation when using %s placeholders
-            row_id, payload = row
-            buffer.append((row_id, Jsonb(payload)))
-            if len(buffer) >= batch_size:
-                cur.executemany(query, buffer)
-                inserted += len(buffer)
-                buffer.clear()
-
-        if buffer:
-            cur.executemany(query, buffer)
-            inserted += len(buffer)
-
-    conn.commit()
-    return inserted
 
 
 def extract_card_row(card: Dict[str, Any]) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
@@ -676,39 +614,19 @@ def main(argv: Optional[List[str]] = None) -> None:
         print("Download completed; skipping Postgres import (download-only requested).")
         return
 
+    # 2) Cardmarket download
+    cm_payloads = fetch_cardmarket_payloads()
+
+    # 3) Import
     pg_dsn = build_pg_dsn()
     with psycopg.connect(pg_dsn) as conn:
-        prepare_staging_schema(conn)
-
-        # 2) Import Scryfall cards first
-        print("Importing Scryfall cards into Postgres…")
-        card_rows = (extract_card_row(doc) for doc in scryfall_cards)
-        cards_inserted = upsert_cards(conn, "cards_new", card_rows, args.batch_size)
-        print(f"  cards upserted (staging): {cards_inserted}")
-
-        # 3) Then fetch and import Cardmarket
-        cm_payloads = fetch_cardmarket_payloads()
-        products = cm_payloads["products"]
-        prices = cm_payloads["prices"]
-        if products and prices:
-            print("Importing Cardmarket price table…")
-            rows = build_cardmarket_rows(products, prices)
-            prices_inserted = upsert_cardmarket_prices(
-                conn, "cardmarket_price_new", rows, args.batch_size
-            )
-            print(f"  cardmarket rows upserted (staging): {prices_inserted}")
-        else:
-            print("  skipped Cardmarket (missing payload)")
-
-        # 4) Indexes and atomic swap
-        print("Creating indexes on staging tables…")
-        create_indexes_on_staging(conn)
-        print("  indexes created.")
-
-        print("Swapping staging tables atomically…")
-        swap_tables(conn, "cards", "cards_new")
-        swap_tables(conn, "cardmarket_price", "cardmarket_price_new")
-        print("Swap complete.")
+        import_into_postgres(
+            conn,
+            scryfall_cards=scryfall_cards,
+            products=cm_payloads["products"],
+            price_guides=cm_payloads["prices"],
+            batch_size=args.batch_size,
+        )
 
 
 if __name__ == "__main__":
