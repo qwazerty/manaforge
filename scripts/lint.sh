@@ -97,6 +97,31 @@ run_flake8() {
     fi
 }
 
+# Run Pyright type checking (Pylance engine)
+run_pyright() {
+    print_header "Running Python Type Checking (pyright/pylance)"
+    local pyright_cmd=()
+
+    if command -v pyright >/dev/null 2>&1; then
+        pyright_cmd=(pyright)
+    elif [[ -x "venv/bin/pyright" ]]; then
+        pyright_cmd=("venv/bin/pyright")
+    elif command -v npx >/dev/null 2>&1; then
+        pyright_cmd=(npx pyright)
+    else
+        print_error "Pyright not found (install pyright via pip or npm)"
+        FAILED=1
+        return
+    fi
+
+    if "${pyright_cmd[@]}" app tests; then
+        print_success "Pyright type checking passed"
+    else
+        print_error "Pyright type checking failed"
+        FAILED=1
+    fi
+}
+
 # Run JS/Svelte linting via pnpm
 run_js_lint() {
     print_header "Running JS/Svelte Linting (pnpm lint)"
@@ -125,6 +150,7 @@ main() {
 
     run_black_check
     run_flake8
+    run_pyright
     run_js_lint
 
     echo ""
