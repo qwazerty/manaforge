@@ -314,17 +314,22 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
 
                 except Exception as e:
                     print(f"Error processing game action via WebSocket: {e}")
-                    game_engine.record_action_history(
-                        game_id,
-                        {
-                            "success": False,
-                            "action": action_type,
-                            "player": player_id,
-                            "error": str(e),
-                            "origin": "server",
-                            "timestamp": time.time(),
-                        },
-                    )
+                    try:
+                        from app.api.routes import game_engine as ge
+
+                        ge.record_action_history(
+                            game_id,
+                            {
+                                "success": False,
+                                "action": action_type,
+                                "player": player_id,
+                                "error": str(e),
+                                "origin": "server",
+                                "timestamp": time.time(),
+                            },
+                        )
+                    except Exception:
+                        pass  # If we can't record the error, just continue
                     await websocket.send_text(
                         json.dumps(
                             {
