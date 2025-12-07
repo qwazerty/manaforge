@@ -162,6 +162,7 @@
         "madness":{"name":"Madness","description":"If you discard this card, discard it into exile. You may cast it for its madness cost."},
         "magecraft":{"name":"Magecraft","description":"Triggers when you cast or copy an instant or sorcery."},
         "manifest":{"name":"Manifest","description":"Put the top card of your library onto the battlefield face down as a 2/2 creature. You may turn it face up if it's a creature card."},
+        "mayhem":{"name":"Mayhem","description":"You may cast this card from your graveyard for {B} if you discarded it this turn. Timing rules still apply."},
         "megamorph":{"name":"Megamorph","description":"As morph, but when turned face up, put a +1/+1 counter on it."},
         "meld":{"name":"Meld","description":"Two specific cards you own may meld into one oversized back-face permanent when conditions are met."},
         "melee":{"name":"Melee","description":"Whenever this creature attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat."},
