@@ -2,7 +2,7 @@
 # Stage 1
 ##########
 
-FROM node:24-bullseye AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 WORKDIR /app
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -22,18 +22,13 @@ RUN pnpm run build:svelte
 ##########
 # Stage 2
 ##########
-FROM python:3.14-slim AS backend
+FROM python:3.14-alpine AS backend
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-
-# Install system dependencies and create runtime user
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential curl \
-    && rm -rf /var/lib/apt/lists/*
-RUN useradd -m -s /bin/sh user
+RUN adduser -D user
 
 # Install Python dependencies as root so globally available
 COPY requirements.txt .

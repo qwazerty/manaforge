@@ -734,11 +734,9 @@ class CardService:
                 commanders.extend(
                     card.model_copy(deep=True) for _ in range(max(1, quantity))
                 )
-                print(f"⭐ Identified commander: {card_name}")
                 continue
             if section == "sideboard":
                 sideboard_cards.append(DeckCard(card=card, quantity=quantity))
-                print(f"🧰 Added {quantity}x {card_name} to sideboard")
                 continue
 
             deck_card = DeckCard(card=card, quantity=quantity)
