@@ -1,0 +1,130 @@
+{% extends "base_arena.html" %}
+{% block title %}Log in / Sign up{% endblock %}
+
+{% block extra_css %}
+<style>[x-cloak]{display:none!important;}</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-b from-arena-surface/60 via-arena-bg to-arena-bg py-12 px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center space-y-3 mb-10">
+            <p class="text-sm uppercase tracking-[0.35em] text-arena-muted">ManaForge Access</p>
+            <h1 class="font-magic text-4xl text-arena-accent">Log in ou créer un compte</h1>
+            <p class="text-arena-text-dim max-w-2xl mx-auto">
+                Utilise ton pseudo, ton e‑mail et un mot de passe. Les rôles admin seront attribués directement en base.
+            </p>
+        </div>
+
+        <div
+            x-data="{ tab: '{{ active_tab }}' }"
+            x-cloak
+            class="arena-card rounded-2xl p-6 shadow-arena space-y-8"
+        >
+            <div class="flex gap-3">
+                <button
+                    class="flex-1 py-3 rounded-xl font-semibold transition border border-transparent"
+                    :class="tab === 'login'
+                        ? 'bg-arena-accent text-arena-bg shadow-lg'
+                        : 'bg-arena-surface text-arena-text-dim hover:border-arena-accent/40'"
+                    @click="tab = 'login'"
+                    type="button"
+                >
+                    Se connecter
+                </button>
+                <button
+                    class="flex-1 py-3 rounded-xl font-semibold transition border border-transparent"
+                    :class="tab === 'signup'
+                        ? 'bg-arena-accent text-arena-bg shadow-lg'
+                        : 'bg-arena-surface text-arena-text-dim hover:border-arena-accent/40'"
+                    @click="tab = 'signup'"
+                    type="button"
+                >
+                    Créer un compte
+                </button>
+            </div>
+
+            <!-- Login form -->
+            <form
+                x-show="tab === 'login'"
+                x-transition
+                class="space-y-4"
+                aria-label="Formulaire de connexion"
+            >
+                <div class="grid md:grid-cols-2 gap-4">
+                    <label class="block space-y-2">
+                        <span class="text-sm text-arena-text-dim">Pseudo ou e‑mail</span>
+                        <input
+                            type="text"
+                            name="identity"
+                            required
+                            class="arena-input"
+                            placeholder="ex: chandra@pyromancer.com"
+                        >
+                    </label>
+                    <label class="block space-y-2">
+                        <span class="text-sm text-arena-text-dim">Mot de passe</span>
+                        <input
+                            type="password"
+                            name="password"
+                            required
+                            class="arena-input"
+                            placeholder="••••••••"
+                        >
+                    </label>
+                </div>
+
+                <button type="submit" class="arena-button w-full py-3 rounded-xl font-semibold">
+                    Connexion
+                </button>
+            </form>
+
+            <!-- Signup form -->
+            <form
+                x-show="tab === 'signup'"
+                x-transition
+                class="space-y-4"
+                aria-label="Formulaire de création de compte"
+            >
+                <div class="grid md:grid-cols-2 gap-4">
+                    <label class="block space-y-2">
+                        <span class="text-sm text-arena-text-dim">Pseudo</span>
+                        <input
+                            type="text"
+                            name="username"
+                            required
+                            class="arena-input"
+                            placeholder="Liliana"
+                        >
+                    </label>
+                    <label class="block space-y-2">
+                        <span class="text-sm text-arena-text-dim">E‑mail</span>
+                        <input
+                            type="email"
+                            name="email"
+                            required
+                            class="arena-input"
+                            placeholder="lili@cairn.com"
+                        >
+                    </label>
+                </div>
+
+                <label class="block space-y-2">
+                    <span class="text-sm text-arena-text-dim">Mot de passe</span>
+                    <input
+                        type="password"
+                        name="password"
+                        required
+                        class="arena-input"
+                        placeholder="••••••••"
+                    >
+                </label>
+
+                <button type="submit" class="arena-button w-full py-3 rounded-xl font-semibold">
+                    Créer mon compte
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
