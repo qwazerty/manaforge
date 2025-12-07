@@ -75,43 +75,54 @@ def build_pg_dsn() -> str:
 # ---------------------------
 # Download helpers
 # ---------------------------
-def download_file(url: str, dest: Path) -> Path:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with urlopen(url) as resp, dest.open("wb") as fh:  # type: ignore[arg-type]
-        fh.write(resp.read())
-    return dest
-
-
-def fetch_scryfall_dump(data_dir: Path, skip_download: bool) -> Path:
-    target = data_dir / "oracle-cards.json"
-    if skip_download and target.exists():
-        return target
-
+def _fetch_json(url: str) -> Any:
     try:
-        with urlopen(SCRYFALL_BULK_METADATA) as resp:  # type: ignore[arg-type]
-            metadata = json.load(resp)
+        with urlopen(url) as resp:  # type: ignore[arg-type]
+            return json.load(resp)
     except URLError as exc:
-        raise SystemExit(f"Unable to fetch Scryfall metadata: {exc}")
+        raise SystemExit(f"Unable to fetch {url}: {exc}")
 
+
+def fetch_scryfall_dump() -> List[Dict[str, Any]]:
+    """Download Scryfall bulk data into memory (no file writes)."""
+
+    metadata = _fetch_json(SCRYFALL_BULK_METADATA)
     download_uri = metadata.get("download_uri")
     if not download_uri:
         raise SystemExit("Scryfall metadata missing download_uri")
 
-    print(f"Downloading Scryfall dump -> {target}")
-    return download_file(download_uri, target)
+    print("Downloading Scryfall dump into memory…")
+    payload = _fetch_json(download_uri)
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        data = payload.get("data") or payload.get("cards")
+        if isinstance(data, list):
+            return data
+    raise SystemExit("Unexpected Scryfall payload structure")
 
 
-def fetch_cardmarket_files(data_dir: Path, skip_download: bool) -> Dict[str, Path]:
-    products_path = data_dir / "products_singles_1.json"
-    price_path = data_dir / "price_guide_1.json"
+def fetch_cardmarket_payloads() -> Dict[str, List[Dict[str, Any]]]:
+    """Download Cardmarket products and prices into memory."""
 
-    if not skip_download:
-        print(f"Downloading Cardmarket products -> {products_path}")
-        download_file(CARDMARKET_PRODUCTS_URL, products_path)
-        print(f"Downloading Cardmarket price guide -> {price_path}")
-        download_file(CARDMARKET_PRICE_URL, price_path)
+    print("Downloading Cardmarket products into memory…")
+    products_payload = _fetch_json(CARDMARKET_PRODUCTS_URL)
+    print("Downloading Cardmarket price guide into memory…")
+    price_payload = _fetch_json(CARDMARKET_PRICE_URL)
 
-    return {"products": products_path, "prices": price_path}
+    products_list = []
+    if isinstance(products_payload, dict):
+        products_list = products_payload.get("products") or []
+    elif isinstance(products_payload, list):
+        products_list = products_payload
+
+    price_list = []
+    if isinstance(price_payload, dict):
+        price_list = price_payload.get("priceGuides") or []
+    elif isinstance(price_payload, list):
+        price_list = price_payload
+
+    return {"products": products_list, "prices": price_list}
 
 
 # ---------------------------
@@ -586,28 +597,25 @@ def upsert_cards(
 
 def import_into_postgres(
     conn: psycopg.Connection,
-    scryfall_path: Path,
-    products_path: Path,
-    price_path: Path,
+    scryfall_cards: List[Dict[str, Any]],
+    products: List[Dict[str, Any]],
+    price_guides: List[Dict[str, Any]],
     batch_size: int,
 ) -> None:
     prepare_staging_schema(conn)
 
     print("Importing Scryfall cards into Postgres…")
-    scryfall_docs = load_json_array(scryfall_path)
-    card_rows = (extract_card_row(doc) for doc in scryfall_docs)
+    card_rows = (extract_card_row(doc) for doc in scryfall_cards)
     cards_inserted = upsert_cards(conn, "cards_new", card_rows, batch_size)
     print(f"  cards upserted (staging): {cards_inserted}")
 
-    if products_path.exists() and price_path.exists():
+    if products and price_guides:
         print("Importing Cardmarket price table…")
-        product_docs = load_json_array(products_path)
-        price_docs = load_json_array(price_path)
-        rows = build_cardmarket_rows(product_docs, price_docs)
+        rows = build_cardmarket_rows(products, price_guides)
         prices_inserted = upsert_cardmarket_prices(conn, "cardmarket_price_new", rows, batch_size)
         print(f"  cardmarket rows upserted (staging): {prices_inserted}")
     else:
-        print("  skipped Cardmarket (file missing)")
+        print("  skipped Cardmarket (missing payload)")
 
     print("Creating indexes on staging tables…")
     create_indexes_on_staging(conn)
@@ -635,25 +643,15 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         help="Override DATABASE_URL (otherwise built from env vars)",
     )
     parser.add_argument(
-        "--data-dir",
-        default=None,
-        help="Override data directory (default: <repo>/data)",
-    )
-    parser.add_argument(
         "--batch-size",
         type=int,
         default=int(os.getenv("BATCH_SIZE", "750")),
         help="Number of documents per batch insert",
     )
     parser.add_argument(
-        "--skip-download",
-        action="store_true",
-        help="Skip downloading files and reuse existing ones in data_dir",
-    )
-    parser.add_argument(
         "--download-only",
         action="store_true",
-        help="Only download files, do not import into Postgres",
+        help="Only download payloads, do not import into Postgres",
     )
     return parser.parse_args(argv)
 
@@ -669,25 +667,48 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.database_url:
         os.environ["DATABASE_URL"] = args.database_url
 
-    data_dir = Path(args.data_dir) if args.data_dir else repo_root / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-
-    scryfall_path = fetch_scryfall_dump(data_dir, args.skip_download)
-    cardmarket_files = fetch_cardmarket_files(data_dir, args.skip_download)
+    # 1) Scryfall download
+    scryfall_cards = fetch_scryfall_dump()
 
     if args.download_only:
+        # Optionally also download Cardmarket then exit
+        fetch_cardmarket_payloads()
         print("Download completed; skipping Postgres import (download-only requested).")
         return
 
     pg_dsn = build_pg_dsn()
     with psycopg.connect(pg_dsn) as conn:
-        import_into_postgres(
-            conn,
-            scryfall_path=scryfall_path,
-            products_path=cardmarket_files["products"],
-            price_path=cardmarket_files["prices"],
-            batch_size=args.batch_size,
-        )
+        prepare_staging_schema(conn)
+
+        # 2) Import Scryfall cards first
+        print("Importing Scryfall cards into Postgres…")
+        card_rows = (extract_card_row(doc) for doc in scryfall_cards)
+        cards_inserted = upsert_cards(conn, "cards_new", card_rows, args.batch_size)
+        print(f"  cards upserted (staging): {cards_inserted}")
+
+        # 3) Then fetch and import Cardmarket
+        cm_payloads = fetch_cardmarket_payloads()
+        products = cm_payloads["products"]
+        prices = cm_payloads["prices"]
+        if products and prices:
+            print("Importing Cardmarket price table…")
+            rows = build_cardmarket_rows(products, prices)
+            prices_inserted = upsert_cardmarket_prices(
+                conn, "cardmarket_price_new", rows, args.batch_size
+            )
+            print(f"  cardmarket rows upserted (staging): {prices_inserted}")
+        else:
+            print("  skipped Cardmarket (missing payload)")
+
+        # 4) Indexes and atomic swap
+        print("Creating indexes on staging tables…")
+        create_indexes_on_staging(conn)
+        print("  indexes created.")
+
+        print("Swapping staging tables atomically…")
+        swap_tables(conn, "cards", "cards_new")
+        swap_tables(conn, "cardmarket_price", "cardmarket_price_new")
+        print("Swap complete.")
 
 
 if __name__ == "__main__":
