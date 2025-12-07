@@ -129,6 +129,12 @@ class Card(BaseModel):
 
     # Token support
     is_token: bool = Field(default=False, description="Whether this card is a token")
+    set: Optional[str] = Field(
+        default=None, description="Set code (e.g., 'mh3', 'neo')"
+    )
+    set_name: Optional[str] = Field(
+        default=None, description="Full set name (e.g., 'Modern Horizons 3')"
+    )
     face_down: bool = Field(
         default=False,
         description="Whether the card is currently face-down with hidden information",

@@ -1,13 +1,28 @@
 <script module>
     const _isBrowserModule = typeof window !== 'undefined' && typeof document !== 'undefined';
 
+    /**
+     * Normalizes token filter list to support both old format (strings) and new format (objects with name and sourceSets)
+     * Returns array of { name: string, sourceSets: string[] }
+     */
     function normalizeTokenFilterList(filter) {
         if (!Array.isArray(filter)) {
             return [];
         }
         return filter
-            .map((value) => String(value || '').trim())
-            .filter((value) => value.length > 0);
+            .map((value) => {
+                // Handle new format: { name: string, sourceSets: string[] }
+                if (value && typeof value === 'object' && typeof value.name === 'string') {
+                    return {
+                        name: value.name.trim(),
+                        sourceSets: Array.isArray(value.sourceSets) ? value.sourceSets : []
+                    };
+                }
+                // Handle old format: plain string
+                const strValue = String(value || '').trim();
+                return strValue ? { name: strValue, sourceSets: [] } : null;
+            })
+            .filter((value) => value && value.name.length > 0);
     }
 
     const api = {
@@ -117,27 +132,43 @@
         if (value === null || value === undefined) {
             return '';
         }
+        // Handle object format { name: string, sourceSets: string[] }
+        if (typeof value === 'object' && typeof value.name === 'string') {
+            return value.name.replace(/\s+/g, ' ').trim();
+        }
         return String(value).replace(/\s+/g, ' ').trim();
     }
 
     function dedupeTokenHints(source) {
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
-        const seen = new Set();
+        const seen = new Map(); // key -> { name, sourceSets }
         const result = [];
         if (!Array.isArray(source)) {
             return result;
         }
         for (const entry of source) {
-            const hint = normalizeTokenHint(entry);
-            if (!hint) {
+            // Handle both old format (string) and new format ({ name, sourceSets })
+            const isObject = entry && typeof entry === 'object' && typeof entry.name === 'string';
+            const name = isObject ? entry.name.replace(/\s+/g, ' ').trim() : normalizeTokenHint(entry);
+            const sourceSets = isObject && Array.isArray(entry.sourceSets) ? entry.sourceSets : [];
+            
+            if (!name) {
                 continue;
             }
-            const key = hint.toLowerCase();
+            const key = name.toLowerCase();
             if (seen.has(key)) {
+                // Merge sourceSets if we've seen this token before
+                const existing = seen.get(key);
+                for (const set of sourceSets) {
+                    if (!existing.sourceSets.includes(set)) {
+                        existing.sourceSets.push(set);
+                    }
+                }
                 continue;
             }
-            seen.add(key);
-            result.push(hint);
+            const tokenHint = { name, sourceSets: [...sourceSets] };
+            seen.set(key, tokenHint);
+            result.push(tokenHint);
         }
         return result;
     }
@@ -279,10 +310,64 @@
     }
 
     function buildTokenFilterSet() {
-        const normalized = tokenHintNames
-            .map((value) => normalizeTokenNameForFilter(value))
-            .filter(Boolean);
-        return new Set(normalized);
+        // Returns a Map of normalized token name -> array of source sets
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
+        const tokenToSets = new Map();
+        for (const hint of tokenHintNames) {
+            const name = typeof hint === 'object' ? hint.name : hint;
+            const normalized = normalizeTokenNameForFilter(name);
+            if (!normalized) continue;
+            const sourceSets = (typeof hint === 'object' && Array.isArray(hint.sourceSets)) 
+                ? hint.sourceSets.map(s => s.toLowerCase()) 
+                : [];
+            tokenToSets.set(normalized, sourceSets);
+        }
+        return tokenToSets;
+    }
+
+    /**
+     * Check if a token set matches a source set.
+     * Token sets typically have a 't' prefix (e.g., 'tmh3' for 'mh3' tokens)
+     * @param {string} tokenSet - The set code of the token (e.g., 'tmh3')
+     * @param {string} sourceSet - The set code of the source card (e.g., 'mh3')
+     */
+    function setMatchesSource(tokenSet, sourceSet) {
+        if (!tokenSet || !sourceSet) return false;
+        // Direct match
+        if (tokenSet === sourceSet) return true;
+        // Token sets have 't' prefix: 'tmh3' matches 'mh3'
+        if (tokenSet.startsWith('t') && tokenSet.slice(1) === sourceSet) return true;
+        // Also check if source has 't' prefix matching token
+        if (sourceSet.startsWith('t') && sourceSet.slice(1) === tokenSet) return true;
+        return false;
+    }
+
+    /**
+     * Sort cards so those matching source sets appear first
+     * @param {Array} cards - List of cards to sort
+     * @param {Map} tokenToSets - Map of token name -> source sets
+     * @param {string} searchedTokenName - The token name being searched
+     */
+    function sortCardsBySourceSet(cards, tokenToSets, searchedTokenName) {
+        const normalizedSearch = normalizeTokenNameForFilter(searchedTokenName);
+        const sourceSets = tokenToSets.get(normalizedSearch) || [];
+        
+        if (!sourceSets.length) {
+            return cards; // No source sets to prioritize
+        }
+        
+        return [...cards].sort((a, b) => {
+            const aSet = (a.set || a.set_code || '').toLowerCase();
+            const bSet = (b.set || b.set_code || '').toLowerCase();
+            // Check if the token's set matches any source set
+            const aMatch = sourceSets.some(sourceSet => setMatchesSource(aSet, sourceSet));
+            const bMatch = sourceSets.some(sourceSet => setMatchesSource(bSet, sourceSet));
+            
+            // Cards matching source set come first
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0; // Keep original order for cards with same priority
+        });
     }
 
     function applyTokenHint(tokenName) {
@@ -355,12 +440,14 @@
             }
 
             const fetchedCards = await response.json();
-            const normalizedSet = buildTokenFilterSet();
+            const tokenToSets = buildTokenFilterSet();
             let cardList = Array.isArray(fetchedCards) ? fetchedCards : [];
-            if (normalizedSet.size) {
+            if (tokenToSets.size) {
                 cardList = cardList.filter((card) =>
-                    normalizedSet.has(normalizeTokenNameForFilter(card?.name))
+                    tokenToSets.has(normalizeTokenNameForFilter(card?.name))
                 );
+                // Sort results so cards from source sets appear first
+                cardList = sortCardsBySourceSet(cardList, tokenToSets, term);
             }
 
             if (query === term && tokenOnly === tokenFlag && exactMatch === exactFlag && isOpen) {
@@ -527,12 +614,12 @@
                         </button>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        {#each tokenHintNames as token (token)}
+                        {#each tokenHintNames as token (token.name)}
                             <button
                                 type="button"
                                 class="px-3 py-1.5 rounded-full border border-arena-accent/60 bg-arena-accent/20 text-sm font-medium text-white transition hover:border-arena-accent hover:bg-arena-accent/40 hover:text-white"
-                                onclick={() => applyTokenHint(token)}>
-                                {token}
+                                onclick={() => applyTokenHint(token.name)}>
+                                {token.name}
                             </button>
                         {/each}
                     </div>

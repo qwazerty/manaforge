@@ -749,6 +749,8 @@ class CardService:
             "card_faces": card_faces,
             "counters": counters,
             "loyalty": loyalty,
+            "set": scryfall_data.get("set"),
+            "set_name": scryfall_data.get("set_name"),
         }
 
     async def _build_deck_from_entries(
