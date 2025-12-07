@@ -417,8 +417,15 @@
         try {
             // Search for the token with exact name match, prioritizing the card's set
             // Token sets have 't' prefix (e.g., 'tmh3' for 'mh3' tokens)
+            // If source card is already a token (set starts with 't' and has 4+ chars), use its set directly
             const sourceSet = (cardSet || '').toLowerCase();
-            const tokenSetCode = sourceSet ? `t${sourceSet}` : '';
+            let tokenSetCode = '';
+            if (sourceSet) {
+                // Token sets have 4+ characters and start with 't' (e.g., 'tneo', 'tmh2')
+                // Regular sets starting with 't' are typically 3 chars (e.g., 'tmp', 'tpr')
+                const isTokenSet = sourceSet.length >= 4 && sourceSet.startsWith('t');
+                tokenSetCode = isTokenSet ? sourceSet : `t${sourceSet}`;
+            }
             
             // First try with the matching token set
             let searchUrl = `/api/v1/cards/search?q=${encodeURIComponent(tokenName)}&tokens_only=true&exact=true&limit=20`;
