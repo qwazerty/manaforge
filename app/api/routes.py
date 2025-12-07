@@ -11,13 +11,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Optional, Any
 
 from app.models.game import (
-    Card, Deck, GameAction,
-    GameSetupStatus, GameFormat, PhaseMode
+    Card,
+    Deck,
+    GameAction,
+    GameSetupStatus,
+    GameFormat,
+    PhaseMode,
 )
 from app.services.card_service import CardService
 from app.services.game_engine import SimpleGameEngine
 from app.api.decorators import broadcast_game_update, action_registry
-from app.api.action_handlers import *
+
+# fmt: off
+from app.api import action_handlers  # noqa: F401 - handlers are registered via decorators
+# fmt: on
+
 from app.services.format_stats_service import get_cards_for_format
 from app.services.pricing_service import get_memory_usage, lookup_prices
 
@@ -45,23 +53,18 @@ async def search_cards(
     tokens_only: bool = False,
     exact: bool = False,
     set: Optional[str] = None,
-    card_service: CardService = Depends(get_card_service)
+    card_service: CardService = Depends(get_card_service),
 ) -> List[Card]:
     """Search for cards by name using the local oracle dump with optional filtering."""
     local_cards = card_service.search_local_cards(
-        query=q,
-        limit=limit,
-        tokens_only=tokens_only,
-        exact=exact,
-        set_code=set
+        query=q, limit=limit, tokens_only=tokens_only, exact=exact, set_code=set
     )
 
     normalized_results: List[Card] = []
     for raw_card in local_cards:
         card_data = card_service._parse_scryfall_card(raw_card)
         card_data.setdefault(
-            "unique_id",
-            f"{card_data.get('id', 'card')}_{uuid.uuid4().hex[:8]}"
+            "unique_id", f"{card_data.get('id', 'card')}_{uuid.uuid4().hex[:8]}"
         )
         normalized_results.append(Card(**card_data))
 
@@ -70,8 +73,7 @@ async def search_cards(
 
 @router.get("/cards/{card_id}")
 async def get_card(
-    card_id: str,
-    card_service: CardService = Depends(get_card_service)
+    card_id: str, card_service: CardService = Depends(get_card_service)
 ) -> Card:
     """Get a card by ID."""
     card = await card_service.get_card(card_id)
@@ -82,8 +84,7 @@ async def get_card(
 
 @router.post("/games")
 async def create_game(
-    request: Optional[Dict[str, Any]] = None,
-    game_id: Optional[str] = Query(None)
+    request: Optional[Dict[str, Any]] = None, game_id: Optional[str] = Query(None)
 ) -> GameSetupStatus:
     """
     Create a new game setup (without decks yet).
@@ -91,7 +92,7 @@ async def create_game(
     """
     if game_id is None:
         game_id = f"game-{str(uuid.uuid4())[:8]}"
-    
+
     request_payload = request or {}
 
     raw_format = request_payload.get("game_format")
@@ -107,7 +108,7 @@ async def create_game(
             allowed_formats = ", ".join(fmt.value for fmt in GameFormat)
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid game_format '{raw_format}'. Allowed values: {allowed_formats}"
+                detail=f"Invalid game_format '{raw_format}'. Allowed values: {allowed_formats}",
             )
 
     if raw_phase_mode is None:
@@ -120,22 +121,21 @@ async def create_game(
             allowed_modes = ", ".join(mode.value for mode in PhaseMode)
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}"
+                detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}",
             )
 
     setup_status = game_engine.create_game_setup(
-        game_id=game_id,
-        game_format=game_format,
-        phase_mode=phase_mode
+        game_id=game_id, game_format=game_format, phase_mode=phase_mode
     )
-    
+
     return setup_status
+
 
 @router.post("/games/import-modern-example")
 async def create_modern_example_game(
     request: Optional[Dict[str, Any]] = None,
     game_id: Optional[str] = Query(None),
-    card_service: CardService = Depends(get_card_service)
+    card_service: CardService = Depends(get_card_service),
 ) -> Dict[str, Any]:
     """
     Create a Modern game preloaded with the top paper decks from MTGGoldfish.
@@ -151,7 +151,9 @@ async def create_modern_example_game(
     if not game_id_clean:
         raise HTTPException(status_code=400, detail="game_id cannot be empty.")
 
-    raw_phase_mode = payload.get("phase_mode") or payload.get("phaseMode") or PhaseMode.STRICT.value
+    raw_phase_mode = (
+        payload.get("phase_mode") or payload.get("phaseMode") or PhaseMode.STRICT.value
+    )
     normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
     try:
         phase_mode = PhaseMode(normalized_phase)
@@ -159,7 +161,7 @@ async def create_modern_example_game(
         allowed_modes = ", ".join(mode.value for mode in PhaseMode)
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}"
+            detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}",
         )
 
     existing_setup = game_engine.get_game_setup_status(game_id_clean)
@@ -169,39 +171,33 @@ async def create_modern_example_game(
         )
         if existing_setup.ready or submitted_any:
             raise HTTPException(
-                status_code=400,
-                detail="This battlefield already has deck submissions."
+                status_code=400, detail="This battlefield already has deck submissions."
             )
         # Update the format to Modern if it's different and no decks have been submitted
         if existing_setup.game_format != GameFormat.MODERN:
             setup_status = game_engine.update_game_settings(
                 game_id=game_id_clean,
                 game_format=GameFormat.MODERN,
-                phase_mode=phase_mode
+                phase_mode=phase_mode,
             )
         else:
             phase_mode = existing_setup.phase_mode
             setup_status = existing_setup
     else:
         setup_status = game_engine.create_game_setup(
-            game_id=game_id_clean,
-            game_format=GameFormat.MODERN,
-            phase_mode=phase_mode
+            game_id=game_id_clean, game_format=GameFormat.MODERN, phase_mode=phase_mode
         )
 
     try:
         deck_sources = await card_service.fetch_mtggoldfish_metagame_deck_urls(
-            format_slug="modern",
-            limit=2,
-            platform="paper"
+            format_slug="modern", limit=2, platform="paper"
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     if len(deck_sources) < 2:
         raise HTTPException(
-            status_code=400,
-            detail="Unable to locate two Modern decks on MTGGoldfish."
+            status_code=400, detail="Unable to locate two Modern decks on MTGGoldfish."
         )
 
     imported_decks: List[Dict[str, Any]] = []
@@ -209,32 +205,30 @@ async def create_modern_example_game(
     for idx, deck_source in enumerate(deck_sources[:2], start=1):
         player_id = f"player{idx}"
         try:
-            import_result = await card_service.import_deck_from_url(deck_source["deck_url"])
+            import_result = await card_service.import_deck_from_url(
+                deck_source["deck_url"]
+            )
         except ValueError as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to import deck {deck_source['deck_url']}: {exc}"
+                detail=f"Failed to import deck {deck_source['deck_url']}: {exc}",
             )
 
         deck = import_result["deck"]
         player_alias = import_result.get("deck_name") or deck.name
 
         setup_status = game_engine.claim_player_seat(
-            game_id=game_id_clean,
-            player_id=player_id,
-            player_name=player_alias
+            game_id=game_id_clean, player_id=player_id, player_name=player_alias
         )
         setup_status = game_engine.submit_player_deck(
-            game_id=game_id_clean,
-            player_id=player_id,
-            deck=deck
+            game_id=game_id_clean, player_id=player_id, deck=deck
         )
 
         imported_decks.append(
             {
                 "player_id": player_id,
                 "deck_name": deck.name,
-                "deck_url": deck_source["deck_url"]
+                "deck_url": deck_source["deck_url"],
             }
         )
 
@@ -244,7 +238,7 @@ async def create_modern_example_game(
     share_links = {
         "player1": f"{game_room_url}?player=player1",
         "player2": f"{game_room_url}?player=player2",
-        "spectator": f"{game_room_url}?player=spectator"
+        "spectator": f"{game_room_url}?player=spectator",
     }
 
     return {
@@ -254,7 +248,9 @@ async def create_modern_example_game(
         "game_interface_url": game_interface_url,
         "game_room_url": game_room_url,
         "share_links": share_links,
-        "metagame_source": deck_sources[0].get("metagame_url") if deck_sources else None
+        "metagame_source": (
+            deck_sources[0].get("metagame_url") if deck_sources else None
+        ),
     }
 
 
@@ -269,16 +265,30 @@ async def list_games() -> List[Dict[str, Any]]:
             player_id: status.model_dump()
             for player_id, status in setup.player_status.items()
         }
-        submitted_count = sum(1 for status in player_status_dump.values() if status.get("submitted"))
-        validated_count = sum(1 for status in player_status_dump.values() if status.get("validated"))
-        seat_claimed_count = sum(1 for status in player_status_dump.values() if status.get("seat_claimed"))
+        submitted_count = sum(
+            1 for status in player_status_dump.values() if status.get("submitted")
+        )
+        validated_count = sum(
+            1 for status in player_status_dump.values() if status.get("validated")
+        )
+        seat_claimed_count = sum(
+            1 for status in player_status_dump.values() if status.get("seat_claimed")
+        )
 
         entry: Dict[str, Any] = {
             "game_id": game_id,
             "status": setup.status,
             "ready": setup.ready,
-            "game_format": setup.game_format.value if hasattr(setup.game_format, "value") else str(setup.game_format),
-            "phase_mode": setup.phase_mode.value if hasattr(setup.phase_mode, "value") else str(setup.phase_mode),
+            "game_format": (
+                setup.game_format.value
+                if hasattr(setup.game_format, "value")
+                else str(setup.game_format)
+            ),
+            "phase_mode": (
+                setup.phase_mode.value
+                if hasattr(setup.phase_mode, "value")
+                else str(setup.phase_mode)
+            ),
             "submitted_count": submitted_count,
             "validated_count": validated_count,
             "seat_claimed_count": seat_claimed_count,
@@ -290,7 +300,7 @@ async def list_games() -> List[Dict[str, Any]]:
                 for player_id, status in player_status_dump.items()
                 if status.get("submitted")
             ],
-            "max_players": 2
+            "max_players": 2,
         }
 
         if setup.ready and game_id in game_engine.games:
@@ -308,29 +318,37 @@ async def list_games() -> List[Dict[str, Any]]:
     for game_id, game_state in game_engine.games.items():
         if game_id in processed_games:
             continue
-        games_list.append({
-            "game_id": game_id,
-            "status": "ongoing",
-            "ready": True,
-            "game_format": getattr(game_state.game_format, "value", str(game_state.game_format)),
-            "phase_mode": getattr(game_state.phase_mode, "value", str(game_state.phase_mode)),
-            "submitted_count": len(game_state.players),
-            "validated_count": len(game_state.players),
-            "seat_claimed_count": len(game_state.players),
-            "player_status": {},
-            "players": [player.id for player in game_state.players],
-            "active_player": game_state.active_player,
-            "turn": game_state.turn,
-            "max_players": len(game_state.players),
-            "created_at": game_state.created_at.isoformat(),
-            "updated_at": game_state.updated_at.isoformat()
-        })
+        games_list.append(
+            {
+                "game_id": game_id,
+                "status": "ongoing",
+                "ready": True,
+                "game_format": getattr(
+                    game_state.game_format, "value", str(game_state.game_format)
+                ),
+                "phase_mode": getattr(
+                    game_state.phase_mode, "value", str(game_state.phase_mode)
+                ),
+                "submitted_count": len(game_state.players),
+                "validated_count": len(game_state.players),
+                "seat_claimed_count": len(game_state.players),
+                "player_status": {},
+                "players": [player.id for player in game_state.players],
+                "active_player": game_state.active_player,
+                "turn": game_state.turn,
+                "max_players": len(game_state.players),
+                "created_at": game_state.created_at.isoformat(),
+                "updated_at": game_state.updated_at.isoformat(),
+            }
+        )
 
     return games_list
 
 
 @router.delete("/games/{game_id}")
-async def end_game(game_id: str, player_id: Optional[str] = Query(None)) -> Dict[str, Any]:
+async def end_game(
+    game_id: str, player_id: Optional[str] = Query(None)
+) -> Dict[str, Any]:
     """
     End a game and remove it from the active lists.
     """
@@ -355,7 +373,7 @@ async def end_game(game_id: str, player_id: Optional[str] = Query(None)) -> Dict
             "action": "end_game",
             "player": player_id or "system",
             "success": True,
-            "message": f"Game ended by {player_label}"
+            "message": f"Game ended by {player_label}",
         }
         await broadcast_game_update(game_id, game_state, action_info)
 
@@ -377,7 +395,7 @@ async def restart_game(game_id: str) -> Dict[str, Any]:
     await broadcast_game_update(
         game_id,
         game_state,
-        {"action": "restart_game", "player": "system", "success": True}
+        {"action": "restart_game", "player": "system", "success": True},
     )
 
     return {"success": True, "game_state": game_state.model_dump(mode="json")}
@@ -409,11 +427,10 @@ async def list_format_cards(
         availability=availability,
     )
 
+
 @router.post("/games/{game_id}/submit-deck")
 async def submit_player_deck(
-    game_id: str,
-    request: dict,
-    card_service: CardService = Depends(get_card_service)
+    game_id: str, request: dict, card_service: CardService = Depends(get_card_service)
 ) -> GameSetupStatus:
     """
     Submit a deck for a specific player in the game setup phase.
@@ -422,9 +439,7 @@ async def submit_player_deck(
     player_id = request.get("player_id")
     decklist_text = str(request.get("decklist_text", "") or "").strip()
     decklist_url = str(
-        request.get("decklist_url")
-        or request.get("deck_url")
-        or ""
+        request.get("decklist_url") or request.get("deck_url") or ""
     ).strip()
 
     if not player_id:
@@ -441,29 +456,25 @@ async def submit_player_deck(
             raise HTTPException(status_code=400, detail=str(exc))
         except Exception as exc:
             raise HTTPException(
-                status_code=400,
-                detail=f"Error importing deck from URL: {exc}"
+                status_code=400, detail=f"Error importing deck from URL: {exc}"
             )
 
     if not decklist_text and deck is None:
         raise HTTPException(status_code=400, detail="decklist_text is required")
-    
+
     try:
         if deck is None:
             deck = await card_service.parse_decklist(decklist_text)
-        
+
         setup_status = game_engine.submit_player_deck(
-            game_id=game_id,
-            player_id=player_id,
-            deck=deck
+            game_id=game_id, player_id=player_id, deck=deck
         )
-        
+
         return setup_status
-        
+
     except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Error submitting deck: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Error submitting deck: {str(e)}")
+
 
 @router.post("/games/{game_id}/claim-seat")
 async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
@@ -471,13 +482,13 @@ async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
     player_id = request.get("player_id")
     player_name = request.get("player_name")
     if player_id not in {"player1", "player2"}:
-        raise HTTPException(status_code=400, detail="player_id must be player1 or player2")
+        raise HTTPException(
+            status_code=400, detail="player_id must be player1 or player2"
+        )
 
     try:
         setup_status = game_engine.claim_player_seat(
-            game_id=game_id,
-            player_id=player_id,
-            player_name=player_name
+            game_id=game_id, player_id=player_id, player_name=player_name
         )
         return setup_status
     except ValueError as exc:
@@ -489,10 +500,10 @@ async def update_game_settings(game_id: str, request: dict) -> GameSetupStatus:
     """Update game settings (format, phase mode) before the game starts."""
     raw_format = request.get("game_format")
     raw_phase_mode = request.get("phase_mode")
-    
+
     game_format = None
     phase_mode = None
-    
+
     if raw_format is not None:
         normalized_format = str(raw_format).strip().lower().replace(" ", "_")
         try:
@@ -501,9 +512,9 @@ async def update_game_settings(game_id: str, request: dict) -> GameSetupStatus:
             allowed_formats = ", ".join(fmt.value for fmt in GameFormat)
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid game_format '{raw_format}'. Allowed values: {allowed_formats}"
+                detail=f"Invalid game_format '{raw_format}'. Allowed values: {allowed_formats}",
             )
-    
+
     if raw_phase_mode is not None:
         normalized_phase = str(raw_phase_mode).strip().lower().replace(" ", "_")
         try:
@@ -512,14 +523,12 @@ async def update_game_settings(game_id: str, request: dict) -> GameSetupStatus:
             allowed_modes = ", ".join(mode.value for mode in PhaseMode)
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}"
+                detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}",
             )
-    
+
     try:
         setup_status = game_engine.update_game_settings(
-            game_id=game_id,
-            game_format=game_format,
-            phase_mode=phase_mode
+            game_id=game_id, game_format=game_format, phase_mode=phase_mode
         )
         return setup_status
     except ValueError as exc:
@@ -539,85 +548,87 @@ async def get_game_ui_data(game_id: str) -> dict:
     """Get game data optimized for UI rendering."""
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
-    
+
     game_state = game_engine.games[game_id]
-    
+
     def safe_model_dump(obj):
         """Safely convert object to dict, handling Pydantic models and dicts."""
-        if hasattr(obj, 'model_dump'):
+        if hasattr(obj, "model_dump"):
             return obj.model_dump()
         elif isinstance(obj, dict):
             return obj
         else:
             return str(obj)
-    
+
     return {
-        'id': game_state.id,
-        'turn': game_state.turn,
-        'phase': game_state.phase.value,
-        'phase_mode': game_state.phase_mode.value,
-        'game_format': getattr(game_state.game_format, 'value', str(game_state.game_format)),
-        'active_player': game_state.active_player,
-        'priority_player': game_state.priority_player,
-        'players': [
+        "id": game_state.id,
+        "turn": game_state.turn,
+        "phase": game_state.phase.value,
+        "phase_mode": game_state.phase_mode.value,
+        "game_format": getattr(
+            game_state.game_format, "value", str(game_state.game_format)
+        ),
+        "active_player": game_state.active_player,
+        "priority_player": game_state.priority_player,
+        "players": [
             {
-                'name': player.name,
-                'life': player.life,
-                'hand': [safe_model_dump(card) for card in player.hand],
-                'battlefield': [
-                    safe_model_dump(card) for card in player.battlefield
+                "name": player.name,
+                "life": player.life,
+                "hand": [safe_model_dump(card) for card in player.hand],
+                "battlefield": [safe_model_dump(card) for card in player.battlefield],
+                "library": [safe_model_dump(card) for card in player.library],
+                "graveyard": [safe_model_dump(card) for card in player.graveyard],
+                "exile": [safe_model_dump(card) for card in player.exile],
+                "reveal_zone": [
+                    safe_model_dump(card) for card in getattr(player, "reveal_zone", [])
                 ],
-                'library': [
-                    safe_model_dump(card) for card in player.library
+                "look_zone": [
+                    safe_model_dump(card) for card in getattr(player, "look_zone", [])
                 ],
-                'graveyard': [
-                    safe_model_dump(card) for card in player.graveyard
+                "commander_zone": [
+                    safe_model_dump(card)
+                    for card in getattr(player, "commander_zone", [])
                 ],
-                'exile': [safe_model_dump(card) for card in player.exile],
-                'reveal_zone': [
-                    safe_model_dump(card) for card in getattr(player, 'reveal_zone', [])
-                ],
-                'look_zone': [
-                    safe_model_dump(card) for card in getattr(player, 'look_zone', [])
-                ],
-                'commander_zone': [
-                    safe_model_dump(card) for card in getattr(player, 'commander_zone', [])
-                ],
-                'commander_tax': getattr(player, 'commander_tax', 0)
+                "commander_tax": getattr(player, "commander_tax", 0),
             }
             for player in game_state.players
         ],
-        'stack': [safe_model_dump(spell) for spell in game_state.stack],
-        'action_history': [
+        "stack": [safe_model_dump(spell) for spell in game_state.stack],
+        "action_history": [
             safe_model_dump(entry)
-            for entry in getattr(game_state, 'action_history', [])
+            for entry in getattr(game_state, "action_history", [])
         ],
-        'chat_log': [
-            safe_model_dump(entry)
-            for entry in getattr(game_state, 'chat_log', [])
+        "chat_log": [
+            safe_model_dump(entry) for entry in getattr(game_state, "chat_log", [])
         ],
         # Game start phase fields (coin flip and mulligans)
-        'game_start_phase': game_state.game_start_phase.value if hasattr(game_state.game_start_phase, 'value') else game_state.game_start_phase,
-        'coin_flip_winner': game_state.coin_flip_winner,
-        'first_player': game_state.first_player,
-        'mulligan_state': {
+        "game_start_phase": (
+            game_state.game_start_phase.value
+            if hasattr(game_state.game_start_phase, "value")
+            else game_state.game_start_phase
+        ),
+        "coin_flip_winner": game_state.coin_flip_winner,
+        "first_player": game_state.first_player,
+        "mulligan_state": {
             player_id: safe_model_dump(state)
-            for player_id, state in getattr(game_state, 'mulligan_state', {}).items()
+            for player_id, state in getattr(game_state, "mulligan_state", {}).items()
         },
-        'mulligan_deciding_player': game_state.mulligan_deciding_player,
-        'end_step_priority_passed': getattr(game_state, 'end_step_priority_passed', False),
-        'combat_state': safe_model_dump(getattr(game_state, 'combat_state', {})) if hasattr(getattr(game_state, 'combat_state', None), 'model_dump') else getattr(game_state, 'combat_state', {}),
-        'targeting_arrows': getattr(game_state, 'targeting_arrows', [])
+        "mulligan_deciding_player": game_state.mulligan_deciding_player,
+        "end_step_priority_passed": getattr(
+            game_state, "end_step_priority_passed", False
+        ),
+        "combat_state": (
+            safe_model_dump(getattr(game_state, "combat_state", {}))
+            if hasattr(getattr(game_state, "combat_state", None), "model_dump")
+            else getattr(game_state, "combat_state", {})
+        ),
+        "targeting_arrows": getattr(game_state, "targeting_arrows", []),
     }
-
-
 
 
 @router.post("/games/{game_id}/action")
 async def perform_game_action(
-    game_id: str,
-    request: dict,
-    engine: SimpleGameEngine = Depends(get_game_engine)
+    game_id: str, request: dict, engine: SimpleGameEngine = Depends(get_game_engine)
 ) -> dict:
     """
     Unified endpoint for all game actions.
@@ -626,64 +637,64 @@ async def perform_game_action(
     action_type = request.get("action_type")
     if not action_type:
         raise HTTPException(status_code=400, detail="action_type is required")
-    
+
     handler_info = action_registry.get_handler(action_type)
     if not handler_info:
         raise HTTPException(
             status_code=400,
             detail=f"Unknown action_type: {action_type}. "
-                   f"Available: {action_registry.list_actions()}"
+            f"Available: {action_registry.list_actions()}",
         )
-    
+
     if game_id not in engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
-    
+
     current_state = engine.games[game_id]
-    
+
     if "player_id" in request:
         player_id = request["player_id"]
     else:
         if action_type in ["pass_priority", "resolve_stack"]:
             priority_index = current_state.priority_player
-            player_id = current_state.players[priority_index].id if 0 <= priority_index < len(current_state.players) else f"player{priority_index + 1}"
+            player_id = (
+                current_state.players[priority_index].id
+                if 0 <= priority_index < len(current_state.players)
+                else f"player{priority_index + 1}"
+            )
         else:
             active_index = current_state.active_player
-            player_id = current_state.players[active_index].id if 0 <= active_index < len(current_state.players) else f"player{active_index + 1}"
-    
+            player_id = (
+                current_state.players[active_index].id
+                if 0 <= active_index < len(current_state.players)
+                else f"player{active_index + 1}"
+            )
+
     try:
         handler = handler_info["handler"]
         action_data = await handler(game_id, request, current_state)
-        
+
         final_action_type = action_data.get("action_type", action_type)
-        
+
         action_params = {
-            k: v for k, v in action_data.items()
+            k: v
+            for k, v in action_data.items()
             if k not in ["broadcast_data", "action_type"]
         }
         action = GameAction(
-            player_id=player_id,
-            action_type=final_action_type,
-            **action_params
+            player_id=player_id, action_type=final_action_type, **action_params
         )
-        
+
         game_state = await engine.process_action(game_id, action)
-        
-        broadcast_info = {
-            "action": action_type,
-            "player": player_id,
-            "success": True
-        }
+
+        broadcast_info = {"action": action_type, "player": player_id, "success": True}
         broadcast_info.update(action_data.get("broadcast_data", {}))
         if broadcast_info.get("face_down"):
             broadcast_info.setdefault("face_down_owner", player_id)
-        
+
         await broadcast_game_update(game_id, game_state, broadcast_info)
-        
-        return {
-            "success": True,
-            "game_state": game_state.model_dump(mode="json")
-        }
-        
+
+        return {"success": True, "game_state": game_state.model_dump(mode="json")}
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -710,9 +721,7 @@ async def pass_phase_legacy(game_id: str, request: Optional[dict] = None) -> dic
 
 
 @router.post("/games/{game_id}/shuffle-library")
-async def shuffle_library_legacy(
-    game_id: str, request: Optional[dict] = None
-) -> dict:
+async def shuffle_library_legacy(game_id: str, request: Optional[dict] = None) -> dict:
     """Legacy endpoint for shuffle-library."""
     action_request = {"action_type": "shuffle_library"}
     if request:
@@ -763,9 +772,7 @@ async def modify_life_legacy(game_id: str, request: dict) -> dict:
 
 
 @router.post("/games/{game_id}/resolve-stack")
-async def resolve_stack_legacy(
-    game_id: str, request: Optional[dict] = None
-) -> dict:
+async def resolve_stack_legacy(game_id: str, request: Optional[dict] = None) -> dict:
     """Legacy endpoint for resolve-stack."""
     action_request = {"action_type": "resolve_stack"}
     if request:
@@ -774,9 +781,7 @@ async def resolve_stack_legacy(
 
 
 @router.post("/games/{game_id}/pass-priority")
-async def pass_priority_legacy(
-    game_id: str, request: Optional[dict] = None
-) -> dict:
+async def pass_priority_legacy(game_id: str, request: Optional[dict] = None) -> dict:
     """Legacy endpoint for pass-priority."""
     action_request = {"action_type": "pass_priority"}
     if request:
@@ -794,15 +799,12 @@ async def target_card_legacy(game_id: str, request: dict) -> dict:
 
 @router.post("/decks/parse")
 async def parse_decklist(
-    request: dict,
-    card_service: CardService = Depends(get_card_service)
+    request: dict, card_service: CardService = Depends(get_card_service)
 ) -> Deck:
     """Parse a decklist from text format and create a Deck object."""
     decklist_text = str(request.get("decklist_text", "") or "").strip()
     decklist_url = str(
-        request.get("decklist_url")
-        or request.get("deck_url")
-        or ""
+        request.get("decklist_url") or request.get("deck_url") or ""
     ).strip()
 
     if decklist_url and not decklist_text:
@@ -818,19 +820,16 @@ async def parse_decklist(
 
     if not decklist_text:
         raise HTTPException(status_code=400, detail="Decklist text is required")
-    
+
     try:
         return await card_service.parse_decklist(decklist_text)
     except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Error parsing decklist: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Error parsing decklist: {str(e)}")
 
 
 @router.post("/decks/import-url")
 async def import_deck_from_url(
-    request: dict,
-    card_service: CardService = Depends(get_card_service)
+    request: dict, card_service: CardService = Depends(get_card_service)
 ) -> Dict[str, Any]:
     """Import a deck from a supported provider URL."""
     deck_url = str(
@@ -849,14 +848,13 @@ async def import_deck_from_url(
         return {
             "deck": deck.model_dump(mode="json"),
             "deck_text": result["deck_text"],
-            "deck_name": deck.name
+            "deck_name": deck.name,
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(
-            status_code=400,
-            detail=f"Error importing deck from URL: {exc}"
+            status_code=400, detail=f"Error importing deck from URL: {exc}"
         )
 
 
@@ -873,18 +871,16 @@ async def list_available_actions() -> Dict[str, Any]:
     """List all available game actions."""
     return {
         "actions": action_registry.list_actions(),
-        "description": "Use POST /games/{game_id}/action with action_type parameter"
+        "description": "Use POST /games/{game_id}/action with action_type parameter",
     }
+
 
 @router.get("/games/{game_id}/replay")
 async def get_game_replay(game_id: str) -> Dict[str, Any]:
     """Get the full replay history for a game."""
     if game_id in game_engine.replays:
-        return {
-            "game_id": game_id,
-            "timeline": game_engine.replays[game_id]
-        }
-    
+        return {"game_id": game_id, "timeline": game_engine.replays[game_id]}
+
     # Fallback for games without recorded history (e.g. started before restart)
     if game_id in game_engine.games:
         current_state = game_engine.games[game_id]
@@ -892,12 +888,9 @@ async def get_game_replay(game_id: str) -> Dict[str, Any]:
         synthetic_step = {
             "timestamp": time.time(),
             "state": current_state.model_dump(mode="json"),
-            "action": {"action_type": "snapshot", "player_id": "system"}
+            "action": {"action_type": "snapshot", "player_id": "system"},
         }
-        return {
-            "game_id": game_id,
-            "timeline": [synthetic_step]
-        }
+        return {"game_id": game_id, "timeline": [synthetic_step]}
 
     raise HTTPException(status_code=404, detail="Replay not found for this game")
 
@@ -906,30 +899,31 @@ async def get_game_replay(game_id: str) -> Dict[str, Any]:
 # Pricing API endpoints (data loaded in memory at startup)
 # =============================================================================
 
+
 @router.post("/pricing/lookup")
 async def lookup_card_prices(request: Dict[str, Any]) -> Dict[str, Any]:
     """
     Look up prices for a batch of card names.
-    
+
     Request body:
         { "card_names": ["Lightning Bolt", "Ragavan, Nimble Pilferer", ...] }
-    
+
     Response:
         { "prices": { "Lightning Bolt": 2.50, "Ragavan, Nimble Pilferer": 85.00, ... } }
-    
+
     Cards without prices will have null values.
     Data is loaded in memory at server startup for fast O(1) lookups.
     """
     card_names = request.get("card_names", [])
-    
+
     if not isinstance(card_names, list):
         raise HTTPException(status_code=400, detail="card_names must be a list")
-    
+
     if len(card_names) > 500:
         raise HTTPException(status_code=400, detail="Maximum 500 cards per request")
-    
+
     prices = lookup_prices(card_names)
-    
+
     return {"prices": prices}
 
 

@@ -1,6 +1,7 @@
 """
 Service for managing draft-related logic, such as sets and boosters.
 """
+
 import re
 import aiohttp
 import random
@@ -9,6 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from app.models.game import Card, Rarity
 from app.services.card_service import CardService
+
 
 class DraftService:
     """Service for managing draft-related logic."""
@@ -28,11 +30,7 @@ class DraftService:
 
         all_sets = data.get("data", [])
         allowed_set_types = {"core", "expansion", "masters", "draft_innovation", "cube"}
-        filtered_sets = [
-            s
-            for s in all_sets
-            if s.get("set_type") in allowed_set_types
-        ]
+        filtered_sets = [s for s in all_sets if s.get("set_type") in allowed_set_types]
 
         if query:
             normalized_query = query.strip().lower()
@@ -42,10 +40,7 @@ class DraftService:
                 if normalized_query in s.get("name", "").lower()
             ]
 
-        filtered_sets.sort(
-            key=lambda s: s.get("released_at") or "",
-            reverse=True
-        )
+        filtered_sets.sort(key=lambda s: s.get("released_at") or "", reverse=True)
 
         return [
             {
@@ -61,10 +56,10 @@ class DraftService:
         """Generate a random booster pack for a given set."""
         # Standard booster distribution: 10 commons, 3 uncommons, 1 rare/mythic
         # This is a simplified model. Real boosters can be more complex.
-        
+
         commons = await self._get_cards_by_rarity(set_code, "common", 10)
         uncommons = await self._get_cards_by_rarity(set_code, "uncommon", 3)
-        
+
         # 1 in 8 chance for a mythic, otherwise a rare
         if random.randint(1, 8) == 1:
             rare_mythic = await self._get_cards_by_rarity(set_code, "mythic", 1)
@@ -76,24 +71,31 @@ class DraftService:
             rare_mythic = await self._get_cards_by_rarity(set_code, "rare", 1)
 
         booster = commons + uncommons + rare_mythic
-        
-        rarity_order = {Rarity.MYTHIC: 0, Rarity.RARE: 1, Rarity.UNCOMMON: 2, Rarity.COMMON: 3}
+
+        rarity_order = {
+            Rarity.MYTHIC: 0,
+            Rarity.RARE: 1,
+            Rarity.UNCOMMON: 2,
+            Rarity.COMMON: 3,
+        }
         booster.sort(key=lambda card: rarity_order.get(card.rarity, 4))
 
         return booster
 
-    async def _get_cards_by_rarity(self, set_code: str, rarity: str, count: int) -> List[Card]:
+    async def _get_cards_by_rarity(
+        self, set_code: str, rarity: str, count: int
+    ) -> List[Card]:
         """Get a number of random cards of a specific rarity from a set."""
         all_cards_data = self.card_service.get_local_cards(
-            set_code=set_code,
-            rarity=rarity,
-            include_tokens=False
+            set_code=set_code, rarity=rarity, include_tokens=False
         )
 
         if not all_cards_data:
             return []
 
-        sampled_cards_data = random.sample(all_cards_data, min(count, len(all_cards_data)))
+        sampled_cards_data = random.sample(
+            all_cards_data, min(count, len(all_cards_data))
+        )
 
         cards = []
         for card_data in sampled_cards_data:
@@ -106,7 +108,7 @@ class DraftService:
         self,
         source_url: Optional[str],
         raw_list: Optional[str],
-        preferred_name: Optional[str] = None
+        preferred_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Load a cube card pool from either a CubeCobra URL or pasted list.
@@ -120,7 +122,9 @@ class DraftService:
         download_url: Optional[str] = None
 
         if normalized_url:
-            download_url, cube_id, discovered_name = await self._resolve_cube_download_url(normalized_url)
+            download_url, cube_id, discovered_name = (
+                await self._resolve_cube_download_url(normalized_url)
+            )
             if discovered_name and not cube_name:
                 cube_name = discovered_name
         elif not normalized_text:
@@ -128,13 +132,17 @@ class DraftService:
 
         cube_payload_text = normalized_text
         if download_url:
-            cube_payload_text = (await self.card_service._http_get_text(download_url)).strip()
+            cube_payload_text = (
+                await self.card_service._http_get_text(download_url)
+            ).strip()
 
         if not cube_payload_text:
             raise ValueError("Cube list appears to be empty.")
 
         resolved_name = cube_name or "Custom Cube"
-        normalized_text = self.card_service._strip_sideboard_lines(cube_payload_text).strip()
+        normalized_text = self.card_service._strip_sideboard_lines(
+            cube_payload_text
+        ).strip()
         card_entries = self._parse_cube_list_entries(normalized_text)
         card_pool = []
         for entry in card_entries:
@@ -154,7 +162,7 @@ class DraftService:
             "cube_name": resolved_name,
             "card_count": len(card_pool),
             "source_url": normalized_url or download_url,
-            "set_code": f"cube:{cube_id}" if cube_id else "cube"
+            "set_code": f"cube:{cube_id}" if cube_id else "cube",
         }
 
     def _parse_cube_list_entries(self, cube_text: str) -> List[Dict[str, Any]]:
@@ -163,9 +171,7 @@ class DraftService:
             return []
 
         lines = cube_text.splitlines()
-        card_entry_regex = re.compile(
-            r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$"
-        )
+        card_entry_regex = re.compile(r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$")
         section_aliases = {
             "commander": "commander",
             "commanders": "commander",
@@ -175,7 +181,7 @@ class DraftService:
             "mainboard": "main",
             "main deck": "main",
             "companion": "companion",
-            "sideboard": "sideboard"
+            "sideboard": "sideboard",
         }
 
         current_section: Optional[str] = None
@@ -186,8 +192,8 @@ class DraftService:
                 continue
 
             # Check for section headers first
-            normalized_heading = re.sub(r'[^a-zA-Z\s]', ' ', line).lower()
-            normalized_heading = re.sub(r'\s+', ' ', normalized_heading).strip()
+            normalized_heading = re.sub(r"[^a-zA-Z\s]", " ", line).lower()
+            normalized_heading = re.sub(r"\s+", " ", normalized_heading).strip()
             if normalized_heading in section_aliases:
                 current_section = section_aliases[normalized_heading]
                 continue
@@ -196,11 +202,13 @@ class DraftService:
             if match:
                 quantity = int(match.group(1))
                 card_name = match.group(2).strip()
-                entries.append({
-                    "quantity": quantity,
-                    "name": card_name,
-                    "section": current_section
-                })
+                entries.append(
+                    {
+                        "quantity": quantity,
+                        "name": card_name,
+                        "section": current_section,
+                    }
+                )
                 continue
 
             # Fallback: assume it's just a card name (quantity 1)
@@ -209,15 +217,15 @@ class DraftService:
             if name_match:
                 card_name = name_match.group(1).strip()
                 if card_name:
-                    entries.append({
-                        "quantity": 1,
-                        "name": card_name,
-                        "section": current_section
-                    })
+                    entries.append(
+                        {"quantity": 1, "name": card_name, "section": current_section}
+                    )
 
         return entries
 
-    async def _resolve_cube_download_url(self, source_url: str) -> Tuple[str, Optional[str], Optional[str]]:
+    async def _resolve_cube_download_url(
+        self, source_url: str
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         """Resolve a CubeCobra download link and cube metadata from a public URL."""
         parsed = urlparse(source_url)
         if not parsed.scheme:
@@ -228,7 +236,9 @@ class DraftService:
         cube_id = None
         cube_name_hint: Optional[str] = None
 
-        path_identifier, path_name_hint = self._extract_cube_identifier_from_segments(segments)
+        path_identifier, path_name_hint = self._extract_cube_identifier_from_segments(
+            segments
+        )
         if path_identifier:
             cube_id = path_identifier
             cube_name_hint = path_name_hint
@@ -251,7 +261,9 @@ class DraftService:
             cube_name_hint = self._prettify_cube_name(cube_id)
         return download_url, cube_id, cube_name_hint
 
-    def _extract_cube_identifier_from_segments(self, segments: List[str]) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_cube_identifier_from_segments(
+        self, segments: List[str]
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Extract cube identifier and optional name hint from known CubeCobra routes."""
         if not segments or segments[0] != "cube":
             return None, None
@@ -270,7 +282,7 @@ class DraftService:
                 "compare",
                 "playtest",
                 "details",
-                "stats"
+                "stats",
             }
             if len(segments) >= 3 and segments[1] in skip_sections:
                 identifier = segments[2]

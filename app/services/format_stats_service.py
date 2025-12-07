@@ -179,14 +179,10 @@ def get_format_statistics() -> Dict[str, Any]:
         is_paper_format = _is_paper_format(format_code)
 
         coverage_pct = (
-            round((paper_available / paper_total) * 100, 2)
-            if paper_total
-            else None
+            round((paper_available / paper_total) * 100, 2) if paper_total else None
         )
         missing_pct = (
-            round((paper_missing / paper_total) * 100, 2)
-            if paper_total
-            else None
+            round((paper_missing / paper_total) * 100, 2) if paper_total else None
         )
 
         formatted_results.append(
@@ -204,9 +200,7 @@ def get_format_statistics() -> Dict[str, Any]:
             }
         )
 
-    formatted_results.sort(
-        key=lambda item: (-item["total_cards"], item["label"])
-    )
+    formatted_results.sort(key=lambda item: (-item["total_cards"], item["label"]))
     paper_only = [item for item in formatted_results if item["is_paper_format"]]
     paper_missing_total = sum(item["paper_missing_on_arena"] for item in paper_only)
     paper_cards_total = sum(item["paper_cards"] for item in paper_only)
@@ -255,7 +249,9 @@ def get_cards_for_format(
     search_query = (search or "").strip().lower()
     availability_choice = (availability or DEFAULT_AVAILABILITY).strip().lower()
     if availability_choice not in AVAILABILITY_FILTERS:
-        raise ValueError(f"Invalid availability filter '{availability}'. Expected one of {sorted(AVAILABILITY_FILTERS)}.")
+        raise ValueError(
+            f"Invalid availability filter '{availability}'. Expected one of {sorted(AVAILABILITY_FILTERS)}."
+        )
 
     cards = [card for card in _load_cards() if _is_relevant_card(card)]
     results: List[Dict[str, Any]] = []
@@ -272,7 +268,9 @@ def get_cards_for_format(
         arena_formats = _get_arena_legal_formats(legalities)
         is_arena = bool(arena_formats)
         set_code = (card.get("set") or "unknown").lower()
-        set_name = card.get("set_name") or (set_code.upper() if set_code != "unknown" else "Unknown Set")
+        set_name = card.get("set_name") or (
+            set_code.upper() if set_code != "unknown" else "Unknown Set"
+        )
 
         if is_paper:
             coverage = set_tracking.setdefault(

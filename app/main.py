@@ -46,11 +46,7 @@ templates = Jinja2Templates(directory="app/templates")
 @app.get("/")
 async def home(request: Request):
     """Home page."""
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {"title": "ManaForge"}
-    )
+    return templates.TemplateResponse(request, "index.html", {"title": "ManaForge"})
 
 
 @app.get("/health")
@@ -63,45 +59,38 @@ async def health_check():
 async def game_interface(request: Request, game_id: str):
     """Game interface template."""
     from app.api.routes import game_engine
-    
+
     if game_id not in game_engine.games:
         return templates.TemplateResponse(
-            request,
-            "error.html",
-            {"message": "Game not found"}
+            request, "error.html", {"message": "Game not found"}
         )
-    
+
     game_state = game_engine.games[game_id]
-    
+
     game_dict = {
-        'id': game_state.id,
-        'turn': game_state.turn,
-        'phase': game_state.phase.value,
-        'phase_mode': game_state.phase_mode.value,
-        'active_player': game_state.active_player,
-        'priority_player': game_state.priority_player,
-        'players': [
+        "id": game_state.id,
+        "turn": game_state.turn,
+        "phase": game_state.phase.value,
+        "phase_mode": game_state.phase_mode.value,
+        "active_player": game_state.active_player,
+        "priority_player": game_state.priority_player,
+        "players": [
             {
-                'name': player.name,
-                'life': player.life,
-                'hand': [card.model_dump() for card in player.hand],
-                'battlefield': [
-                    card.model_dump() for card in player.battlefield
+                "name": player.name,
+                "life": player.life,
+                "hand": [card.model_dump() for card in player.hand],
+                "battlefield": [card.model_dump() for card in player.battlefield],
+                "library": len(player.library),
+                "graveyard": len(player.graveyard),
+                "reveal_zone": [
+                    card.model_dump() for card in getattr(player, "reveal_zone", [])
                 ],
-                'library': len(player.library),
-                'graveyard': len(player.graveyard)
-                ,
-                'reveal_zone': [card.model_dump() for card in getattr(player, 'reveal_zone', [])]
             }
             for player in game_state.players
-        ]
+        ],
     }
-    
-    return templates.TemplateResponse(
-        request,
-        "game.html",
-        {"game": game_dict}
-    )
+
+    return templates.TemplateResponse(request, "game.html", {"game": game_dict})
 
 
 @app.get("/game-room/{game_id}")
@@ -109,7 +98,7 @@ async def game_room(
     request: Request,
     game_id: str,
     player: Optional[str] = Query(default=None),
-    player_name: Optional[str] = Query(default=None)
+    player_name: Optional[str] = Query(default=None),
 ):
     """Game setup status page before the duel starts."""
     from app.api.routes import game_engine
@@ -119,7 +108,6 @@ async def game_room(
         setup_status = game_engine.create_game_setup(game_id=game_id)
 
     player_status = setup_status.player_status
-    allowed_players = {"player1", "player2", "spectator"}
 
     def determine_player_role(requested: Optional[str]) -> str:
         seats = ["player1", "player2"]
@@ -138,9 +126,7 @@ async def game_room(
 
     if player_role in {"player1", "player2"}:
         setup_status = game_engine.claim_player_seat(
-            game_id=game_id,
-            player_id=player_role,
-            player_name=player_name
+            game_id=game_id, player_id=player_role, player_name=player_name
         )
         player_status = setup_status.player_status
 
@@ -154,7 +140,7 @@ async def game_room(
     share_links = {
         "player1": f"{game_room_path}?player=player1",
         "player2": f"{game_room_path}?player=player2",
-        "spectator": f"{game_room_path}?player=spectator"
+        "spectator": f"{game_room_path}?player=spectator",
     }
     context = {
         "request": request,
@@ -166,17 +152,16 @@ async def game_room(
         "setup_api_url": setup_api_url,
         "submit_api_url": submit_api_url,
         "game_room_url": game_room_path,
-        "share_links": share_links
+        "share_links": share_links,
     }
     return templates.TemplateResponse(request, "game_room.html", context)
+
 
 @app.get("/game")
 async def game_lobby(request: Request):
     """Game lobby page."""
     return templates.TemplateResponse(
-        request,
-        "game_lobby.html",
-        {"title": "Game Lobby"}
+        request, "game_lobby.html", {"title": "Game Lobby"}
     )
 
 
@@ -184,9 +169,7 @@ async def game_lobby(request: Request):
 async def deck_library(request: Request):
     """Deck library page that lists saved decks."""
     return templates.TemplateResponse(
-        request,
-        "deck_library.html",
-        {"title": "Deck Library"}
+        request, "deck_library.html", {"title": "Deck Library"}
     )
 
 
@@ -194,9 +177,7 @@ async def deck_library(request: Request):
 async def deck_manager(request: Request):
     """Deck builder page."""
     return templates.TemplateResponse(
-        request,
-        "deck_manager.html",
-        {"title": "Deck Builder"}
+        request, "deck_manager.html", {"title": "Deck Builder"}
     )
 
 
@@ -204,28 +185,24 @@ async def deck_manager(request: Request):
 async def draft_lobby(request: Request):
     """Limited lobby page."""
     return templates.TemplateResponse(
-        request,
-        "draft_lobby.html",
-        {"title": "Limited Lobby"}
+        request, "draft_lobby.html", {"title": "Limited Lobby"}
     )
+
 
 @app.get("/draft/{room_id}")
 async def draft_room(request: Request, room_id: str):
     """Limited room page."""
     from app.api.draft_routes import get_draft_engine
+
     engine = get_draft_engine()
     room = engine.get_draft_room(room_id)
     if not room:
         return templates.TemplateResponse(
-            request,
-            "error.html",
-            {"message": "Limited room not found"}
+            request, "error.html", {"message": "Limited room not found"}
         )
     room_payload = jsonable_encoder(room)
     return templates.TemplateResponse(
-        request,
-        "draft_room.html",
-        {"room": room_payload}
+        request, "draft_room.html", {"room": room_payload}
     )
 
 
@@ -239,7 +216,7 @@ async def format_stats(request: Request):
         {
             "title": "Formats & Arena Coverage",
             "stats": stats,
-        }
+        },
     )
 
 
@@ -247,10 +224,9 @@ async def format_stats(request: Request):
 async def replay_lobby(request: Request):
     """Replay lobby page."""
     return templates.TemplateResponse(
-        request,
-        "replay_lobby.html",
-        {"title": "Replay Lobby"}
+        request, "replay_lobby.html", {"title": "Replay Lobby"}
     )
+
 
 @app.get("/replay/{game_id}")
 async def replay_room(request: Request, game_id: str):
@@ -258,5 +234,5 @@ async def replay_room(request: Request, game_id: str):
     return templates.TemplateResponse(
         request,
         "replay_room.html",
-        {"title": f"Replay - {game_id}", "game_id": game_id}
+        {"title": f"Replay - {game_id}", "game_id": game_id},
     )

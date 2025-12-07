@@ -1,17 +1,27 @@
 """
 Engine for managing draft rooms and the drafting process.
 """
+
 import copy
 import uuid
 import random
 import re
 from typing import Dict, List, Optional, Any
 
-from app.models.game import DraftRoom, DraftPlayer, Card, DraftState, DraftType, CubeConfiguration
+from app.models.game import (
+    DraftRoom,
+    DraftPlayer,
+    Card,
+    DraftState,
+    DraftType,
+    CubeConfiguration,
+)
 from app.services.draft_service import DraftService
+
 
 class DraftEngine:
     """Manages draft rooms and the drafting process."""
+
     MAX_PLAYER_NAME_LENGTH = 32
 
     def __init__(self, draft_service: DraftService):
@@ -29,7 +39,7 @@ class DraftEngine:
         max_players: int,
         creator_id: str,
         cube_settings: Optional[Dict[str, Any]] = None,
-        draft_type: DraftType = DraftType.BOOSTER_DRAFT
+        draft_type: DraftType = DraftType.BOOSTER_DRAFT,
     ) -> DraftRoom:
         """Creates a new draft room and adds the creator as Player 1."""
         room_id = f"draft-{uuid.uuid4().hex[:8]}"
@@ -43,7 +53,9 @@ class DraftEngine:
             cube_payload = await self.draft_service.load_cube_pool(
                 source_url=cube_settings.get("cube_url"),
                 raw_list=cube_settings.get("cube_list"),
-                preferred_name=cube_settings.get("cube_name") or normalized_set_name or name
+                preferred_name=cube_settings.get("cube_name")
+                or normalized_set_name
+                or name,
             )
             card_pool = cube_payload.get("card_pool") or []
             if len(card_pool) < 15:
@@ -56,14 +68,20 @@ class DraftEngine:
                 cube_id=cube_payload.get("cube_id"),
                 source_url=cube_payload.get("source_url"),
                 name=cube_payload.get("cube_name"),
-                card_count=cube_payload.get("card_count", len(card_pool))
+                card_count=cube_payload.get("card_count", len(card_pool)),
             )
-            normalized_set_name = cube_configuration.name or normalized_set_name or "Custom Cube"
-            normalized_set_code = cube_payload.get("set_code") or cube_configuration.cube_id or "cube"
+            normalized_set_name = (
+                cube_configuration.name or normalized_set_name or "Custom Cube"
+            )
+            normalized_set_code = (
+                cube_payload.get("set_code") or cube_configuration.cube_id or "cube"
+            )
             resolved_draft_type = DraftType.CUBE
         else:
             if not normalized_set_code:
-                raise ValueError("Set code is required for sealed pools and booster drafts.")
+                raise ValueError(
+                    "Set code is required for sealed pools and booster drafts."
+                )
             if resolved_draft_type == DraftType.CUBE:
                 resolved_draft_type = DraftType.BOOSTER_DRAFT
             if resolved_draft_type not in {DraftType.BOOSTER_DRAFT, DraftType.SEALED}:
@@ -76,7 +94,7 @@ class DraftEngine:
             set_name=normalized_set_name or normalized_set_code.upper(),
             max_players=max_players,
             draft_type=resolved_draft_type,
-            cube_configuration=cube_configuration
+            cube_configuration=cube_configuration,
         )
 
         # Add the creator as the first player
@@ -100,7 +118,9 @@ class DraftEngine:
         if any(p.id == player_id for p in room.players):
             return next((p for p in room.players if p.id == player_id), None)
 
-        player = DraftPlayer(id=player_id, name="")  # Name will be set by _update_player_names
+        player = DraftPlayer(
+            id=player_id, name=""
+        )  # Name will be set by _update_player_names
         room.players.append(player)
         random.shuffle(room.players)
         self._update_player_names(room)
@@ -113,7 +133,9 @@ class DraftEngine:
             return None
 
         bot_id = f"bot-{uuid.uuid4().hex[:8]}"
-        bot = DraftPlayer(id=bot_id, name="", is_bot=True)  # Name will be set by _update_player_names
+        bot = DraftPlayer(
+            id=bot_id, name="", is_bot=True
+        )  # Name will be set by _update_player_names
         room.players.append(bot)
         random.shuffle(room.players)
         self._update_player_names(room)
@@ -154,11 +176,11 @@ class DraftEngine:
                 human_count += 1
 
     def _sanitize_player_name(
-        self,
-        provided_name: Optional[str],
-        fallback_name: Optional[str]
+        self, provided_name: Optional[str], fallback_name: Optional[str]
     ) -> str:
-        candidate = provided_name if provided_name is not None else fallback_name or "Player"
+        candidate = (
+            provided_name if provided_name is not None else fallback_name or "Player"
+        )
         candidate = "".join(ch for ch in str(candidate) if ch.isprintable())
         candidate = candidate.strip()
         if not candidate:
@@ -211,11 +233,13 @@ class DraftEngine:
             room.packs = []
             for player in room.players:
                 player.current_pack = []
-                player.drafted_cards = await self._generate_sealed_pool(room.set_code, boosters=6)
+                player.drafted_cards = await self._generate_sealed_pool(
+                    room.set_code, boosters=6
+                )
                 player.has_picked_card = False
             room.state = DraftState.COMPLETED
             return
-        
+
         # Generate 3 packs for each player
         packs_per_player = 3
         room.packs = []
@@ -243,20 +267,24 @@ class DraftEngine:
         if not player:
             return False
 
-        card_to_pick = next((c for c in player.current_pack if c.unique_id == card_unique_id), None)
+        card_to_pick = next(
+            (c for c in player.current_pack if c.unique_id == card_unique_id), None
+        )
         if not card_to_pick:
             return False
 
         player.drafted_cards.append(card_to_pick)
         player.current_pack.remove(card_to_pick)
         player.has_picked_card = True
-        
+
         # The target pack size for all players after this round of picks
         target_pack_size = len(player.current_pack)
 
         # Check if all human players have now made their pick
         human_players = [p for p in room.players if not p.is_bot]
-        all_humans_picked = all(len(p.current_pack) == target_pack_size for p in human_players)
+        all_humans_picked = all(
+            len(p.current_pack) == target_pack_size for p in human_players
+        )
 
         if all_humans_picked:
             # If all humans are done, bots make their picks
@@ -277,7 +305,11 @@ class DraftEngine:
 
         for player in room.players:
             # A bot should pick if it's a bot, has a pack, and its pack is larger than the target size
-            if player.is_bot and player.current_pack and len(player.current_pack) > target_pack_size:
+            if (
+                player.is_bot
+                and player.current_pack
+                and len(player.current_pack) > target_pack_size
+            ):
                 # Simple bot logic: pick a random card
                 card_to_pick = random.choice(player.current_pack)
                 player.drafted_cards.append(card_to_pick)
@@ -305,9 +337,8 @@ class DraftEngine:
                     player.has_picked_card = False
                 return
 
-        num_players = len(room.players)
         current_packs = [p.current_pack for p in room.players]
-        
+
         if room.pack_direction == 1:  # Pass left
             new_packs = [current_packs[-1]] + current_packs[:-1]
         else:  # Pass right
@@ -316,10 +347,12 @@ class DraftEngine:
         for i, player in enumerate(room.players):
             player.current_pack = new_packs[i]
             player.has_picked_card = False
-            
+
         room.current_pick_number += 1
 
-    async def _generate_sealed_pool(self, set_code: str, boosters: int = 6) -> List[Card]:
+    async def _generate_sealed_pool(
+        self, set_code: str, boosters: int = 6
+    ) -> List[Card]:
         """Generate a sealed pool worth of boosters."""
         pool: List[Card] = []
         total_boosters = max(1, boosters)

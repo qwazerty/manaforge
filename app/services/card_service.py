@@ -27,11 +27,7 @@ def _normalize_name(name: str) -> str:
     normalized = unicodedata.normalize("NFKD", name)
     normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     normalized = (
-        normalized.lower()
-        .strip()
-        .replace("’", "'")
-        .replace("`", "'")
-        .replace("´", "'")
+        normalized.lower().strip().replace("’", "'").replace("`", "'").replace("´", "'")
     )
     normalized = re.sub(r"[–—-]", " ", normalized)  # dash variants -> space
     normalized = re.sub(r"[,:/]", " ", normalized)  # common separators -> space
@@ -57,6 +53,7 @@ def _load_local_oracle_data() -> None:
         else:
             cards = payload.get("data") or payload.get("cards") or []
         for card in cards:
+
             def add_key(raw_name: Optional[str]) -> None:
                 key = _normalize_name(raw_name or "")
                 if not key:
@@ -107,7 +104,11 @@ def _load_local_oracle_data() -> None:
 
 def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
     _load_local_oracle_data()
-    if not (_LOCAL_ORACLE_CACHE or _LOCAL_ORACLE_CACHE_BY_ID or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID):
+    if not (
+        _LOCAL_ORACLE_CACHE
+        or _LOCAL_ORACLE_CACHE_BY_ID
+        or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID
+    ):
         return None
     if not name:
         return None
@@ -115,7 +116,9 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
     normalized = _normalize_name(name)
     candidates = _LOCAL_ORACLE_CACHE.get(normalized, [])
     if not candidates:
-        return _LOCAL_ORACLE_CACHE_BY_ID.get(name) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
+        return _LOCAL_ORACLE_CACHE_BY_ID.get(
+            name
+        ) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
 
     def latest(cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         def sort_key(card: Dict[str, Any]) -> datetime:
@@ -124,13 +127,23 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
                 return datetime.fromisoformat(raw)
             except Exception:
                 return datetime.min
+
         return sorted(cards, key=sort_key, reverse=True)[0] if cards else None
 
-    def choose_with_booster_priority(cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def choose_with_booster_priority(
+        cards: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
         if not cards:
             return None
 
-        def filtered(pool: List[Dict[str, Any]], *, allow_booster=False, allow_full_art=False, allow_promo=False, allow_special=False) -> List[Dict[str, Any]]:
+        def filtered(
+            pool: List[Dict[str, Any]],
+            *,
+            allow_booster=False,
+            allow_full_art=False,
+            allow_promo=False,
+            allow_special=False,
+        ) -> List[Dict[str, Any]]:
             result = []
             for card in pool:
                 booster_flag = card.get("booster")
@@ -164,17 +177,26 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
             return latest(allow_full_art)
 
         # Step 4: allow promo true
-        allow_promo = filtered(cards, allow_full_art=True, allow_booster=True, allow_promo=True)
+        allow_promo = filtered(
+            cards, allow_full_art=True, allow_booster=True, allow_promo=True
+        )
         if allow_promo:
             return latest(allow_promo)
 
         # Step 5: allow rarity special
-        allow_all = filtered(cards, allow_full_art=True, allow_booster=True, allow_promo=True, allow_special=True)
+        allow_all = filtered(
+            cards,
+            allow_full_art=True,
+            allow_booster=True,
+            allow_promo=True,
+            allow_special=True,
+        )
         return latest(allow_all)
 
     # 1) printed_name match
     printed_matches = [
-        card for card in candidates
+        card
+        for card in candidates
         if _normalize_name(card.get("printed_name") or "") == normalized
     ]
     if printed_matches:
@@ -185,7 +207,8 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
 
     # 2) flavor_name match
     flavor_matches = [
-        card for card in candidates
+        card
+        for card in candidates
         if _normalize_name(card.get("flavor_name") or "") == normalized
     ]
     if flavor_matches:
@@ -196,7 +219,8 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
 
     # 3) name match
     name_matches = [
-        card for card in candidates
+        card
+        for card in candidates
         if _normalize_name(card.get("name") or "") == normalized
     ]
     if name_matches:
@@ -213,7 +237,9 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
     if face_matches:
         return choose_with_booster_priority(face_matches)
 
-    return _LOCAL_ORACLE_CACHE_BY_ID.get(name) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
+    return _LOCAL_ORACLE_CACHE_BY_ID.get(name) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(
+        name
+    )
 
 
 class CardService:
@@ -222,7 +248,7 @@ class CardService:
     _DEFAULT_HEADERS = {
         "User-Agent": "ManaForgeDeckImporter/1.0 (+https://manaforge.houke.fr/)"
     }
-    
+
     def __init__(self):
         """Initialize the CardService without database dependency."""
         pass
@@ -239,7 +265,9 @@ class CardService:
         set_type = str(card.get("set_type") or "").lower()
         return "token" in set_type
 
-    def _select_best_local_print(self, cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def _select_best_local_print(
+        self, cards: List[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
         """Pick a reasonable printing from a list of oracle entries."""
         if not cards:
             return None
@@ -275,7 +303,7 @@ class CardService:
         limit: Optional[int] = None,
         tokens_only: bool = False,
         exact: bool = False,
-        set_code: Optional[str] = None
+        set_code: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Search the local oracle dump for cards that match the query."""
         if not query or len(query.strip()) < 2:
@@ -306,10 +334,7 @@ class CardService:
 
             pool = _LOCAL_ORACLE_CACHE.get(name_key, [])
             if tokens_only:
-                pool = [
-                    card for card in pool
-                    if self._is_token_card(card)
-                ]
+                pool = [card for card in pool if self._is_token_card(card)]
                 if not pool:
                     continue
                 for card in pool:
@@ -319,7 +344,8 @@ class CardService:
                 continue
             elif normalized_set:
                 pool = [
-                    card for card in pool
+                    card
+                    for card in pool
                     if str(card.get("set") or "").lower() == normalized_set
                 ]
 
@@ -327,7 +353,9 @@ class CardService:
             if not chosen:
                 continue
 
-            dedupe_key = str(chosen.get("oracle_id") or chosen.get("id") or chosen.get("name"))
+            dedupe_key = str(
+                chosen.get("oracle_id") or chosen.get("id") or chosen.get("name")
+            )
             if should_dedupe:
                 if dedupe_key in seen:
                     continue
@@ -338,7 +366,7 @@ class CardService:
                 break
 
         return results
-    
+
     def _local_card_pool(self) -> List[Dict[str, Any]]:
         """Return a de-duplicated list of local oracle entries."""
         _load_local_oracle_data()
@@ -348,7 +376,9 @@ class CardService:
         dedup: Dict[str, Dict[str, Any]] = {}
         for entries in _LOCAL_ORACLE_CACHE.values():
             for card in entries:
-                key = str(card.get("id") or card.get("oracle_id") or card.get("name") or "")
+                key = str(
+                    card.get("id") or card.get("oracle_id") or card.get("name") or ""
+                )
                 if key and key not in dedup:
                     dedup[key] = card
         return list(dedup.values())
@@ -357,7 +387,7 @@ class CardService:
         self,
         set_code: Optional[str] = None,
         rarity: Optional[str] = None,
-        include_tokens: bool = False
+        include_tokens: bool = False,
     ) -> List[Dict[str, Any]]:
         """Return local oracle cards filtered by set and rarity."""
         cards = self._local_card_pool()
@@ -365,14 +395,16 @@ class CardService:
         if set_code:
             normalized_set = set_code.strip().lower()
             cards = [
-                card for card in cards
+                card
+                for card in cards
                 if str(card.get("set") or "").lower() == normalized_set
             ]
 
         if rarity:
             normalized_rarity = rarity.strip().lower()
             cards = [
-                card for card in cards
+                card
+                for card in cards
                 if str(card.get("rarity") or "").lower() == normalized_rarity
             ]
 
@@ -395,8 +427,8 @@ class CardService:
                     "name": card.get("set_name"),
                     "set_type": card.get("set_type"),
                     "released_at": card.get("released_at") or "",
-                    "icon_svg_uri": card.get("icon_svg_uri") or None
-                }
+                    "icon_svg_uri": card.get("icon_svg_uri") or None,
+                },
             )
             if not entry.get("name"):
                 entry["name"] = card.get("set_name")
@@ -407,14 +439,13 @@ class CardService:
             if candidate_date and (not current_date or candidate_date > current_date):
                 entry["released_at"] = candidate_date
 
-
         return sorted(
-            sets.values(),
-            key=lambda s: s.get("released_at") or "",
-            reverse=True
+            sets.values(), key=lambda s: s.get("released_at") or "", reverse=True
         )
 
-    def _generate_deck_identity(self, preferred_name: Optional[str] = None) -> Tuple[str, str]:
+    def _generate_deck_identity(
+        self, preferred_name: Optional[str] = None
+    ) -> Tuple[str, str]:
         """
         Generate a deck identifier and name using a preferred name when available.
         """
@@ -436,7 +467,7 @@ class CardService:
         Remove sideboard sections from textual deck exports.
         """
         lines = deck_text.splitlines()
-        qty_pattern = re.compile(r'^\s*(?:SB:)?\s*(\d+)')
+        qty_pattern = re.compile(r"^\s*(?:SB:)?\s*(\d+)")
 
         sideboard_start: Optional[int] = None
         main_quantity = 0
@@ -470,7 +501,7 @@ class CardService:
 
                 continue
 
-            if re.match(r'^(//\s*)?sideboard', stripped, re.IGNORECASE):
+            if re.match(r"^(//\s*)?sideboard", stripped, re.IGNORECASE):
                 sideboard_start = idx
                 break
 
@@ -491,7 +522,7 @@ class CardService:
             if not stripped:
                 continue
 
-            if re.match(r'^(//\s*)?sideboard', stripped, re.IGNORECASE):
+            if re.match(r"^(//\s*)?sideboard", stripped, re.IGNORECASE):
                 break
             if stripped.lower().startswith("sb:"):
                 continue
@@ -499,33 +530,33 @@ class CardService:
             filtered.append(stripped)
 
         return "\n".join(filtered)
-    
+
     async def get_card(self, card_id: str) -> Optional[Card]:
         """Get a card by ID using the local oracle data."""
         card_name = card_id.replace("_", " ").title()
         return await self.get_card_by_name(card_name)
-    
+
     async def get_card_by_id(self, card_id: str) -> Optional[Card]:
         """Get a card by ID (alias for get_card)."""
         return await self.get_card(card_id)
-    
+
     async def get_card_by_name(self, card_name: str) -> Optional[Card]:
         """Get a card by exact name using the local oracle data."""
         card_data = self.get_card_data_from_oracle(card_name)
         if card_data:
             return Card(**card_data)
         return None
-    
-    async def search_cards(self, query: str, limit: int = 20, card_type: Optional[str] = None) -> List[Card]:
+
+    async def search_cards(
+        self, query: str, limit: int = 20, card_type: Optional[str] = None
+    ) -> List[Card]:
         """Search cards by name using the local oracle with optional type filtering."""
         if not query.strip():
             return []
-        
+
         tokens_only = (card_type or "").strip().lower() == "token"
         raw_cards = self.search_local_cards(
-            query=query,
-            limit=limit,
-            tokens_only=tokens_only
+            query=query, limit=limit, tokens_only=tokens_only
         )
 
         results: List[Card] = []
@@ -534,7 +565,7 @@ class CardService:
             if card_data:
                 results.append(Card(**card_data))
         return results
-    
+
     async def get_card_data_from_scryfall(
         self, identifier: str, by_id: bool = False
     ) -> Optional[Dict[str, Any]]:
@@ -552,10 +583,8 @@ class CardService:
                 return self._parse_scryfall_card(local_hit)
 
         return None
-    
-    def _parse_scryfall_card(
-        self, scryfall_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+
+    def _parse_scryfall_card(self, scryfall_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse Scryfall card data into our Card model format."""
         card_faces_data = scryfall_data.get("card_faces", []) or []
         front_face = card_faces_data[0] if card_faces_data else None
@@ -585,7 +614,10 @@ class CardService:
                 return CardType.PLANESWALKER
             return CardType.CREATURE
 
-        primary_type_line = _resolve_front_face_value("type_line", scryfall_data.get("type_line", "")) or ""
+        primary_type_line = (
+            _resolve_front_face_value("type_line", scryfall_data.get("type_line", ""))
+            or ""
+        )
         card_type = _infer_card_type(primary_type_line)
 
         subtype = ""
@@ -607,7 +639,7 @@ class CardService:
                 colors.append(Color.RED)
             elif color == "G":
                 colors.append(Color.GREEN)
-        
+
         rarity = Rarity.COMMON
         scryfall_rarity = scryfall_data.get("rarity", "common")
         if scryfall_rarity == "uncommon":
@@ -630,23 +662,31 @@ class CardService:
                         image_url = potential_url
                         break
 
-        card_id = scryfall_data["name"].lower().replace(
-            " ", "_"
-        ).replace("'", "").replace(",", "").replace("-", "_")
+        card_id = (
+            scryfall_data["name"]
+            .lower()
+            .replace(" ", "_")
+            .replace("'", "")
+            .replace(",", "")
+            .replace("-", "_")
+        )
         import uuid
+
         unique_id = f"{card_id}_{uuid.uuid4().hex[:8]}"
 
         # Check if this is a double-faced card
-        is_double_faced = "card_faces" in scryfall_data and len(scryfall_data["card_faces"]) > 1
+        is_double_faced = (
+            "card_faces" in scryfall_data and len(scryfall_data["card_faces"]) > 1
+        )
         card_faces = []
-        
+
         if is_double_faced:
             for i, face in enumerate(scryfall_data["card_faces"]):
                 face_image_url = None
                 if "image_uris" in face and "normal" in face["image_uris"]:
                     # Pour les cartes double faces, on accepte toutes les images, y compris celles avec "/back/"
                     face_image_url = face["image_uris"]["normal"]
-                
+
                 face_data = {
                     "name": face.get("name", scryfall_data["name"]),
                     "mana_cost": face.get("mana_cost", ""),
@@ -656,14 +696,14 @@ class CardService:
                     "toughness": face.get("toughness"),
                     "image_url": face_image_url,
                     "is_front_face": i == 0,
-                    "face_index": i
+                    "face_index": i,
                 }
                 card_faces.append(face_data)
 
         # Initialize counters and loyalty for planeswalkers
         counters = {}
         loyalty = None
-        
+
         if card_type == CardType.PLANESWALKER:
             # Extract starting loyalty from card text or use default
             loyalty_value = scryfall_data.get("loyalty")
@@ -688,13 +728,19 @@ class CardService:
             "scryfall_id": scryfall_data.get("id"),
             "unique_id": unique_id,
             "name": scryfall_data["name"],
-            "mana_cost": _resolve_front_face_value("mana_cost", scryfall_data.get("mana_cost", "")),
+            "mana_cost": _resolve_front_face_value(
+                "mana_cost", scryfall_data.get("mana_cost", "")
+            ),
             "cmc": scryfall_data.get("cmc", 0),
             "card_type": card_type,
             "subtype": subtype,
-            "text": _resolve_front_face_value("oracle_text", scryfall_data.get("oracle_text", "")),
+            "text": _resolve_front_face_value(
+                "oracle_text", scryfall_data.get("oracle_text", "")
+            ),
             "power": _resolve_front_face_value("power", scryfall_data.get("power")),
-            "toughness": _resolve_front_face_value("toughness", scryfall_data.get("toughness")),
+            "toughness": _resolve_front_face_value(
+                "toughness", scryfall_data.get("toughness")
+            ),
             "colors": colors,
             "rarity": rarity,
             "image_url": image_url,
@@ -704,12 +750,12 @@ class CardService:
             "counters": counters,
             "loyalty": loyalty,
         }
-    
+
     async def _build_deck_from_entries(
         self,
         entries: List[DeckEntry],
         deck_name: Optional[str] = None,
-        deck_format: Optional[str] = None
+        deck_format: Optional[str] = None,
     ) -> Deck:
         """Build a deck object from parsed entries, keeping commanders separate."""
         deck_cards: List[DeckCard] = []
@@ -743,8 +789,12 @@ class CardService:
             deck_cards.append(deck_card)
 
         if missing_cards:
-            formatted_missing = ", ".join(sorted({name.strip() for name in missing_cards}))
-            raise ValueError(f"Unable to import deck: missing cards in local oracle ({formatted_missing}).")
+            formatted_missing = ", ".join(
+                sorted({name.strip() for name in missing_cards})
+            )
+            raise ValueError(
+                f"Unable to import deck: missing cards in local oracle ({formatted_missing})."
+            )
 
         deck_id, resolved_name = self._generate_deck_identity(deck_name)
 
@@ -773,22 +823,20 @@ class CardService:
             cards=deck_cards,
             sideboard=sideboard_cards,
             commanders=commanders,
-            format=normalized_format
+            format=normalized_format,
         )
 
     async def parse_decklist(
         self,
         decklist_text: str,
         deck_name: Optional[str] = None,
-        deck_format: Optional[str] = None
+        deck_format: Optional[str] = None,
     ) -> Deck:
         """Parse a decklist in text format and create a Deck object."""
         normalized_text = (decklist_text or "").strip()
         lines = normalized_text.splitlines() if normalized_text else []
 
-        card_entry_regex = re.compile(
-            r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$"
-        )
+        card_entry_regex = re.compile(r"^\s*(\d+)\s+([^(]+?)(?:\s*\([^)]*\).*?)?$")
         sb_entry_regex = re.compile(r"^\s*sb:\s*(\d+)\s+(.+)$", re.IGNORECASE)
 
         section_aliases = {
@@ -806,7 +854,7 @@ class CardService:
             "sideboard": "sideboard",
             "sideboards": "sideboard",
             "side board": "sideboard",
-            "sb": "sideboard"
+            "sb": "sideboard",
         }
 
         current_section: Optional[str] = None
@@ -827,22 +875,26 @@ class CardService:
             if match:
                 quantity = int(match.group(1))
                 card_name = match.group(2).strip()
-                section = current_section if current_section and current_section != "main" else None
+                section = (
+                    current_section
+                    if current_section and current_section != "main"
+                    else None
+                )
                 entries.append((quantity, card_name, section))
                 continue
 
-            normalized_heading = re.sub(r'[^a-zA-Z\s]', ' ', line).lower()
-            normalized_heading = re.sub(r'\s+', ' ', normalized_heading).strip()
+            normalized_heading = re.sub(r"[^a-zA-Z\s]", " ", line).lower()
+            normalized_heading = re.sub(r"\s+", " ", normalized_heading).strip()
             if normalized_heading in section_aliases:
                 current_section = section_aliases[normalized_heading]
                 continue
 
-        return await self._build_deck_from_entries(entries, deck_name=deck_name, deck_format=deck_format)
+        return await self._build_deck_from_entries(
+            entries, deck_name=deck_name, deck_format=deck_format
+        )
 
     async def _http_get_json(
-        self,
-        url: str,
-        headers: Optional[Dict[str, str]] = None
+        self, url: str, headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Fetch a JSON payload with sane defaults and error handling."""
         timeout = ClientTimeout(total=20)
@@ -870,9 +922,7 @@ class CardService:
             raise ValueError(f"Network error while fetching {url}: {exc}") from exc
 
     async def _http_get_text(
-        self,
-        url: str,
-        headers: Optional[Dict[str, str]] = None
+        self, url: str, headers: Optional[Dict[str, str]] = None
     ) -> str:
         """Fetch raw text content with sane defaults and error handling."""
         timeout = ClientTimeout(total=20)
@@ -900,8 +950,7 @@ class CardService:
             raise ValueError(f"Network error while fetching {url}: {exc}") from exc
 
     async def _download_deck_text_and_name(
-        self,
-        source_url: str
+        self, source_url: str
     ) -> Tuple[str, Optional[str], Optional[str]]:
         """Detect provider and download deck text plus optional name/format."""
         normalized = (source_url or "").strip()
@@ -928,8 +977,7 @@ class CardService:
         )
 
     async def _extract_deck_from_moxfield(
-        self,
-        parsed_url
+        self, parsed_url
     ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck from Moxfield by deck identifier."""
         segments = [segment for segment in parsed_url.path.split("/") if segment]
@@ -1010,7 +1058,9 @@ class CardService:
 
             return entries
 
-        def resolve_quantity(entry: Dict[str, Any], fallback: Optional[int]) -> Optional[int]:
+        def resolve_quantity(
+            entry: Dict[str, Any], fallback: Optional[int]
+        ) -> Optional[int]:
             for key in (
                 "quantity",
                 "qty",
@@ -1044,7 +1094,7 @@ class CardService:
         entries_by_section: Dict[str, Dict[str, int]] = {
             "commander": {},
             "companion": {},
-            "main": {}
+            "main": {},
         }
 
         zone_configs = [
@@ -1060,7 +1110,9 @@ class CardService:
                 card_name = resolve_card_name(entry)
                 if quantity and card_name:
                     section_bucket = entries_by_section.setdefault(section_name, {})
-                    section_bucket[card_name] = section_bucket.get(card_name, 0) + int(quantity)
+                    section_bucket[card_name] = section_bucket.get(card_name, 0) + int(
+                        quantity
+                    )
 
         total_entries = sum(len(bucket) for bucket in entries_by_section.values())
 
@@ -1108,9 +1160,9 @@ class CardService:
             r'data-deck-id="(\d+)"',
             r'href="/deck/(?:arena_download/|download/|visual/)?(\d+)"',
             r'href="https?://(?:www\.)?mtggoldfish\.com/deck/(?:arena_download/|download/|visual/)?(\d+)"',
-            r'https?://(?:www\.)?mtggoldfish\.com/deck/popout\?id=(\d+)',
+            r"https?://(?:www\.)?mtggoldfish\.com/deck/popout\?id=(\d+)",
             r'href="/deck/registration\?id=(\d+)"',
-            r'href="https?://(?:www\.)?mtggoldfish\.com/deck/registration\?id=(\d+)"'
+            r'href="https?://(?:www\.)?mtggoldfish\.com/deck/registration\?id=(\d+)"',
         ]
 
         for pattern in patterns:
@@ -1123,7 +1175,9 @@ class CardService:
                 unique_ids.append(deck_id)
         return unique_ids
 
-    def _extract_mtggoldfish_archetype_paths(self, page_html: str, platform: str) -> List[str]:
+    def _extract_mtggoldfish_archetype_paths(
+        self, page_html: str, platform: str
+    ) -> List[str]:
         """Extract archetype paths from a metagame page, preferring the selected platform."""
         if not page_html:
             return []
@@ -1131,7 +1185,7 @@ class CardService:
         matches = re.findall(
             r'href="(?:https?://(?:www\.)?mtggoldfish\.com)?(/archetype/[a-z0-9\-_.]+)(?:#[^\"]*)?"',
             page_html,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         preferred_fragment = "paper" if platform == "paper" else "online"
@@ -1151,7 +1205,9 @@ class CardService:
                 selected[base_path] = normalized
 
             if preferred_fragment and fragment == preferred_fragment:
-                selected[base_path] = f"{base_path}#{fragment}" if fragment else base_path
+                selected[base_path] = (
+                    f"{base_path}#{fragment}" if fragment else base_path
+                )
                 continue
 
             existing_fragment = selected[base_path].partition("#")[2].lower()
@@ -1170,10 +1226,7 @@ class CardService:
         return archetypes
 
     def _select_mtggoldfish_deck_id(
-        self,
-        deck_ids: List[str],
-        page_html: str,
-        platform: str
+        self, deck_ids: List[str], page_html: str, platform: str
     ) -> Optional[str]:
         """Choose the most appropriate deck identifier for the requested platform."""
         if not deck_ids:
@@ -1181,7 +1234,7 @@ class CardService:
 
         anchor_pattern = re.compile(
             r'<a[^>]+href="[^\"]*/deck/(?:arena_download/|download/|visual/)?(\d+)[^\"]*"[^>]*>\s*Deck\s+Page\s*</a>',
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         platform_token = "tabletop" if platform == "paper" else "magic online"
@@ -1189,7 +1242,7 @@ class CardService:
         for match in anchor_pattern.finditer(page_html):
             candidate_id = match.group(1)
             window_start = max(0, match.start() - 1200)
-            context = page_html[window_start:match.start()]
+            context = page_html[window_start : match.start()]
             if re.search(platform_token, context, re.IGNORECASE):
                 return candidate_id
 
@@ -1200,7 +1253,7 @@ class CardService:
         archetype_path: str,
         normalized_format: str,
         normalized_platform: str,
-        metagame_url: str
+        metagame_url: str,
     ) -> Optional[Dict[str, str]]:
         """Fetch the representative deck for an archetype entry."""
 
@@ -1219,7 +1272,9 @@ class CardService:
         if not deck_ids:
             return None
 
-        selected_id = self._select_mtggoldfish_deck_id(deck_ids, page_html, normalized_platform)
+        selected_id = self._select_mtggoldfish_deck_id(
+            deck_ids, page_html, normalized_platform
+        )
         if not selected_id:
             return None
 
@@ -1232,14 +1287,11 @@ class CardService:
             "format": normalized_format,
             "platform": normalized_platform,
             "metagame_url": metagame_url,
-            "archetype_url": canonical_archetype_url
+            "archetype_url": canonical_archetype_url,
         }
 
     async def fetch_mtggoldfish_metagame_deck_urls(
-        self,
-        format_slug: str = "modern",
-        limit: int = 2,
-        platform: str = "paper"
+        self, format_slug: str = "modern", limit: int = 2, platform: str = "paper"
     ) -> List[Dict[str, str]]:
         """
         Fetch deck URLs for the top decks of a MTGGoldfish metagame page.
@@ -1271,8 +1323,6 @@ class CardService:
             enqueue(f"{base_url}{query_suffix}")
             enqueue(f"{base_url}/full{query_suffix}")
 
-        page_html: Optional[str] = None
-        deck_format: Optional[str] = None
         first_html: Optional[str] = None
         deck_ids: List[str] = []
         last_error: Optional[Exception] = None
@@ -1287,7 +1337,6 @@ class CardService:
                 first_html = candidate_html
             ids = self._extract_mtggoldfish_deck_ids(candidate_html)
             if ids:
-                page_html = candidate_html
                 deck_ids = ids
                 break
 
@@ -1296,7 +1345,9 @@ class CardService:
         anchor = "#paper" if normalized_platform == "paper" else "#online"
         metagame_url = f"{base_url}{anchor}"
 
-        archetype_paths = self._extract_mtggoldfish_archetype_paths(first_html or "", normalized_platform)
+        archetype_paths = self._extract_mtggoldfish_archetype_paths(
+            first_html or "", normalized_platform
+        )
         for archetype_path in archetype_paths:
             if len(decks) >= deck_limit:
                 break
@@ -1304,7 +1355,7 @@ class CardService:
                 archetype_path=archetype_path,
                 normalized_format=normalized_format,
                 normalized_platform=normalized_platform,
-                metagame_url=metagame_url
+                metagame_url=metagame_url,
             )
             if not deck_info:
                 continue
@@ -1325,7 +1376,7 @@ class CardService:
                         "format": normalized_format,
                         "platform": normalized_platform,
                         "metagame_url": metagame_url,
-                        "archetype_url": ""
+                        "archetype_url": "",
                     }
                 )
                 resolved_ids.add(deck_id)
@@ -1351,7 +1402,9 @@ class CardService:
         if not page_html:
             return None
         # Table row: <th>Format:</th><td>Modern</td>
-        match = re.search(r"Format:</th>\s*<td[^>]*>\s*([^<]+)<", page_html, re.IGNORECASE)
+        match = re.search(
+            r"Format:</th>\s*<td[^>]*>\s*([^<]+)<", page_html, re.IGNORECASE
+        )
         if match:
             return match.group(1).strip()
         # Meta/description fallback
@@ -1361,9 +1414,7 @@ class CardService:
         return None
 
     async def _extract_deck_from_mtggoldfish(
-        self,
-        parsed_url,
-        original_url: str
+        self, parsed_url, original_url: str
     ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck from MTGGoldfish."""
         segments = [segment for segment in parsed_url.path.split("/") if segment]
@@ -1404,7 +1455,7 @@ class CardService:
                 textarea_match = re.search(
                     r"<textarea[^>]*>(.*?)</textarea>",
                     arena_html,
-                    re.IGNORECASE | re.DOTALL
+                    re.IGNORECASE | re.DOTALL,
                 )
                 if textarea_match:
                     deck_text = unescape(textarea_match.group(1)).strip()
@@ -1412,23 +1463,33 @@ class CardService:
                 arena_html = ""
 
             if not deck_text:
-                download_url = f"https://www.mtggoldfish.com/deck/download/{deck_id}?format=txt"
+                download_url = (
+                    f"https://www.mtggoldfish.com/deck/download/{deck_id}?format=txt"
+                )
                 deck_text = (await self._http_get_text(download_url)).strip()
 
             if not deck_text:
-                raise ValueError("Deck download from MTGGoldfish returned empty content.")
+                raise ValueError(
+                    "Deck download from MTGGoldfish returned empty content."
+                )
 
             if page_html is None:
                 try:
-                    page_html = await self._http_get_text(f"https://www.mtggoldfish.com/deck/{deck_id}")
+                    page_html = await self._http_get_text(
+                        f"https://www.mtggoldfish.com/deck/{deck_id}"
+                    )
                 except ValueError:
                     page_html = None
 
             if page_html:
-                title_match = re.search(r"<title>(.*?)</title>", page_html, re.IGNORECASE | re.DOTALL)
+                title_match = re.search(
+                    r"<title>(.*?)</title>", page_html, re.IGNORECASE | re.DOTALL
+                )
                 if title_match:
                     raw_title = unescape(title_match.group(1))
-                    cleaned_title = raw_title.replace('Deck for Magic: the Gathering', '')
+                    cleaned_title = raw_title.replace(
+                        "Deck for Magic: the Gathering", ""
+                    )
                     deck_name = (
                         cleaned_title.split("»")[0]
                         .split("|")[0]
@@ -1449,7 +1510,9 @@ class CardService:
         deck_text, deck_name = self._parse_mtggoldfish_deck_table(page_html)
         if deck_text:
             if not deck_name:
-                title_match = re.search(r"<title>(.*?)</title>", page_html, re.IGNORECASE | re.DOTALL)
+                title_match = re.search(
+                    r"<title>(.*?)</title>", page_html, re.IGNORECASE | re.DOTALL
+                )
                 if title_match:
                     raw_title = unescape(title_match.group(1))
                     deck_name = raw_title.split("|")[0].strip() or None
@@ -1459,20 +1522,28 @@ class CardService:
         deck_ids = self._extract_mtggoldfish_deck_ids(page_html)
         if deck_ids:
             deck_id = deck_ids[0]
-            download_url = f"https://www.mtggoldfish.com/deck/download/{deck_id}?format=txt"
+            download_url = (
+                f"https://www.mtggoldfish.com/deck/download/{deck_id}?format=txt"
+            )
             deck_text = (await self._http_get_text(download_url)).strip()
             if not deck_text:
-                raise ValueError("Deck download from MTGGoldfish returned empty content.")
+                raise ValueError(
+                    "Deck download from MTGGoldfish returned empty content."
+                )
 
             try:
-                deck_page_html = await self._http_get_text(f"https://www.mtggoldfish.com/deck/{deck_id}")
+                deck_page_html = await self._http_get_text(
+                    f"https://www.mtggoldfish.com/deck/{deck_id}"
+                )
             except ValueError:
                 deck_page_html = ""
 
             deck_name = f"Deck {deck_id}"
             deck_format = None
             if deck_page_html:
-                title_match = re.search(r"<title>(.*?)</title>", deck_page_html, re.IGNORECASE | re.DOTALL)
+                title_match = re.search(
+                    r"<title>(.*?)</title>", deck_page_html, re.IGNORECASE | re.DOTALL
+                )
                 if title_match:
                     raw_title = unescape(title_match.group(1))
                     deck_name = (
@@ -1490,7 +1561,9 @@ class CardService:
 
         raise ValueError("Unable to determine MTGGoldfish deck identifier from URL.")
 
-    def _parse_mtggoldfish_deck_table(self, page_html: str) -> Tuple[str, Optional[str]]:
+    def _parse_mtggoldfish_deck_table(
+        self, page_html: str
+    ) -> Tuple[str, Optional[str]]:
         """Parse deck entries from an MTGGoldfish HTML deck table."""
 
         def strip_tags(value: str) -> str:
@@ -1501,7 +1574,7 @@ class CardService:
         entry_pattern = re.compile(
             r'<td[^>]*class="deck-col-qty"[^>]*>(.*?)</td>\s*'
             r'<td[^>]*class="deck-col-card"[^>]*>(.*?)</td>',
-            re.IGNORECASE | re.DOTALL
+            re.IGNORECASE | re.DOTALL,
         )
 
         entries: List[str] = []
@@ -1515,7 +1588,7 @@ class CardService:
 
             quantity = int(digits[0])
             lowered_card = card_text_raw.strip().lower()
-            if re.match(r'^(//\s*)?sideboard', card_text_raw.strip(), re.IGNORECASE):
+            if re.match(r"^(//\s*)?sideboard", card_text_raw.strip(), re.IGNORECASE):
                 continue
             if lowered_card.startswith("sb:"):
                 continue
@@ -1535,8 +1608,7 @@ class CardService:
         return deck_text, None
 
     async def _fetch_scryfall_deck_by_id(
-        self,
-        deck_id: str
+        self, deck_id: str
     ) -> Tuple[str, Optional[str]]:
         """Fetch deck metadata and export text from Scryfall API."""
         export_url = f"https://api.scryfall.com/decks/{deck_id}/export/text"
@@ -1559,8 +1631,7 @@ class CardService:
         return deck_text, deck_name
 
     async def _extract_deck_from_scryfall_site(
-        self,
-        original_url: str
+        self, original_url: str
     ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck from the public Scryfall site."""
         page_html = await self._http_get_text(original_url)
@@ -1577,8 +1648,7 @@ class CardService:
         return deck_text, deck_name, None
 
     async def _extract_deck_from_scryfall_api(
-        self,
-        parsed_url
+        self, parsed_url
     ) -> Tuple[str, Optional[str], Optional[str]]:
         """Fetch a deck using the Scryfall API hostname."""
         segments = [segment for segment in parsed_url.path.split("/") if segment]
@@ -1597,18 +1667,14 @@ class CardService:
         """
         Import a deck from a supported URL and return both text and parsed deck.
         """
-        deck_text, preferred_name, detected_format = await self._download_deck_text_and_name(source_url)
+        deck_text, preferred_name, detected_format = (
+            await self._download_deck_text_and_name(source_url)
+        )
         normalized_text = (deck_text or "").strip()
         if not normalized_text:
             raise ValueError("Deck download returned empty decklist.")
 
         deck = await self.parse_decklist(
-            normalized_text,
-            deck_name=preferred_name,
-            deck_format=detected_format
+            normalized_text, deck_name=preferred_name, deck_format=detected_format
         )
-        return {
-            "deck": deck,
-            "deck_text": normalized_text,
-            "deck_name": deck.name
-        }
+        return {"deck": deck, "deck_text": normalized_text, "deck_name": deck.name}
