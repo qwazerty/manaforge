@@ -19,7 +19,9 @@ class TestAPIEndpoints:
     def test_api_routes_exist(self, client):
         """Ensure the API routes exist."""
         # Ensure the routes exist in the application
-        api_paths = [route.path for route in app.routes if hasattr(route, "path")]
+        api_paths = [
+            getattr(route, "path") for route in app.routes if hasattr(route, "path")
+        ]
 
         # At least some API routes should exist
         api_routes = [path for path in api_paths if path.startswith("/api")]
