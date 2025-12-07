@@ -27,32 +27,37 @@
     const formatTurnLabel = (entry) => formatActionHistoryTurnLabel(entry);
 
     const getSegments = (list) => {
-        const normalized = Array.isArray(list) ? [...list].reverse() : [];
+        if (!Array.isArray(list) || list.length === 0) {
+            return [];
+        }
+
+        // Entries are stored chronologically, reverse to show newest at bottom
+        const normalized = [...list].reverse();
+
         const result = [];
         let lastTurnKey = null;
+        let turnSeparatorIndex = 0;
 
-        normalized.forEach((entry, index) => {
-            if (!entry) return;
+        for (let i = 0; i < normalized.length; i++) {
+            const entry = normalized[i];
+            if (!entry) continue;
+
             const turnKey = buildTurnKey(entry);
             if (turnKey && turnKey !== lastTurnKey) {
                 result.push({
                     type: 'turn',
-                    id: `turn-${turnKey}`,
+                    id: `turn-${turnSeparatorIndex++}`,
                     label: formatTurnLabel(entry)
                 });
                 lastTurnKey = turnKey;
             }
 
-            const id =
-                entry._signature ||
-                `${entry.timestamp || 'ts'}-${index}`;
-
             result.push({
                 type: 'entry',
-                id,
+                id: entry._signature || `entry-${i}`,
                 entry
             });
-        });
+        }
 
         return result;
     };
