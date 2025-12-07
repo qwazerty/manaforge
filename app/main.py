@@ -236,3 +236,17 @@ async def replay_room(request: Request, game_id: str):
         "replay_room.html",
         {"title": f"Replay - {game_id}", "game_id": game_id},
     )
+
+
+@app.get("/auth")
+async def auth_page(request: Request, tab: Optional[str] = Query(default="login")):
+    """Authentication hub (login / signup with optional admin role selection)."""
+    active_tab = "signup" if tab and tab.lower() == "signup" else "login"
+    return templates.TemplateResponse(
+        request,
+        "auth.html",
+        {
+            "title": "Login / Sign up",
+            "active_tab": active_tab,
+        },
+    )
