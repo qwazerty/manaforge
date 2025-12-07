@@ -34,10 +34,16 @@ router = APIRouter(prefix="/api/v1")
 
 game_engine = SimpleGameEngine()
 
+# Singleton CardService instance - stateless, no need to create per request
+_card_service_instance: Optional[CardService] = None
 
-async def get_card_service() -> CardService:
-    """Get card service dependency."""
-    return CardService()
+
+def get_card_service() -> CardService:
+    """Get card service singleton dependency."""
+    global _card_service_instance
+    if _card_service_instance is None:
+        _card_service_instance = CardService()
+    return _card_service_instance
 
 
 def get_game_engine() -> SimpleGameEngine:

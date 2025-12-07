@@ -1,7 +1,6 @@
 """Card service for managing Magic cards using the local oracle dump."""
 
 import re
-import unicodedata
 import time
 from datetime import datetime
 from html import unescape
@@ -12,6 +11,7 @@ from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
 from app.core import db
+from app.utils.text import normalize_name as _normalize_name
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
@@ -19,21 +19,6 @@ _LOCAL_ORACLE_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 _LOCAL_ORACLE_CACHE_BY_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_CACHE_BY_ORACLE_ID: Dict[str, Dict[str, Any]] = {}
 _LOCAL_ORACLE_LOADED = False
-
-
-def _normalize_name(name: str) -> str:
-    if not isinstance(name, str):
-        return ""
-    normalized = unicodedata.normalize("NFKD", name)
-    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-    normalized = (
-        normalized.lower().strip().replace("’", "'").replace("`", "'").replace("´", "'")
-    )
-    normalized = re.sub(r"[–—-]", " ", normalized)  # dash variants -> space
-    normalized = re.sub(r"[,:/]", " ", normalized)  # common separators -> space
-    normalized = re.sub(r"\s+", " ", normalized)
-    normalized = re.sub(r"\s+", " ", normalized)
-    return normalized
 
 
 def _load_local_oracle_data() -> None:
@@ -86,16 +71,19 @@ def _load_local_oracle_data() -> None:
             _LOCAL_ORACLE_CACHE_BY_ORACLE_ID[oracle_id] = card
 
     try:
-        with db.connect() as conn, conn.cursor() as cur:
-            cur.execute("SELECT data FROM cards")
-            rows = cur.fetchall()
-            if not rows:
-                raise RuntimeError("cards table is empty; run data import first")
-            for (payload,) in rows:
-                if isinstance(payload, dict):
-                    add_card(payload)
-                else:
-                    raise RuntimeError("cards.data is not JSON")
+        with db.connect() as conn:
+            # Use server-side cursor to stream results and avoid memory spike
+            with conn.cursor(name="cards_loader") as cur:
+                cur.execute("SELECT data FROM cards")
+                row_count = 0
+                for (payload,) in cur:
+                    row_count += 1
+                    if isinstance(payload, dict):
+                        add_card(payload)
+                    else:
+                        raise RuntimeError("cards.data is not JSON")
+                if row_count == 0:
+                    raise RuntimeError("cards table is empty; run data import first")
     except Exception as exc:  # pragma: no cover - startup fail fast
         raise RuntimeError(f"Unable to load cards from database: {exc}") from exc
 

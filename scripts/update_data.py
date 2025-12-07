@@ -22,6 +22,11 @@ import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
+# Import normalize_name from shared utility module
+# Add parent directory to path so we can import from app
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.utils.text import normalize_name as _normalize_name
+
 
 SCRYFALL_BULK_METADATA = "https://api.scryfall.com/bulk-data/unique_artwork"
 CARDMARKET_PRODUCTS_URL = (
@@ -217,13 +222,13 @@ def create_indexes_on_staging(conn: psycopg.Connection) -> None:
     """Create indexes on staging tables after data import for better performance."""
 
     stmts = [
-        "CREATE INDEX idx_cards_new_normalized_name ON cards_new (normalized_name);",
-        "CREATE INDEX idx_cards_new_set ON cards_new (set);",
-        "CREATE INDEX idx_cards_new_rarity ON cards_new (rarity);",
-        "CREATE INDEX idx_cards_new_cmc ON cards_new (cmc);",
-        "CREATE INDEX idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
-        "CREATE INDEX idx_cmp_new_price ON cardmarket_price_new (price);",
-        "CREATE INDEX idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_set ON cards_new (set);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_rarity ON cards_new (rarity);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_cmc ON cards_new (cmc);",
+        "CREATE INDEX IF NOT EXISTS idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cmp_new_price ON cardmarket_price_new (price);",
+        "CREATE INDEX IF NOT EXISTS idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
@@ -289,21 +294,6 @@ def upsert_jsonb(
 
     conn.commit()
     return inserted
-
-
-def _normalize_name(name: str) -> str:
-    import unicodedata
-    import re
-
-    if not isinstance(name, str):
-        return ""
-    normalized = unicodedata.normalize("NFKD", name)
-    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-    normalized = normalized.lower().strip().replace("’", "'").replace("`", "'").replace("´", "'")
-    normalized = re.sub(r"[–—-]", " ", normalized)
-    normalized = re.sub(r"[,:/]", " ", normalized)
-    normalized = re.sub(r"\s+", " ", normalized)
-    return normalized
 
 
 def extract_card_row(card: Dict[str, Any]) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:

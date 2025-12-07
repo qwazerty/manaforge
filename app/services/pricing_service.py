@@ -43,82 +43,82 @@ def load_pricing_data() -> None:
         logger.debug("Pricing data already loaded, skipping.")
         return
 
-    try:
-        with db.connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, normalized_name, alt_names, id_category, id_expansion,
-                       id_metacard, date_added, price, price_avg, price_low, price_trend,
-                       price_avg1, price_avg7, price_avg30, price_avg_foil, price_low_foil,
-                       price_trend_foil, price_avg1_foil, price_avg7_foil, price_avg30_foil,
-                       data, product
-                FROM cardmarket_price
-                """
-            )
-            price_rows = cur.fetchall()
-    except Exception as exc:
-        raise RuntimeError(f"Failed to load pricing data from DB: {exc}") from exc
-
     # Map to legacy structures for minimal impact on call sites
     price_guides: List[Dict[str, Any]] = []
     products: List[Dict[str, Any]] = []
 
-    for row in price_rows:
-        (
-            pid,
-            name,
-            normalized_name,
-            alt_names,
-            id_category,
-            id_expansion,
-            id_metacard,
-            date_added,
-            price,
-            price_avg,
-            price_low,
-            price_trend,
-            price_avg1,
-            price_avg7,
-            price_avg30,
-            price_avg_foil,
-            price_low_foil,
-            price_trend_foil,
-            price_avg1_foil,
-            price_avg7_foil,
-            price_avg30_foil,
-            data_json,
-            product_json,
-        ) = row
+    try:
+        with db.connect() as conn:
+            # Use server-side cursor to stream results and avoid memory spike
+            with conn.cursor(name="pricing_loader") as cur:
+                cur.execute(
+                    """
+                    SELECT id, name, normalized_name, alt_names, id_category, id_expansion,
+                           id_metacard, date_added, price, price_avg, price_low, price_trend,
+                           price_avg1, price_avg7, price_avg30, price_avg_foil, price_low_foil,
+                           price_trend_foil, price_avg1_foil, price_avg7_foil, price_avg30_foil,
+                           data, product
+                    FROM cardmarket_price
+                    """
+                )
+                for row in cur:
+                    (
+                        pid,
+                        name,
+                        normalized_name,
+                        alt_names,
+                        id_category,
+                        id_expansion,
+                        id_metacard,
+                        date_added,
+                        price,
+                        price_avg,
+                        price_low,
+                        price_trend,
+                        price_avg1,
+                        price_avg7,
+                        price_avg30,
+                        price_avg_foil,
+                        price_low_foil,
+                        price_trend_foil,
+                        price_avg1_foil,
+                        price_avg7_foil,
+                        price_avg30_foil,
+                        data_json,
+                        product_json,
+                    ) = row
 
-        # price guide entry shape
-        pg = {
-            "idProduct": pid,
-            "idCategory": id_category,
-            "avg": price_avg,
-            "low": price_low,
-            "trend": price_trend,
-            "avg1": price_avg1,
-            "avg7": price_avg7,
-            "avg30": price_avg30,
-            "avg-foil": price_avg_foil,
-            "low-foil": price_low_foil,
-            "trend-foil": price_trend_foil,
-            "avg1-foil": price_avg1_foil,
-            "avg7-foil": price_avg7_foil,
-            "avg30-foil": price_avg30_foil,
-        }
-        price_guides.append(pg)
+                    # price guide entry shape
+                    pg = {
+                        "idProduct": pid,
+                        "idCategory": id_category,
+                        "avg": price_avg,
+                        "low": price_low,
+                        "trend": price_trend,
+                        "avg1": price_avg1,
+                        "avg7": price_avg7,
+                        "avg30": price_avg30,
+                        "avg-foil": price_avg_foil,
+                        "low-foil": price_low_foil,
+                        "trend-foil": price_trend_foil,
+                        "avg1-foil": price_avg1_foil,
+                        "avg7-foil": price_avg7_foil,
+                        "avg30-foil": price_avg30_foil,
+                    }
+                    price_guides.append(pg)
 
-        # product entry shape (minimal fields we relied on)
-        prod = {
-            "idProduct": pid,
-            "name": name,
-            "idCategory": id_category,
-            "idExpansion": id_expansion,
-            "idMetacard": id_metacard,
-            "dateAdded": date_added,
-        }
-        products.append(prod)
+                    # product entry shape (minimal fields we relied on)
+                    prod = {
+                        "idProduct": pid,
+                        "name": name,
+                        "idCategory": id_category,
+                        "idExpansion": id_expansion,
+                        "idMetacard": id_metacard,
+                        "dateAdded": date_added,
+                    }
+                    products.append(prod)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load pricing data from DB: {exc}") from exc
 
     _price_guide_data = {"priceGuides": price_guides}
     _products_data = {"products": products}
