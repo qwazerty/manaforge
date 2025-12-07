@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.game import Card, Deck, CardType, Rarity, Color
+from app.models.game import Card, Deck, CardType, GameFormat, Rarity, Color
 
 
 class TestCardModel:
@@ -54,7 +54,7 @@ class TestCardModel:
                 id="invalid-001",
                 name="Invalid Card",
                 mana_cost="1",
-                card_type="invalid_type",  # Invalid type
+                card_type="invalid_type",  # type: ignore[arg-type]
                 rarity=Rarity.COMMON,
                 colors=[Color.WHITE],
             )
@@ -99,19 +99,20 @@ class TestDeckModel:
             text="Lightning Bolt deals 3 damage to any target.",
         )
 
-        deck = Deck(name="Red Burn", cards=[card], format="standard")
+        # Card is coerced to DeckCard via field_validator in Deck model
+        deck = Deck(name="Red Burn", cards=[card], format=GameFormat.STANDARD)  # type: ignore[arg-type]
 
         assert deck.name == "Red Burn"
         assert len(deck.cards) == 1
-        assert deck.format == "standard"
+        assert deck.format == GameFormat.STANDARD
 
     def test_empty_deck(self):
         """Test creating an empty deck."""
-        deck = Deck(name="Empty Deck", cards=[], format="standard")
+        deck = Deck(name="Empty Deck", cards=[], format=GameFormat.STANDARD)
 
         assert deck.name == "Empty Deck"
         assert len(deck.cards) == 0
-        assert deck.format == "standard"
+        assert deck.format == GameFormat.STANDARD
 
 
 class TestPydanticV2Features:

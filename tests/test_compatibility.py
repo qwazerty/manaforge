@@ -28,7 +28,7 @@ class TestBasicFunctionality:
         static_mounts = [
             route
             for route in app.routes
-            if hasattr(route, "path") and route.path == "/static"
+            if hasattr(route, "path") and getattr(route, "path") == "/static"
         ]
         assert len(static_mounts) > 0
 
@@ -38,7 +38,7 @@ class TestBasicFunctionality:
         api_routes = [
             route
             for route in app.routes
-            if hasattr(route, "path") and route.path.startswith("/api")
+            if hasattr(route, "path") and getattr(route, "path", "").startswith("/api")
         ]
         assert len(api_routes) > 0
 
@@ -113,7 +113,7 @@ class TestPydanticModels:
 
         # Failed validation test
         with pytest.raises(ValidationError):
-            TestModel(name="test", value="not_an_int")
+            TestModel(name="test", value="not_an_int")  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio
