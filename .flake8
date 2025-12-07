@@ -1,0 +1,3 @@
+[flake8]
+# Allow up to 120 characters per line (E501)
+max-line-length = 120
