@@ -24,14 +24,6 @@ _price_by_product_id: Dict[int, float] = {}
 _product_ids_by_name: Dict[str, List[int]] = {}
 
 
-def get_data_path() -> Path:
-    """Get the path to the data directory."""
-    # Navigate from app/services/ to project root/data/
-    current_file = Path(__file__)
-    project_root = current_file.parent.parent.parent
-    return project_root / "data"
-
-
 def load_pricing_data() -> None:
     """
     Load pricing data from JSON files into memory.

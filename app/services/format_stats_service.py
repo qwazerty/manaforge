@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-import json
+import logging
 from functools import lru_cache
-from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from math import ceil
+
+from app.core import db
+
+logger = logging.getLogger(__name__)
 
 
 LEGAL_STATUSES = {"legal", "restricted"}
@@ -15,6 +18,7 @@ ARENA_FORMATS = ("alchemy", "historic", "brawl", "timeless")
 IMAGE_PREFERENCE_ORDER = ("large", "normal", "png", "border_crop", "art_crop", "small")
 AVAILABILITY_FILTERS = {"missing", "arena", "paper"}
 DEFAULT_AVAILABILITY = "missing"
+DATASET_NAME = "Scryfall Oracle"
 
 FORMAT_METADATA: Dict[str, Dict[str, Any]] = {
     "standard": {"label": "Standard", "is_paper": True},
@@ -110,33 +114,68 @@ def _is_relevant_card(card: Dict[str, Any]) -> bool:
     return any(status in LEGAL_STATUSES for status in legalities.values())
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+def _cards_snapshot_key() -> float:
+    """
+    Use Postgres table stats to derive a cache key.
+
+    We rely on last_analyze/last_autoanalyze timestamps because the import
+    script runs ANALYZE right after swapping the staging table.
+    """
+    try:
+        with db.connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT EXTRACT(EPOCH FROM COALESCE(last_analyze, last_autoanalyze))
+                    FROM pg_stat_user_tables
+                    WHERE relname = 'cards'
+                    LIMIT 1
+                    """
+                )
+                row = cur.fetchone()
+                if row and row[0] is not None:
+                    return float(row[0])
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning(
+            "Unable to read cards snapshot key from pg_stat_user_tables: %s", exc
+        )
+    # Fallback disables long-lived caching if stats are unavailable.
+    return datetime.now().timestamp()
 
 
-def _latest_oracle_file() -> Path:
-    base_file = _project_root() / "data" / "oracle-cards.json"
-    if base_file.exists():
-        return base_file
-    raise FileNotFoundError("No oracle card dataset found in the data/ directory.")
+def _fetch_cards_from_db() -> List[Dict[str, Any]]:
+    """Stream the Scryfall payloads from Postgres."""
+    cards: List[Dict[str, Any]] = []
+    try:
+        with db.connect() as conn:
+            with conn.cursor(name="format_stats_cards") as cur:
+                cur.execute("SELECT data FROM cards")
+                for (payload,) in cur:
+                    if not isinstance(payload, dict):
+                        raise RuntimeError("cards.data is not JSON")
+                    cards.append(payload)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load cards from database: {exc}") from exc
+
+    if not cards:
+        raise RuntimeError("cards table is empty; run data import first.")
+    return cards
 
 
 @lru_cache(maxsize=1)
-def _load_cards_snapshot(mtime: float) -> List[Dict[str, Any]]:
-    data_file = _latest_oracle_file()
-    with data_file.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+def _load_cards_snapshot(snapshot_key: float) -> List[Dict[str, Any]]:
+    return _fetch_cards_from_db()
 
 
-def _load_cards() -> List[Dict[str, Any]]:
-    data_file = _latest_oracle_file()
-    mtime = data_file.stat().st_mtime
-    return _load_cards_snapshot(mtime)
+def _load_cards(snapshot_key: Optional[float] = None) -> List[Dict[str, Any]]:
+    key = snapshot_key if snapshot_key is not None else _cards_snapshot_key()
+    return _load_cards_snapshot(key)
 
 
 def get_format_statistics() -> Dict[str, Any]:
     """Compute aggregate statistics per format using the oracle dataset."""
-    cards = [card for card in _load_cards() if _is_relevant_card(card)]
+    snapshot_key = _cards_snapshot_key()
+    cards = [card for card in _load_cards(snapshot_key) if _is_relevant_card(card)]
     totals: Dict[str, Dict[str, int]] = {}
 
     for card in cards:
@@ -211,9 +250,7 @@ def get_format_statistics() -> Dict[str, Any]:
         else None
     )
 
-    latest_file = _latest_oracle_file()
-    latest_mtime = latest_file.stat().st_mtime
-    updated_dt = datetime.fromtimestamp(latest_mtime)
+    updated_dt = datetime.fromtimestamp(snapshot_key)
 
     return {
         "all_formats": formatted_results,
@@ -225,8 +262,8 @@ def get_format_statistics() -> Dict[str, Any]:
         "paper_average_coverage": paper_average_coverage,
         "paper_available_total": paper_available_total,
         "total_cards": len(cards),
-        "dataset_name": latest_file.name,
-        "dataset_updated_at": latest_mtime,
+        "dataset_name": DATASET_NAME,
+        "dataset_updated_at": snapshot_key,
         "dataset_updated_at_iso": updated_dt.isoformat(),
         "dataset_updated_at_display": updated_dt.strftime("%Y-%m-%d %H:%M"),
     }
@@ -253,7 +290,8 @@ def get_cards_for_format(
             f"Invalid availability filter '{availability}'. Expected one of {sorted(AVAILABILITY_FILTERS)}."
         )
 
-    cards = [card for card in _load_cards() if _is_relevant_card(card)]
+    snapshot_key = _cards_snapshot_key()
+    cards = [card for card in _load_cards(snapshot_key) if _is_relevant_card(card)]
     results: List[Dict[str, Any]] = []
     set_tracking: Dict[str, Dict[str, Any]] = {}
 
