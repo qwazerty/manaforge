@@ -64,9 +64,9 @@ export default [
     {
         ignores: [
             'node_modules/**',
-            'app/static/js/ui/components/**',
-            'app/static/js/**/*.bundle.js',
-            'app/static/js/**/*.esm.js',
+            'app/frontend/js/ui/components/**',
+            'app/frontend/js/**/*.bundle.js',
+            'app/frontend/js/**/*.esm.js',
             '**/*.min.js'
         ]
     }

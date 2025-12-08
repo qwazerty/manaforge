@@ -11,10 +11,10 @@ export default defineConfig({
     resolve: {
         conditions: ['browser'],
         alias: {
-            '@svelte': path.resolve(__dirname, 'app/static/js/svelte'),
-            '@ui': path.resolve(__dirname, 'app/static/js/ui'),
-            '@static': path.resolve(__dirname, 'app/static/js'),
-            '@lib': path.resolve(__dirname, 'app/static/js/lib')
+            '@svelte': path.resolve(__dirname, 'app/frontend/js/svelte'),
+            '@ui': path.resolve(__dirname, 'app/frontend/js/ui'),
+            '@static': path.resolve(__dirname, 'app/frontend/js'),
+            '@lib': path.resolve(__dirname, 'app/frontend/js/lib')
         }
     },
     test: {
