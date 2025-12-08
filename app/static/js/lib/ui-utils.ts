@@ -2,6 +2,9 @@
  * UI utility helpers (Svelte-friendly)
  */
 
+// @ts-ignore - GameCards is a global injected by the server
+declare const GameCards: any;
+
 export function createTransform(x = 0, y = 0, rotation = 0) {
     return `transform: translateX(${x}px) translateY(${y}px) rotate(${rotation}deg)`;
 }

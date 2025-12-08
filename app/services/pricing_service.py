@@ -3,12 +3,8 @@ Pricing service that loads price data into memory at startup.
 Data is loaded once and served from RAM for all subsequent requests.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Dict, Any, Optional, List
-
-import psycopg
 
 from app.core import db
 
@@ -121,7 +117,8 @@ def load_pricing_data() -> None:
 
     _is_loaded = True
     logger.info(
-        f"Pricing data loaded from DB: {len(_price_by_product_id)} prices, {len(_product_ids_by_name)} product names indexed."
+        f"Pricing data loaded from DB: {len(_price_by_product_id)} "
+        f"prices, {len(_product_ids_by_name)} product names indexed."
     )
 
 
