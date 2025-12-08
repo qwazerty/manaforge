@@ -1404,7 +1404,7 @@
                     </p>
                     {#if !pricingPending() && pricing.missingCopies > 0}
                         <p class="text-xs text-red-300 mt-1">
-                            {pricing.missingCopies} {pricing.missingCopies > 1 ? 'copies' : 'copy'} missing prices
+                            Error while fetching {pricing.missingCopies} cards.
                         </p>
                     {/if}
                 </div>

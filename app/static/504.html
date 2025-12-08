@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serveur indisponible</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #0d0f1a;
+      color: #f4f6fb;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 20% 20%, rgba(92, 135, 255, 0.15), transparent 35%),
+                  radial-gradient(circle at 80% 0%, rgba(255, 105, 180, 0.12), transparent 30%),
+                  #0d0f1a;
+    }
+    .card {
+      max-width: 520px;
+      padding: 32px;
+      border-radius: 16px;
+      background: rgba(18, 22, 36, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 12px;
+      letter-spacing: 0.01em;
+      font-size: 1.8rem;
+    }
+    p {
+      margin: 0 0 18px;
+      line-height: 1.5;
+      color: #cfd6ec;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      background: rgba(92, 135, 255, 0.14);
+      color: #d9e2ff;
+      border: 1px solid rgba(92, 135, 255, 0.4);
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .pill svg { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="pill" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 7v6l3 3"></path>
+      </svg>
+      Temps d'attente dépassé
+    </div>
+    <h1>Le serveur met trop de temps à répondre</h1>
+    <p>La requête a expiré après 5&nbsp;secondes. Rafraîchis la page dans quelques instants ou réessaie plus tard.</p>
+  </div>
+</body>
+</html>
