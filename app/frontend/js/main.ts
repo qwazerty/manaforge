@@ -30,6 +30,7 @@ import './ui/ui-draft-lobby.js';
 import './ui/ui-draft-room.js';
 import './ui/ui-format-stats.js';
 import './ui/ui-replay-lobby.js';
+import './ui/ui-global.js';
 
 const onReady = (fn: () => void) => {
     if (typeof document === 'undefined') return;
