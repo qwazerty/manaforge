@@ -1328,7 +1328,9 @@
                     <textarea
                         bind:value={importText}
                         rows="4"
-                        placeholder="4 Lightning Bolt&#10;4 Dragon's Rage Channeler&#10;..."
+                        placeholder={`4 Lightning Bolt
+4 Dragon's Rage Channeler
+...`}
                         class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-arena-accent/30"
                     ></textarea>
                     <button 
