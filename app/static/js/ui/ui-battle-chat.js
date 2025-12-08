@@ -143,27 +143,11 @@ class UIBattleChat {
 
     static _resolveLocalSender() {
         const chatManager = typeof WebSocketManager !== 'undefined' ? WebSocketManager : null;
-        if (chatManager?.getLocalPlayerInfo) {
-            const info = chatManager.getLocalPlayerInfo();
-            if (info) {
-                return info;
-            }
-        }
+        const info = chatManager?.getLocalPlayerInfo?.();
+        const id = info?.id || 'player1';
+        const name = info?.name || 'Player';
 
-        const fallbackId = typeof GameCore !== 'undefined' &&
-            GameCore &&
-            typeof GameCore.getSelectedPlayer === 'function'
-            ? GameCore.getSelectedPlayer()
-            : 'player1';
-
-        const fallbackName = chatManager?.formatSeatFallback
-            ? chatManager.formatSeatFallback(fallbackId)
-            : this._formatSeatFallback(fallbackId);
-
-        return {
-            id: fallbackId,
-            name: fallbackName || 'Player'
-        };
+        return { id, name };
     }
 
     static _ensureComponent() {
@@ -272,25 +256,6 @@ class UIBattleChat {
             return Math.round(value);
         }
         return Date.now();
-    }
-
-    static _formatSeatFallback(playerKey) {
-        if (!playerKey) {
-            return 'Unknown';
-        }
-
-        const match = String(playerKey)
-            .toLowerCase()
-            .match(/player\s*(\d+)/);
-        if (match) {
-            return `Player ${match[1]}`;
-        }
-
-        if (playerKey === 'spectator') {
-            return 'Spectator';
-        }
-
-        return String(playerKey);
     }
 }
 
