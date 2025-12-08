@@ -1,9 +1,10 @@
 /**
  * ManaForge Battle Chat UI Module
  * Hydrates the chat sidebar with the BattleChat Svelte component.
+ * Uses Svelte 5 mount/unmount pattern for reactive updates.
  */
 
-import { mount } from 'svelte';
+import { mount, unmount } from 'svelte';
 import BattleChat from '@svelte/BattleChat.svelte';
 
 class UIBattleChat {
@@ -14,20 +15,21 @@ class UIBattleChat {
     static _statusText = '';
     static _sendDisabled = false;
     static _placeholderText = 'Type your message...';
+    static _renderScheduled = false;
 
     static init() {
         if (typeof document === 'undefined') {
             return;
         }
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.render());
+            document.addEventListener('DOMContentLoaded', () => this._scheduleRender());
         } else {
-            this.render();
+            this._scheduleRender();
         }
     }
 
     static render() {
-        this._render();
+        this._scheduleRender();
     }
 
     static loadChatLog(entries = []) {
@@ -48,7 +50,7 @@ class UIBattleChat {
                 this._pushMessage(normalized, false);
             });
         }
-        this._render();
+        this._scheduleRender();
     }
 
     static addMessage(sender, message, options = {}) {
@@ -69,24 +71,65 @@ class UIBattleChat {
 
     static setStatus(text = '') {
         this._statusText = text || '';
-        this._render();
+        this._scheduleRender();
     }
 
     static setSendDisabled(isDisabled = false, text = '') {
         this._sendDisabled = Boolean(isDisabled);
         this._statusText = text || this._statusText;
-        this._render();
+        this._scheduleRender();
     }
 
-    static _render() {
-        const component = this._ensureComponent();
-        if (!component) {
+    /**
+     * Schedule a render on the next animation frame to batch updates
+     */
+    static _scheduleRender() {
+        if (this._renderScheduled) {
             return;
         }
+        this._renderScheduled = true;
+        
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => {
+                this._renderScheduled = false;
+                this._doRender();
+            });
+        } else {
+            setTimeout(() => {
+                this._renderScheduled = false;
+                this._doRender();
+            }, 0);
+        }
+    }
+
+    /**
+     * Perform the actual render by remounting the component with new props
+     */
+    static _doRender() {
+        if (typeof document === 'undefined') {
+            return;
+        }
+
+        const container = document.getElementById('battle-chat-panel');
+        if (!container) {
+            this._destroyComponent();
+            return;
+        }
+
+        // Unmount existing component and remount with new props
+        // This is the Svelte 5 pattern for updating components
+        this._destroyComponent();
+
         try {
-            component.$set(this._buildProps());
+            this._component = mount(BattleChat, {
+                target: container,
+                props: this._buildProps()
+            });
+            this._target = container;
         } catch (error) {
-            console.error('Failed to update battle chat component', error);
+            console.error('Failed to mount battle chat component', error);
+            this._component = null;
+            this._target = null;
         }
     }
 
@@ -151,46 +194,16 @@ class UIBattleChat {
         return { id, name };
     }
 
-    static _ensureComponent() {
-        if (typeof document === 'undefined') {
-            return null;
-        }
-        const container = document.getElementById('battle-chat-panel');
-        if (!container) {
-            this._destroyComponent();
-            return null;
-        }
-
-        if (this._component && this._target === container) {
-            return this._component;
-        }
-
-        this._destroyComponent();
-        try {
-            container.innerHTML = '';
-            this._component = mount(BattleChat, {
-                target: container,
-                props: this._buildProps()
-            });
-            this._target = container;
-        } catch (error) {
-            console.error('Failed to initialize battle chat component', error);
-            this._component = null;
-            this._target = null;
-        }
-
-        return this._component;
-    }
-
     static _destroyComponent() {
-        if (this._component) {
+        if (this._component && this._target) {
             try {
-                if (typeof this._component.$destroy === 'function') {
-                    this._component.$destroy();
-                }
-            } catch (error) {
-                console.error('Failed to destroy battle chat component', error);
+                unmount(this._component);
+            } catch {
+                // Component may already be unmounted, ignore
             }
+        }
+        if (this._target) {
+            this._target.innerHTML = '';
         }
         this._component = null;
         this._target = null;
@@ -205,7 +218,7 @@ class UIBattleChat {
             this.messages.shift();
         }
         if (triggerRender) {
-            this._render();
+            this._scheduleRender();
         }
     }
 
@@ -236,7 +249,7 @@ class UIBattleChat {
         const target = this.messages.find((msg) => msg.id === messageId);
         if (target) {
             target.error = errorText || 'Not delivered';
-            this._render();
+            this._scheduleRender();
         }
     }
 
