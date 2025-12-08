@@ -13,8 +13,6 @@ const appGlobals = {
     GameSocket: 'readonly',
     GameUtils: 'readonly',
     // UI modules
-    UIConfig: 'readonly',
-    UIUtils: 'readonly',
     UIZonesManager: 'readonly',
     UIRenderersTemplates: 'readonly',
     UIBattleChat: 'readonly',
