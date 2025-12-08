@@ -97,7 +97,7 @@
         if (typeof GameCards?.renderCardWithLoadingState === 'function') {
             return GameCards.renderCardWithLoadingState(
                 card,
-                '',
+                'card-mini card-commander-zone',
                 true,
                 'commander',
                 isOpponent,
