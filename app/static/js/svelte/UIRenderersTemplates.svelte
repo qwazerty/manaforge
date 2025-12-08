@@ -8,6 +8,7 @@
         getSelectedPlayerSnapshot
     } from './stores/gameCoreStore.js';
     import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
+    import { UIConfig, getPhaseDisplayName } from '@lib/ui-config';
     import {
         generateZoneWrapper,
         generateEmptyZoneContent,
@@ -1118,7 +1119,7 @@
         static generateGameInfo(gameState) {
             const currentTurn = gameState.turn || 1;
             const currentPhase = gameState.phase || 'begin';
-            const phaseDisplay = UIConfig.getPhaseDisplayName(currentPhase);
+            const phaseDisplay = getPhaseDisplayName(currentPhase);
             const _players = Array.isArray(gameState.players) ? gameState.players : [];
 
             return `
