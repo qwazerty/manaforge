@@ -82,7 +82,7 @@ export const mountComponent = (config: MountConfig): boolean => {
     // Parse props from data attribute (full JSON object)
     if (config.propsDataAttr) {
         const parsed = parsePropsFromDataAttr(target, config.propsDataAttr, moduleName);
-        props = { ...props, ...parsed };
+        props[config.propsDataAttr] = parsed;
     }
 
     // Extract single prop from data attribute
