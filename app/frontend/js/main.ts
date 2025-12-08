@@ -19,6 +19,7 @@ import CardPreviewModal from '@svelte/CardPreviewModal.svelte';
 import CardSearchModal from '@svelte/CardSearchModal.svelte';
 import ActionHistory from '@svelte/ActionHistory.svelte';
 import GameRoomSetup from '@svelte/GameRoomSetup.svelte';
+import BattleChatManager from '@svelte/BattleChatManager.svelte';
 import DeckLibrary from '@svelte/DeckLibrary.svelte';
 
 // Page-specific components
@@ -34,7 +35,6 @@ import ReplayLobby from '@svelte/ReplayLobby.svelte';
 import ReplayRoom from '@svelte/ReplayRoom.svelte';
 
 // Side-effect modules (global utilities)
-import './ui/ui-battle-chat.js';
 import './ui/ui-global.js';
 
 // ============================================================================
@@ -123,6 +123,7 @@ onReady(() => {
     mount(UIZonesManager, { target: document.body });
     mount(UIRenderersTemplates, { target: document.body });
     mount(GameCombat, { target: document.getElementById('game-combat-root') || document.body });
+    mount(BattleChatManager, { target: document.body });
 
     const cardsMount = ensureElement('game-cards-module-mount');
     cardsMount.style.display = 'none';
