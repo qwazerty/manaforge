@@ -15,8 +15,7 @@ COPY app ./app
 COPY tools ./tools
 COPY tailwind.config.js ./tailwind.config.js
 
-RUN pnpm run build:css
-RUN pnpm run build:svelte
+RUN pnpm run build
 
 ##########
 # Stage 2
@@ -37,6 +36,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 COPY --from=frontend-builder /app/app/static/css/dist/manaforge.css app/static/css/dist/manaforge.css
 COPY --from=frontend-builder /app/app/static/js/ui/components app/static/js/ui/components
+COPY --from=frontend-builder /app/app/static/js/main.js* app/static/js/
 
 # Expose port
 EXPOSE 8000

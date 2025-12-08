@@ -22,6 +22,7 @@
         "app/static/js/**/*.d.ts",
         "app/static/js/svelte/*.svelte",
         "app/static/js/lib/**/*.ts",
+        "app/static/js/main.ts",
         "setupTests.ts",
         "vitest.config.mts"
     ],

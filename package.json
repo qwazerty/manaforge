@@ -11,6 +11,8 @@
     "dev:css": "tailwindcss -i ./app/static/css/tailwind.css -o ./app/static/css/dist/manaforge.css --watch=always",
     "build:css": "tailwindcss -i ./app/static/css/tailwind.css -o ./app/static/css/dist/manaforge.css --minify",
     "build:svelte": "node tools/build-svelte.mjs",
+    "build:main": "esbuild app/static/js/main.ts --bundle --format=esm --target=es2022 --sourcemap --outfile=app/static/js/main.js",
+    "build": "pnpm run build:svelte && pnpm run build:main && pnpm run build:css",
     "dev:svelte": "node tools/watch-svelte.mjs",
     "lint": "eslint 'app/static/js/svelte/**/*.svelte' && svelte-check --tsconfig ./tsconfig.json",
     "lint:eslint": "eslint 'app/static/js/svelte/**/*.svelte'",
