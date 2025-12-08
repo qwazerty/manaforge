@@ -3,6 +3,9 @@
  * Prefer these over ad‑hoc fallbacks spread across components.
  */
 
+// @ts-ignore - GameCore is a global injected by the server
+declare const GameCore: any;
+
 type CoreNameGetter = (playerId: string) => string | null | undefined;
 
 // Simple cache to avoid re-formatting the same seat key repeatedly.

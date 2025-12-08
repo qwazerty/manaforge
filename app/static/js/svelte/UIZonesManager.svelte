@@ -18,9 +18,6 @@
     } from '@lib/zone-data';
     import {
         generateZoneWrapper,
-        generateEmptyZoneContent,
-        generateEmptyZone,
-        generateZoneClickHandler,
         calculateAnchorPosition
     } from '@lib/ui-utils';
 

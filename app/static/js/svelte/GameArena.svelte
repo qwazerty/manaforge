@@ -247,7 +247,7 @@
         return players.find((player) => player?.id === playerId) || null;
     }
 
-    function fallbackCounterModalPosition() {
+    function _fallbackCounterModalPosition() {
         if (typeof window === 'undefined') {
             return { top: 200, left: 200, anchor: 'center' };
         }

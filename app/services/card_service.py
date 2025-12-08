@@ -5,10 +5,11 @@ import time
 from datetime import datetime
 from html import unescape
 from urllib.parse import urlparse, urljoin
-import json
+
 import aiohttp
 from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
+
 from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
 from app.core import db
 from app.utils.text import normalize_name as _normalize_name

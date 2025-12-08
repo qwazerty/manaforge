@@ -9,11 +9,10 @@ Security notes:
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 import psycopg
-from psycopg import sql, errors
+from psycopg import errors
 from passlib.hash import bcrypt
 
 from app.core import db

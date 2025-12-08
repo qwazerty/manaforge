@@ -6,6 +6,9 @@ import { UIConfig } from './ui-config';
  * (UIZonesManager, GameActions, GameCards) for behaviour hooks.
  */
 
+// @ts-ignore - GameCore, UIZonesManager, GameActions, GameCards are globals injected by the server
+declare const GameCore: any, UIZonesManager: any, GameActions: any, GameCards: any;
+
 const getSelectedPlayer = () => {
     return typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function'
         ? GameCore.getSelectedPlayer()
@@ -97,7 +100,7 @@ const getLifeZoneConfig = (playerData: any = {}, playerId = 'player1') => {
         onClick: null as any
     };
     const toControlConfig = (control: any, index: number) => {
-        const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class]) || '';
+        const classes = (UIConfig.CSS_CLASSES.button.life && UIConfig.CSS_CLASSES.button.life[control.class as keyof typeof UIConfig.CSS_CLASSES.button.life]) || '';
         if (control.type === 'custom') {
             const direction = Number(control.direction) >= 0 ? 1 : -1;
             return {
