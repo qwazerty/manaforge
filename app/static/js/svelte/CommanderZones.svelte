@@ -97,7 +97,7 @@
         if (typeof GameCards?.renderCardWithLoadingState === 'function') {
             return GameCards.renderCardWithLoadingState(
                 card,
-                'card-mini card-commander-zone',
+                '',
                 true,
                 'commander',
                 isOpponent,
@@ -106,9 +106,6 @@
                 { readOnly: isSpectator() || isOpponent }
             );
         }
-        // Fallback simple rendering
-        const cardName = card?.name || card?.card_name || 'Unknown';
-        return `<div class="card-mini card-commander-zone">${cardName}</div>`;
     };
 
     const handleTaxAdjust = (ownerId, delta) => {
@@ -273,38 +270,3 @@
         {/if}
     </div>
 </div>
-
-<style>
-    .commander-zones-panel {
-        max-height: 20rem;
-        overflow-y: auto;
-    }
-
-    .commander-zone-cards {
-        transition: border-color 0.2s ease, background-color 0.2s ease;
-    }
-
-    :global(.commander-zone-cards.zone-drag-over) {
-        border-color: var(--arena-accent, #d4af37);
-        background-color: rgba(212, 175, 55, 0.1);
-    }
-
-    .commander-tax-btn:hover:not(:disabled) {
-        background-color: rgba(212, 175, 55, 0.2);
-    }
-
-    .commander-zone-cards :global(.card-mini) {
-        width: 60px;
-        height: 84px;
-    }
-
-    .commander-zone-cards :global(.card-commander-zone) {
-        cursor: pointer;
-        transition: transform 0.15s ease;
-    }
-
-    .commander-zone-cards :global(.card-commander-zone:hover) {
-        transform: scale(1.05);
-        z-index: 10;
-    }
-</style>

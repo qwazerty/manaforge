@@ -397,11 +397,7 @@ class SimpleGameEngine:
         if setup.game_format == GameFormat.DUEL_COMMANDER:
             if commander_count == 0:
                 return _reject_submission(
-                    "Commander missing: Duel Commander decks must include exactly one commander."
-                )
-            if commander_count > 1:
-                return _reject_submission(
-                    f"Too many commanders ({commander_count}). Duel Commander decks must include exactly one commander."
+                    "Commander missing: Duel Commander decks must include at least one commander."
                 )
 
         if main_card_count < 40:
