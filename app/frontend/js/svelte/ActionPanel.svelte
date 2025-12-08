@@ -128,7 +128,7 @@
         if (!replayControls || typeof replayControls.onSeek !== 'function') {
             return;
         }
-        const total = replayTotalSteps();
+        const total = replayTotalSteps;
         if (!total) return;
         const rect = event.currentTarget?.getBoundingClientRect?.();
         if (!rect || !rect.width) return;
@@ -143,7 +143,7 @@
         <span class="mr-2">{headerIcon}</span>{headerTitle}
     </h4>
 
-    {#if !isGameStartPhase()}
+    {#if !isGameStartPhase}
         <div class="grid grid-cols-2 gap-2 mb-4">
             <div class="text-center">
                 <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
@@ -159,7 +159,7 @@
             </div>
         </div>
     {/if}
-    {#if timelinePhases.length && !isGameStartPhase()}
+    {#if timelinePhases.length && !isGameStartPhase}
         <div class="mb-4 bg-arena-surface/30 border border-arena-accent/20 rounded-lg p-3">
             <div class="grid grid-cols-7 gap-1">
                 {#each timelinePhases as phase (phase.id)}
@@ -181,7 +181,7 @@
             <div class="mt-4 p-4 border-t border-arena-border bg-arena-surface/50 rounded-lg shadow-inner flex flex-col gap-3">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
                     <button 
-                        class={`${replayButtonClass()} text-sm`}
+                        class={`${replayButtonClass} text-sm`}
                         onclick={replayControls.onPrev}
                         title="Previous Step"
                         aria-label="Previous step">
@@ -189,7 +189,7 @@
                     </button>
                     {#if replayControls.isPlaying}
                         <button 
-                            class={`${replayButtonClass()} text-sm`}
+                            class={`${replayButtonClass} text-sm`}
                             onclick={replayControls.onPause}
                             title="Pause"
                             aria-label="Pause replay">
@@ -197,7 +197,7 @@
                         </button>
                     {:else}
                         <button 
-                            class={`${replayButtonClass()} text-sm`}
+                            class={`${replayButtonClass} text-sm`}
                             onclick={replayControls.onPlay}
                             title="Play"
                             aria-label="Play replay">
@@ -205,7 +205,7 @@
                         </button>
                     {/if}
                     <button 
-                        class={`${replayButtonClass()} text-sm`}
+                        class={`${replayButtonClass} text-sm`}
                         onclick={replayControls.onNext}
                         title="Next Step"
                         aria-label="Next step">
@@ -217,10 +217,10 @@
                     <div class="flex-1 min-w-[180px]">
                         <div class="flex items-center justify-between text-[11px] text-arena-text-dim mb-1">
                             <span>Step progress</span>
-                            <span class="font-mono text-xs text-arena-text-primary">{replayCurrentStep() + 1}/{replayTotalSteps()}</span>
+                            <span class="font-mono text-xs text-arena-text-primary">{replayCurrentStep + 1}/{replayTotalSteps}</span>
                         </div>
-                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden cursor-pointer" role="slider" tabindex="0" aria-label="Replay progress" aria-valuenow={replayCurrentStep() + 1} aria-valuemin={1} aria-valuemax={replayTotalSteps()} onclick={handleProgressClick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProgressClick(e); }}>
-                            <div class="h-full bg-gradient-to-r from-arena-accent to-yellow-400 transition-all duration-300" style={`width: ${replayProgress()}%`}></div>
+                        <div class="h-2 bg-arena-border/40 rounded-full overflow-hidden cursor-pointer" role="slider" tabindex="0" aria-label="Replay progress" aria-valuenow={replayCurrentStep + 1} aria-valuemin={1} aria-valuemax={replayTotalSteps} onclick={handleProgressClick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProgressClick(e); }}>
+                            <div class="h-full bg-gradient-to-r from-arena-accent to-yellow-400 transition-all duration-300" style={`width: ${replayProgress}%`}></div>
                         </div>
                     </div>
                 </div>
@@ -261,7 +261,7 @@
             </div>
         {/if}
 
-        {#if isCoinFlipChoice()}
+        {#if isCoinFlipChoice}
             <!-- Coin Flip Choice Buttons -->
             <div class="mb-4">
                 <div class="grid grid-cols-2 gap-3">
@@ -283,7 +283,7 @@
                     </button>
                 </div>
             </div>
-        {:else if isMulliganChoice()}
+        {:else if isMulliganChoice}
             <!-- Mulligan Choice Buttons -->
             <div class="mb-4">
                 {#if passButton.mulliganCount > 0}
@@ -323,7 +323,7 @@
             </div>
         {/if}
 
-        {#if !isGameStartPhase()}
+        {#if !isGameStartPhase}
             {#if searchButton || tokenSearchButton}
                 <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {#if searchButton}
@@ -349,7 +349,7 @@
                 </div>
             {/if}
 
-            {#if hasQuickButtons()}
+            {#if hasQuickButtons}
                 <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                     {#each quickButtons as button, index (button.id || index)}
                         {#if button.isRandomButton}

@@ -1,9 +1,11 @@
 /**
  * Unified browser entrypoint (Vite + Svelte).
- * Mounts core components and imports side-effect modules.
+ * Mounts core components and page-specific components.
  */
 import { mount } from 'svelte';
+import { mountOnReady } from '@lib/mount-utils';
 
+// Core game components (always loaded)
 import GameCore from '@svelte/GameCore.svelte';
 import GameActions from '@svelte/GameActions.svelte';
 import WebSocketManager from '@svelte/WebSocketManager.svelte';
@@ -19,19 +21,81 @@ import ActionHistory from '@svelte/ActionHistory.svelte';
 import GameRoomSetup from '@svelte/GameRoomSetup.svelte';
 import DeckLibrary from '@svelte/DeckLibrary.svelte';
 
-import './ui/ui-horizontal-scroll.js';
+// Page-specific components
+import DeckManager from '@svelte/DeckManager.svelte';
+import DraftLobby from '@svelte/DraftLobby.svelte';
+import DraftRoom from '@svelte/DraftRoom.svelte';
+import ErrorPage from '@svelte/ErrorPage.svelte';
+import FormatStats from '@svelte/FormatStats.svelte';
+import GameLobby from '@svelte/GameLobby.svelte';
+import HomePage from '@svelte/HomePage.svelte';
+import HorizontalScrollManager from '@svelte/HorizontalScrollManager.svelte';
+import ReplayLobby from '@svelte/ReplayLobby.svelte';
+import ReplayRoom from '@svelte/ReplayRoom.svelte';
+
+// Side-effect modules (global utilities)
 import './ui/ui-battle-chat.js';
-import './ui/ui-deck-manager.js';
-import './ui/ui-home-page.js';
-import './ui/ui-error-page.js';
-import './ui/ui-game-lobby.js';
-import './ui/ui-replay-room.js';
-import './ui/ui-draft-lobby.js';
-import './ui/ui-draft-room.js';
-import './ui/ui-format-stats.js';
-import './ui/ui-replay-lobby.js';
 import './ui/ui-global.js';
 
+// ============================================================================
+// Page-specific component mounts (consolidated from ui-*.js files)
+// ============================================================================
+mountOnReady([
+    // Home page
+    { targetId: 'home-root', component: HomePage, moduleName: 'home-page' },
+
+    // Deck management
+    { targetId: 'deck-manager-root', component: DeckManager, moduleName: 'deck-manager' },
+
+    // Game lobby
+    { targetId: 'svelte-game-lobby', component: GameLobby, moduleName: 'game-lobby' },
+
+    // Draft pages
+    { targetId: 'svelte-draft-lobby', component: DraftLobby, moduleName: 'draft-lobby' },
+    {
+        targetId: 'draft-room-root',
+        component: DraftRoom,
+        propsDataAttr: 'room',
+        moduleName: 'draft-room'
+    },
+
+    // Replay pages
+    { targetId: 'replay-lobby-root', component: ReplayLobby, moduleName: 'replay-lobby' },
+    {
+        targetId: 'replay-app',
+        component: ReplayRoom,
+        propFromDataAttr: { attrName: 'gameId', propName: 'gameId' },
+        moduleName: 'replay-room'
+    },
+
+    // Error page
+    {
+        targetId: 'error-root',
+        component: ErrorPage,
+        propsScriptId: 'error-props',
+        moduleName: 'error-page'
+    },
+
+    // Format stats
+    {
+        targetId: 'format-stats-root',
+        component: FormatStats,
+        propsScriptId: 'format-stats-props',
+        moduleName: 'format-stats'
+    },
+
+    // Horizontal scroll (creates its own container)
+    {
+        targetId: 'horizontal-scroll-root',
+        component: HorizontalScrollManager,
+        createIfMissing: true,
+        moduleName: 'horizontal-scroll'
+    }
+]);
+
+// ============================================================================
+// Core game components (mounted on game pages)
+// ============================================================================
 const onReady = (fn: () => void) => {
     if (typeof document === 'undefined') return;
     if (document.readyState === 'loading') {
@@ -84,7 +148,7 @@ onReady(() => {
         let config = {};
         try {
             config = JSON.parse(gameSetupRoot.dataset?.gameRoomConfig || '{}');
-        } catch (e) {
+        } catch {
             config = {};
         }
         mount(GameRoomSetup, { target: gameSetupRoot, props: { config } });
