@@ -7,14 +7,14 @@ import { compile } from 'svelte/compiler';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SVELTE_DIR = path.resolve('app/static/js/svelte');
-const COMPONENT_DIR = path.resolve('app/static/js/ui/components');
+const SVELTE_DIR = path.resolve('app/frontend/js/svelte');
+const COMPONENT_DIR = path.resolve('app/static/dist/js/ui/components');
 
 // Path aliases - must match tsconfig.json paths
 const PATH_ALIASES = {
-    '@lib': path.resolve('app/static/js/lib'),
-    '@svelte': path.resolve('app/static/js/svelte'),
-    '@ui': path.resolve('app/static/js/ui'),
+    '@lib': path.resolve('app/frontend/js/lib'),
+    '@svelte': path.resolve('app/frontend/js/svelte'),
+    '@ui': path.resolve('app/frontend/js/ui'),
 };
 
 // Plugin to resolve relative imports from compiled components to svelte source directories
@@ -23,7 +23,7 @@ const svelteRelativeImportsPlugin = {
     setup(build) {
         // Redirect ./stores/, ./utils/, ./lib/ imports from components dir to svelte dir
         build.onResolve({ filter: /^\.\/(?:stores|utils|lib)\// }, (args) => {
-            if (args.resolveDir.includes('ui/components')) {
+            if (args.resolveDir.includes('dist/js/ui/components')) {
                 const relativePath = args.path.slice(2); // remove './'
                 return { path: path.join(SVELTE_DIR, relativePath) };
             }
@@ -98,24 +98,7 @@ export const bundleAllComponents = async (entryFiles) => {
     }
     for (const entry of entryFiles) {
         const baseName = path.basename(entry, '.js');
-        const globalName = sanitizeGlobalName(baseName);
-        const outfileBundle = path.join(COMPONENT_DIR, `${baseName}.bundle.js`);
         const outfileEsm = path.join(COMPONENT_DIR, `${baseName}.esm.js`);
-
-        await esbuild({
-            entryPoints: [entry],
-            bundle: true,
-            format: 'iife',
-            globalName,
-            outfile: outfileBundle,
-            sourcemap: true,
-            platform: 'browser',
-            target: 'es2020',
-            legalComments: 'none',
-            alias: PATH_ALIASES,
-            plugins: [svelteRelativeImportsPlugin],
-            logLevel: 'error'
-        });
 
         await esbuild({
             entryPoints: [entry],
@@ -161,7 +144,7 @@ export const buildAllSvelte = async () => {
         entryFiles.push(path.join(COMPONENT_DIR, `${baseName}.js`));
     }
 
-    console.log('[build-svelte] bundling outputs (esm, splitting)');
+    console.log('[build-svelte] bundling outputs (esm)');
     await bundleAllComponents(entryFiles);
 
     return components;

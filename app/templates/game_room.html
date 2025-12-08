@@ -28,26 +28,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script type="module">
-    import GameRoomSetup, { mount } from '/static/js/ui/components/GameRoomSetup.esm.js';
-    const root = document.getElementById('game-setup-root');
-    if (!root) throw new Error('game-setup-root not found');
-
-    const config = (() => {
-        if (window.gameRoomConfig) return window.gameRoomConfig;
-        try {
-            const parsed = JSON.parse(root.dataset?.gameRoomConfig || '{}');
-            window.gameRoomConfig = parsed;
-            return parsed;
-        } catch (e) {
-            return {};
-        }
-    })();
-
-    if (!config?.gameId) {
-        root.innerHTML = '<div class="max-w-2xl mx-auto bg-red-950/60 border border-red-500/40 rounded-xl p-6 text-sm text-red-50">Unable to load duel room.</div>';
-    } else {
-        mount(GameRoomSetup, { target: root, props: { config } });
-    }
-</script>
+<script type="module" src="/static/dist/js/main.js"></script>
 {% endblock %}

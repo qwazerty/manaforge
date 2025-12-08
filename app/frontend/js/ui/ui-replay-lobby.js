@@ -1,4 +1,5 @@
-import ReplayLobby, { mount } from './components/ReplayLobby.esm.js';
+import { mount } from 'svelte';
+import ReplayLobby from '@svelte/ReplayLobby.svelte';
 
 const init = () => {
     const root = document.getElementById('replay-lobby-root');

@@ -1,4 +1,5 @@
-import GameLobby, { mount } from './components/GameLobby.esm.js';
+import { mount } from 'svelte';
+import GameLobby from '@svelte/GameLobby.svelte';
 
 const init = () => {
     const target = document.getElementById('svelte-game-lobby');

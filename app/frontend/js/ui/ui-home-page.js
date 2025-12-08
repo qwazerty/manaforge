@@ -1,4 +1,5 @@
-import HomePage, { mount } from './components/HomePage.esm.js';
+import { mount } from 'svelte';
+import HomePage from '@svelte/HomePage.svelte';
 
 const init = () => {
     const root = document.getElementById('home-root');

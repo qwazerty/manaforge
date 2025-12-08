@@ -1,4 +1,5 @@
-import DeckManager, { mount } from './components/DeckManager.esm.js';
+import { mount } from 'svelte';
+import DeckManager from '@svelte/DeckManager.svelte';
 
 const init = () => {
     const target = document.getElementById('deck-manager-root');

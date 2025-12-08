@@ -1,4 +1,5 @@
-import ReplayRoom, { mount } from './components/ReplayRoom.esm.js';
+import { mount } from 'svelte';
+import ReplayRoom from '@svelte/ReplayRoom.svelte';
 
 const init = () => {
     const root = document.getElementById('replay-app');

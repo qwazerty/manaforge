@@ -8,7 +8,7 @@ import {
     listSvelteComponents
 } from './build-svelte.mjs';
 
-const WATCH_DIR = path.resolve('app/static/js/svelte');
+const WATCH_DIR = path.resolve('app/frontend/js/svelte');
 const DEBOUNCE_MS = 150;
 
 const log = (message) => console.log(`[watch-svelte] ${message}`);
@@ -16,6 +16,7 @@ const log = (message) => console.log(`[watch-svelte] ${message}`);
 let timer = null;
 let pendingFiles = new Set();
 let knownComponents = [];
+let buildInProgress = false;
 
 const scheduleBuild = async (filename) => {
     if (filename) {
@@ -31,6 +32,9 @@ const scheduleBuild = async (filename) => {
 };
 
 const runBuild = async () => {
+    if (buildInProgress) return;
+    buildInProgress = true;
+
     const files = Array.from(pendingFiles);
     pendingFiles.clear();
 
@@ -49,7 +53,7 @@ const runBuild = async () => {
                 log(`incremental compile ${file}`);
                 await compileComponentSource(file);
                 const baseName = path.basename(file, '.svelte');
-                entryFiles.push(path.join('app/static/js/ui/components', `${baseName}.js`));
+                entryFiles.push(path.join('app/static/dist/js/ui/components', `${baseName}.js`));
             }
             await bundleAllComponents(entryFiles);
             log('incremental build complete');
@@ -61,6 +65,8 @@ const runBuild = async () => {
         log('build complete');
     } catch (error) {
         log(`build failed: ${error.message}`);
+    } finally {
+        buildInProgress = false;
     }
 };
 

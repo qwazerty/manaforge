@@ -1,6 +1,6 @@
 <script>
     import { onDestroy, onMount } from 'svelte';
-    import { createPriceLookup, formatPrice, getCachedPrice } from '../../lib/pricing';
+    import { createPriceLookup, formatPrice, getCachedPrice } from '@lib/pricing';
     import DeckManager from './DeckManager.svelte';
 
     const DECK_MANAGER_IMPORT_KEY = 'manaforge:deck-manager:pending-import';
@@ -12,7 +12,7 @@
 
     let { room: initialRoom = null } = $props();
 
-    let room = $state(initialRoom || {});
+    let room = $state({});
     let playerId = $state('');
     let websocket = null;
     let selectedCardId = $state('');
@@ -60,7 +60,6 @@
 
     onMount(() => {
         playerId = resolvePlayerId();
-        room = initialRoom || {};
         deckContext = buildDeckContext(room, playerId, draftType());
         applyGlobalContext(deckContext);
         applyRoomState(room);
@@ -72,6 +71,10 @@
             cleanupWebsocket();
             window.removeEventListener('manaforge:deck-manager-ready', handleDeckManagerReady);
         };
+    });
+
+    $effect(() => {
+        room = initialRoom || {};
     });
 
     onDestroy(() => {

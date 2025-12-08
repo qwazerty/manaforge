@@ -1,4 +1,5 @@
-import ErrorPage, { mount } from './components/ErrorPage.esm.js';
+import { mount } from 'svelte';
+import ErrorPage from '@svelte/ErrorPage.svelte';
 
 const init = () => {
     const root = document.getElementById('error-root');

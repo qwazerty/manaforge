@@ -22,12 +22,16 @@ import { formatCounterLabel } from './utils/player-counter-utils.js';
     } = $props();
 
     let newCounterType = $state('');
-    let newCounterAmount = $state(amountInputMin);
+    let newCounterAmount = $state(1);
+
+    $effect(() => {
+        newCounterAmount = amountInputMin;
+    });
 
     $effect(() => {
         if (!open) {
             newCounterType = '';
-            newCounterAmount = 1;
+            newCounterAmount = amountInputMin;
         }
     });
 
