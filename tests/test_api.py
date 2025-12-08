@@ -27,22 +27,11 @@ class TestAPIEndpoints:
         api_routes = [path for path in api_paths if path.startswith("/api")]
         assert len(api_routes) > 0
 
-    @patch("app.services.card_service.CardService.search_cards")
-    def test_card_search_endpoint(self, mock_search, client):
+    @patch("app.services.card_service._load_local_oracle_data")
+    def test_card_search_endpoint(self, mock_load, client):
         """Test the card search endpoint."""
-        # Mock the search result
-        mock_search.return_value = [
-            {
-                "id": "lightning-bolt",
-                "name": "Lightning Bolt",
-                "mana_cost": "R",
-                "type_line": "Instant",
-                "card_type": "instant",
-                "rarity": "common",
-                "colors": ["R"],
-                "oracle_text": "Lightning Bolt deals 3 damage to any target.",
-            }
-        ]
+        # Mock the load function to prevent database connection
+        mock_load.return_value = None
 
         # Test the endpoint
         response = client.get("/api/v1/cards/search?q=lightning")
