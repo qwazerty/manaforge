@@ -7,6 +7,7 @@
         getGameStateSnapshot,
         getSelectedPlayerSnapshot
     } from './stores/gameCoreStore.js';
+    import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
 
     // Import child components for dynamic mounting
     import GameArena from './GameArena.svelte';
@@ -1777,14 +1778,17 @@
         }
 
         static _getSeatFallbackName(index) {
-            if (index === 0) return 'Player 1';
-            if (index === 1) return 'Player 2';
-            return 'Player';
+            const seatId = index === 0 ? 'player1' : index === 1 ? 'player2' : `player${index + 1}`;
+            return formatSeatFallback(seatId);
         }
 
         static _getPlayerDisplayName(playerData, fallback = 'Player') {
-            const rawName = typeof playerData?.name === 'string' ? playerData.name.trim() : '';
-            return rawName || fallback;
+            const playerId = playerData?.id || null;
+            const playerDataName = typeof playerData?.name === 'string' ? playerData.name : null;
+            return resolvePlayerDisplayName(playerId, {
+                playerDataName,
+                fallbackName: fallback || 'Player'
+            });
         }
 
 
