@@ -10,6 +10,19 @@
     import ExileZone from './ExileZone.svelte';
     import LifeZone from './LifeZone.svelte';
     import ZonePopup from './ZonePopup.svelte';
+    import {
+        getDeckZoneConfig,
+        getGraveyardZoneConfig,
+        getExileZoneConfig,
+        getLifeZoneConfig
+    } from '@lib/zone-data';
+    import {
+        generateZoneWrapper,
+        generateEmptyZoneContent,
+        generateEmptyZone,
+        generateZoneClickHandler,
+        calculateAnchorPosition
+    } from '@lib/ui-utils';
 
     // Helper to mount Svelte 5 components dynamically
     const mountComponent = (Component, options) => {
@@ -99,7 +112,7 @@
          * Generate deck zone with clickable cards for drawing
          */
         static generateDeckZone(deck = [], isOpponent = false) {
-            const config = ZoneData.getDeckZoneConfig(deck, isOpponent);
+            const config = getDeckZoneConfig(deck, isOpponent);
             const zoneLabel = this._renderZoneLabel('deck');
             const ownerKey = isOpponent ? 'player2' : 'player1';
             const zoneKey = this._registerZoneConfig('deck', config);
@@ -108,7 +121,7 @@
                 <div class="deck-zone-placeholder" data-zone-type="deck" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
             `;
 
-            const zoneContent = UIUtils.generateZoneWrapper(`
+            const zoneContent = generateZoneWrapper(`
                 <div class="relative flex flex-col items-center py-4"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
@@ -124,7 +137,7 @@
          * Generate graveyard zone with stack effect showing actual card images
          */
         static generateGraveyardZone(graveyard = [], isOpponent = false) {
-            const config = ZoneData.getGraveyardZoneConfig(graveyard, isOpponent);
+            const config = getGraveyardZoneConfig(graveyard, isOpponent);
             const zoneLabel = this._renderZoneLabel('graveyard');
             const ownerKey = isOpponent ? 'player2' : 'player1';
             const zoneKey = this._registerZoneConfig('graveyard', { ...config, ownerKey });
@@ -133,7 +146,7 @@
                 <div class="graveyard-zone-placeholder" data-zone-type="graveyard" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
             `;
 
-            const zoneContent = UIUtils.generateZoneWrapper(`
+            const zoneContent = generateZoneWrapper(`
                 <div class="relative flex flex-col items-center py-4"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'graveyard')">
@@ -149,7 +162,7 @@
          * Generate exile zone with single card preview and stack effect
          */
         static generateExileZone(exile = [], isOpponent = false) {
-            const config = ZoneData.getExileZoneConfig(exile, isOpponent);
+            const config = getExileZoneConfig(exile, isOpponent);
             const zoneLabel = this._renderZoneLabel('exile');
             const ownerKey = isOpponent ? 'player2' : 'player1';
             const zoneKey = this._registerZoneConfig('exile', { ...config, ownerKey });
@@ -158,7 +171,7 @@
                 <div class="exile-zone-placeholder" data-zone-type="exile" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
             `;
 
-            const zoneContent = UIUtils.generateZoneWrapper(`
+            const zoneContent = generateZoneWrapper(`
                 <div class="relative flex flex-col items-center py-4"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
                     ondrop="UIZonesManager.handleZoneDrop(event, 'exile')">
@@ -174,14 +187,14 @@
          * Generate life total zone with enhanced life controls
          */
         static generateLifeZone(playerData, playerId, _titlePrefix) {
-            const config = ZoneData.getLifeZoneConfig(playerData, playerId);
+            const config = getLifeZoneConfig(playerData, playerId);
             const ownerKey = playerId || 'player1';
             const zoneKey = this._registerZoneConfig('life', { ...config, ownerKey });
             const placeholder = `
                 <div class="life-zone-placeholder" data-zone-type="life" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
             `;
 
-            return UIUtils.generateZoneWrapper(placeholder, 'life');
+            return generateZoneWrapper(placeholder, 'life');
         }
 
         /**
@@ -205,15 +218,13 @@
 
             const panelWidth = container.offsetWidth || 320;
             const panelHeight = container.offsetHeight || 220;
-            const popoverPosition = (typeof UIUtils !== 'undefined' && typeof UIUtils.calculateAnchorPosition === 'function')
-                ? UIUtils.calculateAnchorPosition(anchorElement, {
-                    preferredAnchor: anchorElement ? 'bottom-left' : 'center',
-                    panelWidth,
-                    panelHeight,
-                    horizontalOffset: 0,
-                    verticalOffset: 8
-                })
-                : null;
+            const popoverPosition = calculateAnchorPosition(anchorElement, {
+                preferredAnchor: anchorElement ? 'bottom-left' : 'center',
+                panelWidth,
+                panelHeight,
+                horizontalOffset: 0,
+                verticalOffset: 8
+            });
 
             if (popoverPosition) {
                 container.style.position = 'fixed';

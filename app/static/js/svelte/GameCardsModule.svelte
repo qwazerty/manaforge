@@ -51,6 +51,7 @@
         removeAllArrowsFromCard,
         clearAllTargetingArrows
     } from './stores/gameCardsStore.js';
+    import { UIConfig } from '@lib/ui-config';
 
     // ===== REACTIVE STATE =====
     let boundAttachmentClickHandler = $state(null);

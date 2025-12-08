@@ -2,6 +2,10 @@
  * ManaForge Card Search Modal Initialization
  * Bootstraps the CardSearchModal Svelte component
  */
+/**
+ * ManaForge Card Search Modal Initialization
+ * Bootstraps the CardSearchModal Svelte component
+ */
 import CardSearchModal, { mount } from './components/CardSearchModal.esm.js';
 
 if (typeof document !== 'undefined') {

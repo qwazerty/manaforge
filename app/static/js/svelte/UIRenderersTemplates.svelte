@@ -8,6 +8,17 @@
         getSelectedPlayerSnapshot
     } from './stores/gameCoreStore.js';
     import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
+    import {
+        generateZoneWrapper,
+        generateEmptyZoneContent,
+        generateEmptyZone,
+        generateZoneClickHandler,
+        filterCardsByType,
+        createTransform,
+        createZIndex,
+        generateButton,
+        getZoneConfiguration
+    } from '@lib/ui-utils';
 
     // Import child components for dynamic mounting
     import GameArena from './GameArena.svelte';
@@ -978,7 +989,7 @@
          */
         static generateCardZones(playerData, isOpponent = false, playerIndex = null) {
             const playerName = this._getPlayerDisplayName(playerData, isOpponent ? 'Opponent' : 'Player');
-            const config = UIUtils.getZoneConfiguration(isOpponent, playerIndex, playerName);
+            const config = getZoneConfiguration(isOpponent, playerIndex, playerName);
             const zoneTemplates = this._generateZoneTemplates(playerData, config, isOpponent);
 
             const zoneOrder = ['exile', 'graveyard', 'deck', 'life'];
@@ -1008,7 +1019,7 @@
          * Generate battlefield zone
          */
         static generateBattlefieldZone(cards, zoneName, isOpponent, playerId = null) {
-            const filteredCards = UIUtils.filterCardsByType(cards, zoneName);
+            const filteredCards = filterCardsByType(cards, zoneName);
             const cardCount = filteredCards.length;
             const ownerId = playerId || (isOpponent ? 'player2' : 'player1');
             const sanitizedOwner = typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function'
@@ -1096,7 +1107,7 @@
             return Array(count).fill().map((_, index) => `
                 <div class="card-back opponent-hand-card" 
                      data-card-id="opponent-card-${index}" 
-                     style="width: 60px; height: 84px; ${UIUtils.createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
+                     style="width: 60px; height: 84px; ${createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
                 </div>
             `).join('');
         }
@@ -1132,15 +1143,15 @@
         static get CSS_CLASSES() { return UIConfig.CSS_CLASSES; }
 
         // Utility methods delegation
-        static createTransform(x, y, rotation) { return UIUtils.createTransform(x, y, rotation); }
-        static createZIndex(index) { return UIUtils.createZIndex(index); }
-        static generateButton(onclick, classes, title, content) { return UIUtils.generateButton(onclick, classes, title, content); }
-        static generateZoneWrapper(content, zoneType) { return UIUtils.generateZoneWrapper(content, zoneType); }
-        static generateEmptyZoneContent(icon, message) { return UIUtils.generateEmptyZoneContent(icon, message); }
-        static generateEmptyZone(icon, name) { return UIUtils.generateEmptyZone(icon, name); }
-        static generateZoneClickHandler(isOpponent, prefix, zoneType, title) { return UIUtils.generateZoneClickHandler(isOpponent, prefix, zoneType, title); }
-        static filterCardsByType(cards, zoneName) { return UIUtils.filterCardsByType(cards, zoneName); }
-        static getZoneConfiguration(isOpponent, playerIndex, playerName = null) { return UIUtils.getZoneConfiguration(isOpponent, playerIndex, playerName); }
+        static createTransform(x, y, rotation) { return createTransform(x, y, rotation); }
+        static createZIndex(index) { return createZIndex(index); }
+        static generateButton(onclick, classes, title, content) { return generateButton(onclick, classes, title, content); }
+        static generateZoneWrapper(content, zoneType) { return generateZoneWrapper(content, zoneType); }
+        static generateEmptyZoneContent(icon, message) { return generateEmptyZoneContent(icon, message); }
+        static generateEmptyZone(icon, name) { return generateEmptyZone(icon, name); }
+        static generateZoneClickHandler(isOpponent, prefix, zoneType, title) { return generateZoneClickHandler(isOpponent, prefix, zoneType, title); }
+        static filterCardsByType(cards, zoneName) { return filterCardsByType(cards, zoneName); }
+        static getZoneConfiguration(isOpponent, playerIndex, playerName = null) { return getZoneConfiguration(isOpponent, playerIndex, playerName); }
 
         // Zone generation delegation to UIZonesManager
         static generateDeckZone(deck, isOpponent) { return UIZonesManager.generateDeckZone(deck, isOpponent); }
