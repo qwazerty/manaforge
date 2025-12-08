@@ -60,10 +60,15 @@
 
     onMount(() => {
         playerId = resolvePlayerId();
-        deckContext = buildDeckContext(room, playerId, draftType);
-        applyGlobalContext(deckContext);
-        applyRoomState(room);
-        connectWebSocket();
+        room = initialRoom || {};
+        
+        if (room?.id && playerId) {
+            deckContext = buildDeckContext(room, playerId, draftType);
+            applyGlobalContext(deckContext);
+            applyRoomState(room);
+            connectWebSocket();
+        }
+        
         window.addEventListener('manaforge:deck-manager-ready', handleDeckManagerReady);
         deckManagerVisible = true;
 
@@ -71,10 +76,6 @@
             cleanupWebsocket();
             window.removeEventListener('manaforge:deck-manager-ready', handleDeckManagerReady);
         };
-    });
-
-    $effect(() => {
-        room = initialRoom || {};
     });
 
     onDestroy(() => {

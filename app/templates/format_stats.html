@@ -8,7 +8,7 @@
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" integrity="sha384-Sse/HDqcypGpyTDpvZOJNnG0TT3feGQUkF9H+mnRvic+LjR+K1NhTt8f51KIQ3v3" crossorigin="anonymous"></script>
 <script id="format-stats-props" type="application/json">
-{{ stats | tojson }}
+{{ {'stats': stats} | tojson }}
 </script>
 <script type="module" src="/static/dist/js/main.js"></script>
 {% endblock %}
