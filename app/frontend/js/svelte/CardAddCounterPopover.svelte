@@ -15,8 +15,8 @@
         onAddCounter = noop
     } = $props();
 
-    const counterList = $derived(() => (Array.isArray(counters) ? counters : []));
-    const counterTypeOptions = $derived(() => {
+    const counterList = $derived(Array.isArray(counters) ? counters : []);
+    const counterTypeOptions = $derived.by(() => {
         const base = (Array.isArray(counterOptions) && counterOptions.length
             ? counterOptions
             : [
@@ -43,7 +43,7 @@
 
     $effect(() => {
         if (open) {
-            selectedCounterType = counterTypeOptions()?.[0]?.value || '';
+            selectedCounterType = counterTypeOptions?.[0]?.value || '';
             customCounterType = '';
             counterAmount = 1;
         }
@@ -197,9 +197,9 @@
             <div class="counter-modal-body" style="padding: 1.25rem">
                 <section class="card-manage-section counter-manager">
                     <h4>Existing counters</h4>
-                    {#if counterList().length}
+                    {#if counterList.length}
                         <div class="counter-controls">
-                            {#each counterList() as counterEntry (counterEntry.type)}
+                            {#each counterList as counterEntry (counterEntry.type)}
                                 <div class="counter-control-row">
                                     <div class="flex items-center gap-2">
                                         {#if resolveCounterIcon(counterEntry)}
@@ -235,7 +235,7 @@
                             id={`counter-type-select-${uniqueId}`}
                             bind:value={selectedCounterType}
                         >
-                            {#each counterTypeOptions() as option (option.value)}
+                            {#each counterTypeOptions as option (option.value)}
                                 <option value={option.value}>{option.label}</option>
                             {/each}
                         </select>

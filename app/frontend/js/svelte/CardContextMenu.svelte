@@ -38,7 +38,7 @@
     let cardSet = $state('');  // Set code of the card
     
     // Derived states
-    let normalizedZone = $derived(() => {
+    let normalizedZone = $derived.by(() => {
         let zone = (cardZone || '').toLowerCase();
         if (zone.startsWith('opponent_')) {
             zone = zone.replace('opponent_', '');
@@ -46,16 +46,16 @@
         return zone;
     });
     
-    let isBattlefieldZone = $derived(() => {
-        return ['battlefield', 'permanents', 'lands', 'creatures', 'support'].includes(normalizedZone());
-    });
+    let isBattlefieldZone = $derived(
+        ['battlefield', 'permanents', 'lands', 'creatures', 'support'].includes(normalizedZone)
+    );
     
-    let canPlayOpponentCard = $derived(() => {
+    let canPlayOpponentCard = $derived.by(() => {
         const selectedPlayer = getSelectedPlayer();
         const canControlZones = selectedPlayer === 'player1' || selectedPlayer === 'player2';
         const isSpectator = selectedPlayer === 'spectator';
         const opponentPlayableZones = ['graveyard', 'exile', 'reveal', 'reveal_zone', 'look', 'look_zone'];
-        return canControlZones && !isSpectator && isOpponent && opponentPlayableZones.includes(normalizedZone());
+        return canControlZones && !isSpectator && isOpponent && opponentPlayableZones.includes(normalizedZone);
     });
 
     // Helpers
@@ -693,7 +693,7 @@
             </button>
 
             <!-- Arrow targeting - battlefield and stack cards -->
-            {#if isBattlefieldZone() || normalizedZone() === 'stack'}
+            {#if isBattlefieldZone || normalizedZone === 'stack'}
                 <button class="card-context-menu-item" onclick={() => handleAction('addArrow')}>
                     <span class="icon">➡️</span>
                     Add Arrow to...
@@ -734,7 +734,7 @@
                 {/if}
 
                 <!-- Battlefield zone actions -->
-                {#if isBattlefieldZone()}
+                {#if isBattlefieldZone}
                     <button class="card-context-menu-item" onclick={() => handleAction('tap')}>
                         <span class="icon">{isTapped ? '⤴️' : '🔄'}</span>
                         {isTapped ? 'Untap' : 'Tap'}
@@ -887,9 +887,9 @@
             {/if}
 
             <!-- Opponent card actions -->
-            {#if canPlayOpponentCard()}
+            {#if canPlayOpponentCard}
                 <button class="card-context-menu-item" onclick={() => handleAction('playOpponentCard')}>
-                    <span class="icon">🪄</span> Play from {getZoneLabel(normalizedZone())}
+                    <span class="icon">🪄</span> Play from {getZoneLabel(normalizedZone)}
                 </button>
             {/if}
         </div>

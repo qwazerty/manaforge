@@ -39,18 +39,18 @@
     });
     let showPrices = $state(false);
 
-    const draftType = $derived(() => (room?.draft_type || '').toString().toLowerCase());
-    const roomState = $derived(() => (room?.state || '').toString().toLowerCase());
-    const players = $derived(() => (Array.isArray(room?.players) ? room.players : []));
-    const currentPlayer = $derived(() => players().find((p) => p?.id === playerId) || null);
-    const currentPack = $derived(() =>
-        sortCardsByRarity(Array.isArray(currentPlayer()?.current_pack) ? currentPlayer().current_pack : [])
+    const draftType = $derived((room?.draft_type || '').toString().toLowerCase());
+    const roomState = $derived((room?.state || '').toString().toLowerCase());
+    const players = $derived(Array.isArray(room?.players) ? room.players : []);
+    const currentPlayer = $derived(players.find((p) => p?.id === playerId) || null);
+    const currentPack = $derived(
+        sortCardsByRarity(Array.isArray(currentPlayer?.current_pack) ? currentPlayer.current_pack : [])
     );
-    const draftLabel = $derived(() => getDraftLabelPrefix(draftType()));
-    const showExportActions = $derived(() => roomState() === 'completed');
-    const canManageBots = $derived(() => roomState() === 'waiting' && !isStarting);
-    const packHeader = $derived(() => {
-        if (draftType() === 'sealed' && roomState() === 'completed') {
+    const draftLabel = $derived(getDraftLabelPrefix(draftType));
+    const showExportActions = $derived(roomState === 'completed');
+    const canManageBots = $derived(roomState === 'waiting' && !isStarting);
+    const packHeader = $derived.by(() => {
+        if (draftType === 'sealed' && roomState === 'completed') {
             return 'Sealed pool generated';
         }
         const packNumber = room?.current_pack_number ?? 1;
@@ -60,7 +60,7 @@
 
     onMount(() => {
         playerId = resolvePlayerId();
-        deckContext = buildDeckContext(room, playerId, draftType());
+        deckContext = buildDeckContext(room, playerId, draftType);
         applyGlobalContext(deckContext);
         applyRoomState(room);
         connectWebSocket();
@@ -242,8 +242,8 @@
         syncDeckBuilderWithDraft(draftedCards);
 
         if (
-            draftType() === 'sealed' &&
-            roomState() === 'completed' &&
+            draftType === 'sealed' &&
+            roomState === 'completed' &&
             deckManagerReady &&
             !sealedSyncNotified
         ) {
@@ -478,7 +478,7 @@
             }
 
             const deckPayload = {
-                name: `${draftLabel()} - ${room?.set_name || room?.name || 'ManaForge'}`,
+                name: `${draftLabel} - ${room?.set_name || room?.name || 'ManaForge'}`,
                 format: 'draft',
                 cards: Array.from(grouped.values()),
                 commanders: []
@@ -572,14 +572,14 @@
             return;
         }
         renameState = { ...renameState, saving: true };
-        const targetPlayer = players().find((p) => p?.id === renameState.playerId);
+        const targetPlayer = players.find((p) => p?.id === renameState.playerId);
         const nextName = await submitRename(targetPlayer, renameState.value);
         renameState = { playerId: null, value: '', saving: false };
 
         if (nextName) {
             room = {
                 ...room,
-                players: players().map((p) => (p.id === targetPlayer.id ? { ...p, name: nextName } : p))
+                players: players.map((p) => (p.id === targetPlayer.id ? { ...p, name: nextName } : p))
             };
         }
     }
@@ -634,8 +634,8 @@
     }
 
     function stateBadge() {
-        if (roomState() === 'completed') return { label: 'Completed', tone: 'bg-emerald-500/10 text-emerald-300' };
-        if (roomState() === 'drafting') return { label: 'In Progress', tone: 'bg-arena-accent/10 text-arena-accent' };
+        if (roomState === 'completed') return { label: 'Completed', tone: 'bg-emerald-500/10 text-emerald-300' };
+        if (roomState === 'drafting') return { label: 'In Progress', tone: 'bg-arena-accent/10 text-arena-accent' };
         return { label: 'Waiting', tone: 'bg-arena-muted/20 text-arena-muted' };
     }
 
@@ -672,7 +672,7 @@
 <div class="py-12 px-4">
     <div class="max-w-[1800px] mx-auto space-y-10">
         <header class="text-center space-y-3 animate-fade-in">
-            <p class="text-sm uppercase tracking-[0.35em] text-arena-muted">{draftLabel()}</p>
+            <p class="text-sm uppercase tracking-[0.35em] text-arena-muted">{draftLabel}</p>
             <h1 class="font-magic text-4xl md:text-5xl text-arena-accent">{room?.name}</h1>
             <p class="text-lg text-arena-text-dim">
                 {room?.set_name}
@@ -682,7 +682,7 @@
                     Seat ID: {playerId}
                 </span>
                 <span class="px-3 py-1 rounded-full bg-arena-surface/60 border border-arena-surface/60">
-                    Players: {players().length}/{room?.max_players ?? 8}
+                    Players: {players.length}/{room?.max_players ?? 8}
                 </span>
             </div>
         </header>
@@ -699,10 +699,10 @@
                 </div>
 
                 <div class="space-y-2">
-                    {#if !players().length}
+                    {#if !players.length}
                         <div class="text-sm text-arena-text-dim">Waiting for players...</div>
                     {:else}
-                        {#each players() as player (player.id)}
+                        {#each players as player (player.id)}
                             <div class="p-3 bg-arena-surface rounded flex items-center justify-between gap-3 {player.id === playerId ? 'border border-arena-accent/40' : ''}">
                                 <div class="flex-1">
                                     {#if renameState.playerId === player.id}
@@ -764,21 +764,21 @@
                     <button
                         class="arena-button w-full py-3 px-4 rounded-lg disabled:opacity-50"
                         onclick={addBot}
-                        disabled={!canManageBots()}
+                        disabled={!canManageBots}
                     >
                         Add Bot
                     </button>
                     <button
                         class="arena-button w-full py-3 px-4 rounded-lg disabled:opacity-50"
                         onclick={fillBots}
-                        disabled={!canManageBots()}
+                        disabled={!canManageBots}
                     >
                         Fill with Bots
                     </button>
                     <button
                         class="arena-button w-full py-3 px-4 rounded-lg disabled:opacity-50"
                         onclick={startDraft}
-                        disabled={!canManageBots()}
+                        disabled={!canManageBots}
                     >
                         Start Draft
                     </button>
@@ -794,7 +794,7 @@
             <section class="lg:col-span-3 space-y-4">
                 <div class="arena-card p-5 rounded-xl space-y-4">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                        <h2 class="font-magic text-2xl text-arena-accent">{packHeader()}</h2>
+                        <h2 class="font-magic text-2xl text-arena-accent">{packHeader}</h2>
                         <label class="flex items-center gap-2 text-sm text-arena-text cursor-pointer select-none">
                             <input 
                                 type="checkbox" 
@@ -809,13 +809,13 @@
                         <div class="text-center text-arena-text-dim py-6">
                             {packStatus}
                         </div>
-                    {:else if currentPack().length === 0}
+                    {:else if currentPack.length === 0}
                         <div class="text-center text-arena-text-dim py-6">
                             Waiting for pack contents...
                         </div>
                     {:else}
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {#each currentPack() as card (card.unique_id || card.id || card.name)}
+                            {#each currentPack as card (card.unique_id || card.id || card.name)}
                                 <button
                                     class="relative cursor-pointer rounded-lg overflow-hidden border border-transparent hover:border-arena-accent/40 transition-all {selectedCardId === (card.unique_id || card.id || card.name) ? 'ring-2 ring-yellow-400' : ''}"
                                     onclick={() => pickCard(card)}
@@ -846,7 +846,7 @@
                     {/if}
                 </div>
 
-                {#if showExportActions()}
+                {#if showExportActions}
                     <div class="arena-card p-5 rounded-xl space-y-3">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                             <div>

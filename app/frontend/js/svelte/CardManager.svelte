@@ -50,7 +50,7 @@
     let refreshTimer = $state(null);
 
     // Derived props for popovers
-    let typeProps = $derived(() => ({
+    let typeProps = $derived({
         open: typeOpen,
         cardName: currentCardName,
         cardId: currentCard?.cardId || '',
@@ -62,9 +62,9 @@
         onAddType: handleAddType,
         onRemoveType: handleRemoveType,
         onResetTypes: handleResetTypes
-    }));
+    });
 
-    let counterProps = $derived(() => ({
+    let counterProps = $derived({
         open: counterOpen,
         cardName: currentCardName,
         cardId: currentCard?.cardId || '',
@@ -76,9 +76,9 @@
         onModifyCounter: handleModifyCounter,
         onRemoveAllCounters: handleRemoveAllCounters,
         onAddCounter: handleAddCounter
-    }));
+    });
 
-    let powerProps = $derived(() => ({
+    let powerProps = $derived({
         open: powerOpen,
         cardName: currentCardName,
         cardId: currentCard?.cardId || '',
@@ -88,7 +88,7 @@
         onClose: closeAll,
         onApply: handleApplyPowerToughness,
         onReset: handleResetPowerToughness
-    }));
+    });
 
     // Public API
     export function openTypePopover(uniqueCardId, cardId = null, anchorElement = null) {
@@ -413,6 +413,6 @@
     });
 </script>
 
-<CardAddTypePopover {...typeProps()} />
-<CardAddCounterPopover {...counterProps()} />
-<CardPowerToughnessPopover {...powerProps()} />
+<CardAddTypePopover {...typeProps} />
+<CardAddCounterPopover {...counterProps} />
+<CardPowerToughnessPopover {...powerProps} />

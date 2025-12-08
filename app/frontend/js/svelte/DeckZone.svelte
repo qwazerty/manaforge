@@ -12,7 +12,7 @@
 
     let zoneContextMenu = $state(null);
 
-    const stackCards = $derived(() => {
+    const stackCards = $derived.by(() => {
         if (cardsRemaining === 0) return '';
         const layers = Math.min(5, Math.max(1, cardsRemaining));
         return Array.from({ length: layers }, () => '<div class="deck-card-layer"><div class="card-back-mini"></div></div>').join('');
@@ -49,7 +49,7 @@
             data-zone-context={zoneIdentifier}
             onclick={handleClick}
             oncontextmenu={handleContextMenu}>
-            {@html stackCards()}
+            {@html stackCards}
             <div class="deck-click-overlay">
                 <span class="draw-hint">{overlayText}</span>
             </div>

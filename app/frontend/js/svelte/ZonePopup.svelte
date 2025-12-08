@@ -12,11 +12,11 @@
         allowDrop = false
     } = $props();
 
-    const panelId = $derived(() => popupKey ? `zone-popup-${popupKey}` : 'zone-popup');
-    const bodyId = $derived(() => popupKey ? `zone-popup-body-${popupKey}` : 'zone-popup-body');
-    const countId = $derived(() => popupKey ? `zone-popup-count-${popupKey}` : 'zone-popup-count');
+    const panelId = $derived(popupKey ? `zone-popup-${popupKey}` : 'zone-popup');
+    const bodyId = $derived(popupKey ? `zone-popup-body-${popupKey}` : 'zone-popup-body');
+    const countId = $derived(popupKey ? `zone-popup-count-${popupKey}` : 'zone-popup-count');
 
-    const hasCards = $derived(() => Number(cardCount) > 0);
+    const hasCards = $derived(Number(cardCount) > 0);
 
     let searchQuery = $state('');
     let panelEl;
@@ -137,7 +137,7 @@
 </script>
 
 <div
-    id={panelId()}
+    id={panelId}
     class="stack-popup reveal-popup zone-popup hidden"
     role="dialog"
     aria-label={`${title || 'Zone'} Zone`}
@@ -151,7 +151,7 @@
         <div class="stack-popup-title reveal-popup-title zone-popup-title">
             <span class="stack-popup-icon reveal-popup-icon zone-popup-icon">{icon || '🗂️'}</span>
             <span class="stack-popup-label reveal-popup-label zone-popup-label">{title || 'Zone'}</span>
-            <span class="stack-popup-count reveal-popup-count zone-popup-count" id={countId()}>{cardCount}</span>
+            <span class="stack-popup-count reveal-popup-count zone-popup-count" id={countId}>{cardCount}</span>
         </div>
         {#if !persistent}
             <button class="zone-popup-close" type="button" onclick={handleClose}>✕</button>
@@ -168,10 +168,10 @@
             oninput={handleSearch} />
     </div>
 
-    <div class="stack-popup-body reveal-popup-body zone-popup-body" id={bodyId()}>
+    <div class="stack-popup-body reveal-popup-body zone-popup-body" id={bodyId}>
         <div class="reveal-card-container">
             <div
-                class={`reveal-card-list zone-card-list${!hasCards() ? ' zone-card-list-empty' : ''}`}
+                class={`reveal-card-list zone-card-list${!hasCards ? ' zone-card-list-empty' : ''}`}
                 role="list"
                 data-zone-context={baseZone}
                 data-zone-owner={ownerId}
@@ -179,7 +179,7 @@
                 ondragover={handleDragOver}
                 ondragleave={handleDragLeave}
                 ondrop={handleDrop}>
-                {#if hasCards()}
+                {#if hasCards}
                     {@html cardsHtml}
                 {:else}
                     <div class="reveal-empty">No cards in this zone</div>

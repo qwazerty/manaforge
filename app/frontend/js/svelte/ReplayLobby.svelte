@@ -5,7 +5,7 @@
     let status = $state({ type: '', message: '' });
     let fileInputEl = $state(null);
 
-    const _hasStatus = $derived(() => Boolean(status.message));
+    const _hasStatus = $derived(Boolean(status.message));
 
     function navigateToReplay() {
         resetStatus();

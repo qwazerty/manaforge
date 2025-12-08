@@ -15,8 +15,8 @@
         onResetTypes = noop
     } = $props();
 
-    const typeList = $derived(() => (Array.isArray(types) ? types : []));
-    const availableTypes = $derived(() => (Array.isArray(typeOptions) && typeOptions.length
+    const typeList = $derived(Array.isArray(types) ? types : []);
+    const availableTypes = $derived(Array.isArray(typeOptions) && typeOptions.length
         ? typeOptions
         : [
             { value: 'creature', label: 'Creature' },
@@ -26,7 +26,7 @@
             { value: 'planeswalker', label: 'Planeswalker' },
             { value: 'instant', label: 'Instant' },
             { value: 'sorcery', label: 'Sorcery' }
-        ]));
+        ]);
 
     let selectedType = $state('');
 
@@ -172,9 +172,9 @@
             <div class="counter-modal-body" style="padding: 1.25rem">
                 <section class="card-manage-section">
                     <h4>Types actuels</h4>
-                    {#if typeList().length}
+                    {#if typeList.length}
                         <div class="keyword-tag-list">
-                            {#each typeList() as type (type)}
+                            {#each typeList as type (type)}
                                 <span class="keyword-tag">
                                     <span class="keyword-label">{formatLabel(type) || type}</span>
                                     <button
@@ -199,7 +199,7 @@
                     <form class="type-add-form" onsubmit={handleAddType}>
                         <select bind:value={selectedType}>
                             <option value="">Select a type</option>
-                            {#each availableTypes() as option (option.value)}
+                            {#each availableTypes as option (option.value)}
                                 <option value={option.value}>{option.label}</option>
                             {/each}
                         </select>

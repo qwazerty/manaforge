@@ -20,13 +20,13 @@
     let actionPanelApp = null;
     let playInterval = null;
 
-    const totalSteps = $derived(() => Array.isArray(timeline) ? timeline.length : 0);
-    const _displayTotalSteps = $derived(() => Math.max(totalSteps(), 0));
-    const _displayStepIndex = $derived(() =>
-        totalSteps() > 0 ? Math.min(currentIndex + 1, totalSteps()) : 0
+    const totalSteps = $derived(Array.isArray(timeline) ? timeline.length : 0);
+    const _displayTotalSteps = $derived(Math.max(totalSteps, 0));
+    const _displayStepIndex = $derived(
+        totalSteps > 0 ? Math.min(currentIndex + 1, totalSteps) : 0
     );
-    const currentState = $derived(() => (timeline[currentIndex]?.state) || null);
-    const hasTimeline = $derived(() => totalSteps() > 0);
+    const currentState = $derived((timeline[currentIndex]?.state) || null);
+    const hasTimeline = $derived(totalSteps > 0);
 
     const replayControls = $derived({
         onPrev: prevStep,
@@ -37,7 +37,7 @@
         onSeek: seekToStep,
         isPlaying,
         currentStep: currentIndex,
-        totalSteps: totalSteps()
+        totalSteps: totalSteps
     });
 
     onMount(async () => {
@@ -98,7 +98,7 @@
     }
 
     function nextStep() {
-        if (currentIndex < totalSteps() - 1) {
+        if (currentIndex < totalSteps - 1) {
             currentIndex += 1;
         } else {
             pausePlayback();
@@ -106,14 +106,14 @@
     }
 
     function seekToStep(target) {
-        if (!hasTimeline()) return;
-        const clamped = Math.min(Math.max(Number(target) || 0, 0), Math.max(totalSteps() - 1, 0));
+        if (!hasTimeline) return;
+        const clamped = Math.min(Math.max(Number(target) || 0, 0), Math.max(totalSteps - 1, 0));
         currentIndex = clamped;
     }
 
     function startPlayback() {
-        if (!hasTimeline()) return;
-        if (currentIndex >= totalSteps() - 1) {
+        if (!hasTimeline) return;
+        if (currentIndex >= totalSteps - 1) {
             currentIndex = 0;
         }
         isPlaying = true;
@@ -124,7 +124,7 @@
     }
 
     function downloadReplay() {
-        if (!hasTimeline()) return;
+        if (!hasTimeline) return;
         const data = { game_id: gameId || 'replay', timeline };
         const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -136,7 +136,7 @@
     }
 
     $effect(() => {
-        if (!isPlaying || !hasTimeline()) {
+        if (!isPlaying || !hasTimeline) {
             clearPlayTimer();
             return;
         }
@@ -150,21 +150,21 @@
     });
 
     $effect(() => {
-        if (totalSteps() === 0 && currentIndex !== 0) {
+        if (totalSteps === 0 && currentIndex !== 0) {
             currentIndex = 0;
-        } else if (currentIndex >= totalSteps() && totalSteps() > 0) {
-            currentIndex = Math.max(totalSteps() - 1, 0);
+        } else if (currentIndex >= totalSteps && totalSteps > 0) {
+            currentIndex = Math.max(totalSteps - 1, 0);
         }
     });
 
     $effect(() => {
-        if (loading || !currentState()) {
+        if (loading || !currentState) {
             return;
         }
 
-        ensureActionPanel(currentState());
-        syncActionHistory(currentState());
-        syncBattleChat(currentState());
+        ensureActionPanel(currentState);
+        syncActionHistory(currentState);
+        syncBattleChat(currentState);
     });
 
     function clearPlayTimer() {
@@ -289,8 +289,8 @@
     }
 
     function _handleProgressClick(event) {
-        if (!hasTimeline()) return;
-        const total = Math.max(totalSteps() - 1, 0);
+        if (!hasTimeline) return;
+        const total = Math.max(totalSteps - 1, 0);
         if (total <= 0) return;
         const rect = event.currentTarget?.getBoundingClientRect?.();
         if (!rect || !rect.width) return;
@@ -310,14 +310,14 @@
             <div class="flex items-center justify-center h-full text-red-400 font-semibold text-center">
                 {errorMessage}
             </div>
-        {:else if !hasTimeline()}
+        {:else if !hasTimeline}
             <div class="flex items-center justify-center h-full text-arena-text-dim">
                 No replay steps available.
             </div>
         {:else}
             <div id="game-arena-root" class="flex-grow">
-                {#if currentState()}
-                    <GameArena gameState={currentState()} selectedPlayer="spectator" />
+                {#if currentState}
+                    <GameArena gameState={currentState} selectedPlayer="spectator" />
                 {:else}
                     <div class="flex items-center justify-center h-full text-arena-text-dim">
                         Preparing arena...
