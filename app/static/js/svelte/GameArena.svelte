@@ -8,6 +8,7 @@
     import PlayerCounterModal from './PlayerCounterModal.svelte';
     import CommanderZones from './CommanderZones.svelte';
     import { buildCounterEntries } from './utils/player-counter-utils.js';
+    import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
 
     let {
         gameState = null,
@@ -217,15 +218,17 @@
         };
     }
 
-    function getSeatFallbackName(index) {
-        if (index === 0) return 'Player 1';
-        if (index === 1) return 'Player 2';
-        return 'Player';
-    }
+    const seatIdByIndex = (index) => (index === 1 ? 'player2' : 'player1');
 
-    function getPlayerDisplayName(playerData, fallback = 'Player') {
-        const rawName = typeof playerData?.name === 'string' ? playerData.name.trim() : '';
-        return rawName || fallback;
+    function getPlayerDisplayName(playerData, fallbackSeatId = 'player1') {
+        const fallbackName = formatSeatFallback(fallbackSeatId);
+        const playerKey = playerData?.id || fallbackSeatId;
+        const playerDataName = typeof playerData?.name === 'string' ? playerData.name : null;
+
+        return resolvePlayerDisplayName(playerKey, {
+            playerDataName,
+            fallbackName
+        });
     }
 
     function _findPlayerById(state, playerId) {
@@ -265,9 +268,8 @@
         if (!resolvedId) {
             return;
         }
-        const fallbackIndex = resolvedId === 'player2' ? 1 : 0;
-        const nameFallback = getSeatFallbackName(fallbackIndex);
-        const displayName = getPlayerDisplayName(playerData, nameFallback);
+        const fallbackSeatId = resolvedId === 'player2' ? 'player2' : 'player1';
+        const displayName = getPlayerDisplayName(playerData, fallbackSeatId);
         counterModal = {
             open: true,
             playerId: resolvedId,
@@ -328,7 +330,7 @@
             ? playerIndex
             : (isOpponent ? 1 : 0);
         return {
-            playerName: getPlayerDisplayName(playerData, getSeatFallbackName(index)),
+            playerName: getPlayerDisplayName(playerData, seatIdByIndex(index)),
             zones: buildSidebarZones(playerData, playerIndex, isOpponent)
         };
     }

@@ -22,6 +22,7 @@
         addTargetingArrow,
         removeTargetingArrow
     } from './stores/gameCardsStore.js';
+    import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
 
     /** @type {{ reconnectDelay?: number }} */
     const { reconnectDelay = 1000 } = $props();
@@ -896,44 +897,12 @@
     }
 
     function getPlayerDisplayName(playerKey) {
-        if (typeof GameCore !== 'undefined' && typeof GameCore.getPlayerDisplayName === 'function') {
-            const name = GameCore.getPlayerDisplayName(playerKey);
-            if (name) {
-                return name;
-            }
-        }
-        return formatSeatFallback(playerKey);
-    }
-
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const seatFallbackCache = new Map();
-
-    function formatSeatFallback(playerKey) {
-        if (!playerKey) {
-            return 'Unknown';
-        }
-
-        const cached = seatFallbackCache.get(playerKey);
-        if (cached) {
-            return cached;
-        }
-
-        let resolved = '';
-        if (playerKey === 'spectator') {
-            resolved = 'Spectator';
-        } else {
-            const match = String(playerKey)
-                .toLowerCase()
-                .match(/player\s*(\d+)/);
-            if (match) {
-                resolved = `Player ${match[1]}`;
-            } else {
-                resolved = String(playerKey);
-            }
-        }
-
-        seatFallbackCache.set(playerKey, resolved);
-        return resolved;
+        return resolvePlayerDisplayName(playerKey, {
+            getCoreDisplayName:
+                typeof GameCore !== 'undefined' && typeof GameCore.getPlayerDisplayName === 'function'
+                    ? GameCore.getPlayerDisplayName
+                    : null
+        });
     }
 
     function getLocalPlayerInfo() {
