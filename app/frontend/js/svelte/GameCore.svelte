@@ -3,6 +3,12 @@
 <script>
     import { onMount } from 'svelte';
     import {
+        getPlayerFromUrl,
+        initializeGameConfig,
+        getGameData,
+        setGameDataField
+    } from '@lib/game-utils';
+    import {
         gameState as _gameState,
         gameId as _gameId,
         isPageVisible as _isPageVisible,
@@ -162,7 +168,7 @@
     }
 
     function getLocalPlayerSeat() {
-        const seatFromUrl = GameUtils?.getPlayerFromUrl?.();
+        const seatFromUrl = getPlayerFromUrl();
         return seatFromUrl || getSelectedPlayer();
     }
 
@@ -277,8 +283,9 @@
             }
         }
 
-        if (typeof window !== 'undefined' && window.gameData) {
-            parsed = { ...parsed, ...window.gameData };
+        const gameData = getGameData();
+        if (gameData) {
+            parsed = { ...parsed, ...gameData };
         }
 
         return {
@@ -616,6 +623,10 @@
         if (gameInitialized) {
             return;
         }
+
+        // Initialize game config from data attribute (populates window.gameData for legacy compatibility)
+        initializeGameConfig();
+
         const root = typeof document !== 'undefined'
             ? document.getElementById('game-interface-root')
             : null;
@@ -637,10 +648,8 @@
         const playerFromUrl = getLocalPlayerSeat() || config.playerId || 'player1';
         setSelectedPlayer(playerFromUrl);
         updateSpectatorModeClass(playerFromUrl);
-        if (typeof window !== 'undefined' && window.gameData) {
-            window.gameData.playerId = playerFromUrl;
-            window.gameData.gameId = id;
-        }
+        setGameDataField('playerId', playerFromUrl);
+        setGameDataField('gameId', id);
 
         try {
             await loadGameState();
@@ -668,7 +677,7 @@
         if (typeof window === 'undefined') {
             return false;
         }
-        const required = ['GameSocket', 'GameUI', 'GameActions', 'GameUtils', 'GameCards', 'GameCombat'];
+        const required = ['GameSocket', 'GameUI', 'GameActions', 'GameCards', 'GameCombat'];
         return required.every((name) => typeof window[name] !== 'undefined');
     }
 

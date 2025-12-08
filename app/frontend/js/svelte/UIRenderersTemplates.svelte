@@ -20,6 +20,7 @@
         generateButton,
         getZoneConfiguration
     } from '@lib/ui-utils';
+    import { escapeHtml } from '@lib/game-utils';
 
     // Import child components for dynamic mounting
     import GameArena from './GameArena.svelte';
@@ -1023,9 +1024,7 @@
             const filteredCards = filterCardsByType(cards, zoneName);
             const cardCount = filteredCards.length;
             const ownerId = playerId || (isOpponent ? 'player2' : 'player1');
-            const sanitizedOwner = typeof GameUtils !== 'undefined' && typeof GameUtils.escapeHtml === 'function'
-                ? GameUtils.escapeHtml(ownerId)
-                : ownerId;
+            const sanitizedOwner = escapeHtml(ownerId);
             const playerRole = isOpponent ? 'opponent' : 'player';
             const cardsHtml = filteredCards.map(card => {
                 return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, null, playerId);
@@ -1627,7 +1626,7 @@
                 return existing;
             }
 
-            const safeName = GameUtils.escapeHtml(playerName || 'Player');
+            const safeName = escapeHtml(playerName || 'Player');
             const actionName = zoneType === 'look' ? 'lookTopLibrary' : 'revealTopLibrary';
             const actionLabel = zoneType === 'look' ? 'Look from Library' : 'Reveal from Library';
             const panel = document.createElement('div');
