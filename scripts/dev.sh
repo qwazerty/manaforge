@@ -20,12 +20,7 @@ start_cmd() {
 	local label="$1"
 	shift
 	echo "[dev] starting $label -> $*"
-	"$@" &
-	PIDS+=($!)
+	"$@"
 }
 
-start_cmd "backend" docker compose -f docker-compose-dev.yml up --build
-start_cmd "tailwind watcher" corepack pnpm run dev:css
-start_cmd "vite dev" corepack pnpm run dev:svelte
-
-wait "${PIDS[@]}"
+start_cmd "docker compose" docker compose -f docker-compose-dev.yml up --build
