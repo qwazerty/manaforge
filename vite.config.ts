@@ -2,9 +2,11 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import path from 'path';
 
+const isWatch = process.argv.includes('--watch');
+
 export default defineConfig({
   base: '/static/dist/',
-  root: '.', // project root
+  root: '.',
   plugins: [svelte()],
   resolve: {
     alias: {
@@ -15,7 +17,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'app/static/dist',
-    emptyOutDir: true,
+    emptyOutDir: !isWatch, // Don't clear outDir in watch mode (preserves Tailwind CSS)
     sourcemap: true,
     rollupOptions: {
       input: {
@@ -37,10 +39,6 @@ export default defineConfig({
         }
       }
     }
-  },
-  server: {
-    fs: {
-      allow: ['app/frontend', 'app/static/dist']
-    }
   }
 });
+

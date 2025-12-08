@@ -24,6 +24,16 @@ services:
     ports:
       - "5432:5432"
 
+  frontend:
+    image: node:24-alpine
+    working_dir: /app
+    environment:
+      - COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm run dev:watch"
+    volumes:
+      - .:/app
+      - /app/node_modules
+
   proxy:
     image: nginx:1.29-alpine
     depends_on:
@@ -34,19 +44,6 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./app/static:/static:ro
-
-  frontend:
-    image: node:24-alpine
-    working_dir: /app
-    environment:
-      - COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm run dev"
-    volumes:
-      - .:/app
-    ports:
-      - "5173:5173"
-    depends_on:
-      - backend
 
 volumes:
   postgres_data_dev:
