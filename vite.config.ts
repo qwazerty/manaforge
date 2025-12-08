@@ -21,9 +21,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'app/frontend/js/main.ts'),
-        'game-config': path.resolve(__dirname, 'app/frontend/js/legacy/game-config.js'),
-        'game-utils': path.resolve(__dirname, 'app/frontend/js/legacy/game-utils.js')
+        main: path.resolve(__dirname, 'app/frontend/js/main.ts')
       },
       output: {
         entryFileNames: (chunk) => {

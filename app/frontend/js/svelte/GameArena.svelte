@@ -17,6 +17,7 @@
         getLifeZoneConfig
     } from '@lib/zone-data';
     import { calculateAnchorPosition, filterCardsByType, createTransform } from '@lib/ui-utils';
+    import { escapeHtml } from '@lib/game-utils';
 
     let {
         gameState = null,
@@ -529,9 +530,7 @@
 
     function buildBattlefieldZones(battlefieldCards, ownerId, isOpponent) {
         const cards = Array.isArray(battlefieldCards) ? battlefieldCards : [];
-        const sanitizedOwner = typeof GameUtils?.escapeHtml === 'function'
-            ? GameUtils.escapeHtml(ownerId)
-            : ownerId;
+        const sanitizedOwner = escapeHtml(ownerId);
         const playerRole = isOpponent ? 'opponent' : 'player';
         const zoneNames = ['lands', 'creatures', 'support'];
         const attachmentsByHost = buildAttachmentsMap(cards);
