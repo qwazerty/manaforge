@@ -13,7 +13,7 @@
         onReset = noop
     } = $props();
 
-    const ptInfo = $derived(() => powerToughness);
+    const ptInfo = $derived(powerToughness);
 
     let powerInput = $state('');
     let toughnessInput = $state('');
@@ -22,8 +22,8 @@
         if (!open) {
             return;
         }
-        powerInput = normalize(ptInfo()?.overridePower);
-        toughnessInput = normalize(ptInfo()?.overrideToughness);
+        powerInput = normalize(ptInfo?.overridePower);
+        toughnessInput = normalize(ptInfo?.overrideToughness);
     });
 
     const normalize = (value) => {
@@ -164,12 +164,12 @@
                 >&times;</button>
             </div>
             <div class="counter-modal-body" style="padding: 1.25rem">
-                {#if ptInfo()}
+                {#if ptInfo}
                     <div class="pt-manager">
                         <div class="pt-manager-header">
                             <span class="pt-manager-title">Override values</span>
                             <span class="pt-manager-base">
-                                Base: {ptInfo().basePower || '—'}/{ptInfo().baseToughness || '—'}
+                                Base: {ptInfo.basePower || '—'}/{ptInfo.baseToughness || '—'}
                             </span>
                         </div>
                         <div class="pt-manager-inputs">
@@ -180,7 +180,7 @@
                                     inputmode="numeric"
                                     pattern="^-?\\d*$"
                                     bind:value={powerInput}
-                                    placeholder={ptInfo().basePower || ''}
+                                    placeholder={ptInfo.basePower || ''}
                                 />
                             </label>
                             <label class="pt-manager-field">
@@ -190,7 +190,7 @@
                                     inputmode="numeric"
                                     pattern="^-?\\d*$"
                                     bind:value={toughnessInput}
-                                    placeholder={ptInfo().baseToughness || ''}
+                                    placeholder={ptInfo.baseToughness || ''}
                                 />
                             </label>
                         </div>
@@ -200,7 +200,7 @@
                                 <button class="pt-manager-reset" type="button" onclick={handleReset}>Reset</button>
                             </div>
                             <div class="pt-manager-current">
-                                Current: {ptInfo().currentPower}/{ptInfo().currentToughness}
+                                Current: {ptInfo.currentPower}/{ptInfo.currentToughness}
                             </div>
                         </div>
                         <p class="pt-manager-hint">

@@ -12,7 +12,7 @@
 
     let zoneContextMenu = $state(null);
 
-    const stackMarkup = $derived(() => {
+    const stackMarkup = $derived.by(() => {
         if (cards.length === 0) return '';
         const layers = Math.min(5, Math.max(1, cards.length));
         return Array.from({ length: layers }, () => '<div class="exile-card-layer"><div class="card-back-mini"></div></div>').join('');
@@ -45,7 +45,7 @@
                 <div class="zone-empty-text">Empty</div>
             </div>
         {:else}
-            {@html stackMarkup()}
+            {@html stackMarkup}
             {#if topCard}
                 <div class="exile-top-card">
                     {@html GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}

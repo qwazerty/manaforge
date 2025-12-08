@@ -593,7 +593,7 @@
     }
 
     // Computed style for positioning
-    const previewStyle = $derived(() => {
+    const previewStyle = $derived.by(() => {
         if (isCentered) {
             return `left: 50%; top: 50%; transform: translate(-50%, -50%);`;
         }
@@ -632,7 +632,7 @@
         id="card-preview-modal"
         class="card-preview-modal show"
         class:card-preview-modal-centered={isCentered}
-        style={previewStyle()}
+        style={previewStyle}
         bind:this={previewElement}
         role="dialog"
         aria-modal="false"

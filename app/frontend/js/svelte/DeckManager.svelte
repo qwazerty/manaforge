@@ -65,7 +65,7 @@
         }
     });
 
-    const pricingPending = $derived(() => !pricingDataLoaded);
+    const pricingPending = $derived(!pricingDataLoaded);
 
     const LAND_HINTS = {
         draft: { recommendation: '17 lands' },
@@ -1396,15 +1396,15 @@
                 </div>
                 <div class="p-4 bg-arena-surface rounded-lg border border-arena-accent/10 text-center">
                     <p class="text-sm uppercase tracking-wide text-arena-muted">Deck price (Cardmarket)</p>
-                    <p class="text-3xl font-bold text-arena-text mt-1">{pricingPending() ? 'N/A' : formatPrice(pricing.total)}</p>
+                    <p class="text-3xl font-bold text-arena-text mt-1">{pricingPending ? 'N/A' : formatPrice(pricing.total)}</p>
                     <p class="text-xs text-arena-text-dim mt-2">
-                        {#if pricingPending()}
+                        {#if pricingPending}
                             Getting prices from Cardmarket...
                         {:else}
                             Main {formatPrice(pricing.main)} • Side {formatPrice(pricing.sideboard)}
                         {/if}
                     </p>
-                    {#if !pricingPending() && pricing.missingCopies > 0}
+                    {#if !pricingPending && pricing.missingCopies > 0}
                         <p class="text-xs text-red-300 mt-1">
                             Error while fetching {pricing.missingCopies} cards.
                         </p>

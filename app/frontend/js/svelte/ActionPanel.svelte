@@ -50,16 +50,16 @@
     };
 
     // Check if passButton is a special coin flip or mulligan choice
-    const isCoinFlipChoice = $derived(() => passButton?.isCoinFlipChoice === true);
-    const isMulliganChoice = $derived(() => passButton?.isMulliganChoice === true);
-    const isGameStartPhase = $derived(() => gameStartPhase !== 'complete');
+    const isCoinFlipChoice = $derived(passButton?.isCoinFlipChoice === true);
+    const isMulliganChoice = $derived(passButton?.isMulliganChoice === true);
+    const isGameStartPhase = $derived(gameStartPhase !== 'complete');
 
-    const normalizedPhase = $derived(() => currentPhase || 'begin');
+    const normalizedPhase = $derived(currentPhase || 'begin');
     let timelinePhases = $state([]);
 
     $effect(() => {
         const phaseList = Array.isArray(phases) ? phases : [];
-        const normalized = normalizedPhase();
+        const normalized = normalizedPhase;
         const readOnly = readOnlyPhases;
 
         const activeIndex = Math.max(
@@ -105,19 +105,19 @@
         });
     });
 
-    const hasQuickButtons = $derived(() => Array.isArray(quickButtons) && quickButtons.length > 0);
+    const hasQuickButtons = $derived(Array.isArray(quickButtons) && quickButtons.length > 0);
 
-    const replayTotalSteps = $derived(() => replayControls ? Math.max(replayControls.totalSteps || 0, 0) : 0);
-    const replayCurrentStep = $derived(() => replayControls ? (replayControls.currentStep || 0) : 0);
+    const replayTotalSteps = $derived(replayControls ? Math.max(replayControls.totalSteps || 0, 0) : 0);
+    const replayCurrentStep = $derived(replayControls ? (replayControls.currentStep || 0) : 0);
 
-    const replayProgress = $derived(() => {
-        const total = Math.max(replayTotalSteps(), 1);
-        const current = Math.max(Math.min(replayCurrentStep() + 1, total), 0);
+    const replayProgress = $derived.by(() => {
+        const total = Math.max(replayTotalSteps, 1);
+        const current = Math.max(Math.min(replayCurrentStep + 1, total), 0);
 
         return Math.round((current / total) * 100);
     });
 
-    const replayButtonClass = $derived(() => {
+    const replayButtonClass = $derived.by(() => {
         const buttonConfig = (typeof UIConfig !== 'undefined' && UIConfig?.CSS_CLASSES?.button)
             ? UIConfig.CSS_CLASSES.button
             : null;

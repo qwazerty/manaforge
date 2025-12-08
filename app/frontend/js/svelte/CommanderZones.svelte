@@ -12,9 +12,9 @@
         panelIcon = '👑'
     } = $props();
 
-    const isSpectator = $derived(() => selectedPlayer === 'spectator');
+    const isSpectator = $derived(selectedPlayer === 'spectator');
 
-    const playerContext = $derived(() => {
+    const playerContext = $derived.by(() => {
         if (!gameState) {
             return null;
         }
@@ -68,7 +68,7 @@
         const ownerId = getOwnerId(playerData, playerIndex);
         const displayName = getPlayerDisplayName(playerData, getSeatFallbackName(playerIndex));
 
-        const allowTaxControls = !isOpponent && !isSpectator() && selectedPlayer === ownerId;
+        const allowTaxControls = !isOpponent && !isSpectator && selectedPlayer === ownerId;
 
         return {
             ownerId,
@@ -81,14 +81,14 @@
         };
     };
 
-    const opponentCommanderData = $derived(() => {
-        const ctx = playerContext();
+    const opponentCommanderData = $derived.by(() => {
+        const ctx = playerContext;
         if (!ctx) return null;
         return buildCommanderZoneData(ctx.players[ctx.opponentIdx], ctx.opponentIdx, true);
     });
 
-    const playerCommanderData = $derived(() => {
-        const ctx = playerContext();
+    const playerCommanderData = $derived.by(() => {
+        const ctx = playerContext;
         if (!ctx) return null;
         return buildCommanderZoneData(ctx.players[ctx.controlledIdx], ctx.controlledIdx, false);
     });
@@ -103,7 +103,7 @@
                 isOpponent,
                 null,
                 ownerId,
-                { readOnly: isSpectator() || isOpponent }
+                { readOnly: isSpectator || isOpponent }
             );
         }
     };
@@ -178,8 +178,8 @@
     </div>
 
     <div class="commander-zones-content mt-3 grid grid-cols-2 gap-3">
-        {#if opponentCommanderData()}
-            {@const data = opponentCommanderData()}
+        {#if opponentCommanderData}
+            {@const data = opponentCommanderData}
             <div class="commander-zone-section commander-zone-opponent">
                 <div class="commander-zone-header flex flex-col items-center mb-2">
                     <span class="text-xs font-semibold text-arena-text-dim truncate w-full text-center">
@@ -209,8 +209,8 @@
             </div>
         {/if}
 
-        {#if playerCommanderData()}
-            {@const data = playerCommanderData()}
+        {#if playerCommanderData}
+            {@const data = playerCommanderData}
             <div class="commander-zone-section commander-zone-player">
                 <div class="commander-zone-header flex flex-col items-center mb-2">
                     <span class="text-xs font-semibold text-arena-accent truncate w-full text-center">
@@ -263,7 +263,7 @@
             </div>
         {/if}
 
-        {#if !playerContext()}
+        {#if !playerContext}
             <div class="col-span-2 text-center text-arena-muted text-sm py-4">
                 Waiting for game data...
             </div>

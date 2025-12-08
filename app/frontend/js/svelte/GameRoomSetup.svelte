@@ -8,12 +8,12 @@
     const PLAYER_NAME_STORAGE_KEY = 'manaforge:player-name';
     const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
-    const gameId = $derived(() => config?.gameId || '');
-    const playerRole = $derived(() => config?.playerRole || 'spectator');
-    const setupApiUrl = $derived(() => config?.setupApiUrl || '');
-    const submitApiUrl = $derived(() => config?.submitApiUrl || '');
-    const gameInterfaceUrl = $derived(() => config?.gameInterfaceUrl || '');
-    const shareLinks = $derived(() => config?.shareLinks || {});
+    const gameId = $derived(config?.gameId || '');
+    const playerRole = $derived(config?.playerRole || 'spectator');
+    const setupApiUrl = $derived(config?.setupApiUrl || '');
+    const submitApiUrl = $derived(config?.submitApiUrl || '');
+    const gameInterfaceUrl = $derived(config?.gameInterfaceUrl || '');
+    const shareLinks = $derived(config?.shareLinks || {});
 
     const buildAbsoluteShareLinks = (links = {}) => {
         if (!isBrowser) return links || {};
@@ -36,7 +36,7 @@
         }, {});
     };
 
-    const resolvedShareLinks = $derived(() => buildAbsoluteShareLinks(shareLinks()));
+    const resolvedShareLinks = $derived(buildAbsoluteShareLinks(shareLinks));
 
     let status = $state({});
     let lastUpdateLabel = $state('just now');
@@ -83,7 +83,7 @@
         status = initialStatus;
         selectedGameFormat = initialStatus?.game_format || 'modern';
         selectedPhaseMode = initialStatus?.phase_mode || 'strict';
-        selectedPlayerRole = playerRole();
+        selectedPlayerRole = playerRole;
     });
 
     let opponentMessage = $state('');
@@ -154,7 +154,7 @@
         }
     };
 
-    const isSeatedPlayer = $derived(() => playerRole() === 'player1' || playerRole() === 'player2');
+    const isSeatedPlayer = $derived(playerRole === 'player1' || playerRole === 'player2');
 
     const getPlayerData = (seat) => status?.player_status?.[seat] || null;
 

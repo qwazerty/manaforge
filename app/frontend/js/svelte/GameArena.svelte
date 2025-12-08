@@ -25,7 +25,7 @@
 
     const COMMANDER_FORMATS = ['duel_commander', 'commander_multi'];
 
-    const isCommanderFormat = $derived(() => {
+    const isCommanderFormat = $derived.by(() => {
         const format = gameState?.game_format || '';
         return COMMANDER_FORMATS.includes(format);
     });
@@ -44,15 +44,15 @@
     const zoneContainerClass =
         UIConfig?.CSS_CLASSES?.zone?.container || 'zone-item';
 
-    const playerContext = $derived(() => {
+    const playerContext = $derived.by(() => {
         if (!gameState) {
             return null;
         }
         return computePlayerContext(gameState, selectedPlayer);
     });
 
-    const sidebarData = $derived(() => {
-        const context = playerContext();
+    const sidebarData = $derived.by(() => {
+        const context = playerContext;
         if (!context) {
             return null;
         }
@@ -63,7 +63,7 @@
         };
     });
 
-    const boardData = $derived(() => {
+    const boardData = $derived.by(() => {
         if (!gameState) {
             return null;
         }
@@ -75,11 +75,9 @@
         }
     });
 
-    const boardHydrated = $derived(() => {
-        return boardData() ? 'true' : 'false';
-    });
+    const boardHydrated = $derived(boardData ? 'true' : 'false');
 
-    const counterModalCounters = $derived(() => {
+    const counterModalCounters = $derived.by(() => {
         if (!counterModal.open || !counterModal.playerId || !gameState) {
             return [];
         }
@@ -681,15 +679,15 @@
     });
 
     $effect(() => {
-        void boardData();
+        void boardData;
         scheduleOverlapRefresh();
     });
 </script>
 
 <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 flex-grow h-full">
     <div class="xl:col-span-1" id="stack-area">
-        {#if sidebarData()}
-            {@const sidebar = sidebarData()}
+        {#if sidebarData}
+            {@const sidebar = sidebarData}
             {#if sidebar.opponent}
                 <div class="arena-card rounded-lg p-3 mb-3">
                     <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
@@ -766,10 +764,10 @@
     <div
         class="xl:col-span-2"
         id="game-board"
-        data-board-hydrated={boardHydrated()}
+        data-board-hydrated={boardHydrated}
         bind:this={gameBoardEl}>
-        {#if boardData()}
-            {@const board = boardData()}
+        {#if boardData}
+            {@const board = boardData}
             {#if board.opponent}
                 <div
                     class={`arena-card rounded-lg mb-3 p-3 compact-zones ${board.opponent.isActive ? 'opponent-zone-active-turn' : ''}`}
@@ -857,7 +855,7 @@
 
     <div class="xl:col-span-1 space-y-3" id="right-sidebar">
         <div id="action-history-panel"></div>
-        {#if isCommanderFormat()}
+        {#if isCommanderFormat}
             <CommanderZones
                 gameState={gameState}
                 selectedPlayer={selectedPlayer}
@@ -869,7 +867,7 @@
         open={counterModal.open}
         playerId={counterModal.playerId}
         playerName={counterModal.playerName}
-        counters={counterModalCounters()}
+        counters={counterModalCounters}
         position={counterModal.position}
         onClose={closeCounterModal}
         onModify={modifyModalCounter}

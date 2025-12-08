@@ -54,14 +54,10 @@
 
     let isSpectator = $derived(getSelectedPlayer() === 'spectator');
 
-    let menuConfig = $derived(() => {
-        const config = ZONE_MENUS[baseZoneName];
-        if (!config) return null;
-        return config;
-    });
+    let menuConfig = $derived(ZONE_MENUS[baseZoneName] || null);
 
-    let filteredActions = $derived(() => {
-        const config = menuConfig();
+    let filteredActions = $derived.by(() => {
+        const config = menuConfig;
         if (!config) return [];
 
         return config.actions.filter((action) => {
@@ -76,16 +72,13 @@
         });
     });
 
-    let menuTitle = $derived(() => {
-        const config = menuConfig();
+    let menuTitle = $derived.by(() => {
+        const config = menuConfig;
         if (!config) return '';
         return isOpponentZone ? `Opponent's ${config.title}` : config.title;
     });
 
-    let menuIcon = $derived(() => {
-        const config = menuConfig();
-        return config?.icon || '📋';
-    });
+    let menuIcon = $derived(menuConfig?.icon || '📋');
 
     // Public API
     export function show(zone, event, isOpponent = false) {
@@ -311,11 +304,11 @@
         aria-label="Zone actions"
     >
         <div class="zone-context-menu-header">
-            <span class="zone-context-menu-icon">{menuIcon()}</span>
-            <span class="zone-context-menu-title">{menuTitle()}</span>
+            <span class="zone-context-menu-icon">{menuIcon}</span>
+            <span class="zone-context-menu-title">{menuTitle}</span>
         </div>
         <div class="zone-context-menu-actions">
-            {#each filteredActions() as action (action.action)}
+            {#each filteredActions as action (action.action)}
                 <button 
                     class="zone-context-menu-action"
                     data-zone={zoneName}
