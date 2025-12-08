@@ -4,6 +4,7 @@
 - You can run tests, using the `corepack pnpm test:unit` command.
 - Do not edit generated bundle files (e.g., `app/static/js/ui/components/*.bundle.js` or compiled JS); only modify source files (e.g., `.svelte`).
 - For Python commands, use the virtual environment: `source venv/bin/activate` before running `python`, `pip`, or `pytest`.
+- Do not place CSS styles inline or in component files; add all new styling in Tailwind (e.g., `app/static/css/tailwind.css`).
 
 ## Svelte Development Guidelines
 
