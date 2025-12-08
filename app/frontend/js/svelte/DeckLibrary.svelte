@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { DeckStorage } from '../../lib/deck-storage';
+    import { DeckStorage } from '@lib/deck-storage';
 
     const LIMITED_FORMATS = ['draft', 'sealed', 'cube'];
     const FORMAT_OPTIONS = [

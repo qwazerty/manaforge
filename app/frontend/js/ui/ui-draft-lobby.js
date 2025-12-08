@@ -1,4 +1,5 @@
-import DraftLobby, { mount } from './components/DraftLobby.esm.js';
+import { mount } from 'svelte';
+import DraftLobby from '@svelte/DraftLobby.svelte';
 
 const init = () => {
     const target = document.getElementById('svelte-draft-lobby');

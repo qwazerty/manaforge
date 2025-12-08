@@ -3,7 +3,8 @@
  * Hydrates the chat sidebar with the BattleChat Svelte component.
  */
 
-import BattleChat, { mount as mountBattleChat, unmount as unmountBattleChat } from './components/BattleChat.esm.js';
+import { mount } from 'svelte';
+import BattleChat from '@svelte/BattleChat.svelte';
 
 class UIBattleChat {
     static MAX_MESSAGES = 500;
@@ -167,7 +168,7 @@ class UIBattleChat {
         this._destroyComponent();
         try {
             container.innerHTML = '';
-            this._component = mountBattleChat(BattleChat, {
+            this._component = mount(BattleChat, {
                 target: container,
                 props: this._buildProps()
             });
@@ -184,7 +185,9 @@ class UIBattleChat {
     static _destroyComponent() {
         if (this._component) {
             try {
-                unmountBattleChat(this._component);
+                if (typeof this._component.$destroy === 'function') {
+                    this._component.$destroy();
+                }
             } catch (error) {
                 console.error('Failed to destroy battle chat component', error);
             }

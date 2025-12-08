@@ -1,4 +1,5 @@
-import HorizontalScrollManager, { mount } from './components/HorizontalScrollManager.esm.js';
+import { mount } from 'svelte';
+import HorizontalScrollManager from '@svelte/HorizontalScrollManager.svelte';
 
 const init = () => {
     const host = document.createElement('div');

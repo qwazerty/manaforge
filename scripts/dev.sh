@@ -25,8 +25,7 @@ start_cmd() {
 }
 
 start_cmd "backend" docker compose -f docker-compose-dev.yml up --build
-start_cmd "svelte watcher" corepack pnpm run dev:svelte
 start_cmd "tailwind watcher" corepack pnpm run dev:css
-start_cmd "main watcher" npx esbuild app/static/js/main.ts --bundle --format=esm --target=es2022 --sourcemap --outfile=app/static/js/main.js --watch
+start_cmd "vite dev" corepack pnpm run dev:svelte
 
 wait "${PIDS[@]}"

@@ -12,27 +12,27 @@
         "strict": true,
         "baseUrl": ".",
         "paths": {
-            "@svelte/*": ["app/static/js/svelte/*"],
-            "@ui/*": ["app/static/js/ui/*"],
-            "@lib/*": ["app/static/js/lib/*"]
+            "@svelte/*": ["app/frontend/js/svelte/*"],
+            "@ui/*": ["app/frontend/js/ui/*"],
+            "@lib/*": ["app/frontend/js/lib/*"]
         },
         "types": ["vitest/globals"]
     },
     "include": [
-        "app/static/js/**/*.d.ts",
-        "app/static/js/svelte/*.svelte",
-        "app/static/js/lib/**/*.ts",
-        "app/static/js/main.ts",
+        "app/frontend/js/**/*.d.ts",
+        "app/frontend/js/svelte/*.svelte",
+        "app/frontend/js/lib/**/*.ts",
+        "app/frontend/js/main.ts",
         "setupTests.ts",
         "vitest.config.mts"
     ],
     "exclude": [
-        "app/static/js/ui/components/**",
-        "app/static/js/svelte/stores/**",
-        "app/static/js/svelte/utils/**",
-        "app/static/js/svelte/lib/**",
-        "app/static/js/**/*.bundle.js",
-        "app/static/js/**/*.esm.js",
+        "app/static/dist/**",
+        "app/frontend/js/svelte/stores/**",
+        "app/frontend/js/svelte/utils/**",
+        "app/frontend/js/svelte/lib/**",
+        "app/frontend/js/**/*.bundle.js",
+        "app/frontend/js/**/*.esm.js",
         "node_modules"
     ]
 }

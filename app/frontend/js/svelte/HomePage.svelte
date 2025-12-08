@@ -34,7 +34,7 @@
     }
 
     onMount(() => {
-        const criticalPages = ['/game', '/cards'];
+        const criticalPages = ['/game'];
         criticalPages.forEach((page) => {
             const link = document.createElement('link');
             link.rel = 'prefetch';

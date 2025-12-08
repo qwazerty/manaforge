@@ -1,4 +1,5 @@
-import DraftRoom, { mount } from './components/DraftRoom.esm.js';
+import { mount } from 'svelte';
+import DraftRoom from '@svelte/DraftRoom.svelte';
 
 const init = () => {
     const root = document.getElementById('draft-room-root');

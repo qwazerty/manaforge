@@ -2,18 +2,18 @@
     import { onMount, onDestroy, tick } from 'svelte';
     import { DeckStorage } from '@lib/deck-storage';
 
-    let { config } = $props();
+    let { config = {} } = $props();
 
     const STATUS_POLL_INTERVAL = 2500;
     const PLAYER_NAME_STORAGE_KEY = 'manaforge:player-name';
     const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
-    const gameId = config?.gameId || '';
-    const playerRole = config?.playerRole || 'spectator';
-    const setupApiUrl = config?.setupApiUrl || '';
-    const submitApiUrl = config?.submitApiUrl || '';
-    const gameInterfaceUrl = config?.gameInterfaceUrl || '';
-    const shareLinks = config?.shareLinks || {};
+    const gameId = $derived(() => config?.gameId || '');
+    const playerRole = $derived(() => config?.playerRole || 'spectator');
+    const setupApiUrl = $derived(() => config?.setupApiUrl || '');
+    const submitApiUrl = $derived(() => config?.submitApiUrl || '');
+    const gameInterfaceUrl = $derived(() => config?.gameInterfaceUrl || '');
+    const shareLinks = $derived(() => config?.shareLinks || {});
 
     const buildAbsoluteShareLinks = (links = {}) => {
         if (!isBrowser) return links || {};
@@ -36,13 +36,13 @@
         }, {});
     };
 
-    const resolvedShareLinks = buildAbsoluteShareLinks(shareLinks);
+    const resolvedShareLinks = $derived(() => buildAbsoluteShareLinks(shareLinks()));
 
-    let status = $state(config?.initialStatus || {});
+    let status = $state({});
     let lastUpdateLabel = $state('just now');
-    let selectedGameFormat = $state(config?.initialStatus?.game_format || 'modern');
-    let selectedPhaseMode = $state(config?.initialStatus?.phase_mode || 'strict');
-    let selectedPlayerRole = $state(playerRole);
+    let selectedGameFormat = $state('modern');
+    let selectedPhaseMode = $state('strict');
+    let selectedPlayerRole = $state('spectator');
 
     let deckText = $state('');
     let deckUrl = $state('');
@@ -77,6 +77,14 @@
     let deckStatusTimeoutId = null;
     let deckCacheTimeoutId = null;
     let redirectTimer = null;
+
+    $effect(() => {
+        const initialStatus = config?.initialStatus || {};
+        status = initialStatus;
+        selectedGameFormat = initialStatus?.game_format || 'modern';
+        selectedPhaseMode = initialStatus?.phase_mode || 'strict';
+        selectedPlayerRole = playerRole();
+    });
 
     let opponentMessage = $state('');
     let deckFormNotice = $state('');
@@ -146,7 +154,7 @@
         }
     };
 
-    const isSeatedPlayer = playerRole === 'player1' || playerRole === 'player2';
+    const isSeatedPlayer = $derived(() => playerRole() === 'player1' || playerRole() === 'player2');
 
     const getPlayerData = (seat) => status?.player_status?.[seat] || null;
 

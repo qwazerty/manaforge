@@ -1,4 +1,5 @@
-import FormatStats, { mount } from './components/FormatStats.esm.js';
+import { mount } from 'svelte';
+import FormatStats from '@svelte/FormatStats.svelte';
 
 const init = () => {
     const root = document.getElementById('format-stats-root');

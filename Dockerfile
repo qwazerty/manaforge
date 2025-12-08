@@ -14,6 +14,7 @@ RUN pnpm install --frozen-lockfile
 COPY app ./app
 COPY tools ./tools
 COPY tailwind.config.js ./tailwind.config.js
+COPY tsconfig.json vite.config.ts ./
 
 RUN pnpm run build
 
@@ -34,9 +35,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
-COPY --from=frontend-builder /app/app/static/css/dist/manaforge.css app/static/css/dist/manaforge.css
-COPY --from=frontend-builder /app/app/static/js/ui/components app/static/js/ui/components
-COPY --from=frontend-builder /app/app/static/js/main.js* app/static/js/
+COPY --from=frontend-builder /app/app/static/dist app/static/dist
 
 # Expose port
 EXPOSE 8000

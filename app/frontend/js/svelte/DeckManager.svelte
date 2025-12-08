@@ -1,7 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    import { DeckStorage, deepClone } from '../../lib/deck-storage';
-    import { createPriceLookup, formatPrice, getCachedPrice } from '../../lib/pricing';
+    import { DeckStorage, deepClone } from '@lib/deck-storage';
+    import { createPriceLookup, formatPrice, getCachedPrice } from '@lib/pricing';
 
     // Constants
     const STORAGE_KEY = 'manaforge:deck-manager:v1';
