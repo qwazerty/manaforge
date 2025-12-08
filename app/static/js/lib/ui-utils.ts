@@ -130,7 +130,7 @@ export function generateZoneWrapper(content: string, zoneType: string) {
 
 export function generateEmptyZoneContent(icon: string, message: string) {
     return `
-            <div class="zone-empty">
+            <div class="zone-empty" data-testid="empty-zone" aria-label="${message}">
                 <div class="text-arena-text-dim text-center py-4">${icon} ${message}</div>
             </div>
         `;
