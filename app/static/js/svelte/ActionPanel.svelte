@@ -1,5 +1,6 @@
 <script>
     import RandomButton from './RandomButton.svelte';
+    import { UIConfig } from '@lib/ui-config';
 
     let {
         headerIcon = '⚡',

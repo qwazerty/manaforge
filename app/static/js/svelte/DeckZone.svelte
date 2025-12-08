@@ -1,5 +1,6 @@
 <script>
     import ZoneContextMenu from './ZoneContextMenu.svelte';
+    import { generateEmptyZoneContent } from '@lib/ui-utils';
 
     let {
         cardsRemaining = 0,
@@ -39,7 +40,7 @@
             data-zone-context={zoneIdentifier}
             onclick={handleClick}
             oncontextmenu={handleContextMenu}>
-            {@html UIUtils.generateEmptyZoneContent('📖', 'Deck is empty')}
+            {@html generateEmptyZoneContent('📖', 'Deck is empty')}
         </button>
     {:else}
         <button

@@ -1,7 +1,3 @@
-/**
- * CardManager Svelte Component Initialization (ESM)
- * Dynamically mounts the unified card manager without relying on globals.
- */
 import CardManager, { mount } from './components/CardManager.esm.js';
 
 function init() {

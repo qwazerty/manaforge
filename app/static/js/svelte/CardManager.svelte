@@ -3,6 +3,7 @@
     import CardAddTypePopover from './CardAddTypePopover.svelte';
     import CardAddCounterPopover from './CardAddCounterPopover.svelte';
     import CardPowerToughnessPopover from './CardPowerToughnessPopover.svelte';
+    import { calculateAnchorPosition } from '@lib/ui-utils';
 
     /**
      * ManaForge Card Manager
@@ -188,10 +189,7 @@
     }
 
     function calculatePopoverPosition(anchorElement = null) {
-        if (typeof UIUtils === 'undefined' || typeof UIUtils.calculateAnchorPosition !== 'function') {
-            return { top: 200, left: 200, anchor: 'center' };
-        }
-        return UIUtils.calculateAnchorPosition(anchorElement, {
+        return calculateAnchorPosition(anchorElement, {
             preferredAnchor: anchorElement ? 'bottom-left' : 'center',
             panelWidth: 420,
             panelHeight: 420,

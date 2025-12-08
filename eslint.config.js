@@ -24,7 +24,6 @@ const appGlobals = {
     CardPreviewModal: 'readonly',
     CardContextMenu: 'readonly',
     ZoneManager: 'readonly',
-    ZoneData: 'readonly',
     // External libraries
     Chart: 'readonly',
     // Utility functions

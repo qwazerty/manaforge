@@ -1,7 +1,3 @@
-/**
- * ManaForge Card Context Menu Initialization
- * Bootstraps the CardContextMenu Svelte component
- */
 import CardContextMenu, { mount } from './components/CardContextMenu.esm.js';
 
 if (typeof document !== 'undefined') {

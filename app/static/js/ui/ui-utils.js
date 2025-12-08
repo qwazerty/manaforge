@@ -134,11 +134,11 @@ class UIUtils {
     static generateButton(onclick, classes, title, content, disabled = false) {
         const disabledClasses = disabled ? ' opacity-40 cursor-not-allowed' : '';
         const disabledAttr = disabled ? 'disabled' : '';
-        const styleAttr = disabled ? 'style="opacity: 0.4;"' : '';
+        const styleAttr = disabled ? 'style=\"opacity: 0.4;\"' : '';
         return `
-            <button onclick="${onclick}" 
-                    class="${classes}${disabledClasses}"
-                    title="${title}"
+            <button onclick=\"${onclick}\" 
+                    class=\"${classes}${disabledClasses}\"
+                    title=\"${title}\"
                     ${disabledAttr}
                     ${styleAttr}>
                 ${content}
@@ -151,7 +151,7 @@ class UIUtils {
      */
     static generateZoneWrapper(content, zoneType) {
         return `
-            <div class="${UIConfig.CSS_CLASSES.zone.container} ${zoneType}-zone">
+            <div class=\"${UIConfig.CSS_CLASSES.zone.container} ${zoneType}-zone\">
                 ${content}
             </div>
         `;
@@ -162,8 +162,8 @@ class UIUtils {
      */
     static generateEmptyZoneContent(icon, message) {
         return `
-            <div class="${UIConfig.CSS_CLASSES.zone.empty}">
-                <div class="text-arena-text-dim text-center py-4">${icon} ${message}</div>
+            <div class=\"${UIConfig.CSS_CLASSES.zone.empty}\">
+                <div class=\"text-arena-text-dim text-center py-4\">${icon} ${message}</div>
             </div>
         `;
     }
@@ -173,8 +173,8 @@ class UIUtils {
      */
     static generateEmptyZone(icon, name) {
         return `
-            <div class="card-fallback text-xs">
-                <span class="text-2xl mb-2">${icon}</span>
+            <div class=\"card-fallback text-xs\">
+                <span class=\"text-2xl mb-2\">${icon}</span>
                 <div>${name}</div>
             </div>
         `;
@@ -185,7 +185,7 @@ class UIUtils {
      */
     static generateZoneClickHandler(isOpponent, prefix, zoneType, title) {
         const handlerPrefix = isOpponent ? 'Opponent' : '';
-        return `onclick="ZoneManager.show${handlerPrefix}ZoneModal('${prefix}${zoneType}')" title="Click to view ${title}"`;
+        return `onclick=\"ZoneManager.show${handlerPrefix}ZoneModal('${prefix}${zoneType}')\" title=\"Click to view ${title}\"`;
     }
 
     /**

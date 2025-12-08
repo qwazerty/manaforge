@@ -2,6 +2,7 @@
     import { onDestroy, onMount } from 'svelte';
     import GameArena from './GameArena.svelte';
     import { loadActionHistoryFromState } from './stores/actionHistoryStore.js';
+    import { UIConfig } from '@lib/ui-config';
 
     let {
         gameId = ''

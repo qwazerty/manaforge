@@ -9,6 +9,14 @@
     import CommanderZones from './CommanderZones.svelte';
     import { buildCounterEntries } from './utils/player-counter-utils.js';
     import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
+    import { UIConfig } from '@lib/ui-config';
+    import {
+        getDeckZoneConfig,
+        getGraveyardZoneConfig,
+        getExileZoneConfig,
+        getLifeZoneConfig
+    } from '@lib/zone-data';
+    import { calculateAnchorPosition, filterCardsByType, createTransform } from '@lib/ui-utils';
 
     let {
         gameState = null,
@@ -251,16 +259,13 @@
     }
 
     function calculateCounterModalPosition(anchorElement = null) {
-        if (typeof UIUtils !== 'undefined' && typeof UIUtils.calculateAnchorPosition === 'function') {
-            return UIUtils.calculateAnchorPosition(anchorElement, {
-                preferredAnchor: anchorElement ? 'bottom-left' : 'center',
-                panelWidth: 420,
-                panelHeight: 460,
-                horizontalOffset: 4,
-                verticalOffset: 8
-            });
-        }
-        return fallbackCounterModalPosition();
+        return calculateAnchorPosition(anchorElement, {
+            preferredAnchor: anchorElement ? 'bottom-left' : 'center',
+            panelWidth: 420,
+            panelHeight: 460,
+            horizontalOffset: 4,
+            verticalOffset: 8
+        });
     }
 
     function openCounterModalForPlayer(playerData, playerId, anchorElement = null) {
@@ -421,68 +426,19 @@
     }
 
     function getDeckConfig(deckCards, isOpponent) {
-        if (typeof ZoneData?.getDeckZoneConfig === 'function') {
-            return ZoneData.getDeckZoneConfig(deckCards, isOpponent);
-        }
-        const cardsRemaining = Array.isArray(deckCards) ? deckCards.length : 0;
-        const selectedPlayer = typeof GameCore?.getSelectedPlayer === 'function'
-            ? GameCore.getSelectedPlayer()
-            : null;
-        const isSpectator = selectedPlayer === 'spectator';
-        return {
-            cardsRemaining,
-            overlayText: isSpectator ? '' : (isOpponent ? 'View' : 'Draw'),
-            onClick: null,
-            deckClass: isOpponent ? 'deck-cards-stack opponent-deck' : 'deck-cards-stack',
-            zoneIdentifier: isOpponent ? 'opponent_deck' : 'deck'
-        };
+        return getDeckZoneConfig(deckCards, isOpponent);
     }
 
     function getGraveyardConfig(graveyardCards, isOpponent) {
-        if (typeof ZoneData?.getGraveyardZoneConfig === 'function') {
-            return ZoneData.getGraveyardZoneConfig(graveyardCards, isOpponent);
-        }
-        return {
-            cardsRemaining: Array.isArray(graveyardCards) ? graveyardCards.length : 0,
-            graveyardArray: Array.isArray(graveyardCards) ? graveyardCards : [],
-            overlayHtml: 'View<br>All',
-            zoneIdentifier: isOpponent ? 'opponent_graveyard' : 'graveyard',
-            clickHandler: null
-        };
+        return getGraveyardZoneConfig(graveyardCards, isOpponent);
     }
 
     function getExileConfig(exileCards, isOpponent) {
-        if (typeof ZoneData?.getExileZoneConfig === 'function') {
-            return ZoneData.getExileZoneConfig(exileCards, isOpponent);
-        }
-        return {
-            cardsRemaining: Array.isArray(exileCards) ? exileCards.length : 0,
-            exileArray: Array.isArray(exileCards) ? exileCards : [],
-            overlayHtml: 'View<br>All',
-            zoneIdentifier: isOpponent ? 'opponent_exile' : 'exile',
-            clickHandler: null,
-            topCard: Array.isArray(exileCards) && exileCards.length
-                ? exileCards[exileCards.length - 1]
-                : null
-        };
+        return getExileZoneConfig(exileCards, isOpponent);
     }
 
     function getLifeConfig(playerData, ownerId) {
-        if (typeof ZoneData?.getLifeZoneConfig === 'function') {
-            return ZoneData.getLifeZoneConfig(playerData, ownerId);
-        }
-        const lifeValue = typeof playerData?.life === 'number'
-            ? playerData.life
-            : 20;
-        return {
-            life: lifeValue,
-            playerId: ownerId || 'player1',
-            negativeControls: [],
-            positiveControls: [],
-            hasCustomLifeControls: false,
-            counters: [],
-            manageButton: null
-        };
+        return getLifeZoneConfig(playerData, ownerId);
     }
 
     function buildBoardSide(playerData = {}, playerIndex, isOpponent, activePlayer, playerSelection) {
@@ -584,9 +540,7 @@
         const hostCards = cards.filter((card) => !card?.attached_to && !card?.attachedTo);
 
         return zoneNames.map((zoneName) => {
-            const filteredCards = typeof UIUtils?.filterCardsByType === 'function'
-                ? UIUtils.filterCardsByType(hostCards, zoneName)
-                : hostCards;
+        const filteredCards = filterCardsByType(hostCards, zoneName);
             const cardCount = filteredCards.reduce((count, card) => {
                 const uid = getCardUniqueId(card);
                 const attachments = uid ? (attachmentsByHost.get(uid) || []) : [];
@@ -660,9 +614,7 @@
         return Array.from({ length: count }).map((_, index) => `
             <div class="card-back opponent-hand-card"
                  data-card-id="opponent-card-${index}"
-                 style="width: 60px; height: 84px; ${UIUtils?.createTransform
-                     ? UIUtils.createTransform(0, 0, index % 2 === 0 ? -2 : 2)
-                     : ''}">
+                 style="width: 60px; height: 84px; ${createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
             </div>
         `).join('');
     }
