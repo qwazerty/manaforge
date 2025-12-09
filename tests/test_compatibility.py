@@ -136,7 +136,9 @@ class TestAsyncFunctionality:
         test_app = FastAPI()
 
         # Mock the CardService
-        with patch("app.backend.services.card_service.CardService") as mock_card_service:
+        with patch(
+            "app.backend.services.card_service.CardService"
+        ) as mock_card_service:
             mock_card_service_instance = AsyncMock()
             mock_card_service.return_value = mock_card_service_instance
 

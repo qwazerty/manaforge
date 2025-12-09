@@ -578,17 +578,6 @@
     let revealCardCount = $derived(getZoneCardCount('reveal'));
     let lookCardCount = $derived(getZoneCardCount('look'));
 
-    // Zone label helper
-    function getZoneLabel(zone) {
-        const labels = {
-            graveyard: 'Graveyard',
-            exile: 'Exile',
-            reveal: 'Reveal',
-            reveal_zone: 'Reveal'
-        };
-        return labels[zone] || 'Zone';
-    }
-
     // Export API to window
     const CardContextMenuAPI = {
         show,

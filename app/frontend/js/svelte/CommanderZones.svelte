@@ -197,6 +197,7 @@
                     data-card-count={data.cardCount}>
                     {#if data.cardCount > 0}
                         {#each data.commanderCards as card, index (card.unique_id || index)}
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                             {@html renderCommanderCard(card, data.ownerId, true)}
                         {/each}
                     {:else}
@@ -251,6 +252,7 @@
                     ondrop={data.allowTaxControls ? (e) => handleDrop(e, data.ownerId) : null}>
                     {#if data.cardCount > 0}
                         {#each data.commanderCards as card, index (card.unique_id || index)}
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                             {@html renderCommanderCard(card, data.ownerId, false)}
                         {/each}
                     {:else}
