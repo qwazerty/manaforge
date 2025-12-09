@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 from math import ceil
 
-from app.core import db
+from app.backend.core import db
 
 logger = logging.getLogger(__name__)
 

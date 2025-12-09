@@ -7,7 +7,7 @@ ManaForge is a functional web-based platform for playing Magic The Gathering onl
 ## Architecture
 
 - **Backend**: FastAPI with async/await support and comprehensive API endpoints
-- **Frontend**: Responsive server-side templates with HTMX for dynamic interactions
+- **Frontend**: Svelte 5 (Vite-built) game UI, plus server-rendered templates enhanced with HTMX where needed
 - **Database**: MongoDB for card data and game state persistence
 - **Real-time**: WebSockets for live game updates and player communication
 - **Game Engine**: Complete MTG rules implementation with phase management, combat, and card interactions
@@ -26,33 +26,34 @@ docker compose up --build -d
 ### Local Development
 
 ```bash
-# Install dependencies
+# Backend
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# Install frontend tooling (Tailwind CSS)
-npm install
-
-# Start MongoDB (required)
-# Install MongoDB locally or use Docker:
-# docker run -d -p 27017:27017 mongo:7.0
+# Frontend (Node 24 + pnpm 10 via corepack)
+corepack enable
+pnpm install
 
 # Run the application
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 You can override the listener address via the `HOST` and `PORT` environment variables if needed.
 
-> ℹ️ The Docker build uses a Node-based stage to run `npm ci`, `npm run build:css`, and `npm run build:svelte`, so every container image ships with fresh frontend bundles. For local development outside of Docker, keep running the `dev:*` npm scripts as needed.
+> ℹ️ Docker’s frontend stage runs `pnpm install --frozen-lockfile` then `pnpm run build` (Vite + Tailwind). Local builds use the same commands—no separate `build:svelte` step is required.
 
-### Building Frontend Styles
+### Building Frontend Assets
 
-Tailwind CSS is now bundled locally (no CDN). Run the build once before launching the app or whenever you change `app/static/css/tailwind.css`:
+- Entry point: `app/frontend/js/main.ts` (Svelte 5 + Vite). Outputs to `app/static/dist/js`.
+- Styles: `app/frontend/css/tailwind.css` (Tailwind CLI v4) → `app/static/dist/css/manaforge.css`.
+
+Commands (via pnpm):
 
 ```bash
-npm run build:css            # single build (minified)
-npm run dev:css              # watch mode during development
-npm run build:svelte         # bundle all Svelte components
-npm run dev:svelte           # watch Svelte sources and rebuild on change
+pnpm run build        # Vite production build + minified Tailwind
+pnpm run dev:watch    # Parallel Tailwind watch + Vite build --watch (no HMR)
+pnpm run dev:css      # Tailwind watch only
+pnpm run build:css    # CSS only
 ```
 
 ### Reverse Proxy and Service Split
@@ -185,10 +186,9 @@ Fully implemented game actions:
 - **Uvicorn**: ASGI server
 
 ### Frontend
-- **Jinja2**: Template engine
-- **HTMX**: Dynamic HTML without complex JavaScript
-- **Tailwind CSS**: Utility-first CSS framework
-- **Alpine.js**: Minimal JavaScript framework
+- **Svelte 5 (runes mode)** bundled with **Vite** (`app/frontend/js/main.ts`)
+- **Tailwind CSS v4 CLI** for theming and animations (`app/frontend/css/tailwind.css`)
+- **Jinja2 + HTMX** still used for server-rendered pages where appropriate
 
 ### Database
 - **MongoDB**: Document database for flexible data storage
@@ -206,6 +206,14 @@ app/
 ├── models/                # Pydantic models and data structures
 │   ├── game.py           # Game state, players, cards
 │   └── card.py           # Card definitions and types
+├── frontend/              # Frontend sources (Svelte + Tailwind)
+│   ├── js/               # Vite entry + components
+│   │   ├── main.ts       # Mounts Svelte apps
+│   │   ├── svelte/       # Svelte 5 components (runes mode)
+│   │   ├── ui/           # DOM helpers / legacy widgets
+│   │   └── lib/          # Shared utilities
+│   └── css/
+│       └── tailwind.css  # Tailwind v4 source (compiled to static/dist/css)
 ├── services/              # Business logic and game engine
 │   ├── card_service.py   # Card search and management
 │   └── game_engine.py    # Complete MTG rules engine
@@ -216,7 +224,7 @@ app/
 │   ├── game.html         # Live game interface
 │   ├── cards.html        # Card search page
 │   └── error.html        # Error handling
-└── static/               # Static assets (CSS, JS, images)
+└── static/               # Built assets (Vite + Tailwind), images
 ```
 
 ## Development Guidelines
@@ -244,7 +252,7 @@ pytest --cov=app
 ### Development Workflow
 1. **Feature Development**: Create feature branches for new functionality
 2. **Code Review**: All changes require review before merging
-3. **Testing**: Comprehensive test coverage for game logic and API
+3. **Testing**: `corepack pnpm test:unit` for Svelte/Vite, `pytest` for backend, or `scripts/test.sh` to run both
 4. **Documentation**: Update README and code documentation
 5. **Performance**: Profile and optimize critical game paths
 

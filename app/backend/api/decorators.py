@@ -5,7 +5,7 @@ Decorators and utilities for API routes.
 from typing import Optional
 import time
 
-from app.models.game import GameState
+from app.backend.models.game import GameState
 
 
 async def broadcast_game_update(
@@ -13,8 +13,8 @@ async def broadcast_game_update(
 ):
     """Broadcast game state update to all connected clients."""
     try:
-        from app.api.websocket import manager
-        from app.api.routes import game_engine
+        from app.backend.api.websocket import manager
+        from app.backend.api.routes import game_engine
 
         message = {
             "type": "game_state_update",

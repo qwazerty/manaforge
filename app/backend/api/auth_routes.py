@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from psycopg import errors
 
-from app.services import auth_service
+from app.backend.services import auth_service
 
 
 class SignupRequest(BaseModel):

@@ -5,8 +5,8 @@ Action handlers for game actions.
 from typing import Dict, Any, Optional
 from fastapi import HTTPException
 
-from app.models.game import GameState
-from app.api.decorators import action_registry
+from app.backend.models.game import GameState
+from app.backend.api.decorators import action_registry
 
 
 @action_registry.register("pass_phase")

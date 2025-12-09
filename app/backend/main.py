@@ -11,13 +11,13 @@ from fastapi.templating import Jinja2Templates
 from typing import Optional
 from fastapi.encoders import jsonable_encoder
 
-from app.core.config import settings
-from app.api.routes import router
-from app.api.websocket import websocket_router
-from app.api.draft_routes import router as draft_router
-from app.api.auth_routes import router as auth_router
-from app.services.format_stats_service import get_format_statistics
-from app.services.pricing_service import load_pricing_data
+from app.backend.core.config import settings
+from app.backend.api.routes import router
+from app.backend.api.websocket import websocket_router
+from app.backend.api.draft_routes import router as draft_router
+from app.backend.api.auth_routes import router as auth_router
+from app.backend.services.format_stats_service import get_format_statistics
+from app.backend.services.pricing_service import load_pricing_data
 
 
 @asynccontextmanager
@@ -34,7 +34,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-static_dir = Path(__file__).resolve().parent / "static"
+static_dir = Path(__file__).resolve().parent.parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 app.include_router(router)
@@ -60,7 +60,7 @@ async def health_check():
 @app.get("/game-interface/{game_id}")
 async def game_interface(request: Request, game_id: str):
     """Game interface template."""
-    from app.api.routes import game_engine
+    from app.backend.api.routes import game_engine
 
     if game_id not in game_engine.games:
         return templates.TemplateResponse(
@@ -103,7 +103,7 @@ async def game_room(
     player_name: Optional[str] = Query(default=None),
 ):
     """Game setup status page before the duel starts."""
-    from app.api.routes import game_engine
+    from app.backend.api.routes import game_engine
 
     setup_status = game_engine.get_game_setup_status(game_id)
     if not setup_status:
@@ -194,7 +194,7 @@ async def draft_lobby(request: Request):
 @app.get("/draft/{room_id}")
 async def draft_room(request: Request, room_id: str):
     """Limited room page."""
-    from app.api.draft_routes import get_draft_engine
+    from app.backend.api.draft_routes import get_draft_engine
 
     engine = get_draft_engine()
     room = engine.get_draft_room(room_id)

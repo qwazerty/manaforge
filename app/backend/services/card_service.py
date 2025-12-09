@@ -10,9 +10,9 @@ import aiohttp
 from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
 
-from app.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
-from app.core import db
-from app.utils.text import normalize_name as _normalize_name
+from app.backend.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
+from app.backend.core import db
+from app.backend.utils.text import normalize_name as _normalize_name
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 

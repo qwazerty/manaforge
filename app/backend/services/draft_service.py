@@ -8,8 +8,8 @@ import random
 from urllib.parse import urlparse, parse_qs
 from typing import List, Dict, Any, Optional, Tuple
 
-from app.models.game import Card, Rarity
-from app.services.card_service import CardService
+from app.backend.models.game import Card, Rarity
+from app.backend.services.card_service import CardService
 
 
 class DraftService:

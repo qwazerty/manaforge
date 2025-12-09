@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 
-from app.main import app
+from app.backend.main import app
 
 
 class TestBasicFunctionality:
@@ -136,12 +136,12 @@ class TestAsyncFunctionality:
         test_app = FastAPI()
 
         # Mock the CardService
-        with patch("app.services.card_service.CardService") as mock_card_service:
+        with patch("app.backend.services.card_service.CardService") as mock_card_service:
             mock_card_service_instance = AsyncMock()
             mock_card_service.return_value = mock_card_service_instance
 
             # Test that we can create the app without errors
-            from app.main import lifespan
+            from app.backend.main import lifespan
 
             # Simulate the lifecycle
             lifespan_context = lifespan(test_app)
