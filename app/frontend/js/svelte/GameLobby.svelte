@@ -26,7 +26,7 @@
     let isFetchingGameList = $state(false);
     let battleStatus = $state({ message: '', type: '' });
     let isProcessing = $state(false);
-    let gameListPollId = null;
+    let gameListPollId = $state(null);
 
     function formatLobbyTimestamp(timestamp) {
         if (!timestamp) return '';

@@ -15,21 +15,101 @@
      * 6. End Phase
      */
 
+    // Core mutable state (Runes)
+    let attackers = $state(new Set());
+    let blockers = $state(new Map());
+    let combatMode = $state(null); // 'declaring_attackers' or 'declaring_blockers'
+    let selectedBlocker = $state(null);
+    let uiRefreshHandle = $state(null);
+    let blockerRenderRetryHandle = $state(null);
+    let blockerRenderStabilizeHandle = $state(null);
+    let currentBlockingVisuals = $state(new Set());
+    let attackSyncHandle = $state(null);
+    let blockSyncHandle = $state(null);
+    let lastSyncedAttackersPayload = $state(null);
+    let lastSyncedBlockersPayload = $state(null);
+    let clickHandler = $state(null);
+
     const GameCombat = {
-        // Combat state
-        attackers: new Set(),
-        blockers: new Map(), // Map of blocker unique_id -> attacker unique_id
-        combatMode: null, // 'declaring_attackers' or 'declaring_blockers'
-        selectedBlocker: null,
-        uiRefreshHandle: null,
-        blockerRenderRetryHandle: null,
-        blockerRenderStabilizeHandle: null,
-        currentBlockingVisuals: new Set(),
-        attackSyncHandle: null,
-        blockSyncHandle: null,
-        lastSyncedAttackersPayload: null,
-        lastSyncedBlockersPayload: null,
-        clickHandler: null,
+        // Combat state (proxied to runes)
+        get attackers() {
+            return attackers;
+        },
+        set attackers(value) {
+            attackers = value instanceof Set ? value : new Set(value || []);
+        },
+        get blockers() {
+            return blockers;
+        },
+        set blockers(value) {
+            blockers = value instanceof Map ? value : new Map(value || []);
+        },
+        get combatMode() {
+            return combatMode;
+        },
+        set combatMode(value) {
+            combatMode = value;
+        },
+        get selectedBlocker() {
+            return selectedBlocker;
+        },
+        set selectedBlocker(value) {
+            selectedBlocker = value;
+        },
+        get uiRefreshHandle() {
+            return uiRefreshHandle;
+        },
+        set uiRefreshHandle(value) {
+            uiRefreshHandle = value;
+        },
+        get blockerRenderRetryHandle() {
+            return blockerRenderRetryHandle;
+        },
+        set blockerRenderRetryHandle(value) {
+            blockerRenderRetryHandle = value;
+        },
+        get blockerRenderStabilizeHandle() {
+            return blockerRenderStabilizeHandle;
+        },
+        set blockerRenderStabilizeHandle(value) {
+            blockerRenderStabilizeHandle = value;
+        },
+        get currentBlockingVisuals() {
+            return currentBlockingVisuals;
+        },
+        set currentBlockingVisuals(value) {
+            currentBlockingVisuals = value instanceof Set ? value : new Set(value || []);
+        },
+        get attackSyncHandle() {
+            return attackSyncHandle;
+        },
+        set attackSyncHandle(value) {
+            attackSyncHandle = value;
+        },
+        get blockSyncHandle() {
+            return blockSyncHandle;
+        },
+        set blockSyncHandle(value) {
+            blockSyncHandle = value;
+        },
+        get lastSyncedAttackersPayload() {
+            return lastSyncedAttackersPayload;
+        },
+        set lastSyncedAttackersPayload(value) {
+            lastSyncedAttackersPayload = value;
+        },
+        get lastSyncedBlockersPayload() {
+            return lastSyncedBlockersPayload;
+        },
+        set lastSyncedBlockersPayload(value) {
+            lastSyncedBlockersPayload = value;
+        },
+        get clickHandler() {
+            return clickHandler;
+        },
+        set clickHandler(value) {
+            clickHandler = value;
+        },
     
         /**
          * Check if a card has vigilance

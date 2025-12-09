@@ -24,12 +24,12 @@
     } from './stores/gameCoreStore.js';
     import { loadActionHistoryFromState, addActionHistoryEntry } from './stores/actionHistoryStore.js';
 
-    let autoRefreshInterval = null;
-    let persistentUiLoaded = false;
-    let visibilityCleanup = null;
-    let moduleReadyTimer = null;
-    let gameInitialized = false;
-    let combatInitialized = false;
+    let autoRefreshInterval = $state(null);
+    let persistentUiLoaded = $state(false);
+    let visibilityCleanup = $state(null);
+    let moduleReadyTimer = $state(null);
+    let gameInitialized = $state(false);
+    let combatInitialized = $state(false);
 
     const getGameState = () => getGameStateSnapshot();
     const getGameId = () => getGameIdSnapshot();

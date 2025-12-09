@@ -44,9 +44,9 @@
         isVisible: getPageVisibleSnapshot()
     });
 
-    // Non-reactive flags (intentionally plain variables for performance)
-    let managerInitialized = false;
-    let visibilityCleanup = null;
+    // Non-reactive flags (still tracked via runes for consistency)
+    let managerInitialized = $state(false);
+    let visibilityCleanup = $state(null);
 
     const PLAYER_ZONES_TO_TRACK = ['hand', 'battlefield', 'graveyard', 'exile', 'reveal_zone', 'look_zone'];
 
