@@ -730,9 +730,10 @@ class SimpleGameEngine:
                 )
 
             normalized_target = self._normalize_zone_name(target_zone)
+            bypass_stack = bool(action.additional_data.get("bypass_stack"))
 
             # Route through _play_card for battlefield destinations (handles stack logic)
-            if normalized_target == "battlefield":
+            if normalized_target == "battlefield" and not bypass_stack:
                 self._play_card(game_state, action, source_zone=source_zone)
             else:
                 self._move_card(

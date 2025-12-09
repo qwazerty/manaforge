@@ -99,6 +99,7 @@
         const { primaryCardType } = resolvePrimaryCardType(card);
         const controllerId = card.controller_id || card.controllerId || card.owner_id || card.ownerId || '';
         const ownerId = card.owner_id || card.ownerId || '';
+        const zoneOwnerId = (options && options.zoneOwner) || '';
 
         const dataCardId = escapeHtml(cardId || '');
         const dataCardName = escapeHtml((!maskForViewer ? cardName : displayCardLabel) || '');
@@ -108,6 +109,7 @@
         const dataCardType = escapeHtml(primaryCardType || '');
         const dataCardOwner = escapeHtml(ownerId || '');
         const dataCardController = escapeHtml(controllerId || '');
+        const dataZoneOwner = escapeHtml(zoneOwnerId || '');
         const attachmentHostId = card.attached_to || card.attachedTo || '';
         const parsedAttachmentOrder = (() => {
             const raw = card?.attachment_order ?? card?.attachmentOrder;
@@ -173,6 +175,7 @@
                 data-card-type="${dataCardType}"
                 data-card-owner="${dataCardOwner}"
                 data-card-controller="${dataCardController}"
+                data-zone-owner="${dataZoneOwner}"
                 data-attached-to="${dataAttachmentHost}"
                 data-attachment-order="${dataAttachmentOrder}"
                 data-card-tapped="${stateFlags.isTapped}"
@@ -214,7 +217,7 @@
     }
 
     function renderCardWithAttachments(card, attachments = [], zone = 'battlefield', isOpponent = false, playerId = null) {
-        const hostHtml = renderCardWithLoadingState(card, 'card-battlefield', true, zone, isOpponent, 0, playerId);
+        const hostHtml = renderCardWithLoadingState(card, 'card-battlefield', true, zone, isOpponent, 0, playerId, { zoneOwner: playerId });
         const normalizedAttachments = Array.isArray(attachments) ? attachments : [];
         const hostId = card?.unique_id || card?.uniqueId || '';
         const safeHostId = escapeHtml(hostId || '');
@@ -226,7 +229,7 @@
 
         const attachmentHtml = visibleAttachments.map((attachment, idx) => {
             const attachmentClass = (typeof UIConfig !== 'undefined' && UIConfig?.CSS_CLASSES?.card?.attachment) || 'card-attachment';
-            return renderCardWithLoadingState(attachment, attachmentClass, true, zone, isOpponent, idx, playerId, { disableDrag: true });
+            return renderCardWithLoadingState(attachment, attachmentClass, true, zone, isOpponent, idx, playerId, { disableDrag: true, zoneOwner: playerId });
         }).join('');
 
         const overflowBadge = overflowCount > 0 ? `<div class="card-attachment-overflow">+${overflowCount}</div>` : '';
@@ -344,12 +347,16 @@
         const cardZone = cardElement.getAttribute('data-card-zone');
         const uniqueCardId = cardElement.getAttribute('data-card-unique-id');
         const cardOwnerId = cardElement.getAttribute('data-card-owner');
+        const cardControllerId = cardElement.getAttribute('data-card-controller');
+        const zoneOwnerId = cardElement.getAttribute('data-zone-owner');
 
         event.dataTransfer?.setData('text/plain', JSON.stringify({
             cardId,
             cardZone,
             uniqueCardId,
-            cardOwnerId
+            cardOwnerId,
+            cardControllerId,
+            zoneOwnerId
         }));
 
         const dragHandle = cardElement.closest('.card-attachment-group') || cardElement;

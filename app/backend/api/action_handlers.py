@@ -401,6 +401,7 @@ async def handle_move_card(
     position_index = request.get("position_index")
     source_player_id = request.get("source_player_id")
     destination_player_id = request.get("destination_player_id")
+    bypass_stack = request.get("bypass_stack")
 
     additional_data = {
         "source_zone": source_zone,
@@ -429,6 +430,9 @@ async def handle_move_card(
     if destination_player_id:
         additional_data["destination_player_id"] = destination_player_id
         broadcast_data["destination_player_id"] = destination_player_id
+
+    if bypass_stack:
+        additional_data["bypass_stack"] = True
 
     return {
         "card_id": card_id,

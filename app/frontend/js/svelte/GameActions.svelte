@@ -578,6 +578,18 @@
             payload.face_down = true;
         }
 
+        if (options && options.sourcePlayerId) {
+            payload.source_player_id = options.sourcePlayerId;
+        }
+
+        if (options && options.destinationPlayerId) {
+            payload.destination_player_id = options.destinationPlayerId;
+        }
+
+        if (options && options.bypassStack) {
+            payload.bypass_stack = true;
+        }
+
         // Use move_card which now routes through _play_card for battlefield destinations
         performGameAction('move_card', payload);
     }
@@ -1123,6 +1135,9 @@
             }
             if (options.destinationPlayerId) {
                 actionData.destination_player_id = options.destinationPlayerId;
+            }
+            if (options.bypassStack) {
+                actionData.bypass_stack = true;
             }
         }
 
