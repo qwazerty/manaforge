@@ -40,6 +40,7 @@
             data-zone-context={zoneIdentifier}
             onclick={handleClick}
             oncontextmenu={handleContextMenu}>
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html generateEmptyZoneContent('📖', 'Deck is empty')}
         </button>
     {:else}
@@ -49,6 +50,7 @@
             data-zone-context={zoneIdentifier}
             onclick={handleClick}
             oncontextmenu={handleContextMenu}>
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html stackCards}
             <div class="deck-click-overlay">
                 <span class="draw-hint">{overlayText}</span>

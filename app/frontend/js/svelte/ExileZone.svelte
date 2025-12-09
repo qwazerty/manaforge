@@ -45,14 +45,17 @@
                 <div class="zone-empty-text">Empty</div>
             </div>
         {:else}
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html stackMarkup}
             {#if topCard}
                 <div class="exile-top-card">
+                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                     {@html GameCards.renderCardWithLoadingState(topCard, 'card-front-mini', true, 'exile')}
                 </div>
             {/if}
             <div class="exile-click-overlay">
                 <span class="zone-view-hint">
+                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                     {@html overlayHtml}
                 </span>
             </div>

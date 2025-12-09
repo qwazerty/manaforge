@@ -1,4 +1,5 @@
 <script>
+    /* global WebSocketManager */
     import { onDestroy, onMount } from 'svelte';
     import { createClassComponent } from 'svelte/legacy';
     import BattleChat from './BattleChat.svelte';

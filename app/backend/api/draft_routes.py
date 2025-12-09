@@ -176,7 +176,9 @@ async def rename_player(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    from app.backend.api.websocket import manager  # Local import to avoid circular dependency
+    from app.backend.api.websocket import (
+        manager,
+    )  # Local import to avoid circular dependency
 
     room = engine.get_draft_room(room_id)
     if room:

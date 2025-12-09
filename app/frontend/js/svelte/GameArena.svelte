@@ -754,6 +754,7 @@
             {/if}
         {:else}
             <div class="arena-card rounded-lg p-3 mb-3">
+                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                 {@html generateErrorTemplate('Game State', 'Waiting for game data')}
             </div>
             <div id="action-panel" class="arena-card rounded-lg p-4 mb-3"></div>
@@ -778,6 +779,7 @@
                         data-player-owner={board.opponent.ownerId}
                         data-hand-mode={board.opponent.hand.mode}
                         data-zone-type="opponent-hand">
+                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                         {@html board.opponent.hand.html}
                     </div>
 
@@ -798,6 +800,7 @@
                                     data-card-count={zone.cardCount}
                                     data-zone-owner={zone.ownerId}
                                     data-player-role={zone.playerRole}>
+                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                     {@html zone.cardsHtml}
                                 </div>
                             </div>
@@ -828,6 +831,7 @@
                                     data-card-count={zone.cardCount}
                                     data-zone-owner={zone.ownerId}
                                     data-player-role={zone.playerRole}>
+                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                     {@html zone.cardsHtml}
                                 </div>
                             </div>
@@ -843,11 +847,13 @@
                         data-player-owner={board.player.ownerId}
                         ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
                         ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                         {@html board.player.hand.html}
                     </div>
                 </div>
             {/if}
         {:else}
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html generateErrorTemplate('Game Board', 'Waiting for game data')}
         {/if}
     </div>

@@ -52,9 +52,11 @@
                 <div class="zone-empty-text">Empty</div>
             </div>
         {:else}
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html stackMarkup()}
             <div class="graveyard-click-overlay" style="pointer-events: none;">
                 <span class="zone-view-hint">
+                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                     {@html overlayHtml}
                 </span>
             </div>

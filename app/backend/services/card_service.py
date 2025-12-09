@@ -10,7 +10,15 @@ import aiohttp
 from aiohttp import ClientError, ClientTimeout
 from typing import List, Optional, Dict, Any, Tuple, Set, Union
 
-from app.backend.models.game import Card, Deck, DeckCard, CardType, Color, Rarity, GameFormat
+from app.backend.models.game import (
+    Card,
+    Deck,
+    DeckCard,
+    CardType,
+    Color,
+    Rarity,
+    GameFormat,
+)
 from app.backend.core import db
 from app.backend.utils.text import normalize_name as _normalize_name
 

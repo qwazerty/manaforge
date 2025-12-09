@@ -180,6 +180,7 @@
                 ondragleave={handleDragLeave}
                 ondrop={handleDrop}>
                 {#if hasCards}
+                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                     {@html cardsHtml}
                 {:else}
                     <div class="reveal-empty">No cards in this zone</div>
