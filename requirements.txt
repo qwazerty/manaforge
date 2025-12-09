@@ -1,8 +1,6 @@
 # Backend dependencies
 fastapi==0.124.0
 uvicorn[standard]==0.38.0
-motor==3.7.1
-pymongo==4.15.5
 psycopg[binary]==3.3.2
 pydantic==2.12.5
 pydantic[email]==2.12.5

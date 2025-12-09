@@ -132,14 +132,6 @@ dmypy.json
 # FastAPI specific
 .uvicorn
 
-# Database files
-*.db
-*.sqlite
-
-# MongoDB data
-data/
-mongo-data/
-
 # IDE specific files
 .vscode/
 .idea/
