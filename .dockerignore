@@ -1,0 +1,12 @@
+node_modules
+venv
+.git
+.gitignore
+.DS_Store
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+app/static/css/dist
+app/static/js/ui/components
