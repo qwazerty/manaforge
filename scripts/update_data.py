@@ -24,7 +24,7 @@ from psycopg.types.json import Jsonb
 # Import normalize_name from shared utility module
 # Add parent directory to path so we can import from app
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.utils.text import normalize_name as _normalize_name
+from app.backend.utils.text import normalize_name as _normalize_name
 
 
 SCRYFALL_BULK_METADATA = "https://api.scryfall.com/bulk-data/unique_artwork"

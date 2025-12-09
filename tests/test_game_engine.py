@@ -1,7 +1,7 @@
 """Unit tests for the SimpleGameEngine helpers."""
 
-from app.models.game import Card, CardType, GameAction, GamePhase, GameState, Player
-from app.services.game_engine import SimpleGameEngine
+from app.backend.models.game import Card, CardType, GameAction, GamePhase, GameState, Player
+from app.backend.services.game_engine import SimpleGameEngine
 
 
 def _build_game_state(phase=GamePhase.BEGIN, turn=1, active_index=0):
@@ -278,7 +278,7 @@ def test_end_step_priority_passing():
 
 def test_restart_game_reuses_submitted_decks():
     """Test that restart_game correctly reuses the originally submitted decks."""
-    from app.models.game import Deck, DeckCard, Card, CardType, GameFormat, PhaseMode
+    from app.backend.models.game import Deck, DeckCard, Card, CardType, GameFormat, PhaseMode
 
     engine = SimpleGameEngine()
     game_id = "test-restart"
@@ -352,7 +352,7 @@ def test_restart_game_fails_without_setup():
 
 def test_restart_game_fails_without_submitted_decks():
     """Test that restart_game raises an error when decks weren't submitted."""
-    from app.models.game import GameFormat, PhaseMode
+    from app.backend.models.game import GameFormat, PhaseMode
 
     engine = SimpleGameEngine()
     game_id = "test-no-decks"

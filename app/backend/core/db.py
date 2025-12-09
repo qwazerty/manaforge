@@ -3,7 +3,7 @@
 import os
 import psycopg
 
-from app.core.config import settings
+from app.backend.core.config import settings
 
 
 def get_database_url() -> str:

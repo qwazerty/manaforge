@@ -8,7 +8,7 @@ import random
 import re
 from typing import Dict, List, Optional, Any
 
-from app.models.game import (
+from app.backend.models.game import (
     DraftRoom,
     DraftPlayer,
     Card,
@@ -16,7 +16,7 @@ from app.models.game import (
     DraftType,
     CubeConfiguration,
 )
-from app.services.draft_service import DraftService
+from app.backend.services.draft_service import DraftService
 
 
 class DraftEngine:

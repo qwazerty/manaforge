@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.game import Card, Deck, CardType, GameFormat, Rarity, Color
+from app.backend.models.game import Card, Deck, CardType, GameFormat, Rarity, Color
 
 
 class TestCardModel:

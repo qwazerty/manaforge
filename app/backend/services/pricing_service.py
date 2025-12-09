@@ -6,7 +6,7 @@ Data is loaded once and served from RAM for all subsequent requests.
 import logging
 from typing import Dict, Any, Optional, List
 
-from app.core import db
+from app.backend.core import db
 
 logger = logging.getLogger(__name__)
 

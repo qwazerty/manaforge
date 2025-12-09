@@ -178,7 +178,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
 
     # If it's a draft room, broadcast the initial state
     if game_id.startswith("draft-"):
-        from app.api.draft_routes import get_draft_engine
+        from app.backend.api.draft_routes import get_draft_engine
 
         engine = get_draft_engine()
         room = engine.get_draft_room(game_id)
@@ -203,7 +203,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 )
 
             elif message.get("type") == "request_game_state":
-                from app.api.routes import game_engine
+                from app.backend.api.routes import game_engine
 
                 if game_id in game_engine.games:
                     game_state = game_engine.games[game_id]
@@ -243,9 +243,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 print(f"[WS] Processing game action: {action_type} from {player_id}")
 
                 try:
-                    from app.api.routes import game_engine
-                    from app.api.decorators import action_registry
-                    from app.models.game import GameAction
+                    from app.backend.api.routes import game_engine
+                    from app.backend.api.decorators import action_registry
+                    from app.backend.models.game import GameAction
 
                     handler_info = action_registry.get_handler(action_type)
                     if not handler_info:
@@ -315,7 +315,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 except Exception as e:
                     print(f"Error processing game action via WebSocket: {e}")
                     try:
-                        from app.api.routes import game_engine as ge
+                        from app.backend.api.routes import game_engine as ge
 
                         ge.record_action_history(
                             game_id,
@@ -341,7 +341,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     )
 
             elif message.get("type") == "chat":
-                from app.api.routes import game_engine
+                from app.backend.api.routes import game_engine
 
                 payload = {
                     "type": "chat",
@@ -410,7 +410,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     result_message = f"Result: {result}"
 
                 # Record in action history for persistence
-                from app.api.routes import game_engine
+                from app.backend.api.routes import game_engine
 
                 game_engine.record_action_history(
                     game_id,
@@ -437,7 +437,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
 
             # Handle draft-specific messages
             elif game_id.startswith("draft-"):
-                from app.api.draft_routes import get_draft_engine
+                from app.backend.api.draft_routes import get_draft_engine
 
                 engine = get_draft_engine()
                 room = engine.get_draft_room(game_id)

@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
-from app.api.routes import game_engine
-from app.models.game import GameState, GamePhase, Player
+from app.backend.main import app
+from app.backend.api.routes import game_engine
+from app.backend.models.game import GameState, GamePhase, Player
 
 
 class TestReplay:

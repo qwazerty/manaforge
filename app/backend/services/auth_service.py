@@ -15,7 +15,7 @@ import psycopg
 from psycopg import errors
 from passlib.hash import bcrypt
 
-from app.core import db
+from app.backend.core import db
 
 
 def _ensure_table_exists(conn: psycopg.Connection) -> None:

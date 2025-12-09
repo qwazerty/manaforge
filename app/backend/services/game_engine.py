@@ -8,7 +8,7 @@ import asyncio
 import uuid
 import time
 from typing import List, Optional, Dict, Any, Tuple
-from app.models.game import (
+from app.backend.models.game import (
     Card,
     Deck,
     DeckCard,
@@ -2741,7 +2741,7 @@ class SimpleGameEngine:
         self, game_state: GameState, action: GameAction
     ) -> None:
         """Handle searching for a card and adding it to the specified zone."""
-        from app.services.card_service import CardService
+        from app.backend.services.card_service import CardService
         import uuid
 
         card_name = action.additional_data.get("card_name")
@@ -2764,7 +2764,7 @@ class SimpleGameEngine:
                 return
 
             # Create card from Scryfall data
-            from app.models.game import Card
+            from app.backend.models.game import Card
 
             card = Card(**card_data)
 
@@ -2788,8 +2788,8 @@ class SimpleGameEngine:
     async def _create_token(self, game_state: GameState, action: GameAction) -> None:
         """Handle creating a token creature by fetching its data from Scryfall."""
         import uuid
-        from app.services.card_service import CardService
-        from app.models.game import Card
+        from app.backend.services.card_service import CardService
+        from app.backend.models.game import Card
 
         scryfall_id = action.additional_data.get("scryfall_id")
         if not scryfall_id:

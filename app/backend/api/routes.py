@@ -10,7 +10,7 @@ from urllib.parse import quote_plus
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Optional, Any
 
-from app.models.game import (
+from app.backend.models.game import (
     Card,
     Deck,
     GameAction,
@@ -18,16 +18,16 @@ from app.models.game import (
     GameFormat,
     PhaseMode,
 )
-from app.services.card_service import CardService
-from app.services.game_engine import SimpleGameEngine
-from app.api.decorators import broadcast_game_update, action_registry
+from app.backend.services.card_service import CardService
+from app.backend.services.game_engine import SimpleGameEngine
+from app.backend.api.decorators import broadcast_game_update, action_registry
 
 # fmt: off
-from app.api import action_handlers  # noqa: F401 - handlers are registered via decorators
+from app.backend.api import action_handlers  # noqa: F401 - handlers are registered via decorators
 # fmt: on
 
-from app.services.format_stats_service import get_cards_for_format
-from app.services.pricing_service import get_memory_usage, lookup_prices
+from app.backend.services.format_stats_service import get_cards_for_format
+from app.backend.services.pricing_service import get_memory_usage, lookup_prices
 
 
 router = APIRouter(prefix="/api/v1")
