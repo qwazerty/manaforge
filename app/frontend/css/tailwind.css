@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+@source "./app/templates/**/*.{html,htm,jinja,jinja2}";
+@source "./app/frontend/js/**/*.{js,jsx,ts,tsx,svelte}";
+@source "./app/frontend/css/**/*.{css,scss}";
+@source "./app/**/*.{py,md}";
 
 @keyframes float {
     0%, 100% { transform: translateY(0px); }
