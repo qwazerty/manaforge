@@ -31,16 +31,16 @@
         return COMMANDER_FORMATS.includes(format);
     });
 
-    let gameBoardEl = null;
+    let gameBoardEl = $state(null);
     let counterModal = $state({
         open: false,
         playerId: '',
         playerName: '',
         position: null
     });
-    let overlapObserver = null;
-    let overlapPending = false;
-    let overlapResizeDebounce = null;
+    let overlapObserver = $state(null);
+    let overlapPending = $state(false);
+    let overlapResizeDebounce = $state(null);
 
     const zoneContainerClass =
         UIConfig?.CSS_CLASSES?.zone?.container || 'zone-item';

@@ -3,9 +3,9 @@
 
     const MANA_SYMBOLS = ['W', 'U', 'B', 'R', 'G'];
 
-    let redirectTimer;
-    let sparkleInterval;
-    let iconEl = null;
+    let redirectTimer = $state(null);
+    let sparkleInterval = $state(null);
+    let iconEl = $state(null);
 
     const props = $props();
 

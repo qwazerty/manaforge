@@ -9,8 +9,8 @@
     let statusText = $state('');
     let sendDisabled = $state(false);
     let placeholderText = $state('Type your message...');
-    let chatComponent = null;
-    let chatTarget = null;
+    let chatComponent = $state(null);
+    let chatTarget = $state(null);
 
     const buildMessageId = () => `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 

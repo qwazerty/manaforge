@@ -15,7 +15,7 @@
         '.overflow-x-auto'
     ];
 
-    let observer;
+    let observer = $state(null);
 
     const isScrollableZone = (element) => {
         const scrollableClasses = [

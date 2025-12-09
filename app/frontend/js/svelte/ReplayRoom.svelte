@@ -17,8 +17,8 @@
     const playbackSpeed = 500;
     const phases = Array.isArray(UIConfig?.GAME_PHASES) ? UIConfig.GAME_PHASES : [];
 
-    let actionPanelApp = null;
-    let playInterval = null;
+    let actionPanelApp = $state(null);
+    let playInterval = $state(null);
 
     const totalSteps = $derived(Array.isArray(timeline) ? timeline.length : 0);
     const _displayTotalSteps = $derived(Math.max(totalSteps, 0));
