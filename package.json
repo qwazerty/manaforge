@@ -16,7 +16,7 @@
     "lint": "eslint 'app/frontend/js/svelte/**/*.svelte' && svelte-check --tsconfig ./tsconfig.json",
     "lint:eslint": "eslint 'app/frontend/js/svelte/**/*.svelte'",
     "lint:check": "svelte-check --tsconfig ./tsconfig.json",
-    "test:build": "npm run build:svelte",
+    "test:build": "pnpm run build",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
