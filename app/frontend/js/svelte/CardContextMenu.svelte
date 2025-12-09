@@ -60,17 +60,11 @@
 
     // Helpers
     function getSelectedPlayer() {
-        if (typeof GameCore !== 'undefined' && typeof GameCore.getSelectedPlayer === 'function') {
-            return GameCore.getSelectedPlayer();
-        }
-        return null;
+        return GameCore.getSelectedPlayer();
     }
 
     function getGameState() {
-        if (typeof GameCore !== 'undefined' && typeof GameCore.getGameState === 'function') {
-            return GameCore.getGameState();
-        }
-        return null;
+        return GameCore.getGameState();
     }
 
     // Public API
@@ -78,14 +72,10 @@
         if (!element) return;
         
         // Hide card preview
-        if (typeof CardPreviewModal !== 'undefined') {
-            CardPreviewModal.hide();
-        }
+        CardPreviewModal.hide();
         
         // Cancel any attachment selection
-        if (typeof GameCards !== 'undefined' && typeof GameCards.cancelAttachmentSelection === 'function') {
-            GameCards.cancelAttachmentSelection();
-        }
+        GameCards.cancelAttachmentSelection();
 
         // Extract card data from element
         cardElement = element;
@@ -123,30 +113,19 @@
         isFaceDownOwner = isFaceDown && selectedPlayer && faceDownOwnerId && faceDownOwnerId.toLowerCase() === selectedPlayer.toLowerCase();
 
         // Check if this card has arrows
-        if (typeof GameCards !== 'undefined' && typeof GameCards.hasArrowsFromCard === 'function') {
-            hasArrows = GameCards.hasArrowsFromCard(uniqueCardId);
-        } else {
-            hasArrows = false;
-        }
+        hasArrows = GameCards.hasArrowsFromCard(uniqueCardId);
 
         // Extract tokens from oracle text
         cardSet = cardData?.set || cardData?.set_code || '';
-        if (typeof window.UIRenderersTemplates !== 'undefined' && 
-            typeof window.UIRenderersTemplates._extractTokenNamesFromOracle === 'function') {
-            const tokenSet = window.UIRenderersTemplates._extractTokenNamesFromOracle(cardData);
-            detectedTokens = Array.from(tokenSet);
-        } else {
-            detectedTokens = [];
-        }
+        const tokenSet = window.UIRenderersTemplates._extractTokenNamesFromOracle(cardData);
+        detectedTokens = Array.from(tokenSet);
 
         // Position menu
         position = { x: event.clientX + 10, y: event.clientY };
         isOpen = true;
         
         // Store position for attachment modal
-        if (typeof GameCards !== 'undefined') {
-            GameCards._lastContextPosition = { x: event.clientX, y: event.clientY };
-        }
+        GameCards._lastContextPosition = { x: event.clientX, y: event.clientY };
 
         // Wait for render then adjust position
         requestAnimationFrame(() => {
@@ -158,9 +137,7 @@
         document.addEventListener('keydown', handleKeydown);
         
         // Notify CardPreviewModal that context menu is open
-        if (typeof CardPreviewModal !== 'undefined') {
-            CardPreviewModal.setContextMenuOpen(true);
-        }
+        CardPreviewModal.setContextMenuOpen(true);
     }
 
     export function hide() {
@@ -169,9 +146,7 @@
         document.removeEventListener('click', handleOutsideClick);
         document.removeEventListener('keydown', handleKeydown);
         
-        if (typeof CardPreviewModal !== 'undefined') {
-            CardPreviewModal.setContextMenuOpen(false);
-        }
+        CardPreviewModal.setContextMenuOpen(false);
     }
 
     function adjustPosition() {
@@ -328,81 +303,59 @@
     }
 
     function toggleTarget() {
-        if (typeof CardPreviewModal !== 'undefined') CardPreviewModal.hide();
+        CardPreviewModal.hide();
         
         if (cardElement) {
             const wasTargeted = cardElement.classList.toggle('targeted');
             cardElement.setAttribute('data-card-targeted', wasTargeted.toString());
             
-            if (typeof GameActions !== 'undefined') {
-                GameActions.performGameAction('target_card', {
-                    unique_id: uniqueCardId,
-                    card_id: cardId,
-                    targeted: wasTargeted
-                });
-            }
-        }
-    }
-
-    function flipCard() {
-        if (typeof CardPreviewModal !== 'undefined') CardPreviewModal.hide();
-        if (typeof GameActions !== 'undefined') {
-            GameActions.performGameAction('flip_card', {
+            GameActions.performGameAction('target_card', {
+                unique_id: uniqueCardId,
                 card_id: cardId,
-                unique_id: uniqueCardId
+                targeted: wasTargeted
             });
         }
     }
 
+    function flipCard() {
+        CardPreviewModal.hide();
+        GameActions.performGameAction('flip_card', {
+            card_id: cardId,
+            unique_id: uniqueCardId
+        });
+    }
+
     function playCard() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.playCardFromHand(cardId, uniqueCardId);
-        }
+        GameActions.playCardFromHand(cardId, uniqueCardId);
     }
 
     function playCardFaceDown() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.playCardFromHand(cardId, uniqueCardId, { faceDown: true });
-        }
+        GameActions.playCardFromHand(cardId, uniqueCardId, { faceDown: true });
     }
 
     function playFromLibrary() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.performGameAction("play_card_from_library", { unique_id: uniqueCardId });
-        }
-        if (typeof UIZonesManager !== 'undefined') {
-            UIZonesManager.closeZoneModal("deck");
-        }
+        GameActions.performGameAction("play_card_from_library", { unique_id: uniqueCardId });
+        UIZonesManager.closeZoneModal("deck");
     }
 
     function tapCard() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.tapCard(cardId, uniqueCardId);
-        }
+        GameActions.tapCard(cardId, uniqueCardId);
     }
 
     function duplicateCard() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.duplicateCard(cardId, uniqueCardId, cardZone);
-        }
+        GameActions.duplicateCard(cardId, uniqueCardId, cardZone);
     }
 
     function startAttachment() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.startAttachmentSelection(cardId, uniqueCardId);
-        }
+        GameCards.startAttachmentSelection(cardId, uniqueCardId);
     }
 
     function startArrowToCard() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.startArrowSelection(cardId, uniqueCardId);
-        }
+        GameCards.startArrowSelection(cardId, uniqueCardId);
     }
 
     function removeArrowsFromCard() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.removeAllArrowsFromCardElement(uniqueCardId);
-        }
+        GameCards.removeAllArrowsFromCardElement(uniqueCardId);
     }
 
     /**
@@ -413,7 +366,7 @@
         if (!tokenName) return;
         
         const gameId = window?.gameData?.gameId;
-        const playerId = typeof GameCore !== 'undefined' ? GameCore.getSelectedPlayer() : null;
+        const playerId = GameCore.getSelectedPlayer();
         
         if (!gameId || !playerId) {
             console.error('[CardContextMenu] Missing game context for token creation');
@@ -490,58 +443,39 @@
     }
 
     function showAttachments() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.showAttachmentsModal(uniqueCardId, cardName);
-        }
+        GameCards.showAttachmentsModal(uniqueCardId, cardName);
     }
 
     function detachCard() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.detachCard(cardId, uniqueCardId);
-        }
+        GameActions.detachCard(cardId, uniqueCardId);
     }
 
     function addType() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.showTypePopover(uniqueCardId, cardId);
-        }
+        GameCards.showTypePopover(uniqueCardId, cardId);
     }
 
     function addCounter() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.showCounterPopover(uniqueCardId, cardId);
-        }
+        GameCards.showCounterPopover(uniqueCardId, cardId);
     }
 
     function overridePowerToughness() {
-        if (typeof GameCards !== 'undefined') {
-            GameCards.showPowerToughnessPopover(uniqueCardId, cardId);
-        }
+        GameCards.showPowerToughnessPopover(uniqueCardId, cardId);
     }
 
     function revealFaceDown() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.revealFaceDownCard(cardId, uniqueCardId);
-        }
+        GameActions.revealFaceDownCard(cardId, uniqueCardId);
     }
 
     function sendToHand() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.moveCard(cardId, cardZone, "hand", uniqueCardId);
-        }
+        GameActions.moveCard(cardId, cardZone, "hand", uniqueCardId);
     }
 
     function sendToBattlefield() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendToBattlefield(cardId, cardZone, uniqueCardId);
-        }
+        GameActions.sendToBattlefield(cardId, cardZone, uniqueCardId);
     }
 
     function sendToBattlefieldDirect(toOpponent = false) {
-        if (typeof GameActions === 'undefined' || typeof GameCore === 'undefined') {
-            return;
-        }
-        const selectedPlayer = GameCore.getSelectedPlayer ? GameCore.getSelectedPlayer() : null;
+        const selectedPlayer = GameCore.getSelectedPlayer();
         if (!selectedPlayer || selectedPlayer === 'spectator') {
             return;
         }
@@ -569,93 +503,63 @@
     }
 
     function sendToGraveyard() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendToGraveyard(cardId, cardZone, uniqueCardId);
-        }
+        GameActions.sendToGraveyard(cardId, cardZone, uniqueCardId);
     }
 
     function sendToExile() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendToExile(cardId, cardZone, uniqueCardId);
-        }
+        GameActions.sendToExile(cardId, cardZone, uniqueCardId);
     }
 
     function sendToTopLibrary() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendToTopLibrary(cardId, cardZone, uniqueCardId);
-        }
+        GameActions.sendToTopLibrary(cardId, cardZone, uniqueCardId);
     }
 
     function sendToBottomLibrary() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendToBottomLibrary(cardId, cardZone, uniqueCardId);
-        }
+        GameActions.sendToBottomLibrary(cardId, cardZone, uniqueCardId);
     }
 
     function showInReveal() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.showInRevealZone(cardId, cardZone, uniqueCardId);
-        }
+        GameActions.showInRevealZone(cardId, cardZone, uniqueCardId);
     }
 
     function sendToCommanderZone() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.moveCard(cardId, cardZone, "commander_zone", uniqueCardId);
-        }
+        GameActions.moveCard(cardId, cardZone, "commander_zone", uniqueCardId);
     }
 
     function deleteToken() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.deleteToken(uniqueCardId, cardName);
-        }
+        GameActions.deleteToken(uniqueCardId, cardName);
     }
 
     function showAllHandReveal() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.moveAllHandToReveal();
-        }
+        GameActions.moveAllHandToReveal();
     }
 
     function sendAllToHand(zone) {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendAllZoneToHand(zone);
-        }
+        GameActions.sendAllZoneToHand(zone);
     }
 
     function sendAllToBattlefield(zone) {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendAllZoneToBattlefield(zone);
-        }
+        GameActions.sendAllZoneToBattlefield(zone);
     }
 
     function sendAllToGraveyard(zone) {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendAllZoneToGraveyard(zone);
-        }
+        GameActions.sendAllZoneToGraveyard(zone);
     }
 
     function sendAllToExile(zone) {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendAllZoneToExile(zone);
-        }
+        GameActions.sendAllZoneToExile(zone);
     }
 
     function sendAllToTopLibrary(zone) {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendAllZoneToTopLibrary(zone);
-        }
+        GameActions.sendAllZoneToTopLibrary(zone);
     }
 
     function sendAllToBottomLibrary(zone) {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.sendAllZoneToBottomLibrary(zone);
-        }
+        GameActions.sendAllZoneToBottomLibrary(zone);
     }
 
     function playOpponentCard() {
-        if (typeof GameActions !== 'undefined') {
-            GameActions.playOpponentCardFromZone(cardId, uniqueCardId, cardZone, cardOwnerId);
-        }
+        GameActions.playOpponentCardFromZone(cardId, uniqueCardId, cardZone, cardOwnerId);
     }
 
     // Count cards in zone for bulk actions
@@ -691,9 +595,7 @@
         hide
     };
 
-    if (typeof window !== 'undefined') {
-        window.CardContextMenu = CardContextMenuAPI;
-    }
+    window.CardContextMenu = CardContextMenuAPI;
 
     onDestroy(() => {
         hide();
