@@ -1027,7 +1027,7 @@
             const sanitizedOwner = escapeHtml(ownerId);
             const playerRole = isOpponent ? 'opponent' : 'player';
             const cardsHtml = filteredCards.map(card => {
-                return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, null, playerId);
+                return GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, zoneName, isOpponent, null, playerId, { zoneOwner: ownerId });
             }).join('');
 
             return `
@@ -1708,7 +1708,7 @@
                 const cardToRender = showFaceDown
                     ? { ...card, is_face_down: true, face_down_controller: card.owner_id || card.controller_id || playerId }
                     : card;
-                return GameCards.renderCardWithLoadingState(cardToRender, 'card-battlefield', true, zoneContext, isOpponent, index, playerId);
+                return GameCards.renderCardWithLoadingState(cardToRender, 'card-battlefield', true, zoneContext, isOpponent, index, playerId, { zoneOwner: playerId });
             }).join('');
 
             return `

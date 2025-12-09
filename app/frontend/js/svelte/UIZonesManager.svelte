@@ -85,6 +85,17 @@
             return isOpponent ? 'player2' : 'player1';
         }
 
+        /**
+         * Check if a card transfer is cross-seat (between different players).
+         * Cross-seat transfers should bypass the stack.
+         * @param {string|null} sourceId - Source player ID
+         * @param {string|null} targetId - Target player ID
+         * @returns {boolean}
+         */
+        static _isCrossSeatTransfer(sourceId, targetId) {
+            return Boolean(sourceId && targetId && sourceId !== targetId);
+        }
+
         static _renderZoneLabel(zoneKey) {
             const info = this.ZONE_INFO[zoneKey];
             if (!info) {
@@ -531,7 +542,9 @@
                     return;
                 }
 
-                const { cardId, cardZone, uniqueCardId, cardOwnerId } = data;
+                const { cardId, cardZone, uniqueCardId, cardOwnerId, zoneOwnerId } = data;
+                const targetOwnerId = current?.dataset?.zoneOwner || null;
+                const sourcePlayerId = zoneOwnerId || cardOwnerId || null;
 
                 const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
                 const battlefieldZones = ['battlefield', 'lands', 'creatures', 'support', 'permanents'];
@@ -541,6 +554,24 @@
                     window.GameActions &&
                     typeof window.GameActions.playCardFromHand === 'function'
                 ) {
+                    if (this._isCrossSeatTransfer(sourcePlayerId, targetOwnerId)) {
+                        window.GameActions.moveCard(
+                            cardId,
+                            cardZone,
+                            targetZone,
+                            uniqueCardId,
+                            null,
+                            null,
+                            null,
+                            {
+                                sourcePlayerId,
+                                destinationPlayerId: targetOwnerId,
+                                bypassStack: true
+                            }
+                        );
+                        return;
+                    }
+
                     const isStrictMode = (() => {
                         if (typeof GameCore === 'undefined' || typeof GameCore.getGameState !== 'function') {
                             return false;
@@ -638,12 +669,15 @@
                 // Trigger an action to move the card (adjust to the backend logic)
                 if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
                     const options = {};
-                    if (cardOwnerId) {
-                        options.sourcePlayerId = cardOwnerId;
+                    if (sourcePlayerId) {
+                        options.sourcePlayerId = sourcePlayerId;
                     }
-                    const targetOwnerId = current?.dataset?.zoneOwner;
-                    if (targetOwnerId) {
-                        options.destinationPlayerId = targetOwnerId;
+                    const destOwnerId = current?.dataset?.zoneOwner || container?.dataset?.zoneOwner || null;
+                    if (destOwnerId) {
+                        options.destinationPlayerId = destOwnerId;
+                    }
+                    if (this._isCrossSeatTransfer(sourcePlayerId, destOwnerId)) {
+                        options.bypassStack = true;
                     }
                     window.GameActions.moveCard(
                         cardId,
@@ -698,7 +732,7 @@
                 return;
             }
 
-            const { cardId, cardZone, uniqueCardId, cardOwnerId } = dragData;
+            const { cardId, cardZone, uniqueCardId, cardOwnerId, cardControllerId, zoneOwnerId } = dragData;
             const draggedElement = (typeof GameCards !== 'undefined' ? GameCards.draggedCardElement : null) || document.querySelector(`[data-card-unique-id="${uniqueCardId}"]`);
             const groupHandle = draggedElement && typeof draggedElement.closest === 'function'
                 ? draggedElement.closest('.card-attachment-group')
@@ -768,12 +802,16 @@
 
             if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
                 const options = {};
-                if (cardOwnerId) {
-                    options.sourcePlayerId = cardOwnerId;
+                const sourcePlayerId = zoneOwnerId || cardOwnerId || cardControllerId || null;
+                if (sourcePlayerId) {
+                    options.sourcePlayerId = sourcePlayerId;
                 }
                 const targetOwnerId = container?.dataset?.zoneOwner || container?.getAttribute('data-zone-owner');
                 if (targetOwnerId) {
                     options.destinationPlayerId = targetOwnerId;
+                }
+                if (this._isCrossSeatTransfer(sourcePlayerId, targetOwnerId)) {
+                    options.bypassStack = true;
                 }
                 window.GameActions.moveCard(
                     cardId,
@@ -1069,7 +1107,7 @@
 
         static _buildZonePopupCardsHtml(cardsArray, baseZone, isOpponent, ownerId) {
             return cardsArray.map((card, index) =>
-                GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId)
+                GameCards.renderCardWithLoadingState(card, 'card-battlefield', true, baseZone, isOpponent, index, ownerId, { zoneOwner: ownerId })
             ).join('');
         }
 

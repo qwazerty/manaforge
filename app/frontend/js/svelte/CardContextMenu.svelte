@@ -257,6 +257,12 @@
             case 'sendToHand':
                 sendToHand();
                 break;
+            case 'sendToBattlefieldDirect':
+                sendToBattlefieldDirect(false);
+                break;
+            case 'sendToOpponentBattlefieldDirect':
+                sendToBattlefieldDirect(true);
+                break;
             case 'sendToBattlefield':
                 sendToBattlefield();
                 break;
@@ -531,6 +537,37 @@
         }
     }
 
+    function sendToBattlefieldDirect(toOpponent = false) {
+        if (typeof GameActions === 'undefined' || typeof GameCore === 'undefined') {
+            return;
+        }
+        const selectedPlayer = GameCore.getSelectedPlayer ? GameCore.getSelectedPlayer() : null;
+        if (!selectedPlayer || selectedPlayer === 'spectator') {
+            return;
+        }
+
+        const opponentId = selectedPlayer === 'player1' ? 'player2' : 'player1';
+        // Use zoneOwner, cardOwnerId, or infer from isOpponent
+        const zoneOwner = cardElement?.getAttribute('data-zone-owner');
+        const sourcePlayerId = zoneOwner || cardOwnerId || (isOpponent ? opponentId : selectedPlayer);
+        const destinationPlayerId = toOpponent ? opponentId : selectedPlayer;
+
+        GameActions.moveCard(
+            cardId,
+            cardZone,
+            'battlefield',
+            uniqueCardId,
+            null,
+            null,
+            null,
+            {
+                sourcePlayerId,
+                destinationPlayerId,
+                bypassStack: true
+            }
+        );
+    }
+
     function sendToGraveyard() {
         if (typeof GameActions !== 'undefined') {
             GameActions.sendToGraveyard(cardId, cardZone, uniqueCardId);
@@ -800,9 +837,12 @@
                     </button>
                 {/if}
 
-                {#if ['reveal', 'reveal_zone', 'look', 'look_zone', 'commander', 'commander_zone'].includes(cardZone) && !isTokenCard}
-                    <button class="card-context-menu-item" onclick={() => handleAction('sendToBattlefield')}>
+                {#if ['graveyard', 'exile', 'reveal', 'reveal_zone', 'look', 'look_zone'].includes(cardZone)}
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToBattlefieldDirect')}>
                         <span class="icon">⚔️</span> Send to Battlefield
+                    </button>
+                    <button class="card-context-menu-item" onclick={() => handleAction('sendToOpponentBattlefieldDirect')}>
+                        <span class="icon">🗡️</span> Send to Opponent Battlefield
                     </button>
                 {/if}
 
@@ -888,8 +928,8 @@
 
             <!-- Opponent card actions -->
             {#if canPlayOpponentCard}
-                <button class="card-context-menu-item" onclick={() => handleAction('playOpponentCard')}>
-                    <span class="icon">🪄</span> Play from {getZoneLabel(normalizedZone)}
+                <button class="card-context-menu-item" onclick={() => handleAction('sendToBattlefieldDirect')}>
+                    <span class="icon">⚔️</span> Send to Battlefield
                 </button>
             {/if}
         </div>
