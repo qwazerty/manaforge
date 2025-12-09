@@ -65,6 +65,9 @@ importers:
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
+      pyright:
+        specifier: ^1.1.386
+        version: 1.1.407
       svelte:
         specifier: ^5.45.6
         version: 5.45.6
@@ -2061,6 +2064,11 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pyright@1.1.407:
+    resolution: {integrity: sha512-zU+peTFEVUdokNQyUBhGQYt+NWI/3aiNlvBbDBSsn5Ti334XElFUs+GDjQzCbchYfkT+DvMAT3OkMcV4CuEfDg==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
@@ -4427,6 +4435,10 @@ snapshots:
       react-is: 17.0.2
 
   punycode@2.3.1: {}
+
+  pyright@1.1.407:
+    optionalDependencies:
+      fsevents: 2.3.3
 
   react-is@17.0.2: {}
 

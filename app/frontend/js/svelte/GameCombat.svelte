@@ -1,5 +1,3 @@
-<svelte:options accessors={true} />
-
 <script>
     import { onMount } from 'svelte';
 
