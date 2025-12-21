@@ -749,6 +749,11 @@
                     <button class="card-context-menu-item" onclick={() => handleAction('sendToBattlefieldDirect')}>
                         <span class="icon">⚔️</span> Send to Battlefield
                     </button>
+                    {#if cardZone === 'graveyard'}
+                        <button class="card-context-menu-item" onclick={() => handleAction('sendToBattlefield')}>
+                            <span class="icon">🪄</span> Cast to Battlefield
+                        </button>
+                    {/if}
                     <button class="card-context-menu-item" onclick={() => handleAction('sendToOpponentBattlefieldDirect')}>
                         <span class="icon">🗡️</span> Send to Opponent Battlefield
                     </button>
