@@ -482,8 +482,8 @@
                     const isActivePlayer = controlledPlayerIndex === activePlayerIndex;
                     const isPriorityPlayer = controlledPlayerIndex === priorityPlayerIndex;
 
-                    // Check if we're at the end step with priority passing
-                    if (currentPhase === 'end' && endStepPriorityPassed) {
+                    // Check if we're at the end step with priority passing (only if no stack to resolve)
+                    if (currentPhase === 'end' && endStepPriorityPassed && !hasStack) {
                         // Opponent has priority during the end step resolve
                         if (!isActivePlayer) {
                             passDisabled = false;
