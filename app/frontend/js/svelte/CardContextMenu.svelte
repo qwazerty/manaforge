@@ -362,6 +362,14 @@
      * Create a token from the card's oracle text.
      * Searches for the token with matching set and creates it on the battlefield.
      */
+    function setMatchesSource(tokenSet, sourceSet) {
+        if (!tokenSet || !sourceSet) return false;
+        if (tokenSet === sourceSet) return true;
+        if (tokenSet.startsWith('t') && tokenSet.slice(1) === sourceSet) return true;
+        if (sourceSet.startsWith('t') && sourceSet.slice(1) === tokenSet) return true;
+        return false;
+    }
+
     async function createTokenFromCard(tokenName) {
         if (!tokenName) return;
         
@@ -377,27 +385,36 @@
             // Search for the token with exact name match, prioritizing the card's set
             // Token sets have 't' prefix (e.g., 'tmh3' for 'mh3' tokens)
             // If source card is already a token (set starts with 't' and has 4+ chars), use its set directly
-            const sourceSet = (cardSet || '').toLowerCase();
-            let tokenSetCode = '';
+            const sourceSet = (cardSet || '').toLowerCase().trim();
+            let candidateSetCodes = [];
             if (sourceSet) {
                 // Token sets have 4+ characters and start with 't' (e.g., 'tneo', 'tmh2')
                 // Regular sets starting with 't' are typically 3 chars (e.g., 'tmp', 'tpr')
                 const isTokenSet = sourceSet.length >= 4 && sourceSet.startsWith('t');
-                tokenSetCode = isTokenSet ? sourceSet : `t${sourceSet}`;
+                if (isTokenSet) {
+                    candidateSetCodes = [sourceSet, sourceSet.slice(1)];
+                } else {
+                    candidateSetCodes = [`t${sourceSet}`, sourceSet];
+                }
+                candidateSetCodes = [...new Set(candidateSetCodes.filter(Boolean))];
             }
             
             // First try with the matching token set
-            let searchUrl = `/api/v1/cards/search?q=${encodeURIComponent(tokenName)}&tokens_only=true&exact=true&limit=20`;
-            if (tokenSetCode) {
-                searchUrl += `&set=${encodeURIComponent(tokenSetCode)}`;
+            const baseSearchUrl = `/api/v1/cards/search?q=${encodeURIComponent(tokenName)}&tokens_only=true&exact=true&limit=100`;
+            let tokens = [];
+
+            for (const setCode of candidateSetCodes) {
+                const response = await fetch(`${baseSearchUrl}&set=${encodeURIComponent(setCode)}`);
+                const results = response.ok ? await response.json() : [];
+                if (results.length) {
+                    tokens = results;
+                    break;
+                }
             }
-            
-            let response = await fetch(searchUrl);
-            let tokens = response.ok ? await response.json() : [];
-            
-            // If no result with specific set, search without set filter
-            if (!tokens.length && tokenSetCode) {
-                response = await fetch(`/api/v1/cards/search?q=${encodeURIComponent(tokenName)}&tokens_only=true&exact=true&limit=20`);
+
+            // If no result with specific sets, search without set filter
+            if (!tokens.length) {
+                const response = await fetch(baseSearchUrl);
                 tokens = response.ok ? await response.json() : [];
             }
             
@@ -409,10 +426,10 @@
             // Sort tokens to prioritize matching set
             if (sourceSet) {
                 tokens.sort((a, b) => {
-                    const aSet = (a.set || '').toLowerCase();
-                    const bSet = (b.set || '').toLowerCase();
-                    const aMatch = aSet === `t${sourceSet}` || aSet === sourceSet;
-                    const bMatch = bSet === `t${sourceSet}` || bSet === sourceSet;
+                    const aSet = (a.set || a.set_code || '').toLowerCase();
+                    const bSet = (b.set || b.set_code || '').toLowerCase();
+                    const aMatch = setMatchesSource(aSet, sourceSet);
+                    const bMatch = setMatchesSource(bSet, sourceSet);
                     if (aMatch && !bMatch) return -1;
                     if (!aMatch && bMatch) return 1;
                     return 0;

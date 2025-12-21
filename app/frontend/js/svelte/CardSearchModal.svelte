@@ -425,7 +425,7 @@
         error = '';
 
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
-        const params = new URLSearchParams({ q: term, limit: '50' });
+        const params = new URLSearchParams({ q: term, limit: '100' });
         if (tokenFlag) {
             params.set('tokens_only', 'true');
         }
