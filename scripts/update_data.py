@@ -87,6 +87,7 @@ def fetch_scryfall_dump() -> List[Dict[str, Any]]:
 
     metadata = _fetch_json(SCRYFALL_BULK_METADATA)
     download_uri = metadata.get("download_uri")
+    print(f"Scryfall download URI: {download_uri}")
     if not download_uri:
         raise SystemExit("Scryfall metadata missing download_uri")
 
