@@ -107,7 +107,6 @@ class DraftService:
             if str(card.get("rarity") or "").lower() == "mythic"
         ]
 
-        # Commons: enforce max 1 land when possible.
         common_sample = sample_cards(common_pool, 7)
 
         uncommons = sample_cards(uncommon_pool, 3)
@@ -118,12 +117,9 @@ class DraftService:
         else:
             rare_mythic = sample_cards(rare_pool, 1)
 
-        # If no mythic/rare was found, fall back to any card.
-        if not rare_mythic:
-            rare_mythic = sample_cards(rare_pool or mythic_pool or all_cards, 1)
-
-        non_foil_wildcard = sample_cards(all_cards, 1)
-        wildcard = sample_cards(all_cards, 1)
+        wildcard_pool = [card for card in all_cards if not is_basic_land(card)]
+        non_foil_wildcard = sample_cards(wildcard_pool, 1)
+        wildcard = sample_cards(wildcard_pool, 1)
 
         basic_land_pool = [card for card in all_cards if is_basic_land(card)]
         if basic_land_pool:
