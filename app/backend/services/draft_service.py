@@ -8,7 +8,7 @@ import random
 from urllib.parse import urlparse, parse_qs
 from typing import List, Dict, Any, Optional, Tuple
 
-from app.backend.models.game import Card, Rarity
+from app.backend.models.game import Card, Rarity, CardType
 from app.backend.services.card_service import CardService
 
 
@@ -54,23 +54,92 @@ class DraftService:
 
     async def generate_booster(self, set_code: str) -> List[Card]:
         """Generate a random booster pack for a given set."""
-        # Standard booster distribution: 10 commons, 3 uncommons, 1 rare/mythic
-        # This is a simplified model. Real boosters can be more complex.
+        # Distribution:
+        # 7 commons, max 1 land among commons
+        # 3 uncommons
+        # 1 non-foil wildcard (any rarity)
+        # 1 rare or mythic (87.5% rare / 12.5% mythic)
+        # 1 basic land (fallback to common land if no basics)
+        # 1 wildcard (any rarity)
 
-        commons = await self._get_cards_by_rarity(set_code, "common", 10)
-        uncommons = await self._get_cards_by_rarity(set_code, "uncommon", 3)
+        all_cards = self.card_service.get_local_cards(
+            set_code=set_code, include_tokens=False
+        )
+
+        def is_land(card_data: Dict[str, Any]) -> bool:
+            return "land" in str(card_data.get("type_line") or "").lower()
+
+        def is_basic_land(card_data: Dict[str, Any]) -> bool:
+            return "basic land" in str(card_data.get("type_line") or "").lower()
+
+        def sample_cards(pool: List[Dict[str, Any]], count: int) -> List[Card]:
+            if not pool or count <= 0:
+                return []
+            if len(pool) >= count:
+                sampled = random.sample(pool, count)
+            else:
+                sampled = list(pool)
+                sampled.extend(random.choices(pool, k=count - len(sampled)))
+            cards: List[Card] = []
+            for card_data in sampled:
+                parsed_card = self.card_service._parse_scryfall_card(card_data)
+                if parsed_card:
+                    cards.append(Card(**parsed_card))
+            return cards
+
+        common_pool = [
+            card
+            for card in all_cards
+            if str(card.get("rarity") or "").lower() == "common"
+            and not is_basic_land(card)
+        ]
+        uncommon_pool = [
+            card
+            for card in all_cards
+            if str(card.get("rarity") or "").lower() == "uncommon"
+        ]
+        rare_pool = [
+            card for card in all_cards if str(card.get("rarity") or "").lower() == "rare"
+        ]
+        mythic_pool = [
+            card
+            for card in all_cards
+            if str(card.get("rarity") or "").lower() == "mythic"
+        ]
+
+        # Commons: enforce max 1 land when possible.
+        common_sample = sample_cards(common_pool, 7)
+
+        uncommons = sample_cards(uncommon_pool, 3)
 
         # 1 in 8 chance for a mythic, otherwise a rare
         if random.randint(1, 8) == 1:
-            rare_mythic = await self._get_cards_by_rarity(set_code, "mythic", 1)
+            rare_mythic = sample_cards(mythic_pool, 1)
         else:
-            rare_mythic = await self._get_cards_by_rarity(set_code, "rare", 1)
+            rare_mythic = sample_cards(rare_pool, 1)
 
-        # If no mythic was found, get a rare instead
+        # If no mythic/rare was found, fall back to any card.
         if not rare_mythic:
-            rare_mythic = await self._get_cards_by_rarity(set_code, "rare", 1)
+            rare_mythic = sample_cards(rare_pool or mythic_pool or all_cards, 1)
 
-        booster = commons + uncommons + rare_mythic
+        non_foil_wildcard = sample_cards(all_cards, 1)
+        wildcard = sample_cards(all_cards, 1)
+
+        basic_land_pool = [card for card in all_cards if is_basic_land(card)]
+        if basic_land_pool:
+            basic_land = sample_cards(basic_land_pool, 1)
+        else:
+            common_land_pool = [card for card in common_pool if is_land(card)]
+            basic_land = sample_cards(common_land_pool or common_pool, 1)
+
+        booster = (
+            common_sample
+            + uncommons
+            + non_foil_wildcard
+            + rare_mythic
+            + basic_land
+            + wildcard
+        )
 
         rarity_order = {
             Rarity.MYTHIC: 0,
