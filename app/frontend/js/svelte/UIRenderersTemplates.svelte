@@ -1832,7 +1832,11 @@
                         data-card-count="${handDataCount}"
                         data-player-owner="${ownerId}"
                         data-hand-mode="${isSpectatorView ? 'spectator' : 'hidden'}"
-                        data-zone-type="opponent-hand">
+                        data-zone-type="opponent-hand"
+                        data-zone-owner="${ownerId}"
+                        ondragover="UIZonesManager.handleZoneDragOver(event)"
+                        ondragleave="UIZonesManager.handleZoneDragLeave(event)"
+                        ondrop="UIZonesManager.handleZoneDrop(event, 'hand')">
                         ${opponentHandHtml}
                     </div>
 

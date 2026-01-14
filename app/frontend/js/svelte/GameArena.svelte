@@ -777,8 +777,12 @@
                         class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
                         data-card-count={board.opponent.hand.cardCount}
                         data-player-owner={board.opponent.ownerId}
+                        data-zone-owner={board.opponent.ownerId}
                         data-hand-mode={board.opponent.hand.mode}
-                        data-zone-type="opponent-hand">
+                        data-zone-type="opponent-hand"
+                        ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                        ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                        ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
                         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                         {@html board.opponent.hand.html}
                     </div>

@@ -1043,7 +1043,7 @@
 
             const popupTitle = `${isOpponent ? 'Opponent ' : ''}${zoneInfo.title}`;
             const allowCommanderControls = zoneInfo?.allowTaxControls === true;
-            const allowDrop = isCommanderPopup ? allowCommanderControls : !isOpponent;
+            const allowDrop = isCommanderPopup ? allowCommanderControls : true;
             const cardsHtml = this._buildZonePopupCardsHtml(cardsArray, baseZone, isOpponent, ownerId);
 
             const componentEntry = this._ensureZonePopupComponent(popupKey, zoneInfo, isOpponent);
