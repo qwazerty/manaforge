@@ -6,6 +6,7 @@
         cardsRemaining = 0,
         deckClass = '',
         zoneIdentifier = '',
+        zoneOwnerId = '',
         overlayText = '',
         onClick = null
     } = $props();
@@ -32,7 +33,13 @@
     }
 </script>
 
-<div class="deck-zone-stack-wrapper w-full flex flex-col items-center">
+<div
+    class="deck-zone-stack-wrapper w-full flex flex-col items-center"
+    data-zone-owner={zoneOwnerId}
+    data-zone-type="deck"
+    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+    ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'library', { deckPosition: 'top' })}>
     {#if cardsRemaining === 0}
         <button
             type="button"

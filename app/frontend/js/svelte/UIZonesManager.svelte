@@ -124,7 +124,7 @@
             const config = getDeckZoneConfig(deck, isOpponent);
             const zoneLabel = this._renderZoneLabel('deck');
             const ownerKey = isOpponent ? 'player2' : 'player1';
-            const zoneKey = this._registerZoneConfig('deck', config);
+            const zoneKey = this._registerZoneConfig('deck', { ...config, ownerKey });
 
             const deckPlaceholder = `
                 <div class="deck-zone-placeholder" data-zone-type="deck" data-zone-owner="${ownerKey}" data-zone-key="${zoneKey}"></div>
@@ -133,7 +133,7 @@
             const zoneContent = generateZoneWrapper(`
                 <div class="relative flex flex-col items-center py-4"
                     ondragover="UIZonesManager.handleZoneDragOver(event)"
-                    ondrop="UIZonesManager.handleZoneDrop(event, 'deck')">
+                    ondrop="UIZonesManager.handleZoneDrop(event, 'library', { deckPosition: 'top' })">
                     ${zoneLabel}
                     ${deckPlaceholder}
                 </div>
@@ -529,7 +529,7 @@
             }
         }
 
-        static handleZoneDrop(event, targetZone) {
+        static handleZoneDrop(event, targetZone, options = null) {
             event.preventDefault();
             const current = event.currentTarget;
             if (current && current.classList) {
@@ -562,6 +562,9 @@
                 const { cardId, cardZone, uniqueCardId, cardOwnerId, zoneOwnerId } = data;
                 const targetOwnerId = current?.dataset?.zoneOwner || null;
                 const sourcePlayerId = zoneOwnerId || cardOwnerId || null;
+                const deckPosition = options && typeof options === 'object'
+                    ? options.deckPosition || null
+                    : null;
 
                 const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
                 const battlefieldZones = ['battlefield', 'lands', 'creatures', 'support', 'permanents'];
@@ -685,26 +688,26 @@
 
                 // Trigger an action to move the card (adjust to the backend logic)
                 if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
-                    const options = {};
+                    const moveOptions = {};
                     if (sourcePlayerId) {
-                        options.sourcePlayerId = sourcePlayerId;
+                        moveOptions.sourcePlayerId = sourcePlayerId;
                     }
                     const destOwnerId = current?.dataset?.zoneOwner || container?.dataset?.zoneOwner || null;
                     if (destOwnerId) {
-                        options.destinationPlayerId = destOwnerId;
+                        moveOptions.destinationPlayerId = destOwnerId;
                     }
                     if (this._isCrossSeatTransfer(sourcePlayerId, destOwnerId)) {
-                        options.bypassStack = true;
+                        moveOptions.bypassStack = true;
                     }
                     window.GameActions.moveCard(
                         cardId,
                         cardZone,
                         targetZone,
                         uniqueCardId,
-                        null,
+                        deckPosition,
                         null,
                         positionIndex,
-                        options
+                        moveOptions
                     );
                 } else {
                     console.warn('Card movement not implemented on the backend.');
@@ -917,6 +920,7 @@
                             cardsRemaining: config.cardsRemaining,
                             deckClass: config.deckClass,
                             zoneIdentifier: config.zoneIdentifier,
+                            zoneOwnerId: config.ownerKey,
                             overlayText: config.overlayText,
                             onClick: config.onClick
                         }
@@ -947,6 +951,7 @@
                             cards: config.graveyardArray,
                             cardsRemaining: config.cardsRemaining,
                             zoneIdentifier: config.zoneIdentifier,
+                            zoneOwnerId: config.ownerKey,
                             overlayHtml: config.overlayHtml,
                             onClick: config.clickHandler
                         }
@@ -977,6 +982,7 @@
                             cards: config.exileArray,
                             zoneIdentifier: config.zoneIdentifier,
                             cardsRemaining: config.cardsRemaining,
+                            zoneOwnerId: config.ownerKey,
                             overlayHtml: config.overlayHtml,
                             topCard: config.topCard,
                             onClick: config.clickHandler

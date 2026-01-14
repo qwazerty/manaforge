@@ -362,6 +362,7 @@
                 overlayHtml: exileConfig.overlayHtml,
                 topCard: exileConfig.topCard,
                 zoneIdentifier: exileConfig.zoneIdentifier,
+                zoneOwnerId: ownerId,
                 onClick: exileConfig.clickHandler
             }),
             buildZoneDescriptor('graveyard', GraveyardZone, {
@@ -369,15 +370,17 @@
                 cardsRemaining: graveyardConfig.cardsRemaining,
                 overlayHtml: graveyardConfig.overlayHtml,
                 zoneIdentifier: graveyardConfig.zoneIdentifier,
+                zoneOwnerId: ownerId,
                 onClick: graveyardConfig.clickHandler
             }),
             buildZoneDescriptor('deck', DeckZone, {
                 cardsRemaining: deckConfig.cardsRemaining,
                 deckClass: deckConfig.deckClass,
                 zoneIdentifier: deckConfig.zoneIdentifier,
-            overlayText: deckConfig.overlayText,
-            onClick: deckConfig.onClick
-        }),
+                zoneOwnerId: ownerId,
+                overlayText: deckConfig.overlayText,
+                onClick: deckConfig.onClick
+            }),
                 buildZoneDescriptor('life', LifeZone, {
                     life: lifeConfig.life,
                     playerId: lifeConfig.playerId,

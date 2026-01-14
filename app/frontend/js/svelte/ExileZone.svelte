@@ -4,6 +4,7 @@
     let {
         cards = [],
         zoneIdentifier = '',
+        zoneOwnerId = '',
         cardsRemaining = 0,
         overlayHtml = 'View<br>All',
         topCard = null,
@@ -32,7 +33,13 @@
     }
 </script>
 
-<div class="exile-zone-stack flex flex-col items-center w-full">
+<div
+    class="exile-zone-stack flex flex-col items-center w-full"
+    data-zone-owner={zoneOwnerId}
+    data-zone-type="exile"
+    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+    ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'exile')}>
     <button
         type="button"
         class="exile-stack zone-context-menu-enabled"

@@ -4,6 +4,7 @@
     let {
         cards = [],
         zoneIdentifier = '',
+        zoneOwnerId = '',
         cardsRemaining = 0,
         overlayHtml = 'View<br>All',
         onClick = null
@@ -39,7 +40,13 @@
     }
 </script>
 
-<div class="graveyard-zone-stack flex flex-col items-center w-full">
+<div
+    class="graveyard-zone-stack flex flex-col items-center w-full"
+    data-zone-owner={zoneOwnerId}
+    data-zone-type="graveyard"
+    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+    ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'graveyard')}>
     <button
         type="button"
         class="graveyard-cards-stack zone-context-menu-enabled"
