@@ -235,6 +235,92 @@ export function filterCardsByType(cards: any[], zoneName: string) {
     return workingSet;
 }
 
+export function getCardTypeSummary(cards: any[] = []) {
+    const cardList = Array.isArray(cards) ? cards : [];
+    const typeDefinitions = [
+        { key: 'creature', label: 'Creature', aliases: ['creature'] },
+        { key: 'artifact', label: 'Artifact', aliases: ['artifact'] },
+        { key: 'enchantment', label: 'Enchantment', aliases: ['enchantment'] },
+        { key: 'instant', label: 'Instant', aliases: ['instant'] },
+        { key: 'sorcery', label: 'Sorcery', aliases: ['sorcery'] },
+        { key: 'planeswalker', label: 'Planeswalker', aliases: ['planeswalker'] },
+        { key: 'land', label: 'Land', aliases: ['land'] },
+        { key: 'battle', label: 'Battle', aliases: ['battle'] },
+        { key: 'tribal', label: 'Tribal', aliases: ['tribal', 'kindred'] },
+        { key: 'conspiracy', label: 'Conspiracy', aliases: ['conspiracy'] },
+        { key: 'phenomenon', label: 'Phenomenon', aliases: ['phenomenon'] },
+        { key: 'plane', label: 'Plane', aliases: ['plane'] },
+        { key: 'scheme', label: 'Scheme', aliases: ['scheme'] },
+        { key: 'vanguard', label: 'Vanguard', aliases: ['vanguard'] }
+    ];
+
+    const counts = typeDefinitions.reduce((acc, def) => {
+        acc[def.key] = 0;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const normalizeTypeText = (card: any) => {
+        if (!card) return '';
+
+        const isFaceDown = typeof GameCards !== 'undefined' && GameCards.isFaceDownCard?.(card);
+        if (isFaceDown) {
+            const overrides = (card as any).custom_types || (card as any).customTypes;
+            if (Array.isArray(overrides) && overrides.length > 0) {
+                return overrides.map((v) => String(v).trim().toLowerCase()).filter(Boolean).join(' ');
+            }
+            return 'creature';
+        }
+
+        const customTypes = (() => {
+            const overrides = (card as any).custom_types || (card as any).customTypes;
+            if (!Array.isArray(overrides) || overrides.length === 0) {
+                return [];
+            }
+            return overrides.map((value) => String(value).trim().toLowerCase()).filter(Boolean);
+        })();
+
+        const faceTypes = (() => {
+            if (!Array.isArray((card as any).card_faces) || (card as any).card_faces.length === 0) {
+                return [];
+            }
+            const currentFaceIndex = typeof (card as any).current_face === 'number' ? (card as any).current_face : 0;
+            const activeFace = (card as any).card_faces[currentFaceIndex] || (card as any).card_faces[0];
+            return activeFace && activeFace.type_line ? [activeFace.type_line] : [];
+        })();
+
+        const pieces = [
+            (card as any).card_type,
+            (card as any).cardType,
+            (card as any).type_line,
+            (card as any).typeLine,
+            (card as any).subtype,
+            ...faceTypes,
+            ...customTypes
+        ].filter(Boolean);
+
+        return pieces.join(' ').toLowerCase();
+    };
+
+    for (const card of cardList) {
+        const typeText = normalizeTypeText(card);
+        if (!typeText) continue;
+        for (const def of typeDefinitions) {
+            if (def.aliases.some((alias) => typeText.includes(alias))) {
+                counts[def.key] += 1;
+            }
+        }
+    }
+
+    const lines = typeDefinitions
+        .filter((def) => counts[def.key] > 0)
+        .map((def) => `${def.label} ${counts[def.key]}`);
+
+    return {
+        distinctCount: lines.length,
+        lines
+    };
+}
+
 export function getZoneConfiguration(isOpponent: boolean, playerIndex: number | null, playerName: string | null = null) {
     const prefix = isOpponent ? 'opponent_' : '';
     const safeName = typeof playerName === 'string' && playerName.trim().length

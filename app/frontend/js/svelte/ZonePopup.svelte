@@ -9,7 +9,8 @@
         isOpponent = false,
         ownerId = '',
         persistent = false,
-        allowDrop = false
+        allowDrop = false,
+        typeSummary = null
     } = $props();
 
     const panelId = $derived(popupKey ? `zone-popup-${popupKey}` : 'zone-popup');
@@ -17,6 +18,8 @@
     const countId = $derived(popupKey ? `zone-popup-count-${popupKey}` : 'zone-popup-count');
 
     const hasCards = $derived(Number(cardCount) > 0);
+    const hasTypeSummary = $derived(typeSummary && typeof typeSummary.distinctCount === 'number');
+    const typeSummaryText = $derived(Array.isArray(typeSummary?.lines) ? typeSummary.lines.join('\n') : '');
 
     let searchQuery = $state('');
     let panelEl;
@@ -152,6 +155,19 @@
             <span class="stack-popup-icon reveal-popup-icon zone-popup-icon">{icon || '🗂️'}</span>
             <span class="stack-popup-label reveal-popup-label zone-popup-label">{title || 'Zone'}</span>
             <span class="stack-popup-count reveal-popup-count zone-popup-count" id={countId}>{cardCount}</span>
+            {#if hasTypeSummary && baseZone === 'graveyard'}
+                <div class="zone-popup-type-summary" aria-label="Graveyard type summary">
+                    <span class="zone-popup-type-count">{typeSummary?.distinctCount ?? 0} types</span>
+                    <div class="zone-popup-type-tooltip" role="tooltip">
+                        {#if typeSummaryText}
+                            <div class="zone-popup-type-tooltip-title">Types in graveyard</div>
+                            <div class="zone-popup-type-tooltip-list">{typeSummaryText}</div>
+                        {:else}
+                            <div class="zone-popup-type-tooltip-empty">No card types yet</div>
+                        {/if}
+                    </div>
+                </div>
+            {/if}
         </div>
         {#if !persistent}
             <button class="zone-popup-close" type="button" onclick={handleClose}>✕</button>

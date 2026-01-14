@@ -18,7 +18,8 @@
     } from '@lib/zone-data';
     import {
         generateZoneWrapper,
-        calculateAnchorPosition
+        calculateAnchorPosition,
+        getCardTypeSummary
     } from '@lib/ui-utils';
 
     // Helper to mount Svelte 5 components dynamically
@@ -1017,6 +1018,7 @@
             const baseZone = popupKey.replace('opponent_', '');
             const isCommanderPopup = baseZone === 'commander';
             const allowEmptyDisplay = ['reveal', 'graveyard', 'exile', 'deck'].includes(baseZone);
+            const typeSummary = baseZone === 'graveyard' ? getCardTypeSummary(cardsArray) : null;
 
             if (!cardsArray.length && !isCommanderPopup && !allowEmptyDisplay) {
                 this._hideZonePopup(popupKey);
@@ -1048,7 +1050,8 @@
                     persistent: zoneInfo?.persistent === true,
                     allowDrop,
                     allowCommanderControls,
-                    commanderTax: zoneInfo?.commanderTax || 0
+                    commanderTax: zoneInfo?.commanderTax || 0,
+                    typeSummary
                 });
             } catch (error) {
                 console.error('[UIZonesManager] Failed to update ZonePopup component', error);
@@ -1135,7 +1138,8 @@
                         baseZone: popupKey.replace('opponent_', ''),
                         isOpponent,
                         ownerId: isOpponent ? 'player2' : 'player1',
-                        persistent: zoneInfo?.persistent === true
+                        persistent: zoneInfo?.persistent === true,
+                        typeSummary: null
                     }
                 });
 
