@@ -1617,6 +1617,7 @@ class SimpleGameEngine:
             "graveyard",
             "exile",
             "library",
+            "hand",
             "reveal_zone",
             "commander_zone",
         ]:
