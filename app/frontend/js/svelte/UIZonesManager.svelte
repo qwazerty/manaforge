@@ -323,6 +323,14 @@
             this._pendingLibraryShuffle = true;
         }
 
+        static consumeLibrarySearchShuffle() {
+            if (!this._pendingLibraryShuffle) {
+                return false;
+            }
+            this._pendingLibraryShuffle = false;
+            return true;
+        }
+
         /**
          * Show zone modal for current player
          */
@@ -372,11 +380,19 @@
         /**
          * Close zone modal
          */
-        static closeZoneModal(zoneName) {
+        static closeZoneModal(zoneName, options = null) {
             const normalizedZone = typeof zoneName === 'string' ? zoneName : '';
             const isOpponentZone = normalizedZone.startsWith('opponent_');
             const baseZone = normalizedZone.replace('opponent_', '');
-            const shouldShuffleLibrary = this._pendingLibraryShuffle && baseZone === 'deck' && !isOpponentZone;
+            const shouldShuffleLibrary =
+                this._pendingLibraryShuffle &&
+                baseZone === 'deck' &&
+                !isOpponentZone &&
+                !(options && options.suppressShuffle);
+
+            if (options && (options.clearPendingShuffle || options.suppressShuffle)) {
+                this._pendingLibraryShuffle = false;
+            }
 
             const triggerLibraryShuffle = () => {
                 if (!shouldShuffleLibrary) {

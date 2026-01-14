@@ -711,11 +711,41 @@
         moveCard(cardId, sourceZone, 'battlefield', uniqueCardId, null, callback);
     }
 
+    function consumeLibrarySearchShuffle(sourceZone) {
+        const normalizedSource = typeof sourceZone === 'string'
+            ? sourceZone.toLowerCase()
+            : '';
+        if (!['library', 'deck'].includes(normalizedSource)) {
+            return false;
+        }
+        const manager = window.UIZonesManager || window.ZoneManager;
+        if (manager && typeof manager.consumeLibrarySearchShuffle === 'function') {
+            return manager.consumeLibrarySearchShuffle();
+        }
+        return false;
+    }
+
     function sendToTopLibrary(cardId, sourceZone, uniqueCardId = null, callback = null) {
+        const shouldShuffle = consumeLibrarySearchShuffle(sourceZone);
+        if (shouldShuffle) {
+            const manager = window.UIZonesManager || window.ZoneManager;
+            if (manager && typeof manager.closeZoneModal === 'function') {
+                manager.closeZoneModal('deck', { suppressShuffle: true });
+            }
+            performGameAction('shuffle_library');
+        }
         moveCard(cardId, sourceZone, 'library', uniqueCardId, 'top', callback);
     }
 
     function sendToBottomLibrary(cardId, sourceZone, uniqueCardId = null, callback = null) {
+        const shouldShuffle = consumeLibrarySearchShuffle(sourceZone);
+        if (shouldShuffle) {
+            const manager = window.UIZonesManager || window.ZoneManager;
+            if (manager && typeof manager.closeZoneModal === 'function') {
+                manager.closeZoneModal('deck', { suppressShuffle: true });
+            }
+            performGameAction('shuffle_library');
+        }
         moveCard(cardId, sourceZone, 'library', uniqueCardId, 'bottom', callback);
     }
 
