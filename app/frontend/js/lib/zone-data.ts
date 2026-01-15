@@ -88,6 +88,7 @@ const getLifeZoneConfig = (playerData: any = {}, playerId = 'player1') => {
         ? safeData.life
         : parseInt((safeData as any).life || 20, 10) || 20;
     const counters = extractCounterEntries(safeData);
+    const manaPool = safeData.mana_pool || {};
     const lifeControls = Array.isArray(UIConfig.LIFE_CONTROLS) ? UIConfig.LIFE_CONTROLS : [];
     const manageButton = {
         label: 'Counters',
@@ -147,6 +148,7 @@ const getLifeZoneConfig = (playerData: any = {}, playerId = 'player1') => {
         life: lifeValue,
         playerId,
         counters,
+        manaPool,
         manageButton,
         negativeControls,
         positiveControls,

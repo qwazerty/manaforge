@@ -72,4 +72,22 @@ describe('LifeZone', () => {
         expect(customContainer).not.toBeNull();
         expect(customContainer?.classList.contains('hidden')).toBe(true);
     });
+
+    it('displays mana pool when provided', () => {
+        const { container } = render(LifeZone, {
+            props: {
+                life: 20,
+                playerId: 'player1',
+                manaPool: {
+                    W: 2,
+                    U: 3
+                }
+            }
+        });
+
+        const manaPoolContainer = container.querySelector('.mana-pool-container');
+        expect(manaPoolContainer).not.toBeNull();
+        expect(screen.getByTitle(/2 White mana/i)).toBeTruthy();
+        expect(screen.getByTitle(/3 Blue mana/i)).toBeTruthy();
+    });
 });
