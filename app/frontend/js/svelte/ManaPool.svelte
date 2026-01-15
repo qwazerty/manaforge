@@ -13,9 +13,9 @@
     
     // Map mana colors to their symbols and display colors
     const MANA_SYMBOLS = {
-        'W': { symbol: '⚪', color: 'text-yellow-100', bg: 'bg-yellow-100/20', border: 'border-yellow-100/40', name: 'White' },
+        'W': { symbol: '⚪', color: 'text-gray-100', bg: 'bg-gray-100/20', border: 'border-gray-100/40', name: 'White' },
         'U': { symbol: '💧', color: 'text-blue-400', bg: 'bg-blue-400/20', border: 'border-blue-400/40', name: 'Blue' },
-        'B': { symbol: '💀', color: 'text-gray-900', bg: 'bg-gray-800/30', border: 'border-gray-600/40', name: 'Black' },
+        'B': { symbol: '💀', color: 'text-gray-300', bg: 'bg-gray-800/30', border: 'border-gray-600/40', name: 'Black' },
         'R': { symbol: '🔥', color: 'text-red-500', bg: 'bg-red-500/20', border: 'border-red-500/40', name: 'Red' },
         'G': { symbol: '🌿', color: 'text-green-500', bg: 'bg-green-500/20', border: 'border-green-500/40', name: 'Green' },
         'C': { symbol: '◇', color: 'text-gray-400', bg: 'bg-gray-400/20', border: 'border-gray-400/40', name: 'Colorless' }
