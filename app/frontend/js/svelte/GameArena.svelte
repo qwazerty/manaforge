@@ -388,6 +388,7 @@
                     positiveControls: lifeConfig.positiveControls,
                     hasCustomLifeControls: lifeConfig.hasCustomLifeControls,
                     counters: lifeConfig.counters,
+                    manaPool: lifeConfig.manaPool,
                     manageButton
                 })
             ];

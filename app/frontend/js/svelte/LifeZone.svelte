@@ -1,4 +1,6 @@
 <script>
+    import ManaPool from './ManaPool.svelte';
+
     let {
         life = 20,
         playerId = '',
@@ -6,7 +8,8 @@
         positiveControls = [],
         hasCustomLifeControls = false,
         counters = [],
-        manageButton = null
+        manageButton = null,
+        manaPool = {}
     } = $props();
 
     const handleControlClick = (event, control) => {
@@ -48,6 +51,8 @@
             ❤️ {life}
         </div>
     </div>
+
+    <ManaPool manaPool={manaPool} playerId={playerId} />
 
     <div class="life-controls-stack">
         <div class="life-controls-group">
