@@ -652,13 +652,22 @@ class ActionHistoryStore {
                 targetZoneFromPayload ??
                 findDetailValue('Target Zone') ??
                 findDetailValue('Target zone');
+            const normalizedSource = sourceZone
+                ? String(sourceZone).trim().toLowerCase()
+                : '';
+            const normalizedTarget = targetZone
+                ? String(targetZone).trim().toLowerCase()
+                : '';
 
             if (
-                sourceZone &&
-                targetZone &&
-                String(sourceZone).toLowerCase() ===
-                    String(targetZone).toLowerCase()
+                normalizedSource &&
+                normalizedTarget &&
+                normalizedSource === normalizedTarget
             ) {
+                return true;
+            }
+
+            if (normalizedSource === 'deck' && normalizedTarget === 'hand') {
                 return true;
             }
         }
