@@ -18,11 +18,14 @@
     };
 
     const GAME_LIST_REFRESH_MS = 4000;
+    const COMMANDER_MULTI_MIN_PLAYERS = 2;
+    const COMMANDER_MULTI_MAX_PLAYERS = 4;
 
     let games = $state([]);
     let gameId = $state('');
     let selectedFormat = $state('standard');
     let selectedPhaseMode = $state('strict');
+    let selectedMaxPlayers = $state(COMMANDER_MULTI_MAX_PLAYERS);
     let isFetchingGameList = $state(false);
     let battleStatus = $state({ message: '', type: '' });
     let isProcessing = $state(false);
@@ -48,6 +51,14 @@
         if (!normalized) return '';
         if (labelMap[normalized]) return labelMap[normalized];
         return normalized.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function formatList(items = []) {
+        if (!items || !items.length) return '';
+        if (typeof Intl !== 'undefined' && Intl.ListFormat) {
+            return new Intl.ListFormat('en', { style: 'short', type: 'conjunction' }).format(items);
+        }
+        return items.join(' & ');
     }
 
     function generateRandomGameName() {
@@ -98,32 +109,50 @@
     }
 
     function determineSeatFromStatus(playerStatus = {}) {
-        const player1 = playerStatus.player1 || {};
-        const player2 = playerStatus.player2 || {};
-
-        if (!player1.seat_claimed) return 'player1';
-        if (!player2.seat_claimed) return 'player2';
+        const seats = resolveSeatList(playerStatus);
+        for (const seat of seats) {
+            if (!playerStatus?.[seat]?.seat_claimed) {
+                return seat;
+            }
+        }
         return 'spectator';
     }
 
     function determinePlayerRoleFromSetup(setupStatus) {
-        const playerInfo = setupStatus.player_status || {};
-        const player1 = playerInfo.player1 || { submitted: false, validated: false };
-        const player2 = playerInfo.player2 || { submitted: false, validated: false };
+        const playerInfo = setupStatus?.player_status || {};
+        const seats = resolveSeatList(playerInfo, setupStatus?.max_players);
 
-        const player1NeedsDeck = !player1.validated;
-        const player2NeedsDeck = !player2.validated;
-
-        if (player1NeedsDeck) return 'player1';
-        if (player2NeedsDeck) return 'player2';
+        for (const seat of seats) {
+            const status = playerInfo[seat] || { submitted: false, validated: false };
+            if (!status.validated) {
+                return seat;
+            }
+        }
         return 'spectator';
     }
 
-    async function ensureGameRoomExists(targetGameId, targetFormat, targetPhase) {
+    function resolveSeatList(playerStatus = {}, maxPlayers = null) {
+        const statusKeys = Object.keys(playerStatus || {}).filter((key) => key.startsWith('player'));
+        const numericMax = Number.isFinite(Number(maxPlayers)) ? Number(maxPlayers) : null;
+        const seatCount = Math.max(statusKeys.length || 0, numericMax || 2);
+        return Array.from({ length: seatCount }, (_, index) => `player${index + 1}`);
+    }
+
+    const isSeatRole = (role) => typeof role === 'string' && role.startsWith('player');
+    const formatSeatLabel = (seat) => (isSeatRole(seat) ? seat.replace('player', 'Player ') : seat);
+
+    function clampCommanderPlayers(value) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return COMMANDER_MULTI_MAX_PLAYERS;
+        return Math.min(COMMANDER_MULTI_MAX_PLAYERS, Math.max(COMMANDER_MULTI_MIN_PLAYERS, Math.trunc(numeric)));
+    }
+
+    async function ensureGameRoomExists(targetGameId, targetFormat, targetPhase, targetMaxPlayers = null) {
         const encodedId = encodeURIComponent(targetGameId);
         const setupUrl = `/api/v1/games/${encodedId}/setup`;
         const normalizedFormat = normalizeChoice(targetFormat) || 'standard';
         const normalizedPhase = normalizeChoice(targetPhase) || 'strict';
+        const normalizedMaxPlayers = Number.isFinite(Number(targetMaxPlayers)) ? Number(targetMaxPlayers) : null;
 
         let response = await fetch(setupUrl);
         if (response.ok) {
@@ -131,13 +160,18 @@
         }
 
         if (response.status === 404) {
+            const payload = {
+                game_format: normalizedFormat,
+                phase_mode: normalizedPhase
+            };
+            if (normalizedFormat === 'commander_multi' && normalizedMaxPlayers) {
+                payload.max_players = clampCommanderPlayers(normalizedMaxPlayers);
+            }
+
             response = await fetch(`/api/v1/games?game_id=${encodedId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    game_format: normalizedFormat,
-                    phase_mode: normalizedPhase
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -156,7 +190,7 @@
 
         if (setupStatus.ready) {
             const interfaceUrl = `/game-interface/${encodedId}`;
-            if (playerRole === 'player1' || playerRole === 'player2') {
+            if (isSeatRole(playerRole)) {
                 window.location.href = `${interfaceUrl}?player=${playerRole}`;
             } else {
                 window.location.href = `${interfaceUrl}?player=spectator`;
@@ -180,7 +214,12 @@
         battleStatus = { message: 'Preparing battlefield...', type: 'warning' };
 
         try {
-            const setupStatus = await ensureGameRoomExists(gameId, selectedFormat, selectedPhaseMode);
+            const setupStatus = await ensureGameRoomExists(
+                gameId,
+                selectedFormat,
+                selectedPhaseMode,
+                selectedFormat === 'commander_multi' ? selectedMaxPlayers : null
+            );
             
             // Sync selections (optional, but good for feedback)
             selectedFormat = normalizeChoice(setupStatus.game_format) || selectedFormat;
@@ -200,6 +239,16 @@
                     `Phase mode locked to ${formatChoiceLabel(PHASE_MODE_LABELS, actualPhaseMode)}.`
                 );
             }
+            if (actualFormat === 'commander_multi' && setupStatus?.max_players) {
+                const desiredPlayers = clampCommanderPlayers(selectedMaxPlayers);
+                const resolvedPlayers = clampCommanderPlayers(setupStatus.max_players);
+                if (Number(setupStatus.max_players) !== desiredPlayers) {
+                    mismatchMessages.push(
+                        `Commander Multi locked to ${setupStatus.max_players} players.`
+                    );
+                }
+                selectedMaxPlayers = resolvedPlayers;
+            }
 
             if (mismatchMessages.length) {
                 battleStatus = { message: mismatchMessages.join(' '), type: 'warning' };
@@ -208,13 +257,13 @@
             const playerRole = determinePlayerRoleFromSetup(setupStatus);
 
             if (playerRole === 'spectator' && !setupStatus.ready) {
-                battleStatus = { message: 'Both seats already reserved for validation. Try another battlefield name.', type: 'error' };
+                battleStatus = { message: 'All seats already reserved for validation. Try another battlefield name.', type: 'error' };
                 isProcessing = false;
                 return;
             }
 
-            if (playerRole === 'player1' || playerRole === 'player2') {
-                battleStatus = { message: `Battlefield ready! Redirecting as ${playerRole.toUpperCase()}...`, type: 'success' };
+            if (isSeatRole(playerRole)) {
+                battleStatus = { message: `Battlefield ready! Redirecting as ${formatSeatLabel(playerRole)}...`, type: 'success' };
             } else if (setupStatus.ready) {
                 battleStatus = { message: 'Battlefield already active. Joining as spectator...', type: 'success' };
             }
@@ -337,6 +386,25 @@
                                 Commander variants are in preview and may have limited gameplay support.
                             </p>
                         </div>
+                        {#if selectedFormat === 'commander_multi'}
+                            <div class="text-left space-y-2">
+                                <label for="commanderPlayers" class="text-sm font-semibold text-arena-accent uppercase tracking-wide">
+                                    Commander Players
+                                </label>
+                                <select
+                                    id="commanderPlayers"
+                                    bind:value={selectedMaxPlayers}
+                                    class="w-full px-4 py-3 bg-arena-surface border border-arena-accent/30 rounded-lg text-arena-text focus:border-arena-accent focus:ring-2 focus:ring-arena-accent/20 focus:outline-none transition-all duration-200"
+                                >
+                                    {#each [2, 3, 4] as count (count)}
+                                        <option value={count}>{count} Players</option>
+                                    {/each}
+                                </select>
+                                <p class="text-xs text-arena-muted">
+                                    Choose between 2 and 4 players for Commander Multi.
+                                </p>
+                            </div>
+                        {/if}
                         <div class="text-left space-y-2">
                             <label for="phaseMode" class="text-sm font-semibold text-arena-accent uppercase tracking-wide">
                                 Phase Mode
@@ -405,6 +473,8 @@
                         <div class="text-center text-arena-text-dim py-4">No games available</div>
                     {:else}
                         {#each games as game (game.game_id)}
+                            {@const seats = resolveSeatList(game.player_status, game.max_players)}
+                            {@const seatChoice = determineSeatFromStatus(game.player_status)}
                             <div class="arena-card rounded-lg p-4 mb-3 hover:scale-[1.02] transition-all duration-200 animate-fade-in">
                                 <div class="flex items-center justify-between mb-2">
                                     <div>
@@ -420,18 +490,18 @@
                                     {#if game.ready}
                                         Battle in progress • Turn {game.turn ?? 1}
                                     {:else}
-                                        {game.seat_claimed_count ?? 0}/2 seats filled • 
-                                        {game.submitted_count ?? 0}/2 decks submitted • 
-                                        {#if (['player1', 'player2'].filter(s => !(game.player_status?.[s]?.seat_claimed))).length > 0}
-                                            Waiting on {(['player1', 'player2'].filter(s => !(game.player_status?.[s]?.seat_claimed))).map(s => s.replace('player', 'Player ')).join(' & ')}
+                                        {game.seat_claimed_count ?? 0}/{seats.length} seats filled • 
+                                        {game.submitted_count ?? 0}/{seats.length} decks submitted • 
+                                        {#if (seats.filter(s => !(game.player_status?.[s]?.seat_claimed))).length > 0}
+                                            Waiting on {formatList((seats.filter(s => !(game.player_status?.[s]?.seat_claimed))).map(s => s.replace('player', 'Player ')))}
                                         {:else}
-                                            {game.validated_count ?? 0}/2 decks validated
+                                            {game.validated_count ?? 0}/{seats.length} decks validated
                                         {/if}
                                     {/if}
                                 </div>
 
                                 <div class="flex flex-wrap gap-2 text-xs text-arena-text mb-2">
-                                    {#each ['player1', 'player2'] as seat (seat)}
+                                    {#each seats as seat (seat)}
                                         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-arena-surface-light border border-arena-accent/10">
                                             {seat === 'player1' ? '🛡️' : '🎯'}
                                             {#if !game.player_status?.[seat]?.seat_claimed}
@@ -462,10 +532,10 @@
                                     {#if game.ready}
                                         Spectate Game
                                     {:else}
-                                        {#if determineSeatFromStatus(game.player_status) === 'spectator'}
+                                        {#if seatChoice === 'spectator'}
                                             View Room
                                         {:else}
-                                            Join as {determineSeatFromStatus(game.player_status) === 'player1' ? 'Player 1' : 'Player 2'}
+                                            Join as {seatChoice.replace('player', 'Player ')}
                                         {/if}
                                     {/if}
                                 </button>

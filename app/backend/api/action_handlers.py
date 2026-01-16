@@ -350,10 +350,13 @@ async def handle_coin_flip_choice(
 
     # Get player name for the message
     player_id = request.get("player_id", "player1")
-    player_index = 0 if player_id == "player1" else 1
+    player_index = next(
+        (idx for idx, player in enumerate(current_state.players) if player.id == player_id),
+        None,
+    )
     player_name = (
         current_state.players[player_index].name
-        if player_index < len(current_state.players)
+        if player_index is not None and player_index < len(current_state.players)
         else player_id
     )
     choice_action = "play first" if choice == "play" else "draw (let opponent go first)"

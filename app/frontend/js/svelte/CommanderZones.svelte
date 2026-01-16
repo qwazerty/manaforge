@@ -14,28 +14,6 @@
 
     const isSpectator = $derived(selectedPlayer === 'spectator');
 
-    const playerContext = $derived.by(() => {
-        if (!gameState) {
-            return null;
-        }
-        const players = Array.isArray(gameState.players) ? gameState.players : [];
-        if (players.length < 2) {
-            return null;
-        }
-
-        let controlledIdx = 0;
-        if (selectedPlayer === 'player2') {
-            controlledIdx = 1;
-        }
-        const opponentIdx = controlledIdx === 0 ? 1 : 0;
-
-        return {
-            players,
-            controlledIdx,
-            opponentIdx
-        };
-    });
-
     const getPlayerDisplayName = (playerData, fallback = 'Player') => {
         const rawName = typeof playerData?.name === 'string' ? playerData.name.trim() : '';
         return rawName || fallback;
@@ -54,7 +32,7 @@
         return `player${index + 1}`;
     };
 
-    const buildCommanderZoneData = (playerData, playerIndex, isOpponent) => {
+    const buildCommanderZoneData = (playerData, playerIndex) => {
         if (!playerData) {
             return null;
         }
@@ -68,12 +46,13 @@
         const ownerId = getOwnerId(playerData, playerIndex);
         const displayName = getPlayerDisplayName(playerData, getSeatFallbackName(playerIndex));
 
-        const allowTaxControls = !isOpponent && !isSpectator && selectedPlayer === ownerId;
+        const isLocal = !isSpectator && selectedPlayer === ownerId;
+        const allowTaxControls = isLocal;
 
         return {
             ownerId,
             displayName,
-            isOpponent,
+            isOpponent: !isLocal,
             commanderCards,
             commanderTax,
             allowTaxControls,
@@ -81,16 +60,14 @@
         };
     };
 
-    const opponentCommanderData = $derived.by(() => {
-        const ctx = playerContext;
-        if (!ctx) return null;
-        return buildCommanderZoneData(ctx.players[ctx.opponentIdx], ctx.opponentIdx, true);
-    });
-
-    const playerCommanderData = $derived.by(() => {
-        const ctx = playerContext;
-        if (!ctx) return null;
-        return buildCommanderZoneData(ctx.players[ctx.controlledIdx], ctx.controlledIdx, false);
+    const commanderEntries = $derived.by(() => {
+        if (!gameState) {
+            return [];
+        }
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        return players
+            .map((player, index) => buildCommanderZoneData(player, index))
+            .filter(Boolean);
     });
 
     const renderCommanderCard = (card, ownerId, isOpponent) => {
@@ -177,95 +154,62 @@
         <h3 class="font-magic font-semibold text-arena-accent">{panelTitle}</h3>
     </div>
 
-    <div class="commander-zones-content mt-3 grid grid-cols-2 gap-3">
-        {#if opponentCommanderData}
-            {@const data = opponentCommanderData}
-            <div class="commander-zone-section commander-zone-opponent">
-                <div class="commander-zone-header flex flex-col items-center mb-2">
-                    <span class="text-xs font-semibold text-arena-text-dim truncate w-full text-center">
-                        {data.displayName}
-                    </span>
-                    <div class="commander-tax-display flex items-center gap-1 text-xs mt-1">
-                        <span class="text-arena-muted">Tax:</span>
-                        <span class="text-arena-accent font-bold">{data.commanderTax}</span>
-                    </div>
-                </div>
-                <div
-                    class="commander-zone-cards flex flex-col items-center gap-2 min-h-[90px] p-2 rounded bg-arena-surface/50 border border-arena-accent/20"
-                    data-zone-context="commander"
-                    data-zone-owner={data.ownerId}
-                    data-card-count={data.cardCount}>
-                    {#if data.cardCount > 0}
-                        {#each data.commanderCards as card, index (card.unique_id || index)}
-                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                            {@html renderCommanderCard(card, data.ownerId, true)}
-                        {/each}
-                    {:else}
-                        <div class="commander-zone-empty text-center text-arena-muted text-xs py-2">
-                            <span class="block">🧙</span>
-                            <span>Empty</span>
-                        </div>
-                    {/if}
-                </div>
-            </div>
-        {/if}
-
-        {#if playerCommanderData}
-            {@const data = playerCommanderData}
-            <div class="commander-zone-section commander-zone-player">
-                <div class="commander-zone-header flex flex-col items-center mb-2">
-                    <span class="text-xs font-semibold text-arena-accent truncate w-full text-center">
-                        {data.displayName}
-                    </span>
-                    <div class="commander-tax-controls flex items-center gap-1 mt-1">
-                        {#if data.allowTaxControls}
-                            <button
-                                class="commander-tax-btn text-xs px-1.5 py-0.5 rounded bg-arena-surface border border-arena-accent/30 hover:bg-arena-accent/20 disabled:opacity-50"
-                                type="button"
-                                disabled={data.commanderTax <= 0}
-                                onclick={() => handleTaxAdjust(data.ownerId, -2)}>
-                                -2
-                            </button>
-                        {/if}
-                        <span class="commander-tax-value text-arena-accent font-bold text-xs px-1">
-                            {data.commanderTax}
+    <div class="commander-zones-content mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {#if commanderEntries.length}
+            {#each commanderEntries as data (data.ownerId)}
+                <div class="commander-zone-section">
+                    <div class="commander-zone-header flex flex-col items-center mb-2">
+                        <span class={`text-xs font-semibold truncate w-full text-center ${data.allowTaxControls ? 'text-arena-accent' : 'text-arena-text-dim'}`}>
+                            {data.displayName}
                         </span>
-                        {#if data.allowTaxControls}
-                            <button
-                                class="commander-tax-btn text-xs px-1.5 py-0.5 rounded bg-arena-surface border border-arena-accent/30 hover:bg-arena-accent/20"
-                                type="button"
-                                onclick={() => handleTaxAdjust(data.ownerId, 2)}>
-                                +2
-                            </button>
+                        <div class={data.allowTaxControls ? 'commander-tax-controls flex items-center gap-1 mt-1' : 'commander-tax-display flex items-center gap-1 text-xs mt-1'}>
+                            {#if data.allowTaxControls}
+                                <button
+                                    class="commander-tax-btn text-xs px-1.5 py-0.5 rounded bg-arena-surface border border-arena-accent/30 hover:bg-arena-accent/20 disabled:opacity-50"
+                                    type="button"
+                                    disabled={data.commanderTax <= 0}
+                                    onclick={() => handleTaxAdjust(data.ownerId, -2)}>
+                                    -2
+                                </button>
+                            {/if}
+                            <span class="commander-tax-value text-arena-accent font-bold text-xs px-1">
+                                {data.commanderTax}
+                            </span>
+                            {#if data.allowTaxControls}
+                                <button
+                                    class="commander-tax-btn text-xs px-1.5 py-0.5 rounded bg-arena-surface border border-arena-accent/30 hover:bg-arena-accent/20"
+                                    type="button"
+                                    onclick={() => handleTaxAdjust(data.ownerId, 2)}>
+                                    +2
+                                </button>
+                            {/if}
+                        </div>
+                    </div>
+                    <div
+                        class="commander-zone-cards flex flex-col items-center gap-2 min-h-[90px] p-2 rounded bg-arena-surface/50 border border-arena-accent/20"
+                        role={data.allowTaxControls ? "listbox" : "list"}
+                        aria-label="Commander zone"
+                        data-zone-context="commander"
+                        data-zone-owner={data.ownerId}
+                        data-card-count={data.cardCount}
+                        ondragover={data.allowTaxControls ? handleDragOver : null}
+                        ondragleave={data.allowTaxControls ? handleDragLeave : null}
+                        ondrop={data.allowTaxControls ? (e) => handleDrop(e, data.ownerId) : null}>
+                        {#if data.cardCount > 0}
+                            {#each data.commanderCards as card, index (card.unique_id || index)}
+                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                {@html renderCommanderCard(card, data.ownerId, data.isOpponent)}
+                            {/each}
+                        {:else}
+                            <div class="commander-zone-empty text-center text-arena-muted text-xs py-2">
+                                <span class="block">🧙</span>
+                                <span>{data.allowTaxControls ? 'Drop here' : 'Empty'}</span>
+                            </div>
                         {/if}
                     </div>
                 </div>
-                <div
-                    class="commander-zone-cards flex flex-col items-center gap-2 min-h-[90px] p-2 rounded bg-arena-surface/50 border border-arena-accent/20"
-                    role={data.allowTaxControls ? "listbox" : "list"}
-                    aria-label="Commander zone"
-                    data-zone-context="commander"
-                    data-zone-owner={data.ownerId}
-                    data-card-count={data.cardCount}
-                    ondragover={data.allowTaxControls ? handleDragOver : null}
-                    ondragleave={data.allowTaxControls ? handleDragLeave : null}
-                    ondrop={data.allowTaxControls ? (e) => handleDrop(e, data.ownerId) : null}>
-                    {#if data.cardCount > 0}
-                        {#each data.commanderCards as card, index (card.unique_id || index)}
-                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                            {@html renderCommanderCard(card, data.ownerId, false)}
-                        {/each}
-                    {:else}
-                        <div class="commander-zone-empty text-center text-arena-muted text-xs py-2">
-                            <span class="block">🧙</span>
-                            <span>{data.allowTaxControls ? 'Drop here' : 'Empty'}</span>
-                        </div>
-                    {/if}
-                </div>
-            </div>
-        {/if}
-
-        {#if !playerContext}
+            {/each}
+        {:else}
             <div class="col-span-2 text-center text-arena-muted text-sm py-4">
                 Waiting for game data...
             </div>

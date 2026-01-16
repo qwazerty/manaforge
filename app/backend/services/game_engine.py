@@ -7,6 +7,7 @@ import random
 import asyncio
 import uuid
 import time
+import re
 from typing import List, Optional, Dict, Any, Tuple
 from app.backend.models.game import (
     Card,
@@ -211,6 +212,13 @@ class SimpleGameEngine:
             return None
         return (game_state.active_player + 1) % len(game_state.players)
 
+    def _get_next_player_index(
+        self, game_state: GameState, current_index: int
+    ) -> Optional[int]:
+        if not game_state.players:
+            return None
+        return (current_index + 1) % len(game_state.players)
+
     def _transition_to_blockers(self, game_state: GameState) -> None:
         """Move combat flow to the blocker declaration step."""
         defender_index = self._get_defending_player_index(game_state)
@@ -292,11 +300,25 @@ class SimpleGameEngine:
             game_state.priority_player = game_state.active_player
 
     def _default_player_name(self, player_id: str) -> str:
-        if player_id == "player1":
-            return "Player 1"
-        if player_id == "player2":
-            return "Player 2"
+        if not player_id:
+            return "Player"
+        match = re.match(r"player\s*(\d+)", str(player_id).lower())
+        if match:
+            return f"Player {match.group(1)}"
         return "Player"
+
+    def _resolve_max_players(
+        self, game_format: GameFormat, max_players: Optional[int] = None
+    ) -> int:
+        if isinstance(max_players, int) and max_players > 0:
+            return max_players
+        if game_format == GameFormat.COMMANDER_MULTI:
+            return 4
+        return 2
+
+    def _build_seat_ids(self, max_players: int) -> List[str]:
+        resolved = max(1, int(max_players))
+        return [f"player{i + 1}" for i in range(resolved)]
 
     def _sanitize_player_name(
         self,
@@ -323,6 +345,7 @@ class SimpleGameEngine:
         game_id: str,
         game_format: GameFormat = GameFormat.STANDARD,
         phase_mode: PhaseMode = PhaseMode.STRICT,
+        max_players: Optional[int] = None,
     ) -> GameSetupStatus:
         """
         Create a new game setup (pre-game state before decks are submitted).
@@ -332,15 +355,19 @@ class SimpleGameEngine:
             print(f"Game setup {game_id} already exists, returning current status")
             return existing_setup
 
+        resolved_max_players = self._resolve_max_players(game_format, max_players)
+        seat_ids = self._build_seat_ids(resolved_max_players)
+
         setup = GameSetupStatus(
             game_id=game_id,
             game_format=game_format,
             phase_mode=phase_mode,
-            status="Waiting for players to join (0/2 seats filled)",
+            max_players=resolved_max_players,
+            status=f"Waiting for players to join (0/{resolved_max_players} seats filled)",
             ready=False,
             player_status={
-                "player1": PlayerDeckStatus(submitted=False, validated=False),
-                "player2": PlayerDeckStatus(submitted=False, validated=False),
+                seat_id: PlayerDeckStatus(submitted=False, validated=False)
+                for seat_id in seat_ids
             },
         )
 
@@ -368,6 +395,8 @@ class SimpleGameEngine:
             raise ValueError(f"Game setup {game_id} not found")
 
         setup = self.game_setups[game_id]
+        if player_id not in setup.player_status:
+            raise ValueError(f"Invalid player seat {player_id}")
         deck.format = setup.game_format
         existing_status = setup.player_status.get(player_id)
         player_alias = self._sanitize_player_name(
@@ -399,6 +428,15 @@ class SimpleGameEngine:
                 return _reject_submission(
                     "Commander missing: Duel Commander decks must include at least one commander."
                 )
+        if setup.game_format == GameFormat.COMMANDER_MULTI:
+            if commander_count == 0:
+                return _reject_submission(
+                    "Commander missing: Commander decks must include at least one commander."
+                )
+            if main_card_count < 99:
+                return _reject_submission(
+                    f"Commander decks must include at least 99 main cards (has {main_card_count})."
+                )
 
         if main_card_count < 40:
             return _reject_submission(
@@ -426,16 +464,18 @@ class SimpleGameEngine:
 
         if all_validated:
             # Initialize the actual game
-            player1_deck = self._pending_decks.get(game_id, {}).get("player1")
-            player2_deck = self._pending_decks.get(game_id, {}).get("player2")
+            pending_decks = self._pending_decks.get(game_id, {})
+            missing_seats = [
+                seat_id
+                for seat_id in setup.player_status.keys()
+                if seat_id not in pending_decks
+            ]
 
-            if player1_deck and player2_deck:
-                self._initialize_game_from_setup(
-                    game_id, player1_deck, player2_deck, setup
-                )
+            if not missing_seats:
+                self._initialize_game_from_setup(game_id, pending_decks, setup)
                 setup.ready = True
-                setup.status = "Game ready - both decks validated"
-                print(f"Game {game_id} initialized with both players' decks")
+                setup.status = "Game ready - all decks validated"
+                print(f"Game {game_id} initialized with all players' decks")
                 self._touch_setup(setup)
         else:
             submitted_count = sum(
@@ -444,8 +484,10 @@ class SimpleGameEngine:
             claimed_count = sum(
                 1 for status in setup.player_status.values() if status.seat_claimed
             )
+            max_players = getattr(setup, "max_players", len(setup.player_status))
             setup.status = (
-                f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+                f"{claimed_count}/{max_players} seats filled • "
+                f"{submitted_count}/{max_players} decks submitted"
             )
             self._touch_setup(setup)
 
@@ -458,10 +500,9 @@ class SimpleGameEngine:
         if game_id not in self.game_setups:
             raise ValueError(f"Game setup {game_id} not found")
 
-        if player_id not in {"player1", "player2"}:
-            raise ValueError(f"Invalid player seat {player_id}")
-
         setup = self.game_setups[game_id]
+        if player_id not in setup.player_status:
+            raise ValueError(f"Invalid player seat {player_id}")
         player_status = setup.player_status.get(player_id)
         if not player_status:
             player_status = PlayerDeckStatus()
@@ -482,8 +523,12 @@ class SimpleGameEngine:
             submitted_count = sum(
                 1 for status in setup.player_status.values() if status.submitted
             )
+            max_players = getattr(setup, "max_players", len(setup.player_status))
             if not setup.ready:
-                setup.status = f"{claimed_count}/2 seats filled • {submitted_count}/2 decks submitted"
+                setup.status = (
+                    f"{claimed_count}/{max_players} seats filled • "
+                    f"{submitted_count}/{max_players} decks submitted"
+                )
 
         game_state = self.games.get(game_id)
         if game_state:
@@ -538,58 +583,52 @@ class SimpleGameEngine:
     def _initialize_game_from_setup(
         self,
         game_id: str,
-        player1_deck: Deck,
-        player2_deck: Deck,
+        player_decks: Dict[str, Deck],
         setup: GameSetupStatus,
     ) -> GameState:
         """Initialize the actual game state from validated decks."""
-        player1_id = "player1"
-        player2_id = "player2"
-        player1_status = setup.player_status.get(player1_id)
-        player2_status = setup.player_status.get(player2_id)
-        player1_name = self._sanitize_player_name(
-            player1_id,
-            getattr(player1_status, "player_name", None) if player1_status else None,
-        )
-        player2_name = self._sanitize_player_name(
-            player2_id,
-            getattr(player2_status, "player_name", None) if player2_status else None,
+        seat_ids = sorted(
+            player_decks.keys(),
+            key=lambda seat: int(re.search(r"\d+", seat).group()) if re.search(r"\d+", seat) else 0,
         )
         self._submitted_decks[game_id] = {
-            "player1": player1_deck.model_copy(deep=True),
-            "player2": player2_deck.model_copy(deep=True),
+            seat_id: deck.model_copy(deep=True) for seat_id, deck in player_decks.items()
         }
 
-        player1 = Player(
-            id=player1_id,
-            name=player1_name,
-            deck_name=player1_deck.name,
-            library=self._shuffle_deck(player1_deck.cards, player1_id),
-        )
-        player2 = Player(
-            id=player2_id,
-            name=player2_name,
-            deck_name=player2_deck.name,
-            library=self._shuffle_deck(player2_deck.cards, player2_id),
-        )
+        players: List[Player] = []
+        base_life = 40 if setup.game_format == GameFormat.COMMANDER_MULTI else 20
 
-        self._initialize_commander_zone(player1, player1_deck)
-        self._initialize_commander_zone(player2, player2_deck)
+        for seat_id in seat_ids:
+            deck = player_decks[seat_id]
+            status = setup.player_status.get(seat_id)
+            player_name = self._sanitize_player_name(
+                seat_id,
+                getattr(status, "player_name", None) if status else None,
+            )
+            player = Player(
+                id=seat_id,
+                name=player_name,
+                deck_name=deck.name,
+                library=self._shuffle_deck(deck.cards, seat_id),
+                life=base_life,
+            )
+            self._initialize_commander_zone(player, deck)
+            players.append(player)
 
         # Note: Initial 7 cards will be drawn after coin flip choice
 
         # Perform coin flip to determine who chooses
-        coin_flip_winner = random.randint(0, 1)
-        coin_flip_winner_id = f"player{coin_flip_winner + 1}"
+        coin_flip_winner = random.randint(0, max(len(players) - 1, 0))
+        coin_flip_winner_id = players[coin_flip_winner].id if players else "player1"
 
         game_state = GameState(
             id=game_id,
-            players=[player1, player2],
+            players=players,
             active_player=0,  # Will be set after coin flip choice
             phase=GamePhase.PREGAME,  # Stay in pregame until mulligans complete
             round=0,  # Round 0 = pregame
             turn=0,  # Turn 0 = pregame
-            players_played_this_round=[False, False],
+            players_played_this_round=[False for _ in players],
             game_format=setup.game_format,
             phase_mode=setup.phase_mode,
             setup_complete=True,
@@ -597,11 +636,10 @@ class SimpleGameEngine:
             game_start_phase=GameStartPhase.COIN_FLIP,
             coin_flip_winner=coin_flip_winner,
             first_player=None,  # Not yet decided
-            mulligan_state={"player1": MulliganState(), "player2": MulliganState()},
+            mulligan_state={seat_id: MulliganState() for seat_id in seat_ids},
             mulligan_deciding_player=None,
             deck_status={
-                "player1": setup.player_status["player1"],
-                "player2": setup.player_status["player2"],
+                seat_id: setup.player_status[seat_id] for seat_id in seat_ids
             },
         )
         self._touch_game_state(game_state)
@@ -638,11 +676,13 @@ class SimpleGameEngine:
                 "Original decks are not available for this game. "
                 "Start a new game instead."
             )
-
-        player1_deck = decks.get("player1")
-        player2_deck = decks.get("player2")
-        if not player1_deck or not player2_deck:
-            raise ValueError("Both player decks are required to restart the game")
+        missing = [
+            seat_id
+            for seat_id in self.game_setups[game_id].player_status.keys()
+            if seat_id not in decks
+        ]
+        if missing:
+            raise ValueError("All player decks are required to restart the game")
 
         # Reset live state and replay timeline
         self.games.pop(game_id, None)
@@ -654,8 +694,7 @@ class SimpleGameEngine:
 
         return self._initialize_game_from_setup(
             game_id,
-            player1_deck.model_copy(deep=True),
-            player2_deck.model_copy(deep=True),
+            {seat_id: deck.model_copy(deep=True) for seat_id, deck in decks.items()},
             setup,
         )
 
@@ -1076,41 +1115,36 @@ class SimpleGameEngine:
     ) -> None:
         """
         Handle priority during the end step.
-        Both players must pass priority before moving to the next turn.
+        All players must pass priority before moving to the next turn.
         """
         active_player_index = game_state.active_player
-        opponent_index = 1 - active_player_index
         action_player_index = self._get_player_index(game_state, action.player_id)
+        if action_player_index is None:
+            return
 
         # If there are spells on the stack, resolve them first
         if game_state.stack:
             return
 
-        # If active player passes priority first, give priority to opponent
-        if (
-            action_player_index == active_player_index
-            and not game_state.end_step_priority_passed
-        ):
-            game_state.priority_player = opponent_index
-            game_state.end_step_priority_passed = True
-            print("End step: Active player passed, opponent has priority")
+        # Only the player with priority can pass to advance
+        if action_player_index != game_state.priority_player:
             return
 
-        # Only the opponent can end the turn after active player has passed
-        if (
-            game_state.end_step_priority_passed
-            and action_player_index == opponent_index
-        ):
+        next_index = self._get_next_player_index(game_state, game_state.priority_player)
+        if next_index is None:
+            return
+
+        if game_state.priority_player == active_player_index and not game_state.end_step_priority_passed:
+            game_state.end_step_priority_passed = True
+            game_state.priority_player = next_index
+            print("End step: Active player passed, next player has priority")
+            return
+
+        if game_state.end_step_priority_passed and next_index == active_player_index:
             self._end_current_turn(game_state)
             return
 
-        # If active player tries to pass again while opponent has priority, ignore
-        if (
-            game_state.end_step_priority_passed
-            and action_player_index == active_player_index
-        ):
-            print("End step: Active player tried to pass but opponent has priority")
-            return
+        game_state.priority_player = next_index
 
     def _end_current_turn(self, game_state: GameState) -> None:
         """End the current turn and move to the next player's turn."""
@@ -1119,10 +1153,11 @@ class SimpleGameEngine:
 
         if all(game_state.players_played_this_round):
             game_state.turn += 1
-            game_state.players_played_this_round = [False, False]
+            game_state.players_played_this_round = [False for _ in game_state.players]
             game_state.round += 1
 
-        game_state.active_player = 1 - game_state.active_player
+        next_index = self._get_next_player_index(game_state, game_state.active_player)
+        game_state.active_player = next_index if next_index is not None else 0
         game_state.end_step_priority_passed = False  # Reset for next turn
         game_state.priority_player = game_state.active_player
         self._set_phase(game_state, GamePhase.BEGIN)
@@ -2037,23 +2072,22 @@ class SimpleGameEngine:
         if choice == "play":
             game_state.first_player = player_index
         else:
-            # Let the other player go first
-            game_state.first_player = 1 - player_index
+            # Let the next player in turn order go first
+            next_index = self._get_next_player_index(game_state, player_index)
+            game_state.first_player = next_index if next_index is not None else player_index
 
         game_state.active_player = game_state.first_player
         game_state.priority_player = game_state.first_player
 
         # Draw initial 7 cards for each player (done after play/draw choice)
-        player1 = game_state.players[0]
-        player2 = game_state.players[1]
-        self._draw_cards(player1, 7)
-        self._draw_cards(player2, 7)
+        for player in game_state.players:
+            self._draw_cards(player, 7)
 
         # Transition to mulligan phase
         game_state.game_start_phase = GameStartPhase.MULLIGANS
 
         # Set the first player to make mulligan decision
-        first_player_id = f"player{game_state.first_player + 1}"
+        first_player_id = game_state.players[game_state.first_player].id
         game_state.mulligan_deciding_player = first_player_id
         game_state.mulligan_state[first_player_id].is_deciding = True
 
@@ -2133,52 +2167,33 @@ class SimpleGameEngine:
         self, game_state: GameState, current_player_id: str
     ) -> None:
         """Advance to the next player who needs to make a mulligan decision."""
-        player1_state = game_state.mulligan_state.get("player1", MulliganState())
-        player2_state = game_state.mulligan_state.get("player2", MulliganState())
-
-        # Check if both players have kept
-        if player1_state.has_kept and player2_state.has_kept:
+        if all(state.has_kept for state in game_state.mulligan_state.values()):
             self._complete_mulligan_phase(game_state)
             return
 
-        # Determine who decides next based on alternating order
-        # The first player always gets first chance to decide each round
-        first_player_index = (
-            game_state.first_player if game_state.first_player is not None else 0
-        )
-        first_player_id = f"player{first_player_index + 1}"
-        second_player_id = f"player{2 - first_player_index}"
+        player_order = [player.id for player in game_state.players]
+        if not player_order:
+            self._complete_mulligan_phase(game_state)
+            return
 
-        first_state = game_state.mulligan_state.get(first_player_id, MulliganState())
-        second_state = game_state.mulligan_state.get(second_player_id, MulliganState())
+        for state in game_state.mulligan_state.values():
+            state.is_deciding = False
 
-        # Logic for alternating mulligans:
-        # - If first player hasn't kept and hasn't just decided, they decide
-        # - Otherwise, if second player hasn't kept, they decide
-        # - If second player just decided and first player still hasn't kept, back to first
+        try:
+            current_index = player_order.index(current_player_id)
+        except ValueError:
+            current_index = -1
 
-        if current_player_id == first_player_id:
-            # First player just decided, now check second player
-            if not second_state.has_kept:
-                game_state.mulligan_deciding_player = second_player_id
-                game_state.mulligan_state[second_player_id].is_deciding = True
-            elif not first_state.has_kept:
-                # Second already kept, back to first
-                game_state.mulligan_deciding_player = first_player_id
-                game_state.mulligan_state[first_player_id].is_deciding = True
-            else:
-                self._complete_mulligan_phase(game_state)
-        else:
-            # Second player just decided, now check first player
-            if not first_state.has_kept:
-                game_state.mulligan_deciding_player = first_player_id
-                game_state.mulligan_state[first_player_id].is_deciding = True
-            elif not second_state.has_kept:
-                # First already kept, back to second
-                game_state.mulligan_deciding_player = second_player_id
-                game_state.mulligan_state[second_player_id].is_deciding = True
-            else:
-                self._complete_mulligan_phase(game_state)
+        total_players = len(player_order)
+        for offset in range(1, total_players + 1):
+            candidate = player_order[(current_index + offset) % total_players]
+            candidate_state = game_state.mulligan_state.get(candidate)
+            if candidate_state and not candidate_state.has_kept:
+                game_state.mulligan_deciding_player = candidate
+                candidate_state.is_deciding = True
+                return
+
+        self._complete_mulligan_phase(game_state)
 
     def _complete_mulligan_phase(self, game_state: GameState) -> None:
         """Complete the mulligan phase and start the actual game."""
@@ -2209,7 +2224,7 @@ class SimpleGameEngine:
             game_state.id,
             {
                 "action": "game_start",
-                "player": f"player{first_player_index + 1}",
+                "player": game_state.players[first_player_index].id,
                 "success": True,
                 "message": f"Game started! {first_player_name} takes the first turn.",
                 "origin": "engine",

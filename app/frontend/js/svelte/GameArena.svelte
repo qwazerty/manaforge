@@ -32,6 +32,7 @@
     });
 
     let gameBoardEl = $state(null);
+    let focusedOpponentId = $state(null);
     let counterModal = $state({
         open: false,
         playerId: '',
@@ -57,11 +58,27 @@
         if (!context) {
             return null;
         }
-        const { players, controlledIdx, opponentIdx } = context;
+        const { players, controlledIdx, opponentIndices } = context;
+        const focusedOpponent = resolveFocusedOpponent(players, controlledIdx);
+        const autoFocusOpponent =
+            !focusedOpponent && opponentIndices.length === 1
+                ? { player: players[opponentIndices[0]], index: opponentIndices[0] }
+                : null;
+        const resolvedFocus = focusedOpponent || autoFocusOpponent;
         return {
-            opponent: buildSidebarSection(players[opponentIdx], opponentIdx, true),
+            focusedOpponent: resolvedFocus
+                ? buildSidebarSection(resolvedFocus.player, resolvedFocus.index, true)
+                : null,
             player: buildSidebarSection(players[controlledIdx], controlledIdx, false)
         };
+    });
+
+    const opponentCount = $derived.by(() => {
+        const context = playerContext;
+        if (!context) {
+            return 0;
+        }
+        return Array.isArray(context.opponentIndices) ? context.opponentIndices.length : 0;
     });
 
     const boardData = $derived.by(() => {
@@ -193,26 +210,41 @@
     };
 
     function buildBoardData(state, playerSelection) {
-        const { players, controlledIdx, opponentIdx, activePlayer } = computePlayerContext(state, playerSelection);
+        const { players, controlledIdx, opponentIndices, activePlayer } = computePlayerContext(state, playerSelection);
         if (!players.length) {
             return null;
         }
 
+        const focusedOpponent = resolveFocusedOpponent(players, controlledIdx);
+        const autoFocusOpponent =
+            !focusedOpponent && opponentIndices.length === 1
+                ? { player: players[opponentIndices[0]], index: opponentIndices[0] }
+                : null;
+        const resolvedFocus = focusedOpponent || autoFocusOpponent;
+
         return {
-            opponent: buildBoardSide(players[opponentIdx], opponentIdx, true, activePlayer, playerSelection),
+            opponents: opponentIndices.map((index) =>
+                buildOpponentPreview(players[index], index, activePlayer)
+            ),
+            focusedOpponent: resolvedFocus
+                ? buildBoardSide(
+                    resolvedFocus.player,
+                    resolvedFocus.index,
+                    true,
+                    activePlayer,
+                    playerSelection
+                )
+                : null,
             player: buildBoardSide(players[controlledIdx], controlledIdx, false, activePlayer, playerSelection)
         };
     }
 
     function computePlayerContext(state, playerSelection) {
         const players = Array.isArray(state?.players) ? state.players : [];
-        let controlledIdx = 0;
-        if (playerSelection === 'player2') {
-            controlledIdx = 1;
-        } else if (playerSelection !== 'player1') {
-            controlledIdx = 0;
-        }
-        const opponentIdx = controlledIdx === 0 ? 1 : 0;
+        const controlledIdx = resolveSelectedPlayerIndex(players, playerSelection);
+        const opponentIndices = players
+            .map((_, index) => index)
+            .filter((index) => index !== controlledIdx);
         const activePlayer = typeof state?.active_player === 'number'
             ? state.active_player
             : 0;
@@ -220,12 +252,48 @@
         return {
             players,
             controlledIdx,
-            opponentIdx,
+            opponentIndices,
             activePlayer
         };
     }
 
-    const seatIdByIndex = (index) => (index === 1 ? 'player2' : 'player1');
+    const seatIdByIndex = (index) => `player${index + 1}`;
+
+    const resolveSelectedPlayerIndex = (players, playerSelection) => {
+        if (!Array.isArray(players) || players.length === 0) {
+            return 0;
+        }
+        if (!playerSelection || playerSelection === 'spectator') {
+            return 0;
+        }
+        const directMatch = players.findIndex((player) => player?.id === playerSelection);
+        if (directMatch >= 0) {
+            return directMatch;
+        }
+        const normalized = String(playerSelection).trim().toLowerCase();
+        const match = normalized.match(/player\s*(\d+)/);
+        if (match) {
+            const parsed = parseInt(match[1], 10);
+            if (Number.isFinite(parsed)) {
+                const idx = parsed - 1;
+                if (idx >= 0 && idx < players.length) {
+                    return idx;
+                }
+            }
+        }
+        return 0;
+    };
+
+    const resolveFocusedOpponent = (players, controlledIdx) => {
+        if (!focusedOpponentId || !Array.isArray(players) || players.length === 0) {
+            return null;
+        }
+        const index = players.findIndex((player) => player?.id === focusedOpponentId);
+        if (index < 0 || index === controlledIdx) {
+            return null;
+        }
+        return { player: players[index], index };
+    };
 
     function getPlayerDisplayName(playerData, fallbackSeatId = 'player1') {
         const fallbackName = formatSeatFallback(fallbackSeatId);
@@ -272,7 +340,7 @@
         if (!resolvedId) {
             return;
         }
-        const fallbackSeatId = resolvedId === 'player2' ? 'player2' : 'player1';
+        const fallbackSeatId = typeof resolvedId === 'string' ? resolvedId : 'player1';
         const displayName = getPlayerDisplayName(playerData, fallbackSeatId);
         counterModal = {
             open: true,
@@ -448,6 +516,7 @@
         const normalizedIndex = typeof playerIndex === 'number'
             ? playerIndex
             : (isOpponent ? 1 : 0);
+        const displayName = getPlayerDisplayName(playerData, seatIdByIndex(normalizedIndex));
         const hand = buildHandData(playerData, normalizedIndex, isOpponent, playerSelection);
         const battlefieldZones = buildBattlefieldZones(playerData?.battlefield, ownerId, isOpponent);
         return {
@@ -455,6 +524,9 @@
             index: normalizedIndex,
             isOpponent,
             isActive: activePlayer === normalizedIndex,
+            displayName,
+            life: resolveLifeTotal(playerData),
+            commanderTax: resolveCommanderTax(playerData),
             hand,
             battlefieldZones
         };
@@ -531,11 +603,12 @@
         return attachments;
     }
 
-    function buildBattlefieldZones(battlefieldCards, ownerId, isOpponent) {
+    function buildBattlefieldZones(battlefieldCards, ownerId, isOpponent, options = {}) {
         const cards = Array.isArray(battlefieldCards) ? battlefieldCards : [];
         const sanitizedOwner = escapeHtml(ownerId);
         const playerRole = isOpponent ? 'opponent' : 'player';
         const zoneNames = ['lands', 'creatures', 'support'];
+        const sizeVariant = options?.sizeVariant === 'mini' ? 'mini' : 'default';
         const attachmentsByHost = buildAttachmentsMap(cards);
         const hostCards = cards.filter((card) => !card?.attached_to && !card?.attachedTo);
 
@@ -571,8 +644,8 @@
 
             return {
                 key: zoneName,
-                zoneClass: `battlefield-zone ${zoneName}-zone compact-zones`,
-                contentClass: `${zoneName}-zone-content zone-content`,
+                zoneClass: `battlefield-zone ${zoneName}-zone compact-zones${sizeVariant === 'mini' ? ' battlefield-zone-mini' : ''}`,
+                contentClass: `${zoneName}-zone-content zone-content${sizeVariant === 'mini' ? ' battlefield-zone-content-mini' : ''}`,
                 ownerId: sanitizedOwner,
                 playerRole,
                 cardCount,
@@ -580,6 +653,37 @@
                 cardsHtml
             };
         });
+    }
+
+    function buildOpponentPreview(playerData = {}, playerIndex, activePlayer) {
+        const ownerId = resolvePlayerOwnerId(playerData, playerIndex, true);
+        const normalizedIndex = typeof playerIndex === 'number' ? playerIndex : 0;
+        return {
+            ownerId,
+            index: normalizedIndex,
+            isOpponent: true,
+            isActive: activePlayer === normalizedIndex,
+            displayName: getPlayerDisplayName(playerData, seatIdByIndex(normalizedIndex)),
+            life: resolveLifeTotal(playerData),
+            commanderTax: resolveCommanderTax(playerData),
+            battlefieldZones: buildBattlefieldZones(playerData?.battlefield, ownerId, true, {
+                sizeVariant: 'mini'
+            })
+        };
+    }
+
+    function resolveLifeTotal(playerData = {}) {
+        const rawLife = playerData?.life;
+        if (typeof rawLife === 'number') {
+            return rawLife;
+        }
+        const parsed = parseInt(rawLife || 20, 10);
+        return Number.isFinite(parsed) ? parsed : 20;
+    }
+
+    function resolveCommanderTax(playerData = {}) {
+        const rawTax = Number(playerData?.commander_tax ?? playerData?.commanderTax);
+        return Number.isFinite(rawTax) ? rawTax : 0;
     }
 
     function generatePlayerHand(hand = [], playerId = null, options = {}, playerSelection = 'player1') {
@@ -684,20 +788,66 @@
         void boardData;
         scheduleOverlapRefresh();
     });
+
+    $effect(() => {
+        const context = playerContext;
+        if (!context || !focusedOpponentId) {
+            return;
+        }
+        const stillValid = context.players.some(
+            (player, index) =>
+                index !== context.controlledIdx && player?.id === focusedOpponentId
+        );
+        if (!stillValid) {
+            focusedOpponentId = null;
+        }
+    });
+
+    const toggleOpponentFocus = (opponentId) => {
+        if (!opponentId) {
+            focusedOpponentId = null;
+            return;
+        }
+        focusedOpponentId = focusedOpponentId === opponentId ? null : opponentId;
+    };
+
+    const clearOpponentFocus = () => {
+        focusedOpponentId = null;
+    };
+
+    function getOpponentGridClass(count) {
+        if (count <= 1) {
+            return 'grid grid-cols-1 gap-3';
+        }
+        if (count === 2) {
+            return 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3';
+        }
+        return 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3';
+    }
 </script>
 
 <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 flex-grow h-full">
     <div class="xl:col-span-1" id="stack-area">
         {#if sidebarData}
             {@const sidebar = sidebarData}
-            {#if sidebar.opponent}
+            {#if sidebar.focusedOpponent}
                 <div class="arena-card rounded-lg p-3 mb-3">
-                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>{sidebar.opponent.playerName}
-                    </h4>
-                    {#if Array.isArray(sidebar.opponent.zones) && sidebar.opponent.zones.length}
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-magic font-semibold text-arena-accent text-sm flex items-center">
+                            <span class="mr-1">🎯</span>{sidebar.focusedOpponent.playerName}
+                        </h4>
+                        {#if opponentCount > 1}
+                            <button
+                                class="arena-opponent-focus-btn"
+                                type="button"
+                                onclick={clearOpponentFocus}>
+                                Show all
+                            </button>
+                        {/if}
+                    </div>
+                    {#if Array.isArray(sidebar.focusedOpponent.zones) && sidebar.focusedOpponent.zones.length}
                         <div class="card-zones-container">
-                            {#each sidebar.opponent.zones as zone (zone.key)}
+                            {#each sidebar.focusedOpponent.zones as zone (zone.key)}
                                 <div class={`${zoneContainerClass} ${zone.key}-zone`}>
                                     {#if zone.key !== 'life'}
                                         <div class="zone-label w-full flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wide text-arena-text-dim mb-2">
@@ -771,94 +921,154 @@
         bind:this={gameBoardEl}>
         {#if boardData}
             {@const board = boardData}
-            {#if board.opponent}
-                <div
-                    class={`arena-card rounded-lg mb-3 p-3 compact-zones ${board.opponent.isActive ? 'opponent-zone-active-turn' : ''}`}
-                    data-player-zone="opponent"
-                    data-player-owner={board.opponent.ownerId}>
+            <div class="space-y-3">
+                {#if board.focusedOpponent}
                     <div
-                        class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
-                        data-card-count={board.opponent.hand.cardCount}
-                        data-player-owner={board.opponent.ownerId}
-                        data-zone-owner={board.opponent.ownerId}
-                        data-hand-mode={board.opponent.hand.mode}
-                        data-zone-type="opponent-hand"
-                        ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                        ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                        ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
-                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                        {@html board.opponent.hand.html}
-                    </div>
-
-                    <div class="battlefield-layout battlefield-layout-opponent">
-                        {#each board.opponent.battlefieldZones as zone (zone.key)}
-                            <div
-                                class={zone.zoneClass}
-                                role="region"
-                                aria-label={`${zone.playerRole} ${zone.key} zone`}
-                                data-battlefield-zone={zone.key}
-                                data-zone-owner={zone.ownerId}
-                                data-player-role={zone.playerRole}
-                                ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                        class={`arena-card rounded-lg p-3 compact-zones ${board.focusedOpponent.isActive ? 'opponent-zone-active-turn' : ''}`}
+                        data-player-zone="opponent"
+                        data-player-owner={board.focusedOpponent.ownerId}>
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                            <span class="text-xs uppercase tracking-wide text-arena-text-dim">Opponent</span>
+                                <span class="font-semibold text-arena-accent">
+                                    {board.focusedOpponent.displayName}
+                                </span>
+                                <div class="flex items-center gap-3 text-xs text-arena-text-dim">
+                                    <span>Life <span class="text-arena-accent font-semibold">{board.focusedOpponent.life}</span></span>
+                                </div>
+                            </div>
+                            {#if Array.isArray(board.opponents) && board.opponents.length > 1}
+                                <button
+                                    class="arena-opponent-focus-btn"
+                                    type="button"
+                                    onclick={clearOpponentFocus}>
+                                    Show all
+                                </button>
+                            {/if}
+                        </div>
+                        <div class="battlefield-layout battlefield-layout-opponent">
+                            {#each board.focusedOpponent.battlefieldZones as zone (zone.key)}
                                 <div
-                                    class={zone.contentClass}
-                                    data-card-count={zone.cardCount}
+                                    class={zone.zoneClass}
+                                    role="region"
+                                    aria-label={`${zone.playerRole} ${zone.key} zone`}
+                                    data-battlefield-zone={zone.key}
                                     data-zone-owner={zone.ownerId}
-                                    data-player-role={zone.playerRole}>
-                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                                    {@html zone.cardsHtml}
+                                    data-player-role={zone.playerRole}
+                                    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                                    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                                    ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                    <div
+                                        class={zone.contentClass}
+                                        data-card-count={zone.cardCount}
+                                        data-zone-owner={zone.ownerId}
+                                        data-player-role={zone.playerRole}>
+                                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                        {@html zone.cardsHtml}
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                {:else if Array.isArray(board.opponents) && board.opponents.length}
+                    <div class={getOpponentGridClass(board.opponents.length)}>
+                        {#each board.opponents as opponent (opponent.ownerId)}
+                            <div
+                                class={`arena-card rounded-lg p-3 arena-opponent-mini ${opponent.isActive ? 'opponent-zone-active-turn' : ''}`}
+                                data-player-zone="opponent"
+                                data-player-owner={opponent.ownerId}>
+                                <div class="flex items-center justify-between gap-3 mb-2">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs uppercase tracking-wide text-arena-text-dim">Opponent</span>
+                                        <span class="font-semibold text-arena-accent truncate max-w-[140px]">
+                                            {opponent.displayName}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-xs">
+                                        <div class="flex items-center gap-1 text-arena-text-dim">
+                                            <span>Life</span>
+                                            <span class="text-arena-accent font-semibold">{opponent.life}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        class="arena-opponent-focus-btn"
+                                        type="button"
+                                        onclick={() => toggleOpponentFocus(opponent.ownerId)}>
+                                        Focus
+                                    </button>
+                                </div>
+                                <div class="battlefield-layout battlefield-layout-opponent battlefield-layout-mini">
+                                    {#each opponent.battlefieldZones as zone (zone.key)}
+                                        <div
+                                            class={zone.zoneClass}
+                                            role="region"
+                                            aria-label={`${zone.playerRole} ${zone.key} zone`}
+                                            data-battlefield-zone={zone.key}
+                                            data-zone-owner={zone.ownerId}
+                                            data-player-role={zone.playerRole}
+                                            ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                                            ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                                            ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                            <div
+                                                class={zone.contentClass}
+                                                data-card-count={zone.cardCount}
+                                                data-zone-owner={zone.ownerId}
+                                                data-player-role={zone.playerRole}>
+                                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                                {@html zone.cardsHtml}
+                                            </div>
+                                        </div>
+                                    {/each}
                                 </div>
                             </div>
                         {/each}
                     </div>
-                </div>
-            {/if}
+                {/if}
 
-            {#if board.player}
-                <div
-                    class={`arena-card rounded-lg p-3 hand-zone ${board.player.isActive ? 'player-zone-active-turn' : ''}`}
-                    data-player-zone="player"
-                    data-player-owner={board.player.ownerId}>
-                    <div class="battlefield-layout">
-                        {#each board.player.battlefieldZones as zone (zone.key)}
-                            <div
-                                class={zone.zoneClass}
-                                role="region"
-                                aria-label={`${zone.playerRole} ${zone.key} zone`}
-                                data-battlefield-zone={zone.key}
-                                data-zone-owner={zone.ownerId}
-                                data-player-role={zone.playerRole}
-                                ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
-                                <div
-                                    class={zone.contentClass}
-                                    data-card-count={zone.cardCount}
-                                    data-zone-owner={zone.ownerId}
-                                    data-player-role={zone.playerRole}>
-                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                                    {@html zone.cardsHtml}
-                                </div>
-                            </div>
-                        {/each}
-                    </div>
-
+                {#if board.player}
                     <div
-                        class="hand-zone-content zone-content"
-                        role="region"
-                        aria-label="player hand zone"
-                        data-card-count={board.player.hand.cardCount}
-                        data-zone-type="hand"
-                        data-player-owner={board.player.ownerId}
-                        ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                        ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
-                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                        {@html board.player.hand.html}
+                        class={`arena-card rounded-lg p-3 hand-zone ${board.player.isActive ? 'player-zone-active-turn' : ''}`}
+                        data-player-zone="player"
+                        data-player-owner={board.player.ownerId}>
+                        <div class="battlefield-layout">
+                            {#each board.player.battlefieldZones as zone (zone.key)}
+                                <div
+                                    class={zone.zoneClass}
+                                    role="region"
+                                    aria-label={`${zone.playerRole} ${zone.key} zone`}
+                                    data-battlefield-zone={zone.key}
+                                    data-zone-owner={zone.ownerId}
+                                    data-player-role={zone.playerRole}
+                                    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                                    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                                    ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                    <div
+                                        class={zone.contentClass}
+                                        data-card-count={zone.cardCount}
+                                        data-zone-owner={zone.ownerId}
+                                        data-player-role={zone.playerRole}>
+                                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                        {@html zone.cardsHtml}
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+
+                        <div
+                            class="hand-zone-content zone-content"
+                            role="region"
+                            aria-label="player hand zone"
+                            data-card-count={board.player.hand.cardCount}
+                            data-zone-type="hand"
+                            data-player-owner={board.player.ownerId}
+                            ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                            ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                            {@html board.player.hand.html}
+                        </div>
                     </div>
-                </div>
-            {/if}
+                {/if}
+            </div>
         {:else}
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html generateErrorTemplate('Game Board', 'Waiting for game data')}

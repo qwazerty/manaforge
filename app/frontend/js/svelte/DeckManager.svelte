@@ -471,13 +471,22 @@
             bucket.count += Number(entry.quantity) || 0;
         });
         const groups = Array.from(buckets.values());
+        const sortMode = state?.sorting?.sideboard || 'default';
+        const listSortMode = sortMode === 'default' ? 'cmc' : sortMode;
         groups.forEach((group) => {
-            group.entries.sort((a, b) => {
-                const cmcA = Number(a.card?.cmc) || 0;
-                const cmcB = Number(b.card?.cmc) || 0;
-                if (cmcA !== cmcB) return cmcA - cmcB;
-                return compareByName(a.card, b.card);
-            });
+            const sorted = sortEntriesByMode(group.entries, listSortMode);
+            if (sorted !== group.entries) {
+                group.entries = sorted;
+                return;
+            }
+            if (listSortMode === 'cmc') {
+                group.entries.sort((a, b) => {
+                    const cmcA = Number(a.card?.cmc) || 0;
+                    const cmcB = Number(b.card?.cmc) || 0;
+                    if (cmcA !== cmcB) return cmcA - cmcB;
+                    return compareByName(a.card, b.card);
+                });
+            }
         });
         // Trier les groupes: Commander en premier, terrains en dernier, reste alphabétique
         return groups.sort((a, b) => {
@@ -611,16 +620,22 @@
         return normalized.includes(filter);
     }
 
-    function sortEntriesForColumn(entries, columnKey) {
+    function sortEntriesForColumn(entries, _columnKey) {
         if (!entries.length) {
             return entries;
         }
 
-        const sortMode = columnKey === 'sideboard'
-            ? (state?.sorting?.sideboard || 'default')
-            : 'default';
+        const sortMode = state?.sorting?.sideboard || 'default';
 
         if (sortMode === 'default') {
+            return entries;
+        }
+
+        return sortEntriesByMode(entries, sortMode);
+    }
+
+    function sortEntriesByMode(entries, sortMode) {
+        if (!entries.length || sortMode === 'default') {
             return entries;
         }
 
@@ -634,7 +649,10 @@
                 }
                 return compareByName(a?.card, b?.card);
             });
-        } else if (sortMode === 'cmc') {
+            return sorted;
+        }
+
+        if (sortMode === 'cmc') {
             sorted.sort((a, b) => {
                 const cmcA = Number(a?.card?.cmc);
                 const cmcB = Number(b?.card?.cmc);
@@ -645,9 +663,10 @@
                 }
                 return compareByName(a?.card, b?.card);
             });
+            return sorted;
         }
 
-        return sorted;
+        return entries;
     }
 
     function getRarityWeight(card = {}) {

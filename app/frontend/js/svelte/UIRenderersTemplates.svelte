@@ -362,16 +362,17 @@
                 return props;
             }
 
-            const controlledPlayerIndex = selectedPlayer === 'player1'
-                ? 0
-                : selectedPlayer === 'player2'
-                    ? 1
-                    : null;
+            const controlledPlayerIndex = this._resolvePlayerIndex(players, selectedPlayer);
+            const controlledPlayerId =
+                controlledPlayerIndex !== null && players[controlledPlayerIndex]
+                    ? players[controlledPlayerIndex].id
+                    : selectedPlayer;
 
             props.passButton = this._buildPassButtonConfig({
                 gameState,
                 players,
                 controlledPlayerIndex,
+                controlledPlayerId,
                 activePlayerIndex,
                 priorityPlayerIndex
             });
@@ -395,6 +396,7 @@
                 gameState,
                 players,
                 controlledPlayerIndex,
+                controlledPlayerId,
                 activePlayerIndex,
                 priorityPlayerIndex
             } = options;
@@ -424,25 +426,29 @@
                 players[activePlayerIndex],
                 this._getSeatFallbackName(activePlayerIndex)
             );
+            const priorityPlayerName = this._getPlayerDisplayName(
+                players[priorityPlayerIndex],
+                this._getSeatFallbackName(priorityPlayerIndex)
+            );
 
             if (controlledPlayerIndex === null) {
                 passTitle = 'Select a player to perform actions';
             } else {
-                const controlledPlayerKey = controlledPlayerIndex === 0 ? 'player1' : 'player2';
-                const opponentSeatIndex = controlledPlayerIndex === 0 ? 1 : 0;
-                const opponentName = this._getPlayerDisplayName(
-                    players[opponentSeatIndex],
-                    this._getSeatFallbackName(opponentSeatIndex)
-                );
+                const resolvedControlledId = controlledPlayerId
+                    || (players[controlledPlayerIndex]?.id ?? null);
 
                 // Handle game start phases (coin flip and mulligans)
                 if (gameStartPhase === 'coin_flip') {
                     // Coin flip phase - winner chooses to play or draw
-                    const isCoinFlipWinner = controlledPlayerIndex === coinFlipWinner;
-                    const winnerName = this._getPlayerDisplayName(
-                        players[coinFlipWinner],
-                        this._getSeatFallbackName(coinFlipWinner)
-                    );
+                    const winnerId = typeof coinFlipWinner === 'number' && players[coinFlipWinner]
+                        ? players[coinFlipWinner].id
+                        : null;
+                    const winnerName = winnerId
+                        ? this._getPlayerNameById(players, winnerId)
+                        : 'the winner';
+                    const isCoinFlipWinner = resolvedControlledId && winnerId
+                        ? resolvedControlledId === winnerId
+                        : controlledPlayerIndex === coinFlipWinner;
 
                     if (isCoinFlipWinner) {
                         // Return special config for coin flip choice buttons
@@ -454,23 +460,23 @@
                     }
                 } else if (gameStartPhase === 'mulligans') {
                     // Mulligan phase - alternating keep/mulligan decisions
-                    const isMyTurnToDecide = mulliganDecidingPlayer === controlledPlayerKey;
-                    const myMulliganState = mulliganState[controlledPlayerKey] || {};
+                    const isMyTurnToDecide = mulliganDecidingPlayer === resolvedControlledId;
+                    const myMulliganState = resolvedControlledId ? (mulliganState[resolvedControlledId] || {}) : {};
                     const hasKept = myMulliganState.has_kept || false;
+                    const decidingPlayerName = mulliganDecidingPlayer
+                        ? this._getPlayerNameById(players, mulliganDecidingPlayer)
+                        : 'another player';
 
                     if (hasKept) {
-                        // Already kept, waiting for opponent
+                        // Already kept, waiting for others
                         passDisabled = true;
                         passLabel = '✅ Hand Kept';
-                        passTitle = `Waiting for ${opponentName} to make mulligan decision`;
+                        passTitle = `Waiting for ${decidingPlayerName} to make a mulligan decision`;
                     } else if (isMyTurnToDecide) {
                         // Return special config for keep/mulligan buttons
                         return this._buildMulliganButtons(passClasses, myMulliganState);
                     } else {
                         // Not my turn to decide
-                        const decidingPlayerName = mulliganDecidingPlayer === 'player1'
-                            ? this._getPlayerDisplayName(players[0], 'Player 1')
-                            : this._getPlayerDisplayName(players[1], 'Player 2');
                         passDisabled = true;
                         passLabel = '⏳ Waiting...';
                         passTitle = `Waiting for ${decidingPlayerName} to make mulligan decision`;
@@ -492,7 +498,7 @@
                             passTitle = `Confirm end of turn (allowing ${activePlayerName} to proceed to next turn)`;
                         } else {
                             passDisabled = true;
-                            passTitle = `Waiting for ${opponentName} to resolve the end step`;
+                            passTitle = `Waiting for ${priorityPlayerName} to resolve the end step`;
                         }
                     } else if (isStrictMode && hasStack) {
                         if (isPriorityPlayer) {
@@ -502,7 +508,7 @@
                             passTitle = 'Resolve the top spell on the stack';
                         } else {
                             passDisabled = true;
-                            passTitle = `Waiting for ${opponentName} to resolve the stack`;
+                            passTitle = `Waiting for ${priorityPlayerName} to resolve the stack`;
                         }
                     } else if (hasStack) {
                         passDisabled = !isActivePlayer;
@@ -522,10 +528,10 @@
                         if (
                             currentPhase === 'block' &&
                             expectedCombatPlayer &&
-                            expectedCombatPlayer !== controlledPlayerKey
+                            expectedCombatPlayer !== resolvedControlledId
                         ) {
                             passDisabled = true;
-                            passTitle = `Waiting for ${opponentName} to confirm blockers`;
+                            passTitle = `Waiting for ${priorityPlayerName} to confirm blockers`;
                         }
                     }
                 }
@@ -595,7 +601,7 @@
                 },
                 drawButton: {
                     label: '🃏 Draw',
-                    title: 'Let opponent go first (you will be on the draw)',
+                    title: 'Let the next player go first (you will be on the draw)',
                     disabled: false,
                     className: baseClasses,
                     onClick: () => {
@@ -681,34 +687,27 @@
 
             if (gameStartPhase === 'mulligans') {
                 const firstPlayerName = getPlayerName(firstPlayer);
-                const decidingPlayerName = mulliganDecidingPlayer === 'player1'
-                    ? getPlayerName(0)
-                    : getPlayerName(1);
+                const decidingPlayerName = mulliganDecidingPlayer
+                    ? this._getPlayerNameById(players, mulliganDecidingPlayer)
+                    : 'another player';
 
-                // Build status for each player
-                const player1State = mulliganState['player1'] || {};
-                const player2State = mulliganState['player2'] || {};
-                const player1Name = getPlayerName(0);
-                const player2Name = getPlayerName(1);
+                const playerStatuses = players.map((player, index) => {
+                    const state = mulliganState[player.id] || {};
+                    let statusLabel = state.has_kept
+                        ? `✅ Kept` + (state.mulligan_count > 0 ? ` (mulligan ${state.mulligan_count}x)` : '')
+                        : state.mulligan_count > 0
+                            ? `🔄 Mulligan ${state.mulligan_count}x`
+                            : '⏳ Deciding...';
 
-                let player1Status = player1State.has_kept
-                    ? `✅ Kept` + (player1State.mulligan_count > 0 ? ` (mulligan ${player1State.mulligan_count}x)` : '')
-                    : player1State.mulligan_count > 0
-                        ? `🔄 Mulligan ${player1State.mulligan_count}x`
-                        : '⏳ Deciding...';
+                    if (mulliganDecidingPlayer === player.id && !state.has_kept) {
+                        statusLabel = '🤔 Deciding...';
+                    }
 
-                let player2Status = player2State.has_kept
-                    ? `✅ Kept` + (player2State.mulligan_count > 0 ? ` (mulligan ${player2State.mulligan_count}x)` : '')
-                    : player2State.mulligan_count > 0
-                        ? `🔄 Mulligan ${player2State.mulligan_count}x`
-                        : '⏳ Deciding...';
-
-                // Mark who is currently deciding
-                if (mulliganDecidingPlayer === 'player1' && !player1State.has_kept) {
-                    player1Status = '🤔 Deciding...';
-                } else if (mulliganDecidingPlayer === 'player2' && !player2State.has_kept) {
-                    player2Status = '🤔 Deciding...';
-                }
+                    return {
+                        name: getPlayerName(index),
+                        status: statusLabel
+                    };
+                });
 
                 return {
                     phase: 'mulligans',
@@ -716,10 +715,7 @@
                     title: 'Mulligan Phase',
                     message: `${firstPlayerName} will play first.`,
                     subMessage: `${decidingPlayerName} is deciding...`,
-                    playerStatuses: [
-                        { name: player1Name, status: player1Status },
-                        { name: player2Name, status: player2Status }
-                    ],
+                    playerStatuses,
                     highlight: true
                 };
             }
@@ -1781,16 +1777,49 @@
             const currentSelectedPlayer = GameCore.getSelectedPlayer();
             const players = gameState.players || [];
             const activePlayer = gameState.active_player || 0;
-        
-            let controlledIdx = currentSelectedPlayer === 'player2' ? 1 : 0;
-            const opponentIdx = controlledIdx === 0 ? 1 : 0;
-        
+
+            const controlledIdx = this._resolvePlayerIndex(players, currentSelectedPlayer) ?? 0;
+            const opponentIdx = players.length > 1 ? ((controlledIdx + 1) % players.length) : 0;
+
             return { controlledIdx, opponentIdx, players, activePlayer };
         }
 
         static _getSeatFallbackName(index) {
             const seatId = index === 0 ? 'player1' : index === 1 ? 'player2' : `player${index + 1}`;
             return formatSeatFallback(seatId);
+        }
+
+        static _resolvePlayerIndex(players, selectedPlayer) {
+            if (!selectedPlayer || selectedPlayer === 'spectator') {
+                return null;
+            }
+            if (Array.isArray(players)) {
+                const direct = players.findIndex((player) => player?.id === selectedPlayer);
+                if (direct >= 0) {
+                    return direct;
+                }
+            }
+            const match = String(selectedPlayer).toLowerCase().match(/player\s*(\d+)/);
+            if (match) {
+                const parsed = parseInt(match[1], 10);
+                if (Number.isFinite(parsed)) {
+                    return parsed - 1;
+                }
+            }
+            return null;
+        }
+
+        static _getPlayerNameById(players, playerId) {
+            if (!playerId) {
+                return 'Player';
+            }
+            const match = Array.isArray(players)
+                ? players.find((player) => player?.id === playerId)
+                : null;
+            if (match) {
+                return this._getPlayerDisplayName(match, formatSeatFallback(playerId));
+            }
+            return formatSeatFallback(playerId);
         }
 
         static _getPlayerDisplayName(playerData, fallback = 'Player') {

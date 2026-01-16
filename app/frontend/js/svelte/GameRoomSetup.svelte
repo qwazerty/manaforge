@@ -89,11 +89,6 @@
     let opponentMessage = $state('');
     let deckFormNotice = $state('');
 
-    const shareRoles = [
-        { key: 'player1', label: 'Player 1' },
-        { key: 'player2', label: 'Player 2' },
-        { key: 'spectator', label: 'Spectator' }
-    ];
 
     const resolveErrorMessage = async (response, fallback = 'An error occurred.') => {
         if (!response) return fallback;
@@ -154,15 +149,27 @@
         }
     };
 
-    const isSeatedPlayer = $derived(playerRole === 'player1' || playerRole === 'player2');
+    const isSeatRole = (seat) => typeof seat === 'string' && seat.startsWith('player');
+
+    const seatList = $derived.by(() => {
+        const maxPlayers = Number(status?.max_players ?? config?.initialStatus?.max_players ?? 2);
+        const count = Number.isFinite(maxPlayers) ? Math.max(2, maxPlayers) : 2;
+        return Array.from({ length: count }, (_, index) => `player${index + 1}`);
+    });
+    const isSeatedPlayer = $derived(isSeatRole(playerRole));
 
     const getPlayerData = (seat) => status?.player_status?.[seat] || null;
 
     const getSeatFallbackName = (seat) => {
-        if (seat === 'player1') return 'Player 1';
-        if (seat === 'player2') return 'Player 2';
-        return seat;
+        if (!seat) return 'Player';
+        const match = seat.match(/player\s*(\d+)/i);
+        return match ? `Player ${match[1]}` : seat;
     };
+
+    const shareRoles = $derived.by(() => ([
+        ...seatList.map((seat) => ({ key: seat, label: getSeatFallbackName(seat) })),
+        { key: 'spectator', label: 'Spectator' }
+    ]));
 
     const playerDisplayName = (seat) => {
         const data = getPlayerData(seat);
@@ -170,21 +177,26 @@
     };
 
     const seatSummaryLabel = () => {
-        const seats = ['player1', 'player2'];
+        const seats = seatList;
         const claimed = seats.filter((seat) => getPlayerData(seat)?.seat_claimed).length;
         const waiting = seats
             .filter((seat) => !getPlayerData(seat)?.seat_claimed)
             .map((seat) => seat.replace('player', 'Player '));
         if (!waiting.length) {
-            return `${claimed}/2 filled • All seats occupied`;
+            return `${claimed}/${seats.length} filled • All seats occupied`;
         }
-        return `${claimed}/2 filled • Waiting on ${waiting.join(' & ')}`;
+        
+        const waitText = (typeof Intl !== 'undefined' && Intl.ListFormat)
+             ? new Intl.ListFormat('en', { style: 'short', type: 'conjunction' }).format(waiting)
+             : waiting.join(' & ');
+             
+        return `${claimed}/${seats.length} filled • Waiting on ${waitText}`;
     };
 
     const deckProgressLabel = () => {
         const seats = status?.player_status || {};
         const submitted = Object.values(seats).filter((info) => info?.submitted).length;
-        return `${submitted} / 2`;
+        return `${submitted} / ${seatList.length}`;
     };
 
     const buildBadge = (seat) => {
@@ -203,8 +215,6 @@
 
     const buildOpponentMessage = () => {
         const mySeat = getPlayerData(playerRole);
-        const opponentKey = playerRole === 'player1' ? 'player2' : 'player1';
-        const opponentSeat = getPlayerData(opponentKey);
         if (!isSeatedPlayer) {
             return 'Spectating room status...';
         }
@@ -212,15 +222,18 @@
             return 'Claiming your seat...';
         }
         if (mySeat?.validated) {
-            return 'Deck submitted! Waiting for opponent validation.';
+            return 'Deck submitted! Waiting for other players.';
         }
-        if (opponentSeat?.validated) {
-            return 'Opponent ready! Submit your validated deck.';
+        const otherSeats = seatList.filter((seat) => seat !== playerRole);
+        const anyValidated = otherSeats.some((seat) => getPlayerData(seat)?.validated);
+        if (anyValidated) {
+            return 'Another player is ready! Submit your validated deck.';
         }
-        if (opponentSeat?.seat_claimed) {
-            return 'Opponent has taken their seat. Awaiting deck submissions.';
+        const anyClaimed = otherSeats.some((seat) => getPlayerData(seat)?.seat_claimed);
+        if (anyClaimed) {
+            return 'Other players have taken seats. Awaiting deck submissions.';
         }
-        return 'Waiting for opponent to join the room...';
+        return 'Waiting for other players to join the room...';
     };
 
     const buildDeckFormNotice = () => {
@@ -492,7 +505,7 @@
 
     const updateModernExampleAvailability = (state) => {
         const info = state?.player_status || {};
-        const hasSubmission = ['player1', 'player2'].some((seat) => info[seat]?.submitted);
+        const hasSubmission = seatList.some((seat) => info[seat]?.submitted);
         modernExampleLocked = state?.ready || hasSubmission || !isSeatedPlayer;
     };
 
@@ -1055,7 +1068,7 @@
     <div class="arena-card rounded-xl p-8 space-y-6 animate-slide-up">
         <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
             <div class="space-y-3">
-                <h1 class="font-magic text-3xl md:text-4xl font-bold text-arena-accent">⚙️ Duel Preparation</h1>
+                <h1 class="font-magic text-3xl md:text-4xl font-bold text-arena-accent">⚙️ Battlefield Preparation</h1>
                 <p class="text-arena-text text-lg">
                     Preparing battlefield <span class="text-arena-accent font-semibold">{gameId}</span>
                 </p>
@@ -1152,8 +1165,9 @@
                         bind:value={selectedPlayerRole}
                         onchange={(event) => handlePlayerRoleChange(event.target.value)}
                     >
-                        <option value="player1">Player 1</option>
-                        <option value="player2">Player 2</option>
+                        {#each seatList as seat (seat)}
+                            <option value={seat}>{getSeatFallbackName(seat)}</option>
+                        {/each}
                         <option value="spectator">Spectator</option>
                     </select>
                 </div>
@@ -1173,7 +1187,7 @@
     </div>
 
     <div class="grid gap-6 md:grid-cols-2">
-        {#each ['player1', 'player2'] as seat (seat)}
+        {#each seatList as seat (seat)}
             {@const badge = buildBadge(seat)}
             <div class="arena-card rounded-xl p-6 space-y-4 border border-arena-accent/20">
                 <div class="flex items-center justify-between">
@@ -1213,7 +1227,7 @@
                                 </button>
                             {/if}
                         </div>
-                        <p class="text-sm text-arena-muted">{seat === 'player1' ? 'Primary seat' : 'Challenger seat'}</p>
+                        <p class="text-sm text-arena-muted">{getSeatFallbackName(seat)}</p>
                     </div>
                     {#if badge}
                         <span class={badge.className}>{badge.label}</span>

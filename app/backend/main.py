@@ -78,6 +78,7 @@ async def game_interface(request: Request, game_id: str):
         "priority_player": game_state.priority_player,
         "players": [
             {
+                "id": player.id,
                 "name": player.name,
                 "life": player.life,
                 "hand": [card.model_dump() for card in player.hand],
@@ -112,7 +113,7 @@ async def game_room(
     player_status = setup_status.player_status
 
     def determine_player_role(requested: Optional[str]) -> str:
-        seats = ["player1", "player2"]
+        seats = [f"player{idx + 1}" for idx in range(setup_status.max_players)]
         if requested in seats:
             return requested
         if requested == "spectator":
@@ -140,10 +141,10 @@ async def game_room(
     # Keep share links relative so they inherit the correct host, port, and protocol
     game_room_path = request.url_for("game_room", game_id=game_id).path
     share_links = {
-        "player1": f"{game_room_path}?player=player1",
-        "player2": f"{game_room_path}?player=player2",
-        "spectator": f"{game_room_path}?player=spectator",
+        f"player{idx + 1}": f"{game_room_path}?player=player{idx + 1}"
+        for idx in range(setup_status.max_players)
     }
+    share_links["spectator"] = f"{game_room_path}?player=spectator"
     context = {
         "request": request,
         "setup": setup_data,

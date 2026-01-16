@@ -7,8 +7,9 @@
 export function getPlayerFromUrl(): string {
     if (typeof window === 'undefined') return 'player1';
     const urlParams = new URLSearchParams(window.location.search);
-    const player = urlParams.get('player');
-    return ['player1', 'player2', 'spectator'].includes(player || '') ? player! : 'player1';
+    const player = urlParams.get('player') || '';
+    if (player === 'spectator') return 'spectator';
+    return player.match(/^player\d+$/) ? player : 'player1';
 }
 
 export function setPlayerInUrl(playerType: string): void {

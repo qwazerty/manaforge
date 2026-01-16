@@ -1684,6 +1684,11 @@
             "creatures creatures";
     }
 
+    .battlefield-layout-mini {
+        @apply gap-x-1 gap-y-1;
+        grid-template-columns: minmax(45%, 1fr) fit-content(55%);
+    }
+
     .battlefield-zone {
         @apply relative overflow-visible p-2;
         background: rgba(0, 0, 0, 0.2);
@@ -1692,11 +1697,20 @@
         min-height: 172px;
     }
 
+    .battlefield-zone-mini {
+        @apply p-2;
+        min-height: 120px;
+    }
+
     .battlefield-zone .zone-content {
         @apply min-h-0;
         max-height: none !important;
         overflow-x: auto;
         overflow-y: hidden;
+    }
+
+    .battlefield-zone-content-mini {
+        max-height: 150px !important;
     }
 
     .battlefield-zone.zone-drag-over {
@@ -1727,6 +1741,61 @@
         border-color: rgba(251, 191, 36, 0.5);
         min-width: calc(130px + 16px);
         inline-size: clamp(10%, max-content, 50%)
+    }
+
+    .arena-opponent-focus-btn {
+        @apply text-xs font-semibold px-2 py-1 rounded-md border border-arena-accent/40 text-arena-accent hover:text-arena-bg hover:border-arena-accent;
+        background: rgba(201, 170, 113, 0.08);
+        transition: all 0.15s ease;
+    }
+
+    .arena-opponent-mini .card-battlefield {
+        width: 90px;
+        height: 126px;
+        margin-left: -28px;
+    }
+
+    .arena-opponent-mini .card-battlefield:first-child {
+        margin-left: 0;
+    }
+
+    .arena-opponent-mini .card-battlefield:hover {
+        transform: scale(1.05);
+    }
+
+    .arena-opponent-mini .card-battlefield.tapped:hover {
+        transform: rotate(90deg) scale(1.05);
+    }
+
+    .arena-opponent-mini .lands-zone,
+    .arena-opponent-mini .support-zone,
+    .arena-opponent-mini .creatures-zone {
+        min-width: 0;
+    }
+
+    .arena-opponent-mini .support-zone {
+        inline-size: auto;
+    }
+
+    .arena-opponent-mini .card-attachment {
+        width: 90px;
+        height: 126px;
+    }
+
+    .arena-opponent-mini .card-attachment:nth-child(1) {
+        transform: translate(12px, 12px);
+    }
+
+    .arena-opponent-mini .card-attachment:nth-child(2) {
+        transform: translate(24px, 24px);
+    }
+
+    .arena-opponent-mini .card-attachment:nth-child(3) {
+        transform: translate(36px, 36px);
+    }
+
+    .arena-opponent-mini .card-attachment:nth-child(4) {
+        transform: translate(48px, 48px);
     }
 
     .lands-zone .zone-content {

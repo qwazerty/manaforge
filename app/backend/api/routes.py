@@ -103,6 +103,7 @@ async def create_game(
 
     raw_format = request_payload.get("game_format")
     raw_phase_mode = request_payload.get("phase_mode")
+    raw_max_players = request_payload.get("max_players")
 
     if raw_format is None:
         game_format = GameFormat.STANDARD
@@ -130,8 +131,20 @@ async def create_game(
                 detail=f"Invalid phase_mode '{raw_phase_mode}'. Allowed values: {allowed_modes}",
             )
 
+    max_players = None
+    if raw_max_players is not None:
+        try:
+            max_players = int(raw_max_players)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400, detail="max_players must be an integer"
+            )
+
     setup_status = game_engine.create_game_setup(
-        game_id=game_id, game_format=game_format, phase_mode=phase_mode
+        game_id=game_id,
+        game_format=game_format,
+        phase_mode=phase_mode,
+        max_players=max_players,
     )
 
     return setup_status
@@ -242,10 +255,10 @@ async def create_modern_example_game(
     game_interface_url = f"/game-interface/{encoded_id}"
     game_room_url = f"/game-room/{encoded_id}"
     share_links = {
-        "player1": f"{game_room_url}?player=player1",
-        "player2": f"{game_room_url}?player=player2",
-        "spectator": f"{game_room_url}?player=spectator",
+        f"player{index + 1}": f"{game_room_url}?player=player{index + 1}"
+        for index in range(setup_status.max_players)
     }
+    share_links["spectator"] = f"{game_room_url}?player=spectator"
 
     return {
         "game_id": game_id_clean,
@@ -306,7 +319,7 @@ async def list_games() -> List[Dict[str, Any]]:
                 for player_id, status in player_status_dump.items()
                 if status.get("submitted")
             ],
-            "max_players": 2,
+            "max_players": setup.max_players,
         }
 
         if setup.ready and game_id in game_engine.games:
@@ -487,10 +500,8 @@ async def claim_seat(game_id: str, request: dict) -> GameSetupStatus:
     """Mark a seat as occupied when a player joins the room."""
     player_id = request.get("player_id")
     player_name = request.get("player_name")
-    if player_id not in {"player1", "player2"}:
-        raise HTTPException(
-            status_code=400, detail="player_id must be player1 or player2"
-        )
+    if not player_id:
+        raise HTTPException(status_code=400, detail="player_id is required")
 
     try:
         setup_status = game_engine.claim_player_seat(
@@ -578,6 +589,7 @@ async def get_game_ui_data(game_id: str) -> dict:
         "priority_player": game_state.priority_player,
         "players": [
             {
+                "id": player.id,
                 "name": player.name,
                 "life": player.life,
                 "hand": [safe_model_dump(card) for card in player.hand],

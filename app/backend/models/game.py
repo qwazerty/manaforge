@@ -338,6 +338,9 @@ class GameSetupStatus(BaseModel):
     game_id: str = Field(..., description="Game identifier")
     game_format: GameFormat = Field(..., description="Selected game format")
     phase_mode: PhaseMode = Field(..., description="Selected phase progression mode")
+    max_players: int = Field(
+        default=2, description="Maximum number of players supported by this game room"
+    )
     status: str = Field(..., description="Human readable setup status")
     ready: bool = Field(
         default=False,
