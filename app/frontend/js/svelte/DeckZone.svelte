@@ -35,6 +35,8 @@
 
 <div
     class="deck-zone-stack-wrapper w-full flex flex-col items-center"
+    role="group"
+    aria-label="Deck zone"
     data-zone-owner={zoneOwnerId}
     data-zone-type="deck"
     ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}

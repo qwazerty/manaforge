@@ -42,6 +42,8 @@
 
 <div
     class="graveyard-zone-stack flex flex-col items-center w-full"
+    role="group"
+    aria-label="Graveyard zone"
     data-zone-owner={zoneOwnerId}
     data-zone-type="graveyard"
     ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}

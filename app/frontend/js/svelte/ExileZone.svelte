@@ -35,6 +35,8 @@
 
 <div
     class="exile-zone-stack flex flex-col items-center w-full"
+    role="group"
+    aria-label="Exile zone"
     data-zone-owner={zoneOwnerId}
     data-zone-type="exile"
     ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
