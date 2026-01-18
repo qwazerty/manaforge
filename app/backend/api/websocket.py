@@ -208,11 +208,15 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 if game_id in game_engine.games:
                     game_state = game_engine.games[game_id]
 
+                    # Use compact format with viewer_id for proper face-down handling
+                    # Include card_catalog for initial/full state request
                     await websocket.send_text(
                         json.dumps(
                             {
                                 "type": "game_state_update",
-                                "game_state": game_state.model_dump(mode="json"),
+                                "game_state": game_state.to_compact_ui_data(
+                                    viewer_id=player_id
+                                ),
                                 "timestamp": time.time(),
                             }
                         )
@@ -277,9 +281,15 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                         game_id, game_action
                     )
 
+                    # Use compact format for reduced payload size
+                    # Exclude card_catalog - clients cache it from initial load
+                    # Note: Broadcasting same state to all players for now.
+                    # Per-player filtering can be added later.
                     broadcast_info = {
                         "type": "game_state_update",
-                        "game_state": updated_game_state.model_dump(mode="json"),
+                        "game_state": updated_game_state.to_compact_ui_data(
+                            viewer_id=None
+                        ),
                         "action_result": {
                             "success": True,
                             "action": action_type,

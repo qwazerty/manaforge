@@ -561,87 +561,28 @@ async def get_game_state(game_id: str) -> Dict[str, Any]:
 
 
 @router.get("/games/{game_id}/ui-data")
-async def get_game_ui_data(game_id: str) -> dict:
-    """Get game data optimized for UI rendering."""
+async def get_game_ui_data(game_id: str, viewer_id: Optional[str] = None) -> dict:
+    """
+    Get game data optimized for UI rendering.
+
+    Uses compact format with separated card_instances and card_catalog
+    to reduce payload size. The viewer_id parameter controls what
+    information is revealed for face-down cards.
+
+    Args:
+        game_id: The game identifier
+        viewer_id: Optional player ID viewing this data. If provided,
+                   face-down cards owned by this player will include
+                   their identity in the response.
+
+    Returns:
+        Compact game state with card_instances and card_catalog
+    """
     if game_id not in game_engine.games:
         raise HTTPException(status_code=404, detail="Game not found")
 
     game_state = game_engine.games[game_id]
-
-    def safe_model_dump(obj):
-        """Safely convert object to dict, handling Pydantic models and dicts."""
-        if hasattr(obj, "model_dump"):
-            return obj.model_dump()
-        elif isinstance(obj, dict):
-            return obj
-        else:
-            return str(obj)
-
-    return {
-        "id": game_state.id,
-        "turn": game_state.turn,
-        "phase": game_state.phase.value,
-        "phase_mode": game_state.phase_mode.value,
-        "game_format": getattr(
-            game_state.game_format, "value", str(game_state.game_format)
-        ),
-        "active_player": game_state.active_player,
-        "priority_player": game_state.priority_player,
-        "players": [
-            {
-                "id": player.id,
-                "name": player.name,
-                "life": player.life,
-                "hand": [safe_model_dump(card) for card in player.hand],
-                "battlefield": [safe_model_dump(card) for card in player.battlefield],
-                "library": [safe_model_dump(card) for card in player.library],
-                "graveyard": [safe_model_dump(card) for card in player.graveyard],
-                "exile": [safe_model_dump(card) for card in player.exile],
-                "reveal_zone": [
-                    safe_model_dump(card) for card in getattr(player, "reveal_zone", [])
-                ],
-                "look_zone": [
-                    safe_model_dump(card) for card in getattr(player, "look_zone", [])
-                ],
-                "commander_zone": [
-                    safe_model_dump(card)
-                    for card in getattr(player, "commander_zone", [])
-                ],
-                "commander_tax": getattr(player, "commander_tax", 0),
-            }
-            for player in game_state.players
-        ],
-        "stack": [safe_model_dump(spell) for spell in game_state.stack],
-        "action_history": [
-            safe_model_dump(entry)
-            for entry in getattr(game_state, "action_history", [])
-        ],
-        "chat_log": [
-            safe_model_dump(entry) for entry in getattr(game_state, "chat_log", [])
-        ],
-        # Game start phase fields (coin flip and mulligans)
-        "game_start_phase": (
-            game_state.game_start_phase.value
-            if hasattr(game_state.game_start_phase, "value")
-            else game_state.game_start_phase
-        ),
-        "coin_flip_winner": game_state.coin_flip_winner,
-        "first_player": game_state.first_player,
-        "mulligan_state": {
-            player_id: safe_model_dump(state)
-            for player_id, state in getattr(game_state, "mulligan_state", {}).items()
-        },
-        "mulligan_deciding_player": game_state.mulligan_deciding_player,
-        "end_step_priority_passed": getattr(
-            game_state, "end_step_priority_passed", False
-        ),
-        "combat_state": (
-            safe_model_dump(getattr(game_state, "combat_state", {}))
-            if hasattr(getattr(game_state, "combat_state", None), "model_dump")
-            else getattr(game_state, "combat_state", {})
-        ),
-        "targeting_arrows": getattr(game_state, "targeting_arrows", []),
-    }
+    return game_state.to_compact_ui_data(viewer_id=viewer_id)
 
 
 @router.post("/games/{game_id}/action")
@@ -895,20 +836,37 @@ async def list_available_actions() -> Dict[str, Any]:
 
 @router.get("/games/{game_id}/replay")
 async def get_game_replay(game_id: str) -> Dict[str, Any]:
-    """Get the full replay history for a game."""
+    """
+    Get the full replay history for a game.
+
+    Returns a compact structure with:
+    - game_id: The game identifier
+    - timeline: List of game states (referencing cards by card_id)
+
+    Card definitions are not included - they can be fetched via /cards/{card_id}
+    when replaying. This significantly reduces replay file size.
+    """
     if game_id in game_engine.replays:
-        return {"game_id": game_id, "timeline": game_engine.replays[game_id]}
+        return {
+            "game_id": game_id,
+            "timeline": game_engine.replays[game_id],
+        }
 
     # Fallback for games without recorded history (e.g. started before restart)
     if game_id in game_engine.games:
         current_state = game_engine.games[game_id]
-        # Create a synthetic single-step timeline
+        # Create a synthetic single-step timeline using compact format
+        # Exclude card_catalog - not needed for replay
+        compact_data = current_state.to_compact_ui_data()
         synthetic_step = {
             "timestamp": time.time(),
-            "state": current_state.model_dump(mode="json"),
+            "state": compact_data,
             "action": {"action_type": "snapshot", "player_id": "system"},
         }
-        return {"game_id": game_id, "timeline": [synthetic_step]}
+        return {
+            "game_id": game_id,
+            "timeline": [synthetic_step],
+        }
 
     raise HTTPException(status_code=404, detail="Replay not found for this game")
 

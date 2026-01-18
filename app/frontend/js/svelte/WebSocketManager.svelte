@@ -22,6 +22,7 @@
         addTargetingArrow,
         removeTargetingArrow
     } from './stores/gameCardsStore.js';
+    import { hydrateGameState } from './stores/cardCatalogStore.js';
     import { formatSeatFallback, resolvePlayerDisplayName } from '@lib/player-seat';
 
     /** @type {{ reconnectDelay?: number }} */
@@ -474,10 +475,10 @@
         }
     }
 
-    function handleWebSocketMessage(message) {
+    async function handleWebSocketMessage(message) {
         switch (message.type) {
             case 'game_state_update':
-                handleGameStateUpdate(message);
+                await handleGameStateUpdate(message);
                 break;
             case 'game_action_start':
                 break;
@@ -525,8 +526,9 @@
         }
     }
 
-    function handleGameStateUpdate(message) {
+    async function handleGameStateUpdate(message) {
         const newGameState = message.game_state;
+        const hydratedGameState = await hydrateGameState(newGameState);
         const currentGameState = getGameState();
         const actionResult = message.action_result;
         const isPreviewUpdate = Boolean(
@@ -536,19 +538,19 @@
 
         // Fast check: compare turn/phase/timestamp first before expensive JSON comparison
         const hasQuickChange = !currentGameState ||
-            newGameState?.turn !== currentGameState?.turn ||
-            newGameState?.phase !== currentGameState?.phase ||
-            newGameState?.timestamp !== currentGameState?.timestamp;
+            hydratedGameState?.turn !== currentGameState?.turn ||
+            hydratedGameState?.phase !== currentGameState?.phase ||
+            hydratedGameState?.timestamp !== currentGameState?.timestamp;
 
         // Always refresh if there's an action result - means something changed
         const hasActionResult = Boolean(actionResult);
         
-        if (hasQuickChange || hasActionResult || !shallowEqualState(newGameState, currentGameState)) {
+        if (hasQuickChange || hasActionResult || !shallowEqualState(hydratedGameState, currentGameState)) {
             const oldGameState = currentGameState;
-            updateGameState(newGameState);
+            await updateGameState(hydratedGameState);
             let handledPreview = false;
-            if (isPreviewUpdate && window.GameCombat && newGameState?.combat_state) {
-                const combatState = newGameState.combat_state;
+            if (isPreviewUpdate && window.GameCombat && hydratedGameState?.combat_state) {
+                const combatState = hydratedGameState.combat_state;
                 if (actionResult.action === 'preview_attackers') {
                     const pendingAttackers = Array.isArray(combatState.pending_attackers)
                         ? combatState.pending_attackers
@@ -570,7 +572,7 @@
             }
 
             const oldPhase = oldGameState?.phase;
-            const newPhase = newGameState?.phase;
+            const newPhase = hydratedGameState?.phase;
             if (
                 oldPhase !== newPhase &&
                 window.GameCombat &&
@@ -581,9 +583,9 @@
 
             if (
                 window.GameCombat &&
-                ['attack', 'block', 'damage'].includes(newGameState.phase)
+                ['attack', 'block', 'damage'].includes(hydratedGameState?.phase)
             ) {
-                handleCombatStateUpdate(oldGameState, newGameState, message.action_result);
+                handleCombatStateUpdate(oldGameState, hydratedGameState, message.action_result);
             }
         }
 
@@ -592,18 +594,18 @@
         }
 
         if (
-            newGameState &&
-            Array.isArray(newGameState.action_history)
+            hydratedGameState &&
+            Array.isArray(hydratedGameState.action_history)
         ) {
-            mergeActionHistoryEntries(newGameState.action_history);
+            mergeActionHistoryEntries(hydratedGameState.action_history);
         }
         if (
-            newGameState &&
-            Array.isArray(newGameState.chat_log) &&
+            hydratedGameState &&
+            Array.isArray(hydratedGameState.chat_log) &&
             typeof UIBattleChat !== 'undefined' &&
             typeof UIBattleChat.loadChatLog === 'function'
         ) {
-            UIBattleChat.loadChatLog(newGameState.chat_log);
+            UIBattleChat.loadChatLog(hydratedGameState.chat_log);
         }
     }
 
@@ -878,13 +880,13 @@
         return storeSnapshots.gameState;
     }
 
-    function updateGameState(state) {
-        if (typeof GameCore !== 'undefined' && typeof GameCore.setGameState === 'function') {
-            GameCore.setGameState(state);
-        } else {
-            setGameState(state);
-        }
-        storeSnapshots.gameState = state;
+    async function updateGameState(state) {
+        // Hydrate compact format to legacy format if needed
+        const hydratedState = await hydrateGameState(state);
+
+        // Set state directly to store (already hydrated, skip GameCore.setGameState which would re-hydrate)
+        setGameState(hydratedState);
+        storeSnapshots.gameState = hydratedState;
     }
 
     function updateGameId(id) {

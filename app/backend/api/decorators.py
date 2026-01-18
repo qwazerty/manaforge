@@ -11,14 +11,24 @@ from app.backend.models.game import GameState
 async def broadcast_game_update(
     game_id: str, game_state: GameState, action_info: Optional[dict] = None
 ):
-    """Broadcast game state update to all connected clients."""
+    """
+    Broadcast game state update to all connected clients.
+
+    Uses compact format with card_instances for reduced payload size.
+    Card definitions are NOT included - clients fetch them via /api/v1/cards/{id}.
+    Currently broadcasts the same state to all players (viewer_id=None).
+    Per-player filtering for face-down cards can be added in a future iteration.
+    """
     try:
         from app.backend.api.websocket import manager
         from app.backend.api.routes import game_engine
 
+        # Use compact format for reduced payload size
+        # TODO: For proper face-down card handling, we should send
+        # personalized states per player using viewer_id
         message = {
             "type": "game_state_update",
-            "game_state": game_state.model_dump(mode="json"),
+            "game_state": game_state.to_compact_ui_data(viewer_id=None),
             "timestamp": game_state.turn if hasattr(game_state, "turn") else None,
         }
 

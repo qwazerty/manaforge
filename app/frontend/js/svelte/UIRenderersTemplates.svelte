@@ -488,10 +488,10 @@
                     const isActivePlayer = controlledPlayerIndex === activePlayerIndex;
                     const isPriorityPlayer = controlledPlayerIndex === priorityPlayerIndex;
 
-                    // Check if we're at the end step with priority passing (only if no stack to resolve)
-                    if (currentPhase === 'end' && endStepPriorityPassed && !hasStack) {
-                        // Opponent has priority during the end step resolve
-                        if (!isActivePlayer) {
+                    // Check if we're at the end step with priority passing (only in strict mode, no stack)
+                    if (isStrictMode && currentPhase === 'end' && endStepPriorityPassed && !hasStack) {
+                        // Only the player with priority can resolve the end step
+                        if (isPriorityPlayer) {
                             passDisabled = false;
                             passAction = 'pass_phase';
                             passLabel = '✅ Resolve';

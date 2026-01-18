@@ -21,6 +21,7 @@
         setSelectedPlayer
     } from './stores/gameCoreStore.js';
     import { loadActionHistoryFromState, addActionHistoryEntry } from './stores/actionHistoryStore.js';
+    import { hydrateGameState } from './stores/cardCatalogStore.js';
 
     let autoRefreshInterval = $state(null);
     let persistentUiLoaded = $state(false);
@@ -294,17 +295,21 @@
 
     /**
      * Applies a new game state to the UI, regenerating all visual components.
+     * Hydrates compact state format (with card_instances/card_catalog) if needed.
      * @param {Object} state - The game state object
      * @param {Object} options - Options for UI sync
      * @param {boolean} options.forceSync - Force persistent UI sync
      */
-    function applyGameStateToUi(state, { forceSync = false } = {}) {
+    async function applyGameStateToUi(state, { forceSync = false } = {}) {
         if (!state) {
             return;
         }
 
-        setGameState(state);
-        syncPersistentUi(state, { force: forceSync });
+        // Hydrate compact format to legacy format if needed
+        const hydratedState = await hydrateGameState(state);
+
+        setGameState(hydratedState);
+        syncPersistentUi(hydratedState, { force: forceSync });
 
         if (window.GameUI) {
             GameUI.generateLeftArea();
@@ -317,19 +322,19 @@
         }
 
         if (window.GameCombat && typeof window.GameCombat.onPhaseChange === 'function') {
-            window.GameCombat.onPhaseChange(state?.phase);
+            window.GameCombat.onPhaseChange(hydratedState?.phase);
         }
 
         if (window.WebSocketManager && typeof window.WebSocketManager._applyCombatAnimations === 'function') {
             setTimeout(() => {
-                window.WebSocketManager._applyCombatAnimations(state);
+                window.WebSocketManager._applyCombatAnimations(hydratedState);
             }, 60);
         }
 
         // Load targeting arrows from game state
         if (window.GameCards && typeof window.GameCards.loadArrowsFromGameState === 'function') {
             requestAnimationFrame(() => {
-                window.GameCards.loadArrowsFromGameState(state);
+                window.GameCards.loadArrowsFromGameState(hydratedState);
             });
         }
     }
@@ -346,7 +351,7 @@
         }
 
         const state = await response.json();
-        applyGameStateToUi(state, { forceSync: true });
+        await applyGameStateToUi(state, { forceSync: true });
     }
 
     async function refreshGameData() {
@@ -377,18 +382,20 @@
 
                 if (JSON.stringify(newGameState) !== JSON.stringify(currentState)) {
                     const oldPhase = currentState?.phase;
-                    setGameState(newGameState);
-                    const newPhase = newGameState?.phase;
+                    // Hydrate compact format before applying
+                    const hydratedState = await hydrateGameState(newGameState);
+                    setGameState(hydratedState);
+                    const newPhase = hydratedState?.phase;
 
                     GameUI.generateLeftArea();
                     GameUI.generateGameBoard();
                     GameUI.generateActionPanel();
                     if (
-                        Array.isArray(newGameState.chat_log) &&
+                        Array.isArray(hydratedState.chat_log) &&
                         typeof UIBattleChat !== 'undefined' &&
                         typeof UIBattleChat.loadChatLog === 'function'
                     ) {
-                        UIBattleChat.loadChatLog(newGameState.chat_log);
+                        UIBattleChat.loadChatLog(hydratedState.chat_log);
                     }
                     if (
                         oldPhase !== newPhase &&
@@ -554,7 +561,7 @@
             const result = await response.json();
             const state = result.game_state || result;
 
-            applyGameStateToUi(state, { forceSync: true });
+            await applyGameStateToUi(state, { forceSync: true });
 
             if (window.WebSocketManager && typeof window.WebSocketManager.requestGameState === 'function') {
                 window.WebSocketManager.requestGameState();
@@ -736,7 +743,11 @@
         getSelectedPlayer,
         getPlayerDisplayName: (identifier, fallback = null) =>
             resolvePlayerDisplayName(identifier, fallback),
-        setGameState: (state) => setGameState(state),
+        setGameState: async (state) => {
+            // Hydrate compact format before storing
+            const hydratedState = await hydrateGameState(state);
+            setGameState(hydratedState);
+        },
         setGameId: (id) => setGameId(id),
         setSelectedPlayer: (player) => {
             setSelectedPlayer(player);

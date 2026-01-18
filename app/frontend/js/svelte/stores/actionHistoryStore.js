@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { getCardDefinition } from './cardCatalogStore.js';
 
 const globalRef = typeof globalThis !== 'undefined' ? globalThis : window;
 const GLOBAL_STATE_KEY = '__manaforgeActionHistoryState';
@@ -729,6 +730,29 @@ class ActionHistoryStore {
             return info;
         }
 
+        // First try to resolve from the card catalog (fast path)
+        const cardId = info.cardId || info.card_id;
+        if (cardId) {
+            const definition = getCardDefinition(cardId);
+            if (definition) {
+                if (needsType && definition.card_type) {
+                    info.card_type = definition.card_type;
+                    info.cardType = definition.card_type;
+                }
+                if (needsImage && definition.image_url) {
+                    info.imageUrl = definition.image_url;
+                }
+                if (needsName && definition.name) {
+                    info.name = definition.name;
+                }
+                // If we got everything from catalog, return early
+                if (info.name && (info.card_type || info.cardType)) {
+                    return info;
+                }
+            }
+        }
+
+        // Fallback: search in game state (slower path)
         if (
             typeof GameCore === 'undefined' ||
             typeof GameCore.getGameState !== 'function'

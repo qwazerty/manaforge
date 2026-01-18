@@ -144,6 +144,120 @@ class Card(BaseModel):
         description="Player ID allowed to view details while the card remains face-down",
     )
 
+    def to_instance(self, zone: str = "unknown") -> "CardInstance":
+        """Convert this Card to a lightweight CardInstance for optimized serialization."""
+        return CardInstance(
+            unique_id=self.unique_id,
+            card_id=self.id,
+            scryfall_id=self.scryfall_id,
+            owner_id=self.owner_id or "",
+            controller_id=self.owner_id,
+            zone=zone,
+            tapped=self.tapped,
+            attacking=self.attacking,
+            blocking=self.blocking,
+            targeted=self.targeted,
+            counters=self.counters,
+            face_down=self.face_down,
+            face_down_owner=self.face_down_owner,
+            current_face=self.current_face,
+            attached_to=self.attached_to,
+            attachment_order=self.attachment_order,
+            custom_keywords=self.custom_keywords,
+            custom_types=self.custom_types,
+            current_power=self.current_power,
+            current_toughness=self.current_toughness,
+            loyalty=self.loyalty,
+            is_commander=self.is_commander,
+            is_token=self.is_token,
+        )
+
+    def to_definition(self) -> "CardDefinition":
+        """Convert this Card to a static CardDefinition for the catalog."""
+        return CardDefinition(
+            card_id=self.id,
+            scryfall_id=self.scryfall_id,
+            name=self.name,
+            mana_cost=self.mana_cost,
+            cmc=self.cmc,
+            card_type=self.card_type,
+            subtype=self.subtype,
+            text=self.text,
+            power=self.power,
+            toughness=self.toughness,
+            colors=self.colors,
+            rarity=self.rarity,
+            image_url=self.image_url,
+            is_double_faced=self.is_double_faced,
+            card_faces=self.card_faces,
+            set=self.set,
+            set_name=self.set_name,
+        )
+
+
+class CardInstance(BaseModel):
+    """
+    Lightweight representation of a card instance in play.
+    Contains only dynamic/runtime state, not static card data.
+    Used for optimized game state serialization.
+    """
+
+    unique_id: str = Field(..., description="Unique instance identifier")
+    card_id: str = Field(..., description="Reference to CardDefinition (card.id)")
+    scryfall_id: Optional[str] = Field(default=None, description="Scryfall ID reference")
+    owner_id: str = Field(..., description="ID of the player who owns this card")
+    controller_id: Optional[str] = Field(
+        default=None, description="ID of the player who currently controls this card"
+    )
+    zone: str = Field(..., description="Current zone (hand, battlefield, graveyard, etc.)")
+
+    # Dynamic state
+    tapped: bool = Field(default=False, description="Whether the card is tapped")
+    attacking: bool = Field(default=False, description="Whether attacking")
+    blocking: Optional[str] = Field(default=None, description="Unique ID of blocked attacker")
+    targeted: bool = Field(default=False, description="Whether targeted")
+    counters: Dict[str, int] = Field(default_factory=dict, description="Counters on the card")
+    face_down: bool = Field(default=False, description="Whether face-down")
+    face_down_owner: Optional[str] = Field(
+        default=None, description="Player ID who can see face-down card"
+    )
+    current_face: int = Field(default=0, description="Current face index for DFCs")
+    attached_to: Optional[str] = Field(default=None, description="Host card unique_id")
+    attachment_order: Optional[int] = Field(default=None, description="Attachment ordering")
+    custom_keywords: List[str] = Field(default_factory=list, description="Added keywords")
+    custom_types: List[str] = Field(default_factory=list, description="Type overrides")
+    current_power: Optional[str] = Field(default=None, description="Overridden power")
+    current_toughness: Optional[str] = Field(default=None, description="Overridden toughness")
+    loyalty: Optional[int] = Field(default=None, description="Current planeswalker loyalty")
+    is_commander: bool = Field(default=False, description="Whether this is a commander")
+    is_token: bool = Field(default=False, description="Whether this is a token")
+
+
+class CardDefinition(BaseModel):
+    """
+    Static card definition data (name, types, text, images, etc.).
+    Indexed by card_id in the card_catalog. Shared across all instances
+    of the same card to reduce payload size.
+    """
+
+    card_id: str = Field(..., description="Unique card identifier (matches Card.id)")
+    scryfall_id: Optional[str] = Field(default=None, description="Scryfall's unique ID")
+    name: str = Field(..., description="Card name")
+    mana_cost: str = Field(default="", description="Mana cost string")
+    cmc: int = Field(default=0, description="Converted mana cost")
+    card_type: CardType = Field(..., description="Primary card type")
+    subtype: str = Field(default="", description="Card subtype")
+    text: str = Field(default="", description="Card text/abilities")
+    power: Optional[int | str] = Field(default=None, description="Base power")
+    toughness: Optional[int | str] = Field(default=None, description="Base toughness")
+    colors: List[Color] = Field(default_factory=list, description="Card colors")
+    rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
+    image_url: Optional[str] = Field(default=None, description="Card image URL")
+    is_double_faced: bool = Field(default=False, description="Has multiple faces")
+    card_faces: List[Dict[str, Any]] = Field(default_factory=list, description="Face data")
+    set: Optional[str] = Field(default=None, description="Set code")
+    set_name: Optional[str] = Field(default=None, description="Full set name")
+
 
 class DeckCard(BaseModel):
     """A card in a deck with quantity."""
@@ -464,6 +578,193 @@ class GameState(BaseModel):
         default_factory=current_utc_datetime,
         description="Timestamp for the most recent change to the game state",
     )
+
+    # Zone names for iteration
+    _PLAYER_ZONES = (
+        "hand",
+        "battlefield",
+        "graveyard",
+        "exile",
+        "library",
+        "commander_zone",
+        "reveal_zone",
+        "look_zone",
+    )
+
+    # Zones where cards have no dynamic state and identity is hidden from opponents.
+    # These zones use a compact format: only unique_id list + minimal card mapping.
+    _HIDDEN_ZONES = ("library",)
+
+    def _should_include_definition(
+        self, card: Card, card_owner_id: str, viewer_id: Optional[str]
+    ) -> bool:
+        """
+        Determine if a card's definition should be included in the catalog.
+        Face-down cards should not reveal their identity to opponents.
+        """
+        if not card.face_down:
+            return True
+        # Face-down card: only include definition if viewer is the owner
+        # or specifically allowed to see it
+        if viewer_id is None:
+            return False
+        if card_owner_id == viewer_id:
+            return True
+        if card.face_down_owner == viewer_id:
+            return True
+        return False
+
+    def _card_to_compact_instance(
+        self,
+        card: Card,
+        owner_id: str,
+        zone: str,
+        viewer_id: Optional[str],
+    ) -> Dict[str, Any]:
+        """
+        Convert a Card to a compact instance dict.
+        For face-down cards visible to opponents, omit card_id to preserve secrecy.
+        """
+        include_identity = self._should_include_definition(card, owner_id, viewer_id)
+
+        instance = {
+            "unique_id": card.unique_id,
+            "owner_id": owner_id,
+            "controller_id": card.owner_id or owner_id,
+            "zone": zone,
+            "tapped": card.tapped,
+            "face_down": card.face_down,
+            "current_face": card.current_face,
+            "is_token": card.is_token,
+        }
+
+        # Only include card identity if allowed
+        if include_identity:
+            instance["card_id"] = card.id
+            if card.scryfall_id:
+                instance["scryfall_id"] = card.scryfall_id
+
+        # Include optional dynamic fields only if they have non-default values
+        if card.attacking:
+            instance["attacking"] = True
+        if card.blocking:
+            instance["blocking"] = card.blocking
+        if card.targeted:
+            instance["targeted"] = True
+        if card.counters:
+            instance["counters"] = card.counters
+        if card.attached_to:
+            instance["attached_to"] = card.attached_to
+        if card.attachment_order is not None:
+            instance["attachment_order"] = card.attachment_order
+        if card.custom_keywords:
+            instance["custom_keywords"] = card.custom_keywords
+        if card.custom_types:
+            instance["custom_types"] = card.custom_types
+        if card.current_power is not None:
+            instance["current_power"] = card.current_power
+        if card.current_toughness is not None:
+            instance["current_toughness"] = card.current_toughness
+        if card.loyalty is not None:
+            instance["loyalty"] = card.loyalty
+        if card.is_commander:
+            instance["is_commander"] = True
+
+        return instance
+
+    def to_compact_ui_data(self, viewer_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Generate an optimized game state for UI rendering.
+
+        This format significantly reduces payload size by:
+        1. Storing only dynamic state in card_instances
+        2. Using hidden_zone_cards for library (just unique_id -> card_id)
+        3. Omitting card identity for face-down cards (for opponents)
+        4. NOT including card_catalog - client fetches via /api/v1/cards/{card_id}
+
+        Args:
+            viewer_id: The player ID viewing this data. Used to determine
+                       what information to reveal for face-down cards.
+
+        Returns:
+            A dict with schema_version, game metadata, players, card_instances.
+            No card_catalog - client fetches on demand.
+        """
+        card_instances: Dict[str, Dict[str, Any]] = {}
+        player_data: List[Dict[str, Any]] = []
+
+        for player in self.players:
+            zones_data: Dict[str, List[str]] = {}
+
+            for zone_name in self._PLAYER_ZONES:
+                zone_cards: List[Card] = getattr(player, zone_name, [])
+                is_hidden_zone = zone_name in self._HIDDEN_ZONES
+
+                if is_hidden_zone:
+                    # Hidden zones: store ordered list of card_ids directly
+                    # Client reconstructs unique_ids from position if needed
+                    zones_data[zone_name] = [card.id for card in zone_cards]
+                else:
+                    zone_ids: List[str] = []
+                    for card in zone_cards:
+                        zone_ids.append(card.unique_id)
+                        # Regular zones: full CardInstance with dynamic state
+                        instance = self._card_to_compact_instance(
+                            card, player.id, zone_name, viewer_id
+                        )
+                        card_instances[card.unique_id] = instance
+                    zones_data[zone_name] = zone_ids
+
+            player_data.append(
+                {
+                    "id": player.id,
+                    "name": player.name,
+                    "deck_name": player.deck_name,
+                    "life": player.life,
+                    "mana_pool": player.mana_pool,
+                    "counters": player.counters,
+                    "commander_tax": player.commander_tax,
+                    "zones": zones_data,
+                }
+            )
+
+        # Process stack
+        stack_ids: List[str] = []
+        for card in self.stack:
+            instance = self._card_to_compact_instance(card, card.owner_id or "", "stack", viewer_id)
+            card_instances[card.unique_id] = instance
+            stack_ids.append(card.unique_id)
+
+        return {
+            "schema_version": 1,
+            "game_id": self.id,
+            "turn": self.turn,
+            "round": self.round,
+            "phase": self.phase.value,
+            "phase_mode": self.phase_mode.value,
+            "game_format": self.game_format.value,
+            "active_player": self.active_player,
+            "priority_player": self.priority_player,
+            "end_step_priority_passed": self.end_step_priority_passed,
+            "setup_complete": self.setup_complete,
+            "game_start_phase": self.game_start_phase.value,
+            "coin_flip_winner": self.coin_flip_winner,
+            "first_player": self.first_player,
+            "mulligan_state": {
+                pid: ms.model_dump(mode="json")
+                for pid, ms in self.mulligan_state.items()
+            },
+            "mulligan_deciding_player": self.mulligan_deciding_player,
+            "combat_state": self.combat_state.model_dump(mode="json"),
+            "players": player_data,
+            "stack": stack_ids,
+            "card_instances": card_instances,
+            "action_history": self.action_history,
+            "chat_log": self.chat_log,
+            "targeting_arrows": self.targeting_arrows,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class GameAction(BaseModel):

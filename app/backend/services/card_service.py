@@ -538,9 +538,12 @@ class CardService:
         return "\n".join(filtered)
 
     async def get_card(self, card_id: str) -> Optional[Card]:
-        """Get a card by ID using the local oracle data."""
-        card_name = card_id.replace("_", " ").title()
-        return await self.get_card_by_name(card_name)
+        """Get a card by ID (scryfall_id, oracle_id, or name)."""
+        # Direct lookup handles scryfall_id, oracle_id, and card name
+        card_data = self.get_card_data_from_oracle(card_id)
+        if card_data:
+            return Card(**card_data)
+        return None
 
     async def get_card_by_id(self, card_id: str) -> Optional[Card]:
         """Get a card by ID (alias for get_card)."""
@@ -668,17 +671,12 @@ class CardService:
                         image_url = potential_url
                         break
 
-        card_id = (
-            scryfall_data["name"]
-            .lower()
-            .replace(" ", "_")
-            .replace("'", "")
-            .replace(",", "")
-            .replace("-", "_")
-        )
+        # Use scryfall_id as the card_id for reliable lookups
+        scryfall_id = scryfall_data.get("id", "")
+        card_id = scryfall_id
         import uuid
 
-        unique_id = f"{card_id}_{uuid.uuid4().hex[:8]}"
+        unique_id = f"card_{uuid.uuid4().hex[:8]}"
 
         # Check if this is a double-faced card
         is_double_faced = (
@@ -731,7 +729,7 @@ class CardService:
 
         return {
             "id": card_id,
-            "scryfall_id": scryfall_data.get("id"),
+            "scryfall_id": scryfall_id,
             "unique_id": unique_id,
             "name": scryfall_data["name"],
             "mana_cost": _resolve_front_face_value(

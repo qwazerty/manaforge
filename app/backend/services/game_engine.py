@@ -72,11 +72,15 @@ class SimpleGameEngine:
     def _record_replay_step(
         self, game_id: str, action: Optional[GameAction], game_state: GameState
     ) -> None:
-        """Record a step in the game replay timeline."""
+        """Record a step in the game replay timeline using compact format."""
         if game_id not in self.replays:
             self.replays[game_id] = []
 
-        step = {"timestamp": time.time(), "state": game_state.model_dump(mode="json")}
+        # Use compact format for significantly smaller replay files
+        # Exclude card_catalog - it can be fetched from API when replaying
+        compact_data = game_state.to_compact_ui_data()
+
+        step = {"timestamp": time.time(), "state": compact_data}
         if action:
             step["action"] = action.model_dump(mode="json")
         else:
@@ -1115,7 +1119,8 @@ class SimpleGameEngine:
     ) -> None:
         """
         Handle priority during the end step.
-        All players must pass priority before moving to the next turn.
+        In Strict mode: All players must pass priority before moving to the next turn.
+        In Casual mode: Turn ends immediately when the active player passes.
         """
         active_player_index = game_state.active_player
         action_player_index = self._get_player_index(game_state, action.player_id)
@@ -1130,6 +1135,13 @@ class SimpleGameEngine:
         if action_player_index != game_state.priority_player:
             return
 
+        # In Casual mode, skip priority passing - end turn immediately
+        if game_state.phase_mode == PhaseMode.CASUAL:
+            if action_player_index == active_player_index:
+                self._end_current_turn(game_state)
+            return
+
+        # Strict mode: require both players to pass priority
         next_index = self._get_next_player_index(game_state, game_state.priority_player)
         if next_index is None:
             return

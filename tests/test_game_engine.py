@@ -283,6 +283,85 @@ def test_end_step_priority_passing():
     assert not state.end_step_priority_passed  # Reset for next turn
 
 
+def test_end_step_casual_mode_skips_priority():
+    """Test that in casual mode, the turn ends immediately without priority passing."""
+    from app.backend.models.game import PhaseMode
+
+    engine = SimpleGameEngine()
+    state = _build_game_state(phase=GamePhase.END, active_index=0)
+    state.phase_mode = PhaseMode.CASUAL
+    engine.games[state.id] = state
+
+    # Initially, active player should have priority
+    assert state.priority_player == 0
+    assert not state.end_step_priority_passed
+
+    # Active player (player1) passes priority - in casual mode, turn should end immediately
+    action = GameAction(player_id="player1", action_type="pass_phase")
+    engine._pass_phase(state, action)
+
+    # In casual mode, turn ends immediately without opponent confirmation
+    assert state.active_player == 1  # Now player2's turn
+    assert state.phase == GamePhase.BEGIN
+    assert not state.end_step_priority_passed  # Should remain False in casual mode
+
+
+def test_end_step_priority_passing_three_players():
+    """Test that all players must pass priority in order during the end step (3+ players)."""
+    engine = SimpleGameEngine()
+
+    # Create a 3-player game state
+    players = [
+        Player(id="player1", name="Alice"),
+        Player(id="player2", name="Bob"),
+        Player(id="player3", name="Charlie"),
+    ]
+    state = GameState(
+        id="game-test-3p",
+        players=players,
+        active_player=0,
+        phase=GamePhase.END,
+        turn=1,
+    )
+    engine.games[state.id] = state
+
+    # Initially, active player (player1) should have priority
+    assert state.priority_player == 0
+    assert not state.end_step_priority_passed
+
+    # Player1 (active) passes priority
+    action1 = GameAction(player_id="player1", action_type="pass_phase")
+    engine._pass_phase(state, action1)
+
+    # Priority should now be with player2
+    assert state.priority_player == 1
+    assert state.end_step_priority_passed
+    assert state.phase == GamePhase.END  # Still in END phase
+
+    # Player3 tries to pass (out of order) - should be ignored
+    action3_early = GameAction(player_id="player3", action_type="pass_phase")
+    engine._pass_phase(state, action3_early)
+    assert state.priority_player == 1  # Still player2's priority
+    assert state.phase == GamePhase.END  # Still in END phase
+
+    # Player2 passes priority
+    action2 = GameAction(player_id="player2", action_type="pass_phase")
+    engine._pass_phase(state, action2)
+
+    # Priority should now be with player3
+    assert state.priority_player == 2
+    assert state.phase == GamePhase.END  # Still in END phase
+
+    # Player3 passes priority - this should end the turn
+    action3 = GameAction(player_id="player3", action_type="pass_phase")
+    engine._pass_phase(state, action3)
+
+    # Turn should now end
+    assert state.active_player == 1  # Now player2's turn
+    assert state.phase == GamePhase.BEGIN
+    assert not state.end_step_priority_passed
+
+
 def test_restart_game_reuses_submitted_decks():
     """Test that restart_game correctly reuses the originally submitted decks."""
     from app.backend.models.game import (
