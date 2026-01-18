@@ -558,14 +558,6 @@ class GameState(BaseModel):
         default_factory=dict,
         description="Summary of the deck submissions used to start the game",
     )
-    action_history: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Ordered history of in-game actions for UI rendering",
-    )
-    chat_log: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Chat messages exchanged during the game session",
-    )
     targeting_arrows: List[Dict[str, str]] = Field(
         default_factory=list,
         description="Visual targeting arrows between cards (source_id -> target_id)",
@@ -672,7 +664,12 @@ class GameState(BaseModel):
 
         return instance
 
-    def to_compact_ui_data(self, viewer_id: Optional[str] = None) -> Dict[str, Any]:
+    def to_compact_ui_data(
+        self,
+        viewer_id: Optional[str] = None,
+        action_history: List[Dict[str, Any]] | None = None,
+        chat_log: List[Dict[str, Any]] | None = None,
+    ) -> Dict[str, Any]:
         """
         Generate an optimized game state for UI rendering.
 
@@ -685,11 +682,15 @@ class GameState(BaseModel):
         Args:
             viewer_id: The player ID viewing this data. Used to determine
                        what information to reveal for face-down cards.
+            action_history: Action history entries to include in the payload.
+            chat_log: Chat messages to include in the payload.
 
         Returns:
             A dict with schema_version, game metadata, players, card_instances.
             No card_catalog - client fetches on demand.
         """
+        if action_history is None or chat_log is None:
+            raise ValueError("action_history and chat_log must be provided")
         card_instances: Dict[str, Dict[str, Any]] = {}
         player_data: List[Dict[str, Any]] = []
 
@@ -759,8 +760,8 @@ class GameState(BaseModel):
             "players": player_data,
             "stack": stack_ids,
             "card_instances": card_instances,
-            "action_history": self.action_history,
-            "chat_log": self.chat_log,
+            "action_history": action_history,
+            "chat_log": chat_log,
             "targeting_arrows": self.targeting_arrows,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

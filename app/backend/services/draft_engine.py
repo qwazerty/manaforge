@@ -17,6 +17,12 @@ from app.backend.models.game import (
     CubeConfiguration,
 )
 from app.backend.services.draft_service import DraftService
+from app.backend.repositories.dict_proxies import (
+    DraftRoomsProxy,
+    CubePoolsProxy,
+    CubePoolCursorsProxy,
+    CubeCardCacheProxy,
+)
 
 
 class DraftEngine:
@@ -24,12 +30,32 @@ class DraftEngine:
 
     MAX_PLAYER_NAME_LENGTH = 32
 
-    def __init__(self, draft_service: DraftService):
+    def __init__(self, draft_service: DraftService, use_db: bool = True):
+        """
+        Initialize the draft engine.
+        
+        Args:
+            draft_service: Service for generating boosters and loading cubes.
+            use_db: If True, use PostgreSQL-backed storage (for production).
+                   If False, use in-memory dicts (for testing).
+        """
         self.draft_service = draft_service
-        self.draft_rooms: Dict[str, DraftRoom] = {}
-        self.cube_card_pools: Dict[str, List[str]] = {}
-        self.cube_pool_cursor: Dict[str, int] = {}
-        self.cube_card_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        self._use_db = use_db
+        
+        if use_db:
+            self.draft_rooms: Dict[str, DraftRoom] = DraftRoomsProxy()
+            self.cube_card_pools: Dict[str, List[str]] = CubePoolsProxy()
+            self.cube_pool_cursor: Dict[str, int] = CubePoolCursorsProxy()
+            self.cube_card_cache: Dict[str, Dict[str, Dict[str, Any]]] = CubeCardCacheProxy()
+        else:
+            self.draft_rooms: Dict[str, DraftRoom] = {}
+            self.cube_card_pools: Dict[str, List[str]] = {}
+            self.cube_pool_cursor: Dict[str, int] = {}
+            self.cube_card_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+
+    def _save_room(self, room: DraftRoom) -> None:
+        """Persist a draft room to storage."""
+        self.draft_rooms[room.id] = room
 
     async def create_draft_room(
         self,
@@ -124,6 +150,7 @@ class DraftEngine:
         room.players.append(player)
         random.shuffle(room.players)
         self._update_player_names(room)
+        self._save_room(room)
         return player
 
     def add_bot_to_room(self, room_id: str) -> Optional[DraftPlayer]:
@@ -139,6 +166,7 @@ class DraftEngine:
         room.players.append(bot)
         random.shuffle(room.players)
         self._update_player_names(room)
+        self._save_room(room)
         return bot
 
     def _update_player_names(self, room: DraftRoom):
@@ -204,6 +232,7 @@ class DraftEngine:
         if not sanitized:
             raise ValueError("Player name cannot be empty.")
         player.name = sanitized
+        self._save_room(room)
         return player
 
     def fill_bots(self, room_id: str):
@@ -238,6 +267,7 @@ class DraftEngine:
                 )
                 player.has_picked_card = False
             room.state = DraftState.COMPLETED
+            self._save_room(room)
             return
 
         # Generate 3 packs for each player
@@ -256,6 +286,8 @@ class DraftEngine:
         # Distribute the first pack to each player
         for i, player in enumerate(room.players):
             player.current_pack = room.packs[i][0]
+        
+        self._save_room(room)
 
     def pick_card(self, room_id: str, player_id: str, card_unique_id: str) -> bool:
         """Handles a player picking a card from their current pack."""
@@ -289,11 +321,16 @@ class DraftEngine:
         if all_humans_picked:
             # If all humans are done, bots make their picks
             self._bots_pick_cards(room_id, target_pack_size)
+            # Re-fetch room after bot picks (it may have been modified)
+            room = self.get_draft_room(room_id)
 
         # Check if all players (humans and bots) have completed their pick
         # This is the condition to pass the packs
         if all(len(p.current_pack) == target_pack_size for p in room.players):
             self._pass_packs(room_id)
+        else:
+            # Save current state if we didn't pass packs (which saves itself)
+            self._save_room(room)
 
         return True
 
@@ -303,6 +340,7 @@ class DraftEngine:
         if not room:
             return
 
+        modified = False
         for player in room.players:
             # A bot should pick if it's a bot, has a pack, and its pack is larger than the target size
             if (
@@ -314,6 +352,10 @@ class DraftEngine:
                 card_to_pick = random.choice(player.current_pack)
                 player.drafted_cards.append(card_to_pick)
                 player.current_pack.remove(card_to_pick)
+                modified = True
+        
+        if modified:
+            self._save_room(room)
 
     def _pass_packs(self, room_id: str):
         """Passes the packs to the next player."""
@@ -329,12 +371,14 @@ class DraftEngine:
 
             if room.current_pack_number > 3:
                 room.state = DraftState.COMPLETED
+                self._save_room(room)
                 return
             else:
                 # Distribute the next pack
                 for i, player in enumerate(room.players):
                     player.current_pack = room.packs[i][room.current_pack_number - 1]
                     player.has_picked_card = False
+                self._save_room(room)
                 return
 
         current_packs = [p.current_pack for p in room.players]
@@ -349,6 +393,7 @@ class DraftEngine:
             player.has_picked_card = False
 
         room.current_pick_number += 1
+        self._save_room(room)
 
     async def _generate_sealed_pool(
         self, set_code: str, boosters: int = 6
@@ -391,7 +436,7 @@ class DraftEngine:
         if not card_name:
             return None
 
-        cache = self.cube_card_cache.setdefault(room_id, {})
+        cache = self.cube_card_cache.get(room_id, {})
         cache_key = card_name.lower()
         template = cache.get(cache_key)
 
@@ -403,6 +448,11 @@ class DraftEngine:
             template.pop("unique_id", None)
             template.pop("owner_id", None)
             cache[cache_key] = template
+            # Persist the updated cache
+            if self._use_db:
+                self.cube_card_cache.update_cache(room_id, cache_key, template)
+            else:
+                self.cube_card_cache[room_id] = cache
 
         card_data = copy.deepcopy(template)
         return Card(**card_data)

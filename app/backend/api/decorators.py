@@ -2,10 +2,17 @@
 Decorators and utilities for API routes.
 """
 
+import os
 from typing import Optional
 import time
 
 from app.backend.models.game import GameState
+
+
+# Detect if we're running as the dedicated WS worker
+# The WS worker has direct access to ConnectionManager
+# API workers use PostgreSQL NOTIFY to communicate with the WS worker
+IS_WS_WORKER = os.environ.get("MANAFORGE_WS_WORKER", "").lower() in ("1", "true", "yes")
 
 
 async def broadcast_game_update(
@@ -16,19 +23,24 @@ async def broadcast_game_update(
 
     Uses compact format with card_instances for reduced payload size.
     Card definitions are NOT included - clients fetch them via /api/v1/cards/{id}.
-    Currently broadcasts the same state to all players (viewer_id=None).
-    Per-player filtering for face-down cards can be added in a future iteration.
+    
+    In multi-worker mode:
+    - WS worker: Uses ConnectionManager directly
+    - API workers: Uses PostgreSQL NOTIFY to relay to WS worker
     """
     try:
-        from app.backend.api.websocket import manager
         from app.backend.api.routes import game_engine
 
         # Use compact format for reduced payload size
-        # TODO: For proper face-down card handling, we should send
-        # personalized states per player using viewer_id
+        action_history = game_engine.get_action_history(game_id)
+        chat_log = game_engine.get_chat_log(game_id)
         message = {
             "type": "game_state_update",
-            "game_state": game_state.to_compact_ui_data(viewer_id=None),
+            "game_state": game_state.to_compact_ui_data(
+                viewer_id=None,
+                action_history=action_history,
+                chat_log=chat_log,
+            ),
             "timestamp": game_state.turn if hasattr(game_state, "turn") else None,
         }
 
@@ -62,8 +74,41 @@ async def broadcast_game_update(
             game_engine.record_action_history(game_id, action_entry)
             message["action_result"] = action_entry
 
-        await manager.broadcast_to_game(game_id, message)
+        if IS_WS_WORKER:
+            # Direct broadcast via ConnectionManager (we are the WS worker)
+            from app.backend.api.websocket import manager
+            await manager.broadcast_to_game(game_id, message)
+        else:
+            # Use PostgreSQL NOTIFY to relay to the WS worker
+            from app.backend.services.notify_service import async_notify_game_update
+            await async_notify_game_update(game_id, message)
+
         print(f"Broadcasted game state update for game {game_id}")
+
+    except Exception as e:
+        print(f"Error broadcasting game update: {e}")
+
+
+async def broadcast_draft_update(room_id: str, message: dict):
+    """
+    Broadcast draft room update to all connected clients.
+    
+    In multi-worker mode:
+    - WS worker: Uses ConnectionManager directly
+    - API workers: Uses PostgreSQL NOTIFY to relay to WS worker
+    """
+    try:
+        if IS_WS_WORKER:
+            from app.backend.api.websocket import manager
+            await manager.broadcast_to_game(room_id, message)
+        else:
+            from app.backend.services.notify_service import async_notify_draft_update
+            await async_notify_draft_update(room_id, message)
+
+        print(f"Broadcasted draft update for room {room_id}")
+
+    except Exception as e:
+        print(f"Error broadcasting draft update: {e}")
 
     except Exception as e:
         print(f"Error broadcasting game update: {e}")

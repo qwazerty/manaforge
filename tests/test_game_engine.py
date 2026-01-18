@@ -40,11 +40,11 @@ def _build_card(unique_id="card-001", card_type=CardType.LAND):
 
 
 def test_record_action_history_enriches_turn_metadata():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state(phase=GamePhase.MAIN1, turn=5, active_index=1)
     engine.games[state.id] = state
 
-    engine.record_action_history(
+    entry = engine.record_action_history(
         state.id,
         {
             "action": "test_action",
@@ -52,9 +52,8 @@ def test_record_action_history_enriches_turn_metadata():
             "success": True,
         },
     )
-
-    assert len(state.action_history) == 1
-    entry = state.action_history[0]
+    assert entry is not None
+    assert state.action_history == []
     assert entry["phase"] == GamePhase.MAIN1.value
     assert entry["turn"] == 5
     assert entry["turn_player_id"] == "player2"
@@ -62,11 +61,11 @@ def test_record_action_history_enriches_turn_metadata():
 
 
 def test_record_action_history_preserves_existing_metadata():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state(phase=GamePhase.MAIN2, turn=7, active_index=0)
     engine.games[state.id] = state
 
-    engine.record_action_history(
+    entry = engine.record_action_history(
         state.id,
         {
             "action": "custom",
@@ -78,8 +77,8 @@ def test_record_action_history_preserves_existing_metadata():
             "turn_player_name": "Override",
         },
     )
-
-    entry = state.action_history[0]
+    assert entry is not None
+    assert state.action_history == []
     assert entry["phase"] == "custom-phase"
     assert entry["turn"] == 42
     assert entry["turn_player_id"] == "override"
@@ -87,7 +86,7 @@ def test_record_action_history_preserves_existing_metadata():
 
 
 def test_add_custom_keyword_adds_only_unique_entries():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state()
     card = _build_card()
     state.players[0].battlefield.append(card)
@@ -110,7 +109,7 @@ def test_add_custom_keyword_adds_only_unique_entries():
 
 
 def test_remove_custom_keyword_is_case_insensitive():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state()
     card = _build_card()
     card.custom_keywords = ["Flying", "Haste"]
@@ -126,7 +125,7 @@ def test_remove_custom_keyword_is_case_insensitive():
 
 
 def test_add_custom_type_ignores_duplicates():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state()
     card = _build_card()
     state.players[0].battlefield.append(card)
@@ -149,7 +148,7 @@ def test_add_custom_type_ignores_duplicates():
 
 
 def test_remove_custom_type_is_case_insensitive():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state()
     card = _build_card()
     card.custom_types = ["creature", "land"]
@@ -165,7 +164,7 @@ def test_remove_custom_type_is_case_insensitive():
 
 
 def test_set_custom_type_override_and_clear():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state()
     card = _build_card(card_type=CardType.LAND)
     state.players[0].battlefield.append(card)
@@ -207,7 +206,7 @@ def test_set_custom_type_override_and_clear():
 
 
 def test_move_card_sends_attachments_to_owner_reveal_zone():
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state()
 
     host = _build_card(unique_id="host-card", card_type=CardType.CREATURE)
@@ -257,7 +256,7 @@ def test_move_card_sends_attachments_to_owner_reveal_zone():
 
 def test_end_step_priority_passing():
     """Test that both players must pass priority during the end step."""
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state(phase=GamePhase.END, active_index=0)
     engine.games[state.id] = state
 
@@ -287,7 +286,7 @@ def test_end_step_casual_mode_skips_priority():
     """Test that in casual mode, the turn ends immediately without priority passing."""
     from app.backend.models.game import PhaseMode
 
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     state = _build_game_state(phase=GamePhase.END, active_index=0)
     state.phase_mode = PhaseMode.CASUAL
     engine.games[state.id] = state
@@ -308,7 +307,7 @@ def test_end_step_casual_mode_skips_priority():
 
 def test_end_step_priority_passing_three_players():
     """Test that all players must pass priority in order during the end step (3+ players)."""
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
 
     # Create a 3-player game state
     players = [
@@ -373,7 +372,7 @@ def test_restart_game_reuses_submitted_decks():
         PhaseMode,
     )
 
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     game_id = "test-restart"
 
     # Create a game setup
@@ -434,7 +433,7 @@ def test_restart_game_reuses_submitted_decks():
 
 def test_restart_game_fails_without_setup():
     """Test that restart_game raises an error when game setup doesn't exist."""
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
 
     try:
         engine.restart_game("nonexistent-game")
@@ -447,7 +446,7 @@ def test_restart_game_fails_without_submitted_decks():
     """Test that restart_game raises an error when decks weren't submitted."""
     from app.backend.models.game import GameFormat, PhaseMode
 
-    engine = SimpleGameEngine()
+    engine = SimpleGameEngine(use_db=False)
     game_id = "test-no-decks"
 
     # Create setup but don't submit decks

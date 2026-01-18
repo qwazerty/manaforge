@@ -2,6 +2,7 @@
     import { onDestroy, onMount } from 'svelte';
     import GameArena from './GameArena.svelte';
     import { loadActionHistoryFromState } from './stores/actionHistoryStore.js';
+    import { hydrateGameState } from './stores/cardCatalogStore.js';
     import { UIConfig } from '@lib/ui-config';
 
     let {
@@ -13,6 +14,8 @@
     let isPlaying = $state(false);
     let loading = $state(true);
     let errorMessage = $state('');
+    let hydratedState = $state(null);
+    let hydrationPending = $state(false);
 
     const playbackSpeed = 500;
     const phases = Array.isArray(UIConfig?.GAME_PHASES) ? UIConfig.GAME_PHASES : [];
@@ -27,6 +30,15 @@
     );
     const currentState = $derived((timeline[currentIndex]?.state) || null);
     const hasTimeline = $derived(totalSteps > 0);
+    const displayState = $derived.by(() => {
+        if (!currentState) {
+            return null;
+        }
+        const players = Array.isArray(currentState.players) ? currentState.players : [];
+        const needsHydration = players.some((player) => player && player.zones && typeof player.zones === 'object')
+            || Boolean(currentState.card_instances);
+        return needsHydration ? hydratedState : currentState;
+    });
 
     const replayControls = $derived({
         onPrev: prevStep,
@@ -165,6 +177,46 @@
         ensureActionPanel(currentState);
         syncActionHistory(currentState);
         syncBattleChat(currentState);
+    });
+
+    $effect(() => {
+        if (!currentState) {
+            hydratedState = null;
+            hydrationPending = false;
+            return;
+        }
+
+        const players = Array.isArray(currentState.players) ? currentState.players : [];
+        const needsHydration = players.some((player) => player && player.zones && typeof player.zones === 'object')
+            || Boolean(currentState.card_instances);
+
+        if (!needsHydration) {
+            hydratedState = currentState;
+            hydrationPending = false;
+            return;
+        }
+
+        let cancelled = false;
+        hydrationPending = true;
+
+        (async () => {
+            try {
+                const nextState = await hydrateGameState(currentState);
+                if (!cancelled) {
+                    hydratedState = nextState;
+                }
+            } catch (error) {
+                console.warn('[ReplayRoom] failed to hydrate replay state', error);
+            } finally {
+                if (!cancelled) {
+                    hydrationPending = false;
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
     });
 
     function clearPlayTimer() {
@@ -316,8 +368,12 @@
             </div>
         {:else}
             <div id="game-arena-root" class="flex-grow">
-                {#if currentState}
-                    <GameArena gameState={currentState} selectedPlayer="spectator" />
+                {#if displayState}
+                    <GameArena gameState={displayState} selectedPlayer="spectator" />
+                {:else if hydrationPending}
+                    <div class="flex items-center justify-center h-full text-arena-text-dim">
+                        Hydrating replay data...
+                    </div>
                 {:else}
                     <div class="flex items-center justify-center h-full text-arena-text-dim">
                         Preparing arena...

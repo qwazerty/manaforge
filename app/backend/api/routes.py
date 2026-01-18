@@ -32,7 +32,8 @@ from app.backend.services.pricing_service import get_memory_usage, lookup_prices
 
 router = APIRouter(prefix="/api/v1")
 
-game_engine = SimpleGameEngine()
+# Use DB-backed storage in production, can be disabled for testing
+game_engine = SimpleGameEngine(use_db=True)
 
 # Singleton CardService instance - stateless, no need to create per request
 _card_service_instance: Optional[CardService] = None
@@ -601,7 +602,13 @@ async def get_game_ui_data(game_id: str, viewer_id: Optional[str] = None) -> dic
         raise HTTPException(status_code=404, detail="Game not found")
 
     game_state = game_engine.games[game_id]
-    return game_state.to_compact_ui_data(viewer_id=viewer_id)
+    action_history = game_engine.get_action_history(game_id)
+    chat_log = game_engine.get_chat_log(game_id)
+    return game_state.to_compact_ui_data(
+        viewer_id=viewer_id,
+        action_history=action_history,
+        chat_log=chat_log,
+    )
 
 
 @router.post("/games/{game_id}/action")
@@ -876,7 +883,10 @@ async def get_game_replay(game_id: str) -> Dict[str, Any]:
         current_state = game_engine.games[game_id]
         # Create a synthetic single-step timeline using compact format
         # Exclude card_catalog - not needed for replay
-        compact_data = current_state.to_compact_ui_data()
+        compact_data = current_state.to_compact_ui_data(
+            action_history=game_engine.get_action_history(game_id),
+            chat_log=game_engine.get_chat_log(game_id),
+        )
         synthetic_step = {
             "timestamp": time.time(),
             "state": compact_data,

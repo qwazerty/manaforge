@@ -26,8 +26,8 @@ def get_draft_service(
     return DraftService(card_service)
 
 
-# In-memory singleton for DraftEngine
-draft_engine = DraftEngine(get_draft_service(get_card_service()))
+# DB-backed singleton for DraftEngine
+draft_engine = DraftEngine(get_draft_service(get_card_service()), use_db=True)
 
 
 def get_draft_engine() -> DraftEngine:

@@ -15,11 +15,18 @@ from app.backend.api.websocket import websocket_router
 from app.backend.api.draft_routes import router as draft_router
 from app.backend.api.auth_routes import router as auth_router
 from app.backend.services.pricing_service import load_pricing_data
+from app.backend.core.schema import create_tables
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    # Create database tables if they don't exist
+    try:
+        create_tables()
+    except Exception as e:
+        print(f"Warning: Could not create database tables: {e}")
+    
     # Load pricing data into memory at startup
     load_pricing_data()
     yield

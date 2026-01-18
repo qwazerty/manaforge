@@ -28,6 +28,14 @@ from app.backend.models.game import (
     MulliganState,
     current_utc_datetime,
 )
+from app.backend.repositories.dict_proxies import (
+    GameStatesProxy,
+    GameSetupsProxy,
+    ReplaysProxy,
+    PendingDecksProxy,
+    ActionHistoryProxy,
+    ChatMessagesProxy,
+)
 
 
 class SimpleGameEngine:
@@ -38,12 +46,33 @@ class SimpleGameEngine:
     MAX_PLAYER_NAME_LENGTH = 32
     COMBAT_PHASES = {GamePhase.ATTACK, GamePhase.BLOCK, GamePhase.DAMAGE}
 
-    def __init__(self):
-        self.games: dict[str, GameState] = {}
-        self.game_setups: dict[str, GameSetupStatus] = {}
-        self._pending_decks: dict[str, dict[str, Deck]] = {}
-        self._submitted_decks: dict[str, dict[str, Deck]] = {}
-        self.replays: dict[str, List[Dict[str, Any]]] = {}
+    def __init__(self, use_db: bool = True):
+        """
+        Initialize the game engine.
+        
+        Args:
+            use_db: If True, use PostgreSQL-backed storage (for production).
+                   If False, use in-memory dicts (for testing).
+        """
+        if use_db:
+            self.games: Dict[str, GameState] = GameStatesProxy()
+            self.game_setups: Dict[str, GameSetupStatus] = GameSetupsProxy()
+            self._pending_decks = PendingDecksProxy()
+            self._submitted_decks = PendingDecksProxy()  # Reuse same structure
+            self.replays = ReplaysProxy()
+            self._action_history = ActionHistoryProxy()
+            self._chat_messages = ChatMessagesProxy()
+        else:
+            # In-memory for testing
+            self.games: Dict[str, GameState] = {}
+            self.game_setups: Dict[str, GameSetupStatus] = {}
+            self._pending_decks: Dict[str, Dict[str, Deck]] = {}
+            self._submitted_decks: Dict[str, Dict[str, Deck]] = {}
+            self.replays: Dict[str, List[Dict[str, Any]]] = {}
+            self._action_history = None
+            self._chat_messages = None
+        
+        self._use_db = use_db
 
     def end_game(self, game_id: str) -> bool:
         """End a game and remove it from all tracking dictionaries."""
@@ -61,24 +90,28 @@ class SimpleGameEngine:
         # Keep replays for export even after game ends
         return found
 
-    @staticmethod
-    def _touch_setup(setup: GameSetupStatus) -> None:
+    def _touch_setup(self, setup: GameSetupStatus) -> None:
+        """Update timestamp and persist setup to DB."""
         setup.updated_at = current_utc_datetime()
+        if self._use_db:
+            self.game_setups[setup.game_id] = setup
 
-    @staticmethod
-    def _touch_game_state(game_state: GameState) -> None:
+    def _touch_game_state(self, game_state: GameState) -> None:
+        """Update timestamp and persist game state to DB."""
         game_state.updated_at = current_utc_datetime()
+        if self._use_db:
+            self.games[game_state.id] = game_state
 
     def _record_replay_step(
         self, game_id: str, action: Optional[GameAction], game_state: GameState
     ) -> None:
         """Record a step in the game replay timeline using compact format."""
-        if game_id not in self.replays:
-            self.replays[game_id] = []
-
         # Use compact format for significantly smaller replay files
         # Exclude card_catalog - it can be fetched from API when replaying
-        compact_data = game_state.to_compact_ui_data()
+        compact_data = game_state.to_compact_ui_data(
+            action_history=[],
+            chat_log=[],
+        )
 
         step = {"timestamp": time.time(), "state": compact_data}
         if action:
@@ -86,7 +119,12 @@ class SimpleGameEngine:
         else:
             step["action"] = {"action_type": "initial_setup", "player_id": "system"}
 
-        self.replays[game_id].append(step)
+        if self._use_db:
+            self.replays.append_step(game_id, step)
+        else:
+            if game_id not in self.replays:
+                self.replays[game_id] = []
+            self.replays[game_id].append(step)
 
     def _set_phase(self, game_state: GameState, new_phase: GamePhase) -> None:
         """Centralized phase setter that manages combat transitions."""
@@ -376,7 +414,9 @@ class SimpleGameEngine:
         )
 
         self.game_setups[game_id] = setup
-        self._pending_decks[game_id] = {}
+        # Initialize empty pending decks entry (no-op for DB proxy, but needed for in-memory)
+        if not self._use_db:
+            self._pending_decks[game_id] = {}
         print(
             f"Created game setup for {game_id} with "
             f"format={game_format.value}, phase_mode={phase_mode.value}"
@@ -459,9 +499,12 @@ class SimpleGameEngine:
         )
 
         # Store the deck temporarily
-        if game_id not in self._pending_decks:
-            self._pending_decks[game_id] = {}
-        self._pending_decks[game_id][player_id] = deck
+        if self._use_db:
+            self._pending_decks.set_player_deck(game_id, player_id, deck)
+        else:
+            if game_id not in self._pending_decks:
+                self._pending_decks[game_id] = {}
+            self._pending_decks[game_id][player_id] = deck
 
         # Check if both players have submitted valid decks
         all_validated = all(status.validated for status in setup.player_status.values())
@@ -792,7 +835,7 @@ class SimpleGameEngine:
         self._record_replay_step(game_id, action, game_state)
         return game_state
 
-    def record_action_history(self, game_id: str, entry: Dict[str, Any]) -> None:
+    def record_action_history(self, game_id: str, entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Persist a single action history entry onto the game state."""
         game_state = self.games.get(game_id)
         if not game_state:
@@ -819,12 +862,13 @@ class SimpleGameEngine:
                 "turn_player_name", getattr(active_player, "name", None)
             )
 
-        history = game_state.action_history
-        history.append(history_entry)
-        if len(history) > self.MAX_ACTION_HISTORY:
-            history.pop(0)
+        if self._use_db and self._action_history:
+            self._action_history.append(
+                game_id, history_entry, max_entries=self.MAX_ACTION_HISTORY
+            )
+        return history_entry
 
-    def add_chat_message(self, game_id: str, message: Dict[str, Any]) -> None:
+    def add_chat_message(self, game_id: str, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Persist a chat message to the game state's chat log."""
         game_state = self.games.get(game_id)
         if not game_state:
@@ -836,10 +880,27 @@ class SimpleGameEngine:
             "timestamp": message.get("timestamp", time.time()),
         }
 
-        chat_log = game_state.chat_log
-        chat_log.append(chat_entry)
-        if len(chat_log) > self.MAX_CHAT_MESSAGES:
-            chat_log.pop(0)
+        if self._use_db and self._chat_messages:
+            self._chat_messages.append(
+                game_id, chat_entry, max_entries=self.MAX_CHAT_MESSAGES
+            )
+        return chat_entry
+
+    def get_action_history(self, game_id: str) -> List[Dict[str, Any]]:
+        """Fetch action history from persistent storage."""
+        if self._use_db and self._action_history:
+            return self._action_history.get_recent(
+                game_id, limit=self.MAX_ACTION_HISTORY
+            )
+        return []
+
+    def get_chat_log(self, game_id: str) -> List[Dict[str, Any]]:
+        """Fetch chat log from persistent storage."""
+        if self._use_db and self._chat_messages:
+            return self._chat_messages.get_recent(
+                game_id, limit=self.MAX_CHAT_MESSAGES
+            )
+        return []
 
     def _target_card(self, game_state: GameState, action: GameAction) -> None:
         """Handle targeting or untargeting a card using its persistent unique_id."""

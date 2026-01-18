@@ -207,6 +207,8 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
 
                 if game_id in game_engine.games:
                     game_state = game_engine.games[game_id]
+                    action_history = game_engine.get_action_history(game_id)
+                    chat_log = game_engine.get_chat_log(game_id)
 
                     # Use compact format with viewer_id for proper face-down handling
                     # Include card_catalog for initial/full state request
@@ -215,7 +217,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                             {
                                 "type": "game_state_update",
                                 "game_state": game_state.to_compact_ui_data(
-                                    viewer_id=player_id
+                                    viewer_id=player_id,
+                                    action_history=action_history,
+                                    chat_log=chat_log,
                                 ),
                                 "timestamp": time.time(),
                             }
@@ -280,6 +284,8 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     updated_game_state = await game_engine.process_action(
                         game_id, game_action
                     )
+                    action_history = game_engine.get_action_history(game_id)
+                    chat_log = game_engine.get_chat_log(game_id)
 
                     # Use compact format for reduced payload size
                     # Exclude card_catalog - clients cache it from initial load
@@ -288,7 +294,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     broadcast_info = {
                         "type": "game_state_update",
                         "game_state": updated_game_state.to_compact_ui_data(
-                            viewer_id=None
+                            viewer_id=None,
+                            action_history=action_history,
+                            chat_log=chat_log,
                         ),
                         "action_result": {
                             "success": True,
