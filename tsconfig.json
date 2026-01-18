@@ -20,7 +20,7 @@
     },
     "include": [
         "app/frontend/js/**/*.d.ts",
-        "app/frontend/js/svelte/*.svelte",
+        "app/frontend/js/svelte/**/*.svelte",
         "app/frontend/js/lib/**/*.ts",
         "app/frontend/js/main.ts",
         "setupTests.ts",

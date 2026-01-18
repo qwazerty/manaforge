@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
 
     import DeckZone from './DeckZone.svelte';
+    import ActionHistory from './ActionHistory.svelte';
     import GraveyardZone from './GraveyardZone.svelte';
     import ExileZone from './ExileZone.svelte';
     import LifeZone from './LifeZone.svelte';
@@ -1076,7 +1077,9 @@
     </div>
 
     <div class="xl:col-span-1 space-y-3" id="right-sidebar">
-        <div id="action-history-panel"></div>
+        <div id="action-history-panel">
+            <ActionHistory />
+        </div>
         {#if isCommanderFormat}
             <CommanderZones
                 gameState={gameState}

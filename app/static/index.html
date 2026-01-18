@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ManaForge</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
+    
+    <!-- Tailwind CSS (locally built) -->
+    <link rel="stylesheet" href="/static/dist/css/manaforge.css">
+    
+    <!-- Mana Font for MTG symbols -->
+    <link href="https://cdn.jsdelivr.net/npm/mana-font@latest/css/mana.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Chart.js (Format stats dashboard) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" integrity="sha384-Sse/HDqcypGpyTDpvZOJNnG0TT3feGQUkF9H+mnRvic+LjR+K1NhTt8f51KIQ3v3" crossorigin="anonymous"></script>
+    
+    <!-- GameUI stub (for legacy compatibility) -->
+    <script>
+        window.GameUI = window.GameUI || {};
+        window.GameUI.gameInterface = window.GameUI.gameInterface || function() {
+            return { init() {} };
+        };
+        window.GameUI.toggleFullscreen = window.GameUI.toggleFullscreen || function() {};
+    </script>
+</head>
+<body class="bg-arena-bg text-arena-text font-ui min-h-screen overflow-x-hidden">
+    <!-- SPA Root -->
+    <div id="app">
+        <!-- Loading state shown before JS loads -->
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gold-500 border-t-transparent"></div>
+                <p class="mt-4 text-arena-text-muted">Loading ManaForge...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main SPA Bundle -->
+    <script type="module" src="/static/dist/js/main.js"></script>
+
+    <!-- No-JS Fallback -->
+    <noscript>
+        <div class="flex items-center justify-center min-h-screen p-8">
+            <div class="text-center max-w-md">
+                <h1 class="text-gold-400 text-2xl mb-4">JavaScript Required</h1>
+                <p class="text-arena-text-muted">
+                    ManaForge requires JavaScript to run. Please enable JavaScript in your browser settings and reload the page.
+                </p>
+            </div>
+        </div>
+    </noscript>
+</body>
+</html>

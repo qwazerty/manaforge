@@ -39,6 +39,8 @@
     const props = $props();
 
     let stats = $state(props.stats || {});
+    let isLoadingStats = $state(!props.stats);
+    let statsError = $state('');
     let selectedFormat = $state('');
     let selectedFormatLabel = $state('');
     let availability = $state('missing');
@@ -117,10 +119,37 @@
     $effect(() => {
         if (props.stats) {
             stats = props.stats;
+            isLoadingStats = false;
         }
     });
 
+    async function loadStats() {
+        if (props.stats) return; // Skip if stats provided via props
+        
+        isLoadingStats = true;
+        statsError = '';
+        
+        try {
+            const response = await fetch('/api/v1/formats/stats');
+            if (!response.ok) {
+                throw new Error(`Failed to load format stats: ${response.status}`);
+            }
+            stats = await response.json();
+            initCharts(true);
+        } catch (error) {
+            console.error('[FormatStats] Failed to load stats:', error);
+            statsError = error.message || 'Failed to load format statistics';
+        } finally {
+            isLoadingStats = false;
+        }
+    }
+
     onMount(() => {
+        // Load stats from API if not provided via props
+        if (!props.stats) {
+            loadStats();
+        }
+
         const timer = setInterval(() => {
             if (!chartsReady) {
                 initCharts();
@@ -248,7 +277,13 @@
         }
     }
 
-    function initCharts() {
+    function initCharts(force = false) {
+        if (!stats?.dataset_name) return;
+        if (force && typeof chartCleanup === 'function') {
+            chartCleanup();
+            chartCleanup = null;
+            chartsReady = false;
+        }
         if (chartsReady) return;
         if (typeof Chart === 'undefined') return;
         if (!coverageCanvas || !missingCanvas) return;

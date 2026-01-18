@@ -1,19 +1,49 @@
 <script>
     import { onMount, onDestroy, tick } from 'svelte';
     import { DeckStorage } from '@lib/deck-storage';
+    import { navigate } from '@lib/router';
 
-    let { config = {} } = $props();
+    let { 
+        config = {},
+        // SPA router props (when config is not provided)
+        gameId: propsGameId = '',
+        playerRole: propsPlayerRole = null,
+        playerName: propsPlayerName = null
+    } = $props();
 
     const STATUS_POLL_INTERVAL = 2500;
     const PLAYER_NAME_STORAGE_KEY = 'manaforge:player-name';
     const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
-    const gameId = $derived(config?.gameId || '');
-    const playerRole = $derived(config?.playerRole || 'spectator');
-    const setupApiUrl = $derived(config?.setupApiUrl || '');
-    const submitApiUrl = $derived(config?.submitApiUrl || '');
-    const gameInterfaceUrl = $derived(config?.gameInterfaceUrl || '');
-    const shareLinks = $derived(config?.shareLinks || {});
+    // Support both legacy config object and direct props from router
+    const gameId = $derived(config?.gameId || propsGameId || '');
+    const playerRole = $derived(config?.playerRole || propsPlayerRole || 'spectator');
+    const initialPlayerName = $derived(config?.playerName || propsPlayerName || null);
+    
+    // API URLs are now derived from gameId
+    const setupApiUrl = $derived(config?.setupApiUrl || (gameId ? `/api/v1/games/${gameId}/setup` : ''));
+    const submitApiUrl = $derived(config?.submitApiUrl || (gameId ? `/api/v1/games/${gameId}/submit-deck` : ''));
+    const gameInterfaceUrl = $derived(config?.gameInterfaceUrl || (gameId ? `/game/${gameId}/play` : ''));
+    const shareLinks = $derived.by(() => {
+        const configured = config?.shareLinks || {};
+        if (Object.keys(configured).length) {
+            return configured;
+        }
+        const resolvedGameId = config?.gameId || propsGameId || '';
+        if (!resolvedGameId) {
+            return {};
+        }
+        const maxPlayers = Number(config?.initialStatus?.max_players ?? 2);
+        const count = Number.isFinite(maxPlayers) ? Math.max(2, maxPlayers) : 2;
+        const basePath = `/game/${resolvedGameId}`;
+        const links = {};
+        for (let index = 1; index <= count; index += 1) {
+            const seat = `player${index}`;
+            links[seat] = `${basePath}?player=${seat}`;
+        }
+        links.spectator = `${basePath}?player=spectator`;
+        return links;
+    });
 
     const buildAbsoluteShareLinks = (links = {}) => {
         if (!isBrowser) return links || {};
@@ -582,9 +612,9 @@
 
     const redirectToGame = () => {
         if (!isBrowser) return;
-        const url = new URL(gameInterfaceUrl, window.location.origin);
-        url.searchParams.set('player', isSeatedPlayer ? playerRole : 'spectator');
-        window.location.href = url.toString();
+        const playerParam = isSeatedPlayer ? playerRole : 'spectator';
+        const targetUrl = `${gameInterfaceUrl}?player=${playerParam}`;
+        navigate(targetUrl);
     };
 
     const queueRedirect = () => {
@@ -620,6 +650,8 @@
         pollTimeoutId = setTimeout(() => pollSetupStatus(), STATUS_POLL_INTERVAL);
     };
 
+    let initialPollDone = false;
+
     const pollSetupStatus = async (force = false) => {
         if (isFetchingStatus) {
             if (force) pendingImmediatePoll = true;
@@ -628,7 +660,17 @@
         if (!setupApiUrl) return;
         isFetchingStatus = true;
         try {
-            const response = await fetch(`${setupApiUrl}?_=${Date.now()}`, {
+            // Build URL with query params for initial poll (to claim seat)
+            let url = `${setupApiUrl}?_=${Date.now()}`;
+            if (!initialPollDone && playerRole && playerRole !== 'spectator') {
+                url += `&player=${encodeURIComponent(playerRole)}`;
+                if (initialPlayerName) {
+                    url += `&player_name=${encodeURIComponent(initialPlayerName)}`;
+                }
+            }
+            initialPollDone = true;
+            
+            const response = await fetch(url, {
                 cache: 'no-store',
                 headers: { 'Cache-Control': 'no-store' }
             });
@@ -820,9 +862,8 @@
     const handlePlayerRoleChange = (role) => {
         selectedPlayerRole = role;
         if (!isBrowser) return;
-        const url = new URL(window.location.href);
-        url.searchParams.set('player', role);
-        window.location.href = url.toString();
+        // Navigate to same page with new player param
+        navigate(`/game/${gameId}?player=${role}`);
     };
 
     const importDeckFromUrl = async () => {
@@ -1015,7 +1056,7 @@
             setDeckStatus('Game closed successfully. Redirecting...', 'accent', 0);
             if (isBrowser) {
                 setTimeout(() => {
-                    window.location.href = '/';
+                    navigate('/');
                 }, 1000);
             }
         } catch (error) {

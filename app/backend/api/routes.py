@@ -421,11 +421,30 @@ async def restart_game(game_id: str) -> Dict[str, Any]:
 
 
 @router.get("/games/{game_id}/setup")
-async def get_game_setup_status(game_id: str) -> GameSetupStatus:
-    """Get game setup status (for deck import phase)."""
+async def get_game_setup_status(
+    game_id: str,
+    player: Optional[str] = Query(default=None),
+    player_name: Optional[str] = Query(default=None),
+) -> GameSetupStatus:
+    """
+    Get game setup status (for deck import phase).
+    Creates the game setup if it doesn't exist.
+    Optionally claims a seat if player parameter is provided.
+    """
     setup = game_engine.get_game_setup_status(game_id)
     if not setup:
-        raise HTTPException(status_code=404, detail="Game setup not found")
+        # Auto-create setup if it doesn't exist (allows direct URL navigation)
+        setup = game_engine.create_game_setup(game_id=game_id)
+
+    # If a player seat is requested, try to claim it
+    if player and player.startswith("player"):
+        try:
+            setup = game_engine.claim_player_seat(
+                game_id=game_id, player_id=player, player_name=player_name
+            )
+        except ValueError:
+            pass  # Seat might already be claimed, continue with current setup
+
     return setup
 
 
@@ -910,3 +929,14 @@ async def get_pricing_status() -> Dict[str, Any]:
     Useful for debugging and monitoring.
     """
     return get_memory_usage()
+
+
+@router.get("/formats/stats")
+async def get_format_stats() -> Dict[str, Any]:
+    """
+    Get format statistics for the formats dashboard.
+    Returns coverage information and card counts per format.
+    """
+    from app.backend.services.format_stats_service import get_format_statistics
+
+    return get_format_statistics()

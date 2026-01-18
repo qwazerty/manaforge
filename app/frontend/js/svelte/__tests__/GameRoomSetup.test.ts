@@ -41,7 +41,7 @@ describe('GameRoomSetup', () => {
             }
         });
 
-        expect(screen.getByText('⚙️ Duel Preparation')).toBeTruthy();
+        expect(screen.getByText('⚙️ Battlefield Preparation')).toBeTruthy();
         expect(screen.getByText('Spectator Mode')).toBeTruthy();
         expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(3);
         expect(screen.getByText('Deck submissions:')).toBeTruthy();

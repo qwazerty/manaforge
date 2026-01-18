@@ -1,0 +1,19 @@
+<script>
+    // Footer component - static content
+</script>
+
+<footer class="arena-surface border-t border-arena-accent/20 mt-12">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="text-center text-arena-text-dim">
+            <p class="font-magic text-arena-accent mb-2">ManaForge</p>
+            <p class="text-sm">
+                ManaForge is unofficial Fan Content permitted under the Fan Content Policy. 
+                Not approved/endorsed by Wizards.
+            </p>
+            <p class="text-sm mt-1">
+                Portions of the materials used are property of Wizards of the Coast. 
+                ©Wizards of the Coast LLC.
+            </p>
+        </div>
+    </div>
+</footer>

@@ -1,5 +1,6 @@
 <script>
     import { onMount } from 'svelte';
+    import { navigate } from '@lib/router';
 
     const GAME_FORMAT_LABELS = {
         standard: 'Standard',
@@ -149,59 +150,53 @@
 
     async function ensureGameRoomExists(targetGameId, targetFormat, targetPhase, targetMaxPlayers = null) {
         const encodedId = encodeURIComponent(targetGameId);
-        const setupUrl = `/api/v1/games/${encodedId}/setup`;
         const normalizedFormat = normalizeChoice(targetFormat) || 'standard';
         const normalizedPhase = normalizeChoice(targetPhase) || 'strict';
         const normalizedMaxPlayers = Number.isFinite(Number(targetMaxPlayers)) ? Number(targetMaxPlayers) : null;
 
-        let response = await fetch(setupUrl);
+        const payload = {
+            game_format: normalizedFormat,
+            phase_mode: normalizedPhase
+        };
+        if (normalizedFormat === 'commander_multi' && normalizedMaxPlayers) {
+            payload.max_players = clampCommanderPlayers(normalizedMaxPlayers);
+        }
+
+        let response = await fetch(`/api/v1/games?game_id=${encodedId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
         if (response.ok) {
             return await response.json();
         }
 
-        if (response.status === 404) {
-            const payload = {
-                game_format: normalizedFormat,
-                phase_mode: normalizedPhase
-            };
-            if (normalizedFormat === 'commander_multi' && normalizedMaxPlayers) {
-                payload.max_players = clampCommanderPlayers(normalizedMaxPlayers);
-            }
-
-            response = await fetch(`/api/v1/games?game_id=${encodedId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorPayload = await response.json().catch(() => ({}));
-                throw new Error(errorPayload.detail || 'Unable to create battlefield');
-            }
-
+        // Fallback to setup fetch if the create endpoint fails
+        response = await fetch(`/api/v1/games/${encodedId}/setup`);
+        if (response.ok) {
             return await response.json();
         }
 
-        throw new Error('Unable to fetch battlefield setup');
+        const errorPayload = await response.json().catch(() => ({}));
+        throw new Error(errorPayload.detail || 'Unable to create battlefield');
     }
 
     function redirectToGameRoom(targetGameId, playerRole, setupStatus) {
         const encodedId = encodeURIComponent(targetGameId);
 
         if (setupStatus.ready) {
-            const interfaceUrl = `/game-interface/${encodedId}`;
+            const interfaceUrl = `/game/${encodedId}/play`;
             if (isSeatRole(playerRole)) {
-                window.location.href = `${interfaceUrl}?player=${playerRole}`;
+                navigate(`${interfaceUrl}?player=${playerRole}`);
             } else {
-                window.location.href = `${interfaceUrl}?player=spectator`;
+                navigate(`${interfaceUrl}?player=spectator`);
             }
             return;
         }
 
         const roleParam = playerRole || 'spectator';
-        const url = new URL(`/game-room/${encodedId}`, window.location.origin);
-        url.searchParams.set('player', roleParam);
-        window.location.href = url.toString();
+        navigate(`/game/${encodedId}?player=${roleParam}`);
     }
 
     async function joinOrCreateBattle() {
@@ -282,19 +277,17 @@
     function joinGame(game, role = null) {
         const encodedId = encodeURIComponent(game.game_id);
         if (game.ready) {
-             window.location.href = `/game-interface/${encodedId}?player=spectator`;
-             return;
+            navigate(`/game/${encodedId}/play?player=spectator`);
+            return;
         }
 
         const seatToJoin = role || determineSeatFromStatus(game.player_status);
         if (seatToJoin === 'spectator') {
-            window.location.href = `/game-room/${encodedId}?player=spectator`;
+            navigate(`/game/${encodedId}?player=spectator`);
             return;
         }
-        
-        const url = new URL(`/game-room/${encodedId}`, window.location.origin);
-        url.searchParams.set('player', seatToJoin);
-        window.location.href = url.toString();
+
+        navigate(`/game/${encodedId}?player=${seatToJoin}`);
     }
 
     onMount(() => {

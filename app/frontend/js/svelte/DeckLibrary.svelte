@@ -136,7 +136,26 @@
     }
 </script>
 
-<section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
+<div class="py-12 px-4">
+    <div class="max-w-6xl mx-auto space-y-8">
+        <header class="flex flex-col items-center gap-4 text-center">
+            <div class="space-y-2">
+                <p class="text-xs uppercase tracking-[0.3em] text-arena-text-dim">Deck Laboratory</p>
+                <h1 class="font-magic text-3xl md:text-4xl font-bold text-arena-accent">Deck Library</h1>
+                <p class="text-sm md:text-base text-arena-text-dim max-w-2xl mx-auto">
+                    Collect, duplicate, and relaunch your builds with a single click. Each saved list opens the builder to keep iterating.
+                </p>
+            </div>
+            <a
+                href="/decks/builder"
+                class="arena-button px-5 py-3 rounded-lg font-semibold text-sm md:text-base inline-flex items-center gap-2"
+            >
+                <span>➕</span>
+                <span>New deck</span>
+            </a>
+        </header>
+
+        <section class="arena-card rounded-xl p-6 space-y-6 animate-slide-up">
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
             <p class="text-sm uppercase tracking-wide text-arena-muted">Saved decks</p>
@@ -227,4 +246,6 @@
             {/each}
         </div>
     {/if}
-</section>
+        </section>
+    </div>
+</div>

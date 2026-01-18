@@ -10,9 +10,15 @@
         try { return JSON.parse(JSON.stringify(data)); } catch { return null; }
     };
 
-    let { room: initialRoom = null } = $props();
+    let { 
+        room: initialRoom = null,
+        // SPA router prop
+        roomId: propsRoomId = ''
+    } = $props();
 
     let room = $state({});
+    let isLoadingRoom = $state(false);
+    let loadError = $state('');
     let playerId = $state('');
     let websocket = null;
     let selectedCardId = $state('');
@@ -58,15 +64,53 @@
         return `Current Pack (Pack ${packNumber}, Pick ${pickNumber})`;
     });
 
+    async function loadRoomFromApi(roomIdToLoad) {
+        if (!roomIdToLoad) return;
+        
+        isLoadingRoom = true;
+        loadError = '';
+        
+        try {
+            const response = await fetch(`/api/v1/draft/rooms/${roomIdToLoad}`);
+            if (!response.ok) {
+                if (response.status === 404) {
+                    loadError = 'Draft room not found';
+                } else {
+                    loadError = `Failed to load room: ${response.status}`;
+                }
+                return;
+            }
+            const data = await response.json();
+            room = data;
+            
+            if (room?.id && playerId) {
+                deckContext = buildDeckContext(room, playerId, draftType);
+                applyGlobalContext(deckContext);
+                applyRoomState(room);
+                connectWebSocket();
+            }
+        } catch (error) {
+            console.error('[DraftRoom] Failed to load room:', error);
+            loadError = error.message || 'Failed to load draft room';
+        } finally {
+            isLoadingRoom = false;
+        }
+    }
+
     onMount(() => {
         playerId = resolvePlayerId();
-        room = initialRoom || {};
         
-        if (room?.id && playerId) {
-            deckContext = buildDeckContext(room, playerId, draftType);
-            applyGlobalContext(deckContext);
-            applyRoomState(room);
-            connectWebSocket();
+        // Use initialRoom if provided, otherwise load from API
+        if (initialRoom) {
+            room = initialRoom;
+            if (room?.id && playerId) {
+                deckContext = buildDeckContext(room, playerId, draftType);
+                applyGlobalContext(deckContext);
+                applyRoomState(room);
+                connectWebSocket();
+            }
+        } else if (propsRoomId) {
+            loadRoomFromApi(propsRoomId);
         }
         
         window.addEventListener('manaforge:deck-manager-ready', handleDeckManagerReady);
