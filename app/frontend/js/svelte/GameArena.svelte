@@ -47,6 +47,25 @@
     const zoneContainerClass =
         UIConfig?.CSS_CLASSES?.zone?.container || 'zone-item';
 
+    const getZonesManager = () => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+        return window.UIZonesManager || window.ZoneManager || null;
+    };
+
+    const handleZoneDragOver = (event) => {
+        getZonesManager()?.handleZoneDragOver?.(event);
+    };
+
+    const handleZoneDragLeave = (event) => {
+        getZonesManager()?.handleZoneDragLeave?.(event);
+    };
+
+    const handleZoneDrop = (event, zoneKey) => {
+        getZonesManager()?.handleZoneDrop?.(event, zoneKey);
+    };
+
     const playerContext = $derived.by(() => {
         if (!gameState) {
             return null;
@@ -472,7 +491,7 @@
     }
 
     function getZoneInfo(zoneKey) {
-        const info = UIZonesManager?.ZONE_INFO?.[zoneKey];
+        const info = getZonesManager()?.ZONE_INFO?.[zoneKey];
         if (info) {
             return {
                 title: info.title,
@@ -951,9 +970,9 @@
                             data-hand-mode={board.focusedOpponent.hand.mode}
                             data-zone-type="opponent-hand"
                             data-zone-owner={board.focusedOpponent.ownerId}
-                            ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                            ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                            ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                            ondragover={handleZoneDragOver}
+                            ondragleave={handleZoneDragLeave}
+                            ondrop={(event) => handleZoneDrop(event, 'hand')}>
                             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                             {@html board.focusedOpponent.hand.html}
                         </div>
@@ -966,9 +985,9 @@
                                     data-battlefield-zone={zone.key}
                                     data-zone-owner={zone.ownerId}
                                     data-player-role={zone.playerRole}
-                                    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                    ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                    ondragover={handleZoneDragOver}
+                                    ondragleave={handleZoneDragLeave}
+                                    ondrop={(event) => handleZoneDrop(event, zone.dropTarget)}>
                                     <div
                                         class={zone.contentClass}
                                         data-card-count={zone.cardCount}
@@ -1010,9 +1029,9 @@
                                     data-hand-mode={opponent.hand.mode}
                                     data-zone-type="opponent-hand"
                                     data-zone-owner={opponent.ownerId}
-                                    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                    ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                                    ondragover={handleZoneDragOver}
+                                    ondragleave={handleZoneDragLeave}
+                                    ondrop={(event) => handleZoneDrop(event, 'hand')}>
                                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                     {@html opponent.hand.html}
                                 </div>
@@ -1025,9 +1044,9 @@
                                             data-battlefield-zone={zone.key}
                                             data-zone-owner={zone.ownerId}
                                             data-player-role={zone.playerRole}
-                                            ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                            ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                            ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                            ondragover={handleZoneDragOver}
+                                            ondragleave={handleZoneDragLeave}
+                                            ondrop={(event) => handleZoneDrop(event, zone.dropTarget)}>
                                             <div
                                                 class={zone.contentClass}
                                                 data-card-count={zone.cardCount}
@@ -1058,9 +1077,9 @@
                                     data-battlefield-zone={zone.key}
                                     data-zone-owner={zone.ownerId}
                                     data-player-role={zone.playerRole}
-                                    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                                    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
-                                    ondrop={(event) => UIZonesManager.handleZoneDrop(event, zone.dropTarget)}>
+                                    ondragover={handleZoneDragOver}
+                                    ondragleave={handleZoneDragLeave}
+                                    ondrop={(event) => handleZoneDrop(event, zone.dropTarget)}>
                                     <div
                                         class={zone.contentClass}
                                         data-card-count={zone.cardCount}
@@ -1080,8 +1099,8 @@
                             data-card-count={board.player.hand.cardCount}
                             data-zone-type="hand"
                             data-player-owner={board.player.ownerId}
-                            ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
-                            ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                            ondragover={handleZoneDragOver}
+                            ondrop={(event) => handleZoneDrop(event, 'hand')}>
                             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                             {@html board.player.hand.html}
                         </div>
