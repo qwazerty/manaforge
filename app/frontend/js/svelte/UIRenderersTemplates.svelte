@@ -15,7 +15,6 @@
         generateEmptyZone,
         generateZoneClickHandler,
         filterCardsByType,
-        createTransform,
         createZIndex,
         generateButton,
         getZoneConfiguration
@@ -1102,8 +1101,7 @@
             }
             return Array(count).fill().map((_, index) => `
                 <div class="card-back opponent-hand-card" 
-                     data-card-id="opponent-card-${index}" 
-                     style="width: 60px; height: 84px; ${createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
+                     data-card-id="opponent-card-${index}">
                 </div>
             `).join('');
         }
@@ -1139,7 +1137,6 @@
         static get CSS_CLASSES() { return UIConfig.CSS_CLASSES; }
 
         // Utility methods delegation
-        static createTransform(x, y, rotation) { return createTransform(x, y, rotation); }
         static createZIndex(index) { return createZIndex(index); }
         static generateButton(onclick, classes, title, content) { return generateButton(onclick, classes, title, content); }
         static generateZoneWrapper(content, zoneType) { return generateZoneWrapper(content, zoneType); }
@@ -1840,18 +1837,9 @@
             const placeholderHandSize = Math.max(actualHandSize, 0);
             const isOpponentActiveTurn = activePlayer === opponentIdx;
             const activeTurnClass = isOpponentActiveTurn ? 'opponent-zone-active-turn' : '';
-            const isSpectatorView =
-                typeof GameCore !== 'undefined' &&
-                typeof GameCore.getSelectedPlayer === 'function' &&
-                GameCore.getSelectedPlayer() === 'spectator';
             const ownerId = this._resolvePlayerOwnerId(opponent, opponentIdx, true);
-            const opponentHandHtml = isSpectatorView
-                ? this.generatePlayerHand(opponent?.hand || [], opponentIdx, {
-                    isOpponent: true,
-                    readOnly: true
-                })
-                : this.generateOpponentHand(placeholderHandSize);
-            const handDataCount = isSpectatorView ? actualHandSize : placeholderHandSize;
+            const opponentHandHtml = this.generateOpponentHand(placeholderHandSize);
+            const handDataCount = placeholderHandSize;
         
             return `
                 <div class="arena-card rounded-lg mb-3 p-3 compact-zones ${activeTurnClass}"
@@ -1860,7 +1848,7 @@
                     <div class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
                         data-card-count="${handDataCount}"
                         data-player-owner="${ownerId}"
-                        data-hand-mode="${isSpectatorView ? 'spectator' : 'hidden'}"
+                        data-hand-mode="hidden"
                         data-zone-type="opponent-hand"
                         data-zone-owner="${ownerId}"
                         ondragover="UIZonesManager.handleZoneDragOver(event)"

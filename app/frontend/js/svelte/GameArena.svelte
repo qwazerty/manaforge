@@ -17,7 +17,7 @@
         getExileZoneConfig,
         getLifeZoneConfig
     } from '@lib/zone-data';
-    import { calculateAnchorPosition, filterCardsByType, createTransform } from '@lib/ui-utils';
+    import { calculateAnchorPosition, filterCardsByType } from '@lib/ui-utils';
     import { escapeHtml } from '@lib/game-utils';
 
     let {
@@ -225,7 +225,7 @@
 
         return {
             opponents: opponentIndices.map((index) =>
-                buildOpponentPreview(players[index], index, activePlayer)
+                buildOpponentPreview(players[index], index, activePlayer, playerSelection)
             ),
             focusedOpponent: resolvedFocus
                 ? buildBoardSide(
@@ -536,14 +536,11 @@
     function buildHandData(playerData = {}, playerIndex, isOpponent, playerSelection) {
         const cards = Array.isArray(playerData?.hand) ? playerData.hand : [];
         if (isOpponent) {
-            const isSpectatorView = playerSelection === 'spectator';
             const placeholderSize = cards.length;
             return {
-                cardCount: isSpectatorView ? cards.length : placeholderSize,
-                mode: isSpectatorView ? 'spectator' : 'hidden',
-                html: isSpectatorView
-                    ? generatePlayerHand(cards, playerIndex, { isOpponent: true, readOnly: true }, playerSelection)
-                    : generateOpponentHand(placeholderSize)
+                cardCount: placeholderSize,
+                mode: 'hidden',
+                html: generateOpponentHand(placeholderSize)
             };
         }
 
@@ -656,7 +653,7 @@
         });
     }
 
-    function buildOpponentPreview(playerData = {}, playerIndex, activePlayer) {
+    function buildOpponentPreview(playerData = {}, playerIndex, activePlayer, playerSelection) {
         const ownerId = resolvePlayerOwnerId(playerData, playerIndex, true);
         const normalizedIndex = typeof playerIndex === 'number' ? playerIndex : 0;
         return {
@@ -667,6 +664,7 @@
             displayName: getPlayerDisplayName(playerData, seatIdByIndex(normalizedIndex)),
             life: resolveLifeTotal(playerData),
             commanderTax: resolveCommanderTax(playerData),
+            hand: buildHandData(playerData, normalizedIndex, true, playerSelection),
             battlefieldZones: buildBattlefieldZones(playerData?.battlefield, ownerId, true, {
                 sizeVariant: 'mini'
             })
@@ -718,8 +716,7 @@
         }
         return Array.from({ length: count }).map((_, index) => `
             <div class="card-back opponent-hand-card"
-                 data-card-id="opponent-card-${index}"
-                 style="width: 60px; height: 84px; ${createTransform(0, 0, index % 2 === 0 ? -2 : 2)}">
+                 data-card-id="opponent-card-${index}">
             </div>
         `).join('');
     }
@@ -833,13 +830,13 @@
             {@const sidebar = sidebarData}
             {#if sidebar.focusedOpponent}
                 <div class="arena-card rounded-lg p-3 mb-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-magic font-semibold text-arena-accent text-sm flex items-center">
+                    <div class="flex items-center justify-between mb-2 min-h-[28px]">
+                        <h4 class="font-magic font-semibold text-arena-accent text-sm flex items-center flex-1 min-w-0">
                             <span class="mr-1">🎯</span>{sidebar.focusedOpponent.playerName}
                         </h4>
                         {#if opponentCount > 1}
                             <button
-                                class="arena-opponent-focus-btn"
+                                class="arena-opponent-focus-btn shrink-0"
                                 type="button"
                                 onclick={clearOpponentFocus}>
                                 Show all
@@ -877,9 +874,11 @@
 
             {#if sidebar.player}
                 <div class="arena-card rounded-lg p-3 mb-3">
-                    <h4 class="font-magic font-semibold mb-2 text-arena-accent text-sm flex items-center">
-                        <span class="mr-1">📚</span>{sidebar.player.playerName}
-                    </h4>
+                    <div class="flex items-center justify-between mb-2 min-h-[28px]">
+                        <h4 class="font-magic font-semibold text-arena-accent text-sm flex items-center flex-1 min-w-0">
+                            <span class="mr-1">📚</span>{sidebar.player.playerName}
+                        </h4>
+                    </div>
                     {#if Array.isArray(sidebar.player.zones) && sidebar.player.zones.length}
                         <div class="card-zones-container">
                             {#each sidebar.player.zones as zone (zone.key)}
@@ -930,13 +929,11 @@
                         data-player-owner={board.focusedOpponent.ownerId}>
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-3">
-                            <span class="text-xs uppercase tracking-wide text-arena-text-dim">Opponent</span>
-                                <span class="font-semibold text-arena-accent">
-                                    {board.focusedOpponent.displayName}
-                                </span>
-                                <div class="flex items-center gap-3 text-xs text-arena-text-dim">
-                                    <span>Life <span class="text-arena-accent font-semibold">{board.focusedOpponent.life}</span></span>
-                                </div>
+                                {#if opponentCount > 1}
+                                    <span class="font-semibold text-arena-accent">
+                                        {board.focusedOpponent.displayName}
+                                    </span>
+                                {/if}
                             </div>
                             {#if Array.isArray(board.opponents) && board.opponents.length > 1}
                                 <button
@@ -946,6 +943,19 @@
                                     Show all
                                 </button>
                             {/if}
+                        </div>
+                        <div
+                            class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
+                            data-card-count={board.focusedOpponent.hand.cardCount}
+                            data-player-owner={board.focusedOpponent.ownerId}
+                            data-hand-mode={board.focusedOpponent.hand.mode}
+                            data-zone-type="opponent-hand"
+                            data-zone-owner={board.focusedOpponent.ownerId}
+                            ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                            ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                            ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                            {@html board.focusedOpponent.hand.html}
                         </div>
                         <div class="battlefield-layout battlefield-layout-opponent">
                             {#each board.focusedOpponent.battlefieldZones as zone (zone.key)}
@@ -980,16 +990,11 @@
                                 data-player-owner={opponent.ownerId}>
                                 <div class="flex items-center justify-between gap-3 mb-2">
                                     <div class="flex flex-col">
-                                        <span class="text-xs uppercase tracking-wide text-arena-text-dim">Opponent</span>
-                                        <span class="font-semibold text-arena-accent truncate max-w-[140px]">
-                                            {opponent.displayName}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-3 text-xs">
-                                        <div class="flex items-center gap-1 text-arena-text-dim">
-                                            <span>Life</span>
-                                            <span class="text-arena-accent font-semibold">{opponent.life}</span>
-                                        </div>
+                                        {#if opponentCount > 1}
+                                            <span class="font-semibold text-arena-accent truncate max-w-[140px]">
+                                                {opponent.displayName}
+                                            </span>
+                                        {/if}
                                     </div>
                                     <button
                                         class="arena-opponent-focus-btn"
@@ -997,6 +1002,19 @@
                                         onclick={() => toggleOpponentFocus(opponent.ownerId)}>
                                         Focus
                                     </button>
+                                </div>
+                                <div
+                                    class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
+                                    data-card-count={opponent.hand.cardCount}
+                                    data-player-owner={opponent.ownerId}
+                                    data-hand-mode={opponent.hand.mode}
+                                    data-zone-type="opponent-hand"
+                                    data-zone-owner={opponent.ownerId}
+                                    ondragover={(event) => UIZonesManager.handleZoneDragOver(event)}
+                                    ondragleave={(event) => UIZonesManager.handleZoneDragLeave(event)}
+                                    ondrop={(event) => UIZonesManager.handleZoneDrop(event, 'hand')}>
+                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                    {@html opponent.hand.html}
                                 </div>
                                 <div class="battlefield-layout battlefield-layout-opponent battlefield-layout-mini">
                                     {#each opponent.battlefieldZones as zone (zone.key)}

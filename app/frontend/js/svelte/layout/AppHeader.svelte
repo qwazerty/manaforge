@@ -7,8 +7,7 @@
         { href: '/draft', label: 'Limited', icon: '📜' },
         { href: '/decks', label: 'Decks', icon: '🪄' },
         { href: '/replay', label: 'Replay', icon: '📼' },
-        { href: '/formats', label: 'Formats', icon: '📊' },
-        { href: '/docs', label: 'API', icon: '📋', external: true }
+        { href: '/formats', label: 'Formats', icon: '📊' }
     ];
 
     let mobileMenuOpen = $state(false);

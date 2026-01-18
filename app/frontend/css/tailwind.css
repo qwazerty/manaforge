@@ -1866,20 +1866,29 @@
 
     .opponent-hand-zone {
         @apply flex flex-nowrap items-start justify-center gap-0 p-1 text-center overflow-hidden;
-        max-height: 50px;
+        max-height: 56px;
     }
 
     .spectator-mode .opponent-hand-zone {
         @apply overflow-x-auto;
-        max-height: none;
-        min-height: 172px;
-        padding: 4px;
-        margin: 4px;
+        max-height: 56px;
+        padding: 2px;
+        margin: 2px;
         gap: 2px;
-        border-radius: 8px;
-        border: 1px solid rgba(201, 170, 113, 0.3);
+        border-radius: 6px;
+        border: 1px solid rgba(201, 170, 113, 0.25);
         scrollbar-width: thin;
-        scrollbar-color: rgba(201, 170, 113, 0.3) transparent;
+        scrollbar-color: rgba(201, 170, 113, 0.25) transparent;
+    }
+
+    .opponent-hand-zone .opponent-hand-card {
+        width: 40px;
+        height: 56px;
+        margin-left: -14px;
+    }
+
+    .opponent-hand-zone .opponent-hand-card:first-child {
+        margin-left: 0;
     }
 
     .opponent-hand-zone .card-back,
