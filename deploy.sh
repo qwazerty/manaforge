@@ -1,17 +1,21 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 cd ~/docker/manaforge
 
 echo "### Git pull"
 git pull
 
-echo "### Rebuilding and restarting containers"
-docker compose up -d --build
+echo "### Rebuilding and restarting API server"
+docker compose up -d --build api
+
 echo "### Updating static files and restarting nginx"
 docker cp manaforge-api-1:/app/app/static/dist ./app/static/
 docker compose restart proxy
+
+echo "### Rebuilding and restarting WebSocket server"
+docker compose up -d --build ws
 
 echo "### Purging Cloudflare cache"
 source .env
