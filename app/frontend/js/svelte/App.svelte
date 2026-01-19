@@ -167,19 +167,18 @@
             </div>
         </div>
     {:else}
-        {#if showLayout()}
+        {#if showLayout}
             <AppHeader />
         {/if}
 
-        <main class={showLayout() ? 'min-h-screen' : ''}>
+        <main class={showLayout ? 'min-h-screen' : ''}>
             {#key currentRoute?.route?.path + JSON.stringify(routeParams)}
-                {@const page = currentPage()}
-                {@const Page = page.component}
-                <Page {...page.props} />
+                {@const Page = currentPage.component}
+                <Page {...currentPage.props} />
             {/key}
         </main>
 
-        {#if showLayout()}
+        {#if showLayout}
             <AppFooter />
         {/if}
     {/if}
