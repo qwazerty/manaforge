@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 cd ~/docker/manaforge
 
 echo "### Git pull"
