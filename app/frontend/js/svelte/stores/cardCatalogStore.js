@@ -189,7 +189,7 @@ async function fetchMissingDefinitions(cardIds) {
     }
 
     // Fetch in parallel with some concurrency limit
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = 100;
     for (let i = 0; i < missing.length; i += BATCH_SIZE) {
         const batch = missing.slice(i, i + BATCH_SIZE);
         await Promise.all(batch.map((id) => fetchCardDefinition(id)));
