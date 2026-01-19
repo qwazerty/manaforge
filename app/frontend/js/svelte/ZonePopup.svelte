@@ -103,13 +103,21 @@
         }
     };
 
+    const getHorizontalScrollManager = () => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+        return window.UIHorizontalScroll || null;
+    };
+
     const attachHorizontalScroll = () => {
         const listEl = panelEl?.querySelector('.reveal-card-list');
         if (!listEl || listEl.dataset.wheelListenerAttached === 'true') {
             return;
         }
-        if (typeof UIHorizontalScroll?.attachWheelListener === 'function') {
-            UIHorizontalScroll.attachWheelListener(listEl);
+        const manager = getHorizontalScrollManager();
+        if (manager && typeof manager.attachWheelListener === 'function') {
+            manager.attachWheelListener(listEl);
             listEl.dataset.wheelListenerAttached = 'true';
         }
     };
