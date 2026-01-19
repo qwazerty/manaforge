@@ -568,6 +568,7 @@
 
                 const battlefieldTargets = ['battlefield', 'lands', 'creatures', 'support', 'permanents', 'stack'];
                 const battlefieldZones = ['battlefield', 'lands', 'creatures', 'support', 'permanents'];
+                const resolvedTargetZone = battlefieldZones.includes(targetZone) ? 'battlefield' : targetZone;
                 if (
                     cardZone === 'hand' &&
                     battlefieldTargets.includes(targetZone) &&
@@ -578,7 +579,7 @@
                         window.GameActions.moveCard(
                             cardId,
                             cardZone,
-                            targetZone,
+                            resolvedTargetZone,
                             uniqueCardId,
                             null,
                             null,
@@ -689,6 +690,12 @@
                 // Trigger an action to move the card (adjust to the backend logic)
                 if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
                     const moveOptions = {};
+                    const normalizedSourceZone = typeof cardZone === 'string'
+                        ? cardZone.toLowerCase().replace('opponent_', '')
+                        : '';
+                    const normalizedTargetZone = typeof resolvedTargetZone === 'string'
+                        ? resolvedTargetZone.toLowerCase()
+                        : '';
                     if (sourcePlayerId) {
                         moveOptions.sourcePlayerId = sourcePlayerId;
                     }
@@ -699,10 +706,18 @@
                     if (this._isCrossSeatTransfer(sourcePlayerId, destOwnerId)) {
                         moveOptions.bypassStack = true;
                     }
+                    if (
+                        normalizedTargetZone === 'battlefield' &&
+                        normalizedSourceZone &&
+                        !['hand', 'battlefield', 'stack'].includes(normalizedSourceZone) &&
+                        !moveOptions.bypassStack
+                    ) {
+                        moveOptions.bypassStack = true;
+                    }
                     window.GameActions.moveCard(
                         cardId,
                         cardZone,
-                        targetZone,
+                        resolvedTargetZone,
                         uniqueCardId,
                         deckPosition,
                         null,
@@ -822,6 +837,12 @@
 
             if (window.GameActions && typeof window.GameActions.moveCard === 'function') {
                 const options = {};
+                const normalizedSourceZone = typeof cardZone === 'string'
+                    ? cardZone.toLowerCase().replace('opponent_', '')
+                    : '';
+                const normalizedTargetZone = typeof targetZone === 'string'
+                    ? targetZone.toLowerCase()
+                    : '';
                 const sourcePlayerId = zoneOwnerId || cardOwnerId || cardControllerId || null;
                 if (sourcePlayerId) {
                     options.sourcePlayerId = sourcePlayerId;
@@ -831,6 +852,14 @@
                     options.destinationPlayerId = targetOwnerId;
                 }
                 if (this._isCrossSeatTransfer(sourcePlayerId, targetOwnerId)) {
+                    options.bypassStack = true;
+                }
+                if (
+                    normalizedTargetZone === 'battlefield' &&
+                    normalizedSourceZone &&
+                    !['hand', 'battlefield', 'stack'].includes(normalizedSourceZone) &&
+                    !options.bypassStack
+                ) {
                     options.bypassStack = true;
                 }
                 window.GameActions.moveCard(

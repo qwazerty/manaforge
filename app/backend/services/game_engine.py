@@ -1136,6 +1136,9 @@ class SimpleGameEngine:
                 break
 
         if not card_to_play:
+            card_to_play = self._peek_library_card_by_virtual_id(player, unique_id)
+
+        if not card_to_play:
             print(
                 f"Card with unique_id {unique_id} not found in library of "
                 f"player {action.player_id}"
@@ -1799,10 +1802,17 @@ class SimpleGameEngine:
             source_zone_list = self._get_zone_list(
                 game_state, source_player, source_zone_name
             )
-            for i, card in enumerate(source_zone_list):
-                if card.unique_id == unique_id:
-                    card_found = source_zone_list.pop(i)
-                    break
+            if source_zone_name == "library":
+                card_found = self._pop_library_card_by_virtual_id(
+                    source_player, unique_id
+                )
+                if card_found:
+                    unique_id = card_found.unique_id
+            if not card_found:
+                for i, card in enumerate(source_zone_list):
+                    if card.unique_id == unique_id:
+                        card_found = source_zone_list.pop(i)
+                        break
 
         if not card_found:
             raise ValueError(
@@ -1922,6 +1932,44 @@ class SimpleGameEngine:
         if zone_name in ["commander", "commander_zone", "command_zone"]:
             return "commander_zone"
         return zone_name
+
+    def _parse_library_virtual_unique_id(
+        self, unique_id: Optional[str], player_id: Optional[str]
+    ) -> Optional[int]:
+        """Parse a compact UI library unique_id into a library index."""
+        if not unique_id or not player_id:
+            return None
+        prefix = f"{player_id}:library:"
+        if not isinstance(unique_id, str) or not unique_id.startswith(prefix):
+            return None
+        index_str = unique_id[len(prefix) :]
+        try:
+            index = int(index_str)
+        except (TypeError, ValueError):
+            return None
+        return index if index >= 0 else None
+
+    def _peek_library_card_by_virtual_id(
+        self, player: Player, unique_id: Optional[str]
+    ) -> Optional[Card]:
+        """Return the library card for a compact UI unique_id without removing it."""
+        index = self._parse_library_virtual_unique_id(unique_id, player.id)
+        if index is None:
+            return None
+        if index >= len(player.library):
+            return None
+        return player.library[index]
+
+    def _pop_library_card_by_virtual_id(
+        self, player: Player, unique_id: Optional[str]
+    ) -> Optional[Card]:
+        """Remove and return the library card for a compact UI unique_id."""
+        index = self._parse_library_virtual_unique_id(unique_id, player.id)
+        if index is None:
+            return None
+        if index >= len(player.library):
+            return None
+        return player.library.pop(index)
 
     def _duplicate_card(self, game_state: GameState, action: GameAction) -> None:
         """Duplicate a card on the battlefield for the player who triggered the action."""
