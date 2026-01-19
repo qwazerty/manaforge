@@ -11,7 +11,7 @@ echo "### Rebuilding and restarting containers"
 docker compose up -d --build
 echo "### Updating static files and restarting nginx"
 docker cp manaforge-api-1:/app/app/static/dist ./app/static/
-docker compose restart nginx
+docker compose restart proxy
 
 echo "### Purging Cloudflare cache"
 source .env
