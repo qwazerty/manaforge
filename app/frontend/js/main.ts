@@ -10,20 +10,32 @@ import './ui/ui-global.js';
 
 // Mount the SPA when DOM is ready
 const onReady = (fn: () => void) => {
+    console.log('[ManaForge] Checking document ready state:', document.readyState);
     if (typeof document === 'undefined') return;
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', fn);
+        document.addEventListener('DOMContentLoaded', () => {
+             console.log('[ManaForge] DOMContentLoaded fired');
+             fn();
+        });
     } else {
+        console.log('[ManaForge] Document already ready, executing immediately');
         fn();
     }
 };
 
 onReady(() => {
+    console.log('[ManaForge] Starting initialization...');
     const target = document.getElementById('app');
     if (target) {
         try {
+            console.log('[ManaForge] Found #app target, clearing children...');
             target.replaceChildren();
-            mount(App, { target });
+            console.log('[ManaForge] Mounting Svelte5 App...');
+            const app = mount(App, { target });
+            console.log('[ManaForge] App mounted successfully:', app);
+            
+            // Debug global access
+            (window as any).__MANAFORGE_APP__ = app;
         } catch (error) {
             console.error('[ManaForge] Failed to mount App', error);
             const banner = document.createElement('div');
