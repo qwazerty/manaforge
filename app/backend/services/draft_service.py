@@ -8,7 +8,7 @@ import random
 from urllib.parse import urlparse, parse_qs
 from typing import List, Dict, Any, Optional, Tuple
 
-from app.backend.models.game import Card, Rarity, CardType
+from app.backend.models.game import Card, Rarity
 from app.backend.services.card_service import CardService
 
 
@@ -99,7 +99,9 @@ class DraftService:
             if str(card.get("rarity") or "").lower() == "uncommon"
         ]
         rare_pool = [
-            card for card in all_cards if str(card.get("rarity") or "").lower() == "rare"
+            card
+            for card in all_cards
+            if str(card.get("rarity") or "").lower() == "rare"
         ]
         mythic_pool = [
             card

@@ -24,6 +24,11 @@ from app.backend.repositories.dict_proxies import (
     CubeCardCacheProxy,
 )
 
+DraftRoomStore = DraftRoomsProxy | Dict[str, DraftRoom]
+CubePoolStore = CubePoolsProxy | Dict[str, List[str]]
+CubeCursorStore = CubePoolCursorsProxy | Dict[str, int]
+CubeCacheStore = CubeCardCacheProxy | Dict[str, Dict[str, Dict[str, Any]]]
+
 
 class DraftEngine:
     """Manages draft rooms and the drafting process."""
@@ -33,7 +38,7 @@ class DraftEngine:
     def __init__(self, draft_service: DraftService, use_db: bool = True):
         """
         Initialize the draft engine.
-        
+
         Args:
             draft_service: Service for generating boosters and loading cubes.
             use_db: If True, use PostgreSQL-backed storage (for production).
@@ -41,17 +46,17 @@ class DraftEngine:
         """
         self.draft_service = draft_service
         self._use_db = use_db
-        
+
         if use_db:
-            self.draft_rooms: Dict[str, DraftRoom] = DraftRoomsProxy()
-            self.cube_card_pools: Dict[str, List[str]] = CubePoolsProxy()
-            self.cube_pool_cursor: Dict[str, int] = CubePoolCursorsProxy()
-            self.cube_card_cache: Dict[str, Dict[str, Dict[str, Any]]] = CubeCardCacheProxy()
+            self.draft_rooms: DraftRoomStore = DraftRoomsProxy()
+            self.cube_card_pools: CubePoolStore = CubePoolsProxy()
+            self.cube_pool_cursor: CubeCursorStore = CubePoolCursorsProxy()
+            self.cube_card_cache: CubeCacheStore = CubeCardCacheProxy()
         else:
-            self.draft_rooms: Dict[str, DraftRoom] = {}
-            self.cube_card_pools: Dict[str, List[str]] = {}
-            self.cube_pool_cursor: Dict[str, int] = {}
-            self.cube_card_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
+            self.draft_rooms: DraftRoomStore = {}
+            self.cube_card_pools: CubePoolStore = {}
+            self.cube_pool_cursor: CubeCursorStore = {}
+            self.cube_card_cache: CubeCacheStore = {}
 
     def _save_room(self, room: DraftRoom) -> None:
         """Persist a draft room to storage."""
@@ -286,7 +291,7 @@ class DraftEngine:
         # Distribute the first pack to each player
         for i, player in enumerate(room.players):
             player.current_pack = room.packs[i][0]
-        
+
         self._save_room(room)
 
     def pick_card(self, room_id: str, player_id: str, card_unique_id: str) -> bool:
@@ -323,6 +328,8 @@ class DraftEngine:
             self._bots_pick_cards(room_id, target_pack_size)
             # Re-fetch room after bot picks (it may have been modified)
             room = self.get_draft_room(room_id)
+            if not room:
+                return False
 
         # Check if all players (humans and bots) have completed their pick
         # This is the condition to pass the packs
@@ -353,7 +360,7 @@ class DraftEngine:
                 player.drafted_cards.append(card_to_pick)
                 player.current_pack.remove(card_to_pick)
                 modified = True
-        
+
         if modified:
             self._save_room(room)
 
@@ -449,7 +456,7 @@ class DraftEngine:
             template.pop("owner_id", None)
             cache[cache_key] = template
             # Persist the updated cache
-            if self._use_db:
+            if self._use_db and isinstance(self.cube_card_cache, CubeCardCacheProxy):
                 self.cube_card_cache.update_cache(room_id, cache_key, template)
             else:
                 self.cube_card_cache[room_id] = cache

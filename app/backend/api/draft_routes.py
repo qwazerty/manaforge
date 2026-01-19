@@ -117,9 +117,7 @@ async def list_draft_rooms(engine: DraftEngine = Depends(get_draft_engine)):
 
 
 @router.get("/rooms/{room_id}", response_model=DraftRoom)
-async def get_draft_room(
-    room_id: str, engine: DraftEngine = Depends(get_draft_engine)
-):
+async def get_draft_room(room_id: str, engine: DraftEngine = Depends(get_draft_engine)):
     """Get a specific draft room by ID."""
     room = engine.get_draft_room(room_id)
     if not room:

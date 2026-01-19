@@ -23,7 +23,7 @@ async def broadcast_game_update(
 
     Uses compact format with card_instances for reduced payload size.
     Card definitions are NOT included - clients fetch them via /api/v1/cards/{id}.
-    
+
     In multi-worker mode:
     - WS worker: Uses ConnectionManager directly
     - API workers: Uses PostgreSQL NOTIFY to relay to WS worker
@@ -77,10 +77,12 @@ async def broadcast_game_update(
         if IS_WS_WORKER:
             # Direct broadcast via ConnectionManager (we are the WS worker)
             from app.backend.api.websocket import manager
+
             await manager.broadcast_to_game(game_id, message)
         else:
             # Use PostgreSQL NOTIFY to relay to the WS worker
             from app.backend.services.notify_service import async_notify_game_update
+
             await async_notify_game_update(game_id, message)
 
         print(f"Broadcasted game state update for game {game_id}")
@@ -92,7 +94,7 @@ async def broadcast_game_update(
 async def broadcast_draft_update(room_id: str, message: dict):
     """
     Broadcast draft room update to all connected clients.
-    
+
     In multi-worker mode:
     - WS worker: Uses ConnectionManager directly
     - API workers: Uses PostgreSQL NOTIFY to relay to WS worker
@@ -100,18 +102,17 @@ async def broadcast_draft_update(room_id: str, message: dict):
     try:
         if IS_WS_WORKER:
             from app.backend.api.websocket import manager
+
             await manager.broadcast_to_game(room_id, message)
         else:
             from app.backend.services.notify_service import async_notify_draft_update
+
             await async_notify_draft_update(room_id, message)
 
         print(f"Broadcasted draft update for room {room_id}")
 
     except Exception as e:
         print(f"Error broadcasting draft update: {e}")
-
-    except Exception as e:
-        print(f"Error broadcasting game update: {e}")
 
 
 class ActionRegistry:

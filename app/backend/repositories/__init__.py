@@ -29,7 +29,7 @@ from app.backend.repositories.dict_proxies import (
 __all__ = [
     # Repository classes
     "GameStateRepository",
-    "GameSetupRepository", 
+    "GameSetupRepository",
     "ReplayRepository",
     "ActionHistoryRepository",
     "ChatRepository",

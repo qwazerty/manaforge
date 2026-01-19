@@ -37,6 +37,11 @@ from app.backend.repositories.dict_proxies import (
     ChatMessagesProxy,
 )
 
+GameStateStore = GameStatesProxy | Dict[str, GameState]
+GameSetupStore = GameSetupsProxy | Dict[str, GameSetupStatus]
+DeckStore = PendingDecksProxy | Dict[str, Dict[str, Deck]]
+ReplayStore = ReplaysProxy | Dict[str, List[Dict[str, Any]]]
+
 
 class SimpleGameEngine:
     """Simplified MTG game engine for POC."""
@@ -49,29 +54,29 @@ class SimpleGameEngine:
     def __init__(self, use_db: bool = True):
         """
         Initialize the game engine.
-        
+
         Args:
             use_db: If True, use PostgreSQL-backed storage (for production).
                    If False, use in-memory dicts (for testing).
         """
         if use_db:
-            self.games: Dict[str, GameState] = GameStatesProxy()
-            self.game_setups: Dict[str, GameSetupStatus] = GameSetupsProxy()
-            self._pending_decks = PendingDecksProxy()
-            self._submitted_decks = PendingDecksProxy()  # Reuse same structure
-            self.replays = ReplaysProxy()
-            self._action_history = ActionHistoryProxy()
-            self._chat_messages = ChatMessagesProxy()
+            self.games: GameStateStore = GameStatesProxy()
+            self.game_setups: GameSetupStore = GameSetupsProxy()
+            self._pending_decks: DeckStore = PendingDecksProxy()
+            self._submitted_decks: DeckStore = PendingDecksProxy()  # Reuse structure
+            self.replays: ReplayStore = ReplaysProxy()
+            self._action_history: Optional[ActionHistoryProxy] = ActionHistoryProxy()
+            self._chat_messages: Optional[ChatMessagesProxy] = ChatMessagesProxy()
         else:
             # In-memory for testing
-            self.games: Dict[str, GameState] = {}
-            self.game_setups: Dict[str, GameSetupStatus] = {}
-            self._pending_decks: Dict[str, Dict[str, Deck]] = {}
-            self._submitted_decks: Dict[str, Dict[str, Deck]] = {}
-            self.replays: Dict[str, List[Dict[str, Any]]] = {}
+            self.games: GameStateStore = {}
+            self.game_setups: GameSetupStore = {}
+            self._pending_decks: DeckStore = {}
+            self._submitted_decks: DeckStore = {}
+            self.replays: ReplayStore = {}
             self._action_history = None
             self._chat_messages = None
-        
+
         self._use_db = use_db
 
     def end_game(self, game_id: str) -> bool:
@@ -119,7 +124,7 @@ class SimpleGameEngine:
         else:
             step["action"] = {"action_type": "initial_setup", "player_id": "system"}
 
-        if self._use_db:
+        if isinstance(self.replays, ReplaysProxy):
             self.replays.append_step(game_id, step)
         else:
             if game_id not in self.replays:
@@ -499,7 +504,7 @@ class SimpleGameEngine:
         )
 
         # Store the deck temporarily
-        if self._use_db:
+        if self._use_db and isinstance(self._pending_decks, PendingDecksProxy):
             self._pending_decks.set_player_deck(game_id, player_id, deck)
         else:
             if game_id not in self._pending_decks:
@@ -636,10 +641,13 @@ class SimpleGameEngine:
         """Initialize the actual game state from validated decks."""
         seat_ids = sorted(
             player_decks.keys(),
-            key=lambda seat: int(re.search(r"\d+", seat).group()) if re.search(r"\d+", seat) else 0,
+            key=lambda seat: (
+                int(match.group()) if (match := re.search(r"\d+", seat)) else 0
+            ),
         )
         self._submitted_decks[game_id] = {
-            seat_id: deck.model_copy(deep=True) for seat_id, deck in player_decks.items()
+            seat_id: deck.model_copy(deep=True)
+            for seat_id, deck in player_decks.items()
         }
 
         players: List[Player] = []
@@ -685,9 +693,7 @@ class SimpleGameEngine:
             first_player=None,  # Not yet decided
             mulligan_state={seat_id: MulliganState() for seat_id in seat_ids},
             mulligan_deciding_player=None,
-            deck_status={
-                seat_id: setup.player_status[seat_id] for seat_id in seat_ids
-            },
+            deck_status={seat_id: setup.player_status[seat_id] for seat_id in seat_ids},
         )
         self._touch_game_state(game_state)
 
@@ -733,7 +739,11 @@ class SimpleGameEngine:
 
         # Reset live state and replay timeline
         self.games.pop(game_id, None)
-        self.replays[game_id] = []
+        if isinstance(self.replays, ReplaysProxy):
+            if game_id in self.replays:
+                del self.replays[game_id]
+        else:
+            self.replays[game_id] = []
 
         setup = self.game_setups[game_id]
         setup.status = "Game ready - both decks validated"
@@ -835,7 +845,9 @@ class SimpleGameEngine:
         self._record_replay_step(game_id, action, game_state)
         return game_state
 
-    def record_action_history(self, game_id: str, entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def record_action_history(
+        self, game_id: str, entry: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Persist a single action history entry onto the game state."""
         game_state = self.games.get(game_id)
         if not game_state:
@@ -868,7 +880,9 @@ class SimpleGameEngine:
             )
         return history_entry
 
-    def add_chat_message(self, game_id: str, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def add_chat_message(
+        self, game_id: str, message: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Persist a chat message to the game state's chat log."""
         game_state = self.games.get(game_id)
         if not game_state:
@@ -897,9 +911,7 @@ class SimpleGameEngine:
     def get_chat_log(self, game_id: str) -> List[Dict[str, Any]]:
         """Fetch chat log from persistent storage."""
         if self._use_db and self._chat_messages:
-            return self._chat_messages.get_recent(
-                game_id, limit=self.MAX_CHAT_MESSAGES
-            )
+            return self._chat_messages.get_recent(game_id, limit=self.MAX_CHAT_MESSAGES)
         return []
 
     def _target_card(self, game_state: GameState, action: GameAction) -> None:
@@ -1207,7 +1219,10 @@ class SimpleGameEngine:
         if next_index is None:
             return
 
-        if game_state.priority_player == active_player_index and not game_state.end_step_priority_passed:
+        if (
+            game_state.priority_player == active_player_index
+            and not game_state.end_step_priority_passed
+        ):
             game_state.end_step_priority_passed = True
             game_state.priority_player = next_index
             print("End step: Active player passed, next player has priority")
@@ -2147,7 +2162,9 @@ class SimpleGameEngine:
         else:
             # Let the next player in turn order go first
             next_index = self._get_next_player_index(game_state, player_index)
-            game_state.first_player = next_index if next_index is not None else player_index
+            game_state.first_player = (
+                next_index if next_index is not None else player_index
+            )
 
         game_state.active_player = game_state.first_player
         game_state.priority_player = game_state.first_player

@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
         create_tables()
     except Exception as e:
         print(f"Warning: Could not create database tables: {e}")
-    
+
     # Load pricing data into memory at startup
     load_pricing_data()
     yield

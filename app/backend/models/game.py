@@ -204,31 +204,47 @@ class CardInstance(BaseModel):
 
     unique_id: str = Field(..., description="Unique instance identifier")
     card_id: str = Field(..., description="Reference to CardDefinition (card.id)")
-    scryfall_id: Optional[str] = Field(default=None, description="Scryfall ID reference")
+    scryfall_id: Optional[str] = Field(
+        default=None, description="Scryfall ID reference"
+    )
     owner_id: str = Field(..., description="ID of the player who owns this card")
     controller_id: Optional[str] = Field(
         default=None, description="ID of the player who currently controls this card"
     )
-    zone: str = Field(..., description="Current zone (hand, battlefield, graveyard, etc.)")
+    zone: str = Field(
+        ..., description="Current zone (hand, battlefield, graveyard, etc.)"
+    )
 
     # Dynamic state
     tapped: bool = Field(default=False, description="Whether the card is tapped")
     attacking: bool = Field(default=False, description="Whether attacking")
-    blocking: Optional[str] = Field(default=None, description="Unique ID of blocked attacker")
+    blocking: Optional[str] = Field(
+        default=None, description="Unique ID of blocked attacker"
+    )
     targeted: bool = Field(default=False, description="Whether targeted")
-    counters: Dict[str, int] = Field(default_factory=dict, description="Counters on the card")
+    counters: Dict[str, int] = Field(
+        default_factory=dict, description="Counters on the card"
+    )
     face_down: bool = Field(default=False, description="Whether face-down")
     face_down_owner: Optional[str] = Field(
         default=None, description="Player ID who can see face-down card"
     )
     current_face: int = Field(default=0, description="Current face index for DFCs")
     attached_to: Optional[str] = Field(default=None, description="Host card unique_id")
-    attachment_order: Optional[int] = Field(default=None, description="Attachment ordering")
-    custom_keywords: List[str] = Field(default_factory=list, description="Added keywords")
+    attachment_order: Optional[int] = Field(
+        default=None, description="Attachment ordering"
+    )
+    custom_keywords: List[str] = Field(
+        default_factory=list, description="Added keywords"
+    )
     custom_types: List[str] = Field(default_factory=list, description="Type overrides")
     current_power: Optional[str] = Field(default=None, description="Overridden power")
-    current_toughness: Optional[str] = Field(default=None, description="Overridden toughness")
-    loyalty: Optional[int] = Field(default=None, description="Current planeswalker loyalty")
+    current_toughness: Optional[str] = Field(
+        default=None, description="Overridden toughness"
+    )
+    loyalty: Optional[int] = Field(
+        default=None, description="Current planeswalker loyalty"
+    )
     is_commander: bool = Field(default=False, description="Whether this is a commander")
     is_token: bool = Field(default=False, description="Whether this is a token")
 
@@ -254,7 +270,9 @@ class CardDefinition(BaseModel):
     rarity: Rarity = Field(default=Rarity.COMMON, description="Card rarity")
     image_url: Optional[str] = Field(default=None, description="Card image URL")
     is_double_faced: bool = Field(default=False, description="Has multiple faces")
-    card_faces: List[Dict[str, Any]] = Field(default_factory=list, description="Face data")
+    card_faces: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Face data"
+    )
     set: Optional[str] = Field(default=None, description="Set code")
     set_name: Optional[str] = Field(default=None, description="Full set name")
 
@@ -732,7 +750,9 @@ class GameState(BaseModel):
         # Process stack
         stack_ids: List[str] = []
         for card in self.stack:
-            instance = self._card_to_compact_instance(card, card.owner_id or "", "stack", viewer_id)
+            instance = self._card_to_compact_instance(
+                card, card.owner_id or "", "stack", viewer_id
+            )
             card_instances[card.unique_id] = instance
             stack_ids.append(card.unique_id)
 

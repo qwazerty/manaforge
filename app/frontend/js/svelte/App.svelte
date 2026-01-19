@@ -116,30 +116,40 @@
     const isReady = $derived.by(() => isInitialized);
 
     onMount(() => {
-        // Register routes first
-        router.register(routes);
+        try {
+            console.log('[ManaForge] App mounting...');
+            // Register routes first
+            router.register(routes);
 
-        // Setup link interception for SPA navigation
-        setupLinkInterception();
+            // Setup link interception for SPA navigation
+            setupLinkInterception();
 
-        // Get initial route before subscribing
-        const initialPath = router.getCurrentPath();
-        const initialMatch = router.match(initialPath);
+            // Get initial route before subscribing
+            const initialPath = router.getCurrentPath();
+            console.log('[ManaForge] Initial path:', initialPath);
 
-        // Set initial state
-        currentRoute = initialMatch;
-        routeParams = initialMatch?.params || {};
-        queryParams = router.getQueryParams();
-        isInitialized = true;
+            const initialMatch = router.match(initialPath);
+            console.log('[ManaForge] Initial match:', initialMatch);
 
-        // Subscribe to future route changes
-        unsubscribe = router.subscribe((match) => {
-            currentRoute = match;
-            routeParams = match?.params || {};
+            // Set initial state
+            currentRoute = initialMatch;
+            routeParams = initialMatch?.params || {};
             queryParams = router.getQueryParams();
-        });
+            isInitialized = true;
 
-        router.init();
+            // Subscribe to future route changes
+            unsubscribe = router.subscribe((match) => {
+                currentRoute = match;
+                routeParams = match?.params || {};
+                queryParams = router.getQueryParams();
+            });
+
+            router.init();
+        } catch (error) {
+            console.error('[ManaForge] Critical App initialization error:', error);
+            // Force initialization to show error state if possible
+            isInitialized = true;
+        }
     });
 
     onDestroy(() => {
