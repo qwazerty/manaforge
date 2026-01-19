@@ -3,7 +3,7 @@
 
     let { initialTab = 'login' } = $props();
 
-    let activeTab = $state(initialTab);
+    let activeTab = $state(() => initialTab);
     let isLoading = $state(false);
     let statusMessage = $state({ text: '', type: '' });
 

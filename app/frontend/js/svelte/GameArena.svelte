@@ -965,6 +965,8 @@
                         </div>
                         <div
                             class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
+                            role="region"
+                            aria-label={`${board.focusedOpponent.displayName || 'Opponent'} hand`}
                             data-card-count={board.focusedOpponent.hand.cardCount}
                             data-player-owner={board.focusedOpponent.ownerId}
                             data-hand-mode={board.focusedOpponent.hand.mode}
@@ -1024,6 +1026,8 @@
                                 </div>
                                 <div
                                     class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
+                                    role="region"
+                                    aria-label={`${opponent.displayName || 'Opponent'} hand`}
                                     data-card-count={opponent.hand.cardCount}
                                     data-player-owner={opponent.ownerId}
                                     data-hand-mode={opponent.hand.mode}
