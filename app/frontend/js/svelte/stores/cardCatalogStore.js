@@ -64,8 +64,8 @@ import { get, writable } from 'svelte/store';
 /** @type {import('svelte/store').Writable<Map<string, CardDefinition>>} */
 const cardCatalog = writable(new Map());
 
-/** @type {Set<string>} - Track card IDs currently being fetched to avoid duplicate requests */
-const pendingFetches = new Set();
+/** @type {Map<string, Promise<CardDefinition|null>>} - Track in-flight requests to avoid duplicate requests */
+const pendingRequests = new Map();
 
 /**
  * Update the card catalog with new definitions.
@@ -107,65 +107,66 @@ async function fetchCardDefinition(cardId) {
     }
 
     // Check if already being fetched
-    if (pendingFetches.has(key)) {
-        // Wait a bit and check again
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        return get(cardCatalog).get(key) || null;
+    if (pendingRequests.has(key)) {
+        return pendingRequests.get(key);
     }
 
-    pendingFetches.add(key);
+    const fetchPromise = (async () => {
+        try {
+            const response = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`);
+            if (!response.ok) {
+                console.warn(`Failed to fetch card definition for ${cardId}: ${response.status}`);
+                return null;
+            }
 
-    try {
-        const response = await fetch(`/api/v1/cards/${encodeURIComponent(cardId)}`);
-        if (!response.ok) {
-            console.warn(`Failed to fetch card definition for ${cardId}: ${response.status}`);
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                console.warn(
+                    `Non-JSON response when fetching card definition for ${cardId} (status ${response.status}, content-type ${contentType || 'unknown'}).`
+                );
+                return null;
+            }
+
+            const cardData = await response.json();
+
+            // Convert to CardDefinition format and store
+            const definition = {
+                card_id: cardData.id || cardId,
+                scryfall_id: cardData.scryfall_id,
+                name: cardData.name,
+                mana_cost: cardData.mana_cost || '',
+                cmc: cardData.cmc || 0,
+                card_type: cardData.card_type,
+                subtype: cardData.subtype || '',
+                text: cardData.text || '',
+                power: cardData.power,
+                toughness: cardData.toughness,
+                colors: cardData.colors || [],
+                rarity: cardData.rarity || 'common',
+                image_url: cardData.image_url,
+                is_double_faced: cardData.is_double_faced || false,
+                card_faces: cardData.card_faces || [],
+                set: cardData.set,
+                set_name: cardData.set_name,
+            };
+
+            // Add to catalog
+            cardCatalog.update((currentMap) => {
+                currentMap.set(key, definition);
+                return currentMap;
+            });
+
+            return definition;
+        } catch (error) {
+            console.error(`Error fetching card definition for ${cardId}:`, error);
             return null;
+        } finally {
+            pendingRequests.delete(key);
         }
+    })();
 
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            console.warn(
-                `Non-JSON response when fetching card definition for ${cardId} (status ${response.status}, content-type ${contentType || 'unknown'}).`
-            );
-            return null;
-        }
-
-        const cardData = await response.json();
-
-        // Convert to CardDefinition format and store
-        const definition = {
-            card_id: cardData.id || cardId,
-            scryfall_id: cardData.scryfall_id,
-            name: cardData.name,
-            mana_cost: cardData.mana_cost || '',
-            cmc: cardData.cmc || 0,
-            card_type: cardData.card_type,
-            subtype: cardData.subtype || '',
-            text: cardData.text || '',
-            power: cardData.power,
-            toughness: cardData.toughness,
-            colors: cardData.colors || [],
-            rarity: cardData.rarity || 'common',
-            image_url: cardData.image_url,
-            is_double_faced: cardData.is_double_faced || false,
-            card_faces: cardData.card_faces || [],
-            set: cardData.set,
-            set_name: cardData.set_name,
-        };
-
-        // Add to catalog
-        cardCatalog.update((currentMap) => {
-            currentMap.set(key, definition);
-            return currentMap;
-        });
-
-        return definition;
-    } catch (error) {
-        console.error(`Error fetching card definition for ${cardId}:`, error);
-        return null;
-    } finally {
-        pendingFetches.delete(key);
-    }
+    pendingRequests.set(key, fetchPromise);
+    return fetchPromise;
 }
 
 /**
