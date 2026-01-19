@@ -113,8 +113,6 @@
     // Check if we should show the layout (header/footer)
     const showLayout = $derived.by(() => true);
 
-    const isReady = $derived.by(() => isInitialized);
-
     onMount(() => {
         try {
             console.log('[ManaForge] App mounting...');
@@ -160,7 +158,7 @@
 </script>
 
 <div class="min-h-screen bg-arena-bg text-arena-text font-ui">
-    {#if !isReady}
+    {#if !isInitialized}
         <!-- Initial loading state -->
         <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
@@ -169,18 +167,19 @@
             </div>
         </div>
     {:else}
-        {#if showLayout}
+        {#if showLayout()}
             <AppHeader />
         {/if}
 
-        <main class={showLayout ? 'min-h-screen' : ''}>
+        <main class={showLayout() ? 'min-h-screen' : ''}>
             {#key currentRoute?.route?.path + JSON.stringify(routeParams)}
-                {@const Page = currentPage.component}
-                <Page {...currentPage.props} />
+                {@const page = currentPage()}
+                {@const Page = page.component}
+                <Page {...page.props} />
             {/key}
         </main>
 
-        {#if showLayout}
+        {#if showLayout()}
             <AppFooter />
         {/if}
     {/if}

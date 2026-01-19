@@ -164,17 +164,21 @@ def create_tables() -> None:
             )
 
             # Apply trigger to tables with updated_at
-            for table in ["game_states", "game_setups", "draft_rooms"]:
+            for table_name in ["game_states", "game_setups", "draft_rooms"]:
+                trigger_name = f"trg_{table_name}_updated_at"
                 cur.execute(
                     sql.SQL(
                         """
-                        DROP TRIGGER IF EXISTS trg_{table}_updated_at ON {table};
-                        CREATE TRIGGER trg_{table}_updated_at
+                        DROP TRIGGER IF EXISTS {trigger} ON {table};
+                        CREATE TRIGGER {trigger}
                         BEFORE UPDATE ON {table}
                         FOR EACH ROW
                         EXECUTE FUNCTION update_updated_at_column();
                         """
-                    ).format(table=sql.Identifier(table))
+                    ).format(
+                        trigger=sql.Identifier(trigger_name),
+                        table=sql.Identifier(table_name)
+                    )
                 )
 
         conn.commit()
