@@ -755,12 +755,17 @@ class SimpleGameEngine:
             setup,
         )
 
-    async def process_action(self, game_id: str, action: GameAction) -> GameState:
+    async def process_action(
+        self,
+        game_id: str,
+        action: GameAction,
+        game_state: Optional[GameState] = None,
+    ) -> GameState:
         """Process a player action and return updated game state."""
-        if game_id not in self.games:
-            raise ValueError(f"Game {game_id} not found")
-
-        game_state = self.games[game_id]
+        if game_state is None:
+            game_state = self.games.get(game_id)
+            if not game_state:
+                raise ValueError(f"Game {game_id} not found")
 
         action_map = {
             "play_card": self._play_card,

@@ -477,10 +477,20 @@ async function hydrateGameState(compactState) {
         id: compactState.game_id || compactState.id,
         players: hydratedPlayers,
         stack: hydratedStack,
-        action_history: compactState.action_history || [],
-        chat_log: compactState.chat_log || [],
         targeting_arrows: compactState.targeting_arrows || [],
     };
+
+    if (Object.prototype.hasOwnProperty.call(compactState, 'action_history')) {
+        hydratedState.action_history = Array.isArray(compactState.action_history)
+            ? compactState.action_history
+            : [];
+    }
+
+    if (Object.prototype.hasOwnProperty.call(compactState, 'chat_log')) {
+        hydratedState.chat_log = Array.isArray(compactState.chat_log)
+            ? compactState.chat_log
+            : [];
+    }
 
     delete hydratedState.card_instances;
     delete hydratedState.card_catalog;

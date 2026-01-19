@@ -631,10 +631,9 @@ async def perform_game_action(
             f"Available: {action_registry.list_actions()}",
         )
 
-    if game_id not in engine.games:
+    current_state = engine.games.get(game_id)
+    if not current_state:
         raise HTTPException(status_code=404, detail="Game not found")
-
-    current_state = engine.games[game_id]
 
     if "player_id" in request:
         player_id = request["player_id"]
@@ -669,7 +668,9 @@ async def perform_game_action(
             player_id=player_id, action_type=final_action_type, **action_params
         )
 
-        game_state = await engine.process_action(game_id, action)
+        game_state = await engine.process_action(
+            game_id, action, game_state=current_state
+        )
 
         broadcast_info = {"action": action_type, "player": player_id, "success": True}
         broadcast_info.update(action_data.get("broadcast_data", {}))

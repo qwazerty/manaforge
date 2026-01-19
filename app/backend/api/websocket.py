@@ -259,7 +259,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     if not handler_info:
                         raise ValueError(f"Unknown action_type: {action_type}")
 
-                    current_state = game_engine.games[game_id]
+                    current_state = game_engine.games.get(game_id)
+                    if not current_state:
+                        raise ValueError(f"Game {game_id} not found")
 
                     handler = handler_info["handler"]
                     handler_result = await handler(game_id, request_data, current_state)
@@ -282,15 +284,14 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                         f"{game_action.model_dump_json(indent=2)}"
                     )
                     updated_game_state = await game_engine.process_action(
-                        game_id, game_action
+                        game_id, game_action, game_state=current_state
                     )
-                    action_history = game_engine.get_action_history(game_id)
-                    chat_log = game_engine.get_chat_log(game_id)
-
                     # Use compact format for reduced payload size
                     # Exclude card_catalog - clients cache it from initial load
                     # Note: Broadcasting same state to all players for now.
                     # Per-player filtering can be added later.
+                    action_history: list = []
+                    chat_log: list = []
                     broadcast_info = {
                         "type": "game_state_update",
                         "game_state": updated_game_state.to_compact_ui_data(
@@ -323,6 +324,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                         broadcast_info["action_result"].setdefault(
                             "phase", current_phase
                         )
+
+                    broadcast_info["game_state"].pop("action_history", None)
+                    broadcast_info["game_state"].pop("chat_log", None)
 
                     game_engine.record_action_history(
                         game_id, broadcast_info["action_result"]

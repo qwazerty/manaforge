@@ -3,21 +3,29 @@ Dictionary-like proxies backed by PostgreSQL.
 
 These classes behave like dictionaries but persist all operations to the database.
 This allows gradual migration from in-memory dicts to DB-backed storage.
+
+Performance optimizations:
+- Connection pooling via get_connection() context manager
+- Optimized cleanup with batched deletes
 """
 
 import json
+import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional, TypeVar, Generic
 
 from psycopg import sql
 
-from app.backend.core.db import connect
+from app.backend.core.db import get_connection
 from app.backend.models.game import GameState, GameSetupStatus, DraftRoom, Deck
 
 T = TypeVar("T")
 
 DEFAULT_ACTION_HISTORY_LIMIT = 10000
 DEFAULT_CHAT_MESSAGES_LIMIT = 1000
+
+# Cleanup configuration - only run cleanup every N inserts
+CLEANUP_INTERVAL = 100
 
 
 class DBDictProxy(Generic[T]):
@@ -52,7 +60,7 @@ class DBDictProxy(Generic[T]):
         return sql.Identifier(self._data_column)
 
     def __contains__(self, key: str) -> bool:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("SELECT 1 FROM {} WHERE {} = %s").format(
                     self._sql_table(), self._sql_id_col()
@@ -61,7 +69,7 @@ class DBDictProxy(Generic[T]):
                 return cur.fetchone() is not None
 
     def __getitem__(self, key: str) -> T:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("SELECT {} FROM {} WHERE {} = %s").format(
                     self._sql_data_col(), self._sql_table(), self._sql_id_col()
@@ -74,7 +82,7 @@ class DBDictProxy(Generic[T]):
 
     def __setitem__(self, key: str, value: T) -> None:
         data = self._serialize(value)
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL(
                     """
@@ -95,7 +103,7 @@ class DBDictProxy(Generic[T]):
             conn.commit()
 
     def __delitem__(self, key: str) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("DELETE FROM {} WHERE {} = %s").format(
                     self._sql_table(), self._sql_id_col()
@@ -112,7 +120,7 @@ class DBDictProxy(Generic[T]):
             return default
 
     def keys(self) -> List[str]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("SELECT {} FROM {}").format(
                     self._sql_id_col(), self._sql_table()
@@ -121,7 +129,7 @@ class DBDictProxy(Generic[T]):
                 return [row[0] for row in cur.fetchall()]
 
     def values(self) -> List[T]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("SELECT {} FROM {}").format(
                     self._sql_data_col(), self._sql_table()
@@ -130,7 +138,7 @@ class DBDictProxy(Generic[T]):
                 return [self._deserialize(row[0]) for row in cur.fetchall()]
 
     def items(self) -> List[tuple]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("SELECT {}, {} FROM {}").format(
                     self._sql_id_col(), self._sql_data_col(), self._sql_table()
@@ -142,7 +150,7 @@ class DBDictProxy(Generic[T]):
         return iter(self.keys())
 
     def __len__(self) -> int:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 query = sql.SQL("SELECT COUNT(*) FROM {}").format(self._sql_table())
                 cur.execute(query)
@@ -161,7 +169,9 @@ class DBDictProxy(Generic[T]):
 
 
 class GameStatesProxy(DBDictProxy[GameState]):
-    """Dict-like proxy for game states stored in PostgreSQL."""
+    """
+    Dict-like proxy for game states stored in PostgreSQL.
+    """
 
     _table_name = "game_states"
     _id_column = "id"
@@ -213,7 +223,7 @@ class ReplaysProxy:
     """
 
     def __contains__(self, game_id: str) -> bool:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT 1 FROM game_replays WHERE game_id = %s LIMIT 1", (game_id,)
@@ -221,7 +231,7 @@ class ReplaysProxy:
                 return cur.fetchone() is not None
 
     def __getitem__(self, game_id: str) -> List[Dict[str, Any]]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -262,7 +272,7 @@ class ReplaysProxy:
         action_data = step_data.get("action")
         state_data = step_data.get("state", {})
 
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 # Get next step index
                 cur.execute(
@@ -287,20 +297,29 @@ class ReplaysProxy:
             conn.commit()
 
     def __delitem__(self, game_id: str) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM game_replays WHERE game_id = %s", (game_id,))
             conn.commit()
 
     def keys(self) -> List[str]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT DISTINCT game_id FROM game_replays")
                 return [row[0] for row in cur.fetchall()]
 
 
 class ActionHistoryProxy:
-    """Append-only proxy for action history entries."""
+    """
+    Append-only proxy for action history entries.
+
+    Includes optimized cleanup that only runs periodically instead of
+    on every insert, significantly reducing database load.
+    """
+
+    # Track insert counts per game for periodic cleanup
+    _insert_counts: Dict[str, int] = {}
+    _insert_counts_lock = threading.Lock()
 
     def append(
         self,
@@ -311,7 +330,16 @@ class ActionHistoryProxy:
         recorded_at = _timestamp_to_datetime(entry.get("timestamp"))
         payload = json.dumps(entry)
 
-        with connect() as conn:
+        # Check if cleanup is needed (every CLEANUP_INTERVAL inserts)
+        should_cleanup = False
+        with self._insert_counts_lock:
+            count = self._insert_counts.get(game_id, 0) + 1
+            self._insert_counts[game_id] = count
+            if count >= CLEANUP_INTERVAL:
+                should_cleanup = True
+                self._insert_counts[game_id] = 0
+
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 if recorded_at:
                     cur.execute(
@@ -330,25 +358,31 @@ class ActionHistoryProxy:
                         (game_id, payload),
                     )
 
-                if max_entries is not None and max_entries > 0:
+                # Only run cleanup periodically
+                if should_cleanup and max_entries is not None and max_entries > 0:
+                    # More efficient cleanup: delete old entries in a single query
                     cur.execute(
                         """
                         DELETE FROM action_history
-                        WHERE game_id = %s AND id IN (
-                            SELECT id FROM action_history
-                            WHERE game_id = %s
-                            ORDER BY recorded_at DESC
-                            OFFSET %s
+                        WHERE game_id = %s
+                        AND id < (
+                            SELECT COALESCE(
+                                (SELECT id FROM action_history
+                                 WHERE game_id = %s
+                                 ORDER BY id DESC
+                                 LIMIT 1 OFFSET %s),
+                                0
+                            )
                         )
                         """,
-                        (game_id, game_id, max_entries),
+                        (game_id, game_id, max_entries - 1),
                     )
             conn.commit()
 
     def get_recent(
         self, game_id: str, limit: int = DEFAULT_ACTION_HISTORY_LIMIT
     ) -> List[Dict[str, Any]]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -370,14 +404,25 @@ class ActionHistoryProxy:
                 return entries
 
     def clear(self, game_id: str) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM action_history WHERE game_id = %s", (game_id,))
             conn.commit()
+        # Reset insert count
+        with self._insert_counts_lock:
+            self._insert_counts.pop(game_id, None)
 
 
 class ChatMessagesProxy:
-    """Append-only proxy for chat messages."""
+    """
+    Append-only proxy for chat messages.
+
+    Includes optimized cleanup that only runs periodically.
+    """
+
+    # Track insert counts per game for periodic cleanup
+    _insert_counts: Dict[str, int] = {}
+    _insert_counts_lock = threading.Lock()
 
     def append(
         self,
@@ -389,7 +434,16 @@ class ChatMessagesProxy:
         message = entry.get("message", "")
         recorded_at = _timestamp_to_datetime(entry.get("timestamp"))
 
-        with connect() as conn:
+        # Check if cleanup is needed (every CLEANUP_INTERVAL inserts)
+        should_cleanup = False
+        with self._insert_counts_lock:
+            count = self._insert_counts.get(game_id, 0) + 1
+            self._insert_counts[game_id] = count
+            if count >= CLEANUP_INTERVAL:
+                should_cleanup = True
+                self._insert_counts[game_id] = 0
+
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 if recorded_at:
                     cur.execute(
@@ -408,25 +462,30 @@ class ChatMessagesProxy:
                         (game_id, player_id, message),
                     )
 
-                if max_entries is not None and max_entries > 0:
+                # Only run cleanup periodically
+                if should_cleanup and max_entries is not None and max_entries > 0:
                     cur.execute(
                         """
                         DELETE FROM chat_messages
-                        WHERE game_id = %s AND id IN (
-                            SELECT id FROM chat_messages
-                            WHERE game_id = %s
-                            ORDER BY recorded_at DESC
-                            OFFSET %s
+                        WHERE game_id = %s
+                        AND id < (
+                            SELECT COALESCE(
+                                (SELECT id FROM chat_messages
+                                 WHERE game_id = %s
+                                 ORDER BY id DESC
+                                 LIMIT 1 OFFSET %s),
+                                0
+                            )
                         )
                         """,
-                        (game_id, game_id, max_entries),
+                        (game_id, game_id, max_entries - 1),
                     )
             conn.commit()
 
     def get_recent(
         self, game_id: str, limit: int = DEFAULT_CHAT_MESSAGES_LIMIT
     ) -> List[Dict[str, Any]]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -450,10 +509,13 @@ class ChatMessagesProxy:
                 return entries
 
     def clear(self, game_id: str) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM chat_messages WHERE game_id = %s", (game_id,))
             conn.commit()
+        # Reset insert count
+        with self._insert_counts_lock:
+            self._insert_counts.pop(game_id, None)
 
 
 class PendingDecksProxy:
@@ -463,7 +525,7 @@ class PendingDecksProxy:
     """
 
     def __contains__(self, game_id: str) -> bool:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT 1 FROM pending_decks WHERE game_id = %s LIMIT 1", (game_id,)
@@ -471,7 +533,7 @@ class PendingDecksProxy:
                 return cur.fetchone() is not None
 
     def __getitem__(self, game_id: str) -> Dict[str, Deck]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -487,7 +549,7 @@ class PendingDecksProxy:
                 return {row[0]: Deck.model_validate(row[1]) for row in rows}
 
     def __setitem__(self, game_id: str, decks: Dict[str, Deck]) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 # Delete existing entries
                 cur.execute("DELETE FROM pending_decks WHERE game_id = %s", (game_id,))
@@ -505,7 +567,7 @@ class PendingDecksProxy:
             conn.commit()
 
     def __delitem__(self, game_id: str) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM pending_decks WHERE game_id = %s", (game_id,))
             conn.commit()
@@ -528,7 +590,7 @@ class PendingDecksProxy:
     def set_player_deck(self, game_id: str, player_id: str, deck: Deck) -> None:
         """Set a single player's deck."""
         deck_json = deck.model_dump(mode="json")
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -555,7 +617,7 @@ class CubePoolsProxy:
     """
 
     def __contains__(self, room_id: str) -> bool:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT 1 FROM draft_rooms WHERE id = %s AND cube_pool IS NOT NULL",
@@ -564,7 +626,7 @@ class CubePoolsProxy:
                 return cur.fetchone() is not None
 
     def __getitem__(self, room_id: str) -> List[str]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT cube_pool FROM draft_rooms WHERE id = %s", (room_id,)
@@ -575,7 +637,7 @@ class CubePoolsProxy:
                 return row[0]
 
     def __setitem__(self, room_id: str, pool: List[str]) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -588,7 +650,7 @@ class CubePoolsProxy:
             conn.commit()
 
     def __delitem__(self, room_id: str) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -611,7 +673,7 @@ class CubePoolCursorsProxy:
     """Dict-like proxy for cube pool cursors (position in the shuffled pool)."""
 
     def __getitem__(self, room_id: str) -> int:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT pool_cursor FROM draft_rooms WHERE id = %s", (room_id,)
@@ -622,7 +684,7 @@ class CubePoolCursorsProxy:
                 return row[0] or 0
 
     def __setitem__(self, room_id: str, cursor: int) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE draft_rooms SET pool_cursor = %s WHERE id = %s",
@@ -641,7 +703,7 @@ class CubeCardCacheProxy:
     """Dict-like proxy for cube card caches (resolved card templates)."""
 
     def __getitem__(self, room_id: str) -> Dict[str, Dict[str, Any]]:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT cube_cache FROM draft_rooms WHERE id = %s", (room_id,)
@@ -652,7 +714,7 @@ class CubeCardCacheProxy:
                 return row[0] or {}
 
     def __setitem__(self, room_id: str, cache: Dict[str, Dict[str, Any]]) -> None:
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE draft_rooms SET cube_cache = %s WHERE id = %s",

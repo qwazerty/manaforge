@@ -2,12 +2,13 @@
 Repository for persisting and retrieving game states from PostgreSQL.
 
 This replaces the in-memory dictionaries in SimpleGameEngine for multi-worker support.
+Uses connection pooling for improved performance.
 """
 
 import json
 from typing import Any, Dict, List, Optional
 
-from app.backend.core.db import connect
+from app.backend.core.db import get_connection
 from app.backend.models.game import GameState, GameSetupStatus
 
 
@@ -21,7 +22,7 @@ class GameStateRepository:
 
     def get(self, game_id: str) -> Optional[GameState]:
         """Retrieve a game state by ID."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT state_json FROM game_states WHERE id = %s", (game_id,)
@@ -34,7 +35,7 @@ class GameStateRepository:
     def save(self, game_state: GameState) -> None:
         """Save or update a game state."""
         state_json = game_state.model_dump(mode="json")
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -50,7 +51,7 @@ class GameStateRepository:
 
     def delete(self, game_id: str) -> bool:
         """Delete a game state. Returns True if a row was deleted."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM game_states WHERE id = %s", (game_id,))
                 deleted = cur.rowcount > 0
@@ -59,14 +60,14 @@ class GameStateRepository:
 
     def exists(self, game_id: str) -> bool:
         """Check if a game state exists."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1 FROM game_states WHERE id = %s", (game_id,))
                 return cur.fetchone() is not None
 
     def list_active(self, limit: int = 100) -> List[str]:
         """List IDs of active games."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -85,7 +86,7 @@ class GameSetupRepository:
 
     def get(self, game_id: str) -> Optional[GameSetupStatus]:
         """Retrieve a game setup by ID."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT setup_json FROM game_setups WHERE id = %s", (game_id,)
@@ -98,7 +99,7 @@ class GameSetupRepository:
     def save(self, setup: GameSetupStatus) -> None:
         """Save or update a game setup."""
         setup_json = setup.model_dump(mode="json")
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -113,7 +114,7 @@ class GameSetupRepository:
 
     def delete(self, game_id: str) -> bool:
         """Delete a game setup."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM game_setups WHERE id = %s", (game_id,))
                 deleted = cur.rowcount > 0
@@ -132,7 +133,7 @@ class ReplayRepository:
         action_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Append a replay step."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -153,7 +154,7 @@ class ReplayRepository:
 
     def get_timeline(self, game_id: str) -> List[Dict[str, Any]]:
         """Get the full replay timeline for a game."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -179,7 +180,7 @@ class ReplayRepository:
 
     def get_step_count(self, game_id: str) -> int:
         """Get the number of replay steps for a game."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT COUNT(*) FROM game_replays WHERE game_id = %s", (game_id,)
@@ -195,7 +196,7 @@ class ActionHistoryRepository:
 
     def append(self, game_id: str, action_data: Dict[str, Any]) -> None:
         """Append an action to the history."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -208,7 +209,7 @@ class ActionHistoryRepository:
 
     def get_recent(self, game_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Get recent actions for a game."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -225,20 +226,23 @@ class ActionHistoryRepository:
 
     def cleanup_old(self, game_id: str) -> None:
         """Remove old actions beyond the max history limit."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     DELETE FROM action_history
                     WHERE game_id = %s
-                    AND id NOT IN (
-                        SELECT id FROM action_history
-                        WHERE game_id = %s
-                        ORDER BY recorded_at DESC
-                        LIMIT %s
+                    AND id < (
+                        SELECT COALESCE(
+                            (SELECT id FROM action_history
+                             WHERE game_id = %s
+                             ORDER BY id DESC
+                             LIMIT 1 OFFSET %s),
+                            0
+                        )
                     )
                 """,
-                    (game_id, game_id, self.MAX_HISTORY),
+                    (game_id, game_id, self.MAX_HISTORY - 1),
                 )
             conn.commit()
 
@@ -250,7 +254,7 @@ class ChatRepository:
 
     def append(self, game_id: str, player_id: Optional[str], message: str) -> None:
         """Append a chat message."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -263,7 +267,7 @@ class ChatRepository:
 
     def get_recent(self, game_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Get recent chat messages for a game."""
-        with connect() as conn:
+        with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """

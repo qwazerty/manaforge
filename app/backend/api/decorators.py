@@ -32,8 +32,9 @@ async def broadcast_game_update(
         from app.backend.api.routes import game_engine
 
         # Use compact format for reduced payload size
-        action_history = game_engine.get_action_history(game_id)
-        chat_log = game_engine.get_chat_log(game_id)
+        # Skip full action_history/chat_log for incremental updates
+        action_history: list = []
+        chat_log: list = []
         message = {
             "type": "game_state_update",
             "game_state": game_state.to_compact_ui_data(
@@ -43,6 +44,8 @@ async def broadcast_game_update(
             ),
             "timestamp": game_state.turn if hasattr(game_state, "turn") else None,
         }
+        message["game_state"].pop("action_history", None)
+        message["game_state"].pop("chat_log", None)
 
         if action_info:
             action_entry = dict(action_info)
