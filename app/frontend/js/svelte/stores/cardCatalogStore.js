@@ -122,6 +122,14 @@ async function fetchCardDefinition(cardId) {
             return null;
         }
 
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            console.warn(
+                `Non-JSON response when fetching card definition for ${cardId} (status ${response.status}, content-type ${contentType || 'unknown'}).`
+            );
+            return null;
+        }
+
         const cardData = await response.json();
 
         // Convert to CardDefinition format and store
