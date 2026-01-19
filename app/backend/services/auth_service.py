@@ -4,57 +4,23 @@ Minimal user service for signup, with secure password hashing and DB persistence
 Security notes:
 - Passwords are hashed with bcrypt (passlib) and never stored or returned in plaintext.
 - Unique constraints on username and email enforced at DB level.
-- Table is created idempotently on first use (safe in multi-instance because of IF NOT EXISTS).
+- Schema is ensured via migrations on first use (safe in multi-instance with advisory locks).
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict
 
-import psycopg
 from psycopg import errors
 from passlib.hash import bcrypt
 
 from app.backend.core import db
+from app.backend.core.schema import apply_migrations
 
 
-def _ensure_table_exists(conn: psycopg.Connection) -> None:
-    """Create the users table if it doesn't already exist."""
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id BIGSERIAL PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                email TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE OR REPLACE FUNCTION set_users_updated_at()
-            RETURNS TRIGGER AS $$
-            BEGIN
-                NEW.updated_at = NOW();
-                RETURN NEW;
-            END;
-            $$ LANGUAGE plpgsql;
-            """
-        )
-        cur.execute(
-            """
-            DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
-            CREATE TRIGGER trg_users_updated_at
-            BEFORE UPDATE ON users
-            FOR EACH ROW
-            EXECUTE FUNCTION set_users_updated_at();
-            """
-        )
-    conn.commit()
+def _ensure_schema() -> None:
+    """Apply pending migrations before auth operations."""
+    apply_migrations()
 
 
 def _validate_signup(username: str, email: str, password: str) -> None:
@@ -77,7 +43,7 @@ def create_user(username: str, email: str, password: str) -> Dict[str, Any]:
     password_hash = bcrypt.using(rounds=12).hash(password)
 
     with db.connect() as conn:
-        _ensure_table_exists(conn)
+        _ensure_schema()
         try:
             with conn.cursor() as cur:
                 cur.execute(
