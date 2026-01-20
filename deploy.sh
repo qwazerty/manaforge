@@ -7,15 +7,18 @@ cd ~/docker/manaforge
 echo "### Git pull"
 git pull
 
-echo "### Rebuilding and restarting API server"
-docker compose up -d --build api
+echo "### Building images"
+docker compose build api ws
+
+echo "### Restarting API server"
+docker compose up -d api
 
 echo "### Updating static files and restarting nginx"
 docker cp manaforge-api-1:/app/app/static/dist ./app/static/
 docker compose restart proxy
 
-echo "### Rebuilding and restarting WebSocket server"
-docker compose up -d --build ws
+echo "### Restarting WebSocket server"
+docker compose up -d ws
 
 echo "### Purging Cloudflare cache"
 source .env
