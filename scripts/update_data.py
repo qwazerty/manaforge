@@ -219,10 +219,13 @@ def create_indexes_on_staging(conn: psycopg.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_cards_rarity ON cards_new (rarity);",
         "CREATE INDEX IF NOT EXISTS idx_cards_cmc ON cards_new (cmc);",
         "CREATE INDEX IF NOT EXISTS idx_cards_name ON cards_new (name);",
+        # Index for foreign language card lookups (printed_name in JSONB)
+        "CREATE INDEX IF NOT EXISTS idx_cards_printed_name ON cards_new ((data->>'printed_name'));",
         # Cardmarket price indexes (on cardmarket_price_new, will become cardmarket_price after swap)
         "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name ON cardmarket_price_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_price ON cardmarket_price_new (price);",
         "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_id_expansion ON cardmarket_price_new (id_expansion);",
+        # Trigram index for LIKE queries on double-faced card names
+        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name_trgm ON cardmarket_price_new USING gin (normalized_name gin_trgm_ops);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
@@ -239,8 +242,14 @@ def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
 
     with conn.cursor() as cur:
         exists = _table_exists(cur, base)
+
+        # For cards table, we need to drop sets_cache first (it depends on cards)
+        # We'll recreate it after the swap
+        if base == "cards":
+            cur.execute("DROP MATERIALIZED VIEW IF EXISTS sets_cache CASCADE;")
+
         # drop lingering old table to avoid rename collision
-        cur.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(base_old_id))
+        cur.execute(sql.SQL("DROP TABLE IF EXISTS {} CASCADE").format(base_old_id))
 
         # rename current base to _old if it exists
         if exists:
@@ -250,18 +259,31 @@ def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
         cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(staging_id, base_id))
 
         # drop old version if it was present
-        cur.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(base_old_id))
+        cur.execute(sql.SQL("DROP TABLE IF EXISTS {} CASCADE").format(base_old_id))
 
         # analyze the new table for query planner optimization
         cur.execute(sql.SQL("ANALYZE {}").format(base_id))
 
-        # Refresh materialized views that depend on cards table
+        # Recreate materialized view for cards table
         if base == "cards":
-            cur.execute("SELECT to_regclass('public.sets_cache')")
-            row = cur.fetchone()
-            if row and row[0] is not None:
-                print("Refreshing sets_cache materialized view...")
-                cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY sets_cache")
+            print("Recreating sets_cache materialized view...")
+            cur.execute(
+                """
+                CREATE MATERIALIZED VIEW sets_cache AS
+                SELECT DISTINCT ON (set)
+                    set as code,
+                    set_name as name,
+                    data->>'set_type' AS set_type,
+                    released_at,
+                    data->>'icon_svg_uri' AS icon_svg_uri
+                FROM cards
+                WHERE set IS NOT NULL AND set <> ''
+                ORDER BY set, released_at DESC;
+                """
+            )
+            cur.execute(
+                "CREATE UNIQUE INDEX idx_sets_cache_code ON sets_cache (code);"
+            )
     conn.commit()
 
 

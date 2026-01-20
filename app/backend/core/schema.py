@@ -282,7 +282,8 @@ def _migration_003_performance_indexes(cur: psycopg.Cursor) -> None:
     - idx_cards_cmc: Filtering by mana cost
     - idx_chat_messages_game_recorded: Optimized ORDER BY for chat history
     - sets_cache: Materialized view for list_local_sets (6000x speedup)
-    - cardmarket_price indexes: Restored after table swap
+    
+    Note: cardmarket_price indexes are now managed by update_data.py during import.
     """
     # Check if cards table exists before creating indexes
     cur.execute("SELECT to_regclass('public.cards')")
@@ -313,19 +314,6 @@ def _migration_003_performance_indexes(cur: psycopg.Cursor) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_cache_code ON sets_cache (code);"
         )
 
-    # Cardmarket price indexes (may be missing after table swap)
-    cur.execute("SELECT to_regclass('public.cardmarket_price')")
-    row = cur.fetchone()
-    if row and row[0] is not None:
-        cur.execute(
-            "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name "
-            "ON cardmarket_price (normalized_name);"
-        )
-        cur.execute(
-            "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_id_expansion "
-            "ON cardmarket_price (id_expansion);"
-        )
-
     # Composite index for chat messages ORDER BY optimization
     # Replaces simple idx_chat_messages_game_id for queries with ORDER BY recorded_at DESC
     cur.execute(
@@ -334,10 +322,75 @@ def _migration_003_performance_indexes(cur: psycopg.Cursor) -> None:
     )
 
 
+def _migration_004_cleanup_and_perf(cur: psycopg.Cursor) -> None:
+    """Cleanup duplicate indexes and add missing performance indexes.
+
+    Identified issues from DBA analysis:
+    1. Duplicate indexes from table swap mechanism (idx_*_new_*) - never used
+    2. Orphan staging tables that were not cleaned up
+    3. Missing index on cards.data->>'printed_name' - causes 5s seq scans
+    4. Missing trigram index on cardmarket_price for LIKE queries on DFC names
+    
+    Note: idx_cards_printed_name and idx_cardmarket_price_normalized_name_trgm
+    are now created by update_data.py during import. This migration ensures they
+    exist for databases that haven't been re-imported yet.
+    """
+    # -------------------------------------------------------------------------
+    # 1. Remove duplicate/orphan indexes from table swap mechanism
+    #    These have 0 scans and waste ~9.2 MB of disk space
+    # -------------------------------------------------------------------------
+    duplicate_indexes = [
+        # cards table duplicates
+        "idx_cards_new_cmc",
+        "idx_cards_new_normalized_name",
+        "idx_cards_new_rarity",
+        "idx_cards_new_set",
+        # cardmarket_price table duplicates
+        "idx_cmp_new_price",
+        "idx_cmp_new_normalized_name",
+        "idx_cmp_new_expansion",
+        # Unused price index (replaced by trigram for LIKE queries)
+        "idx_cardmarket_price_price",
+    ]
+    for idx in duplicate_indexes:
+        cur.execute(f"DROP INDEX IF EXISTS {idx};")
+
+    # -------------------------------------------------------------------------
+    # 2. Remove orphan staging tables
+    # -------------------------------------------------------------------------
+    cur.execute("DROP TABLE IF EXISTS cards_new CASCADE;")
+    cur.execute("DROP TABLE IF EXISTS cardmarket_price_new CASCADE;")
+
+    # -------------------------------------------------------------------------
+    # 3. Add index on printed_name for foreign language card lookups
+    #    The query `data->>'printed_name' = X` was doing full seq scans (5s+)
+    # -------------------------------------------------------------------------
+    cur.execute("SELECT to_regclass('public.cards')")
+    row = cur.fetchone()
+    if row and row[0] is not None:
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_cards_printed_name "
+            "ON cards ((data->>'printed_name'));"
+        )
+
+    # -------------------------------------------------------------------------
+    # 4. Add trigram index on cardmarket_price.normalized_name for LIKE queries
+    #    Used for double-faced card price lookups with wildcards
+    # -------------------------------------------------------------------------
+    cur.execute("SELECT to_regclass('public.cardmarket_price')")
+    row = cur.fetchone()
+    if row and row[0] is not None:
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name_trgm "
+            "ON cardmarket_price USING gin(normalized_name gin_trgm_ops);"
+        )
+
+
 MIGRATIONS: List[Migration] = [
     Migration(1, "init", _migration_001_init),
     Migration(2, "cards_indexes", _migration_002_cards_indexes),
     Migration(3, "performance_indexes", _migration_003_performance_indexes),
+    Migration(4, "cleanup_and_perf", _migration_004_cleanup_and_perf),
 ]
 
 
