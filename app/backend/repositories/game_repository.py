@@ -228,21 +228,20 @@ class ActionHistoryRepository:
         """Remove old actions beyond the max history limit."""
         with get_connection() as conn:
             with conn.cursor() as cur:
+                # Use CTE for better performance than correlated subquery
                 cur.execute(
                     """
+                    WITH threshold AS (
+                        SELECT id FROM action_history
+                        WHERE game_id = %s
+                        ORDER BY id DESC
+                        LIMIT 1 OFFSET %s
+                    )
                     DELETE FROM action_history
                     WHERE game_id = %s
-                    AND id < (
-                        SELECT COALESCE(
-                            (SELECT id FROM action_history
-                             WHERE game_id = %s
-                             ORDER BY id DESC
-                             LIMIT 1 OFFSET %s),
-                            0
-                        )
-                    )
+                    AND id < COALESCE((SELECT id FROM threshold), 0)
                 """,
-                    (game_id, game_id, self.MAX_HISTORY - 1),
+                    (game_id, self.MAX_HISTORY - 1, game_id),
                 )
             conn.commit()
 

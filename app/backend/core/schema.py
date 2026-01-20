@@ -275,9 +275,69 @@ def _migration_002_cards_indexes(cur: psycopg.Cursor) -> None:
     )
 
 
+def _migration_003_performance_indexes(cur: psycopg.Cursor) -> None:
+    """Add performance indexes identified by DBA analysis.
+
+    - idx_cards_name: Exact name lookups in _lookup_local_card
+    - idx_cards_cmc: Filtering by mana cost
+    - idx_chat_messages_game_recorded: Optimized ORDER BY for chat history
+    - sets_cache: Materialized view for list_local_sets (6000x speedup)
+    - cardmarket_price indexes: Restored after table swap
+    """
+    # Check if cards table exists before creating indexes
+    cur.execute("SELECT to_regclass('public.cards')")
+    row = cur.fetchone()
+    if row and row[0] is not None:
+        # Index on cards.name for exact name lookups (fallback in _lookup_local_card)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);")
+
+        # Index on cards.cmc for filtering by mana cost
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_cmc ON cards(cmc);")
+
+        # Materialized view for sets (replaces expensive DISTINCT ON query)
+        cur.execute(
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS sets_cache AS
+            SELECT DISTINCT ON (set)
+                set as code,
+                set_name as name,
+                data->>'set_type' AS set_type,
+                released_at,
+                data->>'icon_svg_uri' AS icon_svg_uri
+            FROM cards
+            WHERE set IS NOT NULL AND set <> ''
+            ORDER BY set, released_at DESC;
+            """
+        )
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_cache_code ON sets_cache (code);"
+        )
+
+    # Cardmarket price indexes (may be missing after table swap)
+    cur.execute("SELECT to_regclass('public.cardmarket_price')")
+    row = cur.fetchone()
+    if row and row[0] is not None:
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name "
+            "ON cardmarket_price (normalized_name);"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_id_expansion "
+            "ON cardmarket_price (id_expansion);"
+        )
+
+    # Composite index for chat messages ORDER BY optimization
+    # Replaces simple idx_chat_messages_game_id for queries with ORDER BY recorded_at DESC
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chat_messages_game_recorded "
+        "ON chat_messages (game_id, recorded_at DESC);"
+    )
+
+
 MIGRATIONS: List[Migration] = [
     Migration(1, "init", _migration_001_init),
     Migration(2, "cards_indexes", _migration_002_cards_indexes),
+    Migration(3, "performance_indexes", _migration_003_performance_indexes),
 ]
 
 

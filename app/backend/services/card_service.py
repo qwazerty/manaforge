@@ -320,22 +320,41 @@ class CardService:
                 return [row[0] for row in cur.fetchall() if isinstance(row[0], dict)]
 
     def list_local_sets(self) -> List[Dict[str, Any]]:
-        """Return available sets from the oracle table (no in-memory caching)."""
+        """Return available sets from the sets_cache materialized view.
+        
+        Falls back to the expensive DISTINCT ON query if the view doesn't exist.
+        """
+        view_exists = False
         with db.get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT DISTINCT ON (set)
-                        set,
-                        set_name,
-                        data->>'set_type' AS set_type,
-                        released_at,
-                        data->>'icon_svg_uri' AS icon_svg_uri
-                    FROM cards
-                    WHERE set IS NOT NULL AND set <> ''
-                    ORDER BY set, released_at DESC
-                    """
-                )
+                # Check if materialized view exists
+                cur.execute("SELECT to_regclass('public.sets_cache')")
+                view_exists = cur.fetchone()[0] is not None
+
+                if view_exists:
+                    # Fast path: use materialized view (~0.2ms vs ~1000ms)
+                    cur.execute(
+                        """
+                        SELECT code, name, set_type, released_at, icon_svg_uri
+                        FROM sets_cache
+                        ORDER BY released_at DESC NULLS LAST
+                        """
+                    )
+                else:
+                    # Fallback: expensive query (for fresh installs before migration)
+                    cur.execute(
+                        """
+                        SELECT DISTINCT ON (set)
+                            set,
+                            set_name,
+                            data->>'set_type' AS set_type,
+                            released_at,
+                            data->>'icon_svg_uri' AS icon_svg_uri
+                        FROM cards
+                        WHERE set IS NOT NULL AND set <> ''
+                        ORDER BY set, released_at DESC
+                        """
+                    )
                 rows = cur.fetchall()
 
         results: List[Dict[str, Any]] = []
@@ -350,7 +369,11 @@ class CardService:
                 }
             )
 
-        return sorted(results, key=lambda s: s.get("released_at") or "", reverse=True)
+        # Already sorted by the query if using view, but sort anyway for fallback
+        if not view_exists:
+            results.sort(key=lambda s: s.get("released_at") or "", reverse=True)
+
+        return results
 
     def _generate_deck_identity(
         self, preferred_name: Optional[str] = None

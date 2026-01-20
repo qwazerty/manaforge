@@ -202,19 +202,27 @@ def prepare_staging_schema(conn: psycopg.Connection) -> None:
 
 
 def create_indexes_on_staging(conn: psycopg.Connection) -> None:
-    """Create indexes on staging tables after data import for better performance."""
+    """Create indexes on staging tables after data import for better performance.
+    
+    Note: Index names use the final table names (not _new suffix) so they remain
+    consistent after the table swap. PostgreSQL keeps index names unchanged during
+    ALTER TABLE RENAME.
+    """
 
     stmts = [
         "CREATE EXTENSION IF NOT EXISTS pg_trgm;",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name ON cards_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name_trgm ON cards_new USING gin (normalized_name gin_trgm_ops);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_oracle_id ON cards_new (oracle_id);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_set ON cards_new (set);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_rarity ON cards_new (rarity);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_new_cmc ON cards_new (cmc);",
-        "CREATE INDEX IF NOT EXISTS idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cmp_new_price ON cardmarket_price_new (price);",
-        "CREATE INDEX IF NOT EXISTS idx_cmp_new_expansion ON cardmarket_price_new (id_expansion);",
+        # Cards table indexes (on cards_new, will become cards after swap)
+        "CREATE INDEX IF NOT EXISTS idx_cards_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_normalized_name_trgm ON cards_new USING gin (normalized_name gin_trgm_ops);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_oracle_id ON cards_new (oracle_id);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_set ON cards_new (set);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_rarity ON cards_new (rarity);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_cmc ON cards_new (cmc);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_name ON cards_new (name);",
+        # Cardmarket price indexes (on cardmarket_price_new, will become cardmarket_price after swap)
+        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name ON cardmarket_price_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_price ON cardmarket_price_new (price);",
+        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_id_expansion ON cardmarket_price_new (id_expansion);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
@@ -246,6 +254,14 @@ def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
 
         # analyze the new table for query planner optimization
         cur.execute(sql.SQL("ANALYZE {}").format(base_id))
+
+        # Refresh materialized views that depend on cards table
+        if base == "cards":
+            cur.execute("SELECT to_regclass('public.sets_cache')")
+            row = cur.fetchone()
+            if row and row[0] is not None:
+                print("Refreshing sets_cache materialized view...")
+                cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY sets_cache")
     conn.commit()
 
 
