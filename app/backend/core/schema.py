@@ -232,8 +232,52 @@ def _migration_001_init(cur: psycopg.Cursor) -> None:
     )
 
 
+def _migration_002_cards_indexes(cur: psycopg.Cursor) -> None:
+    """Add indexes to the cards table for faster lookups.
+
+    The cards table is created by update_data.py, but indexes may be missing
+    after table swaps. This migration ensures the indexes exist.
+    """
+    # Check if cards table exists before creating indexes
+    cur.execute("SELECT to_regclass('public.cards')")
+    row = cur.fetchone()
+    if row is None or row[0] is None:
+        # Table doesn't exist yet, skip index creation
+        return
+
+    # Enable pg_trgm extension for trigram similarity searches
+    cur.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+
+    # Index on oracle_id for fast lookups by oracle ID
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cards_oracle_id ON cards(oracle_id);"
+    )
+
+    # Index on normalized_name for exact name lookups
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cards_normalized_name ON cards(normalized_name);"
+    )
+
+    # Trigram index for fuzzy/partial name searches
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cards_normalized_name_trgm "
+        "ON cards USING gin(normalized_name gin_trgm_ops);"
+    )
+
+    # Index on set code for filtering by set
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set);"
+    )
+
+    # Index on rarity for filtering
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cards_rarity ON cards(rarity);"
+    )
+
+
 MIGRATIONS: List[Migration] = [
     Migration(1, "init", _migration_001_init),
+    Migration(2, "cards_indexes", _migration_002_cards_indexes),
 ]
 
 

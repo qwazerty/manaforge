@@ -89,6 +89,42 @@ async def get_card(
     return card
 
 
+@router.post("/cards/batch")
+async def get_cards_batch(
+    request: Dict[str, Any],
+    card_service: CardService = Depends(get_card_service),
+) -> Dict[str, Any]:
+    """
+    Get multiple cards by their IDs in a single request.
+
+    Request body:
+        {"card_ids": ["id1", "id2", ...]}
+
+    Returns:
+        {"cards": {card_id: card_data, ...}, "missing": [ids not found]}
+    """
+    card_ids = request.get("card_ids", [])
+    if not isinstance(card_ids, list):
+        raise HTTPException(status_code=400, detail="card_ids must be a list")
+
+    if len(card_ids) > 200:
+        raise HTTPException(status_code=400, detail="Maximum 200 cards per batch")
+
+    cards: Dict[str, Dict[str, Any]] = {}
+    missing: list = []
+
+    for card_id in card_ids:
+        if not isinstance(card_id, str):
+            continue
+        card = await card_service.get_card(card_id)
+        if card:
+            cards[card_id] = card.model_dump(mode="json")
+        else:
+            missing.append(card_id)
+
+    return {"cards": cards, "missing": missing}
+
+
 @router.post("/games")
 async def create_game(
     request: Optional[Dict[str, Any]] = None, game_id: Optional[str] = Query(None)

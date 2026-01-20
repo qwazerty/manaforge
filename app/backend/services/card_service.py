@@ -101,14 +101,25 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
 
     with db.get_connection() as conn:
         with conn.cursor() as cur:
+            # First try exact id match (uses primary key index)
             cur.execute(
-                "SELECT data FROM cards WHERE id = %s OR oracle_id = %s LIMIT 1",
-                (name, name),
+                "SELECT data FROM cards WHERE id = %s LIMIT 1",
+                (name,),
             )
             row = cur.fetchone()
             if row and isinstance(row[0], dict):
                 return row[0]
 
+            # Then try oracle_id match (uses idx_cards_oracle_id)
+            cur.execute(
+                "SELECT data FROM cards WHERE oracle_id = %s LIMIT 1",
+                (name,),
+            )
+            row = cur.fetchone()
+            if row and isinstance(row[0], dict):
+                return row[0]
+
+            # Then try normalized_name match
             if normalized:
                 cur.execute(
                     "SELECT data FROM cards WHERE normalized_name = %s",
@@ -118,6 +129,7 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
                 if rows:
                     return choose_with_booster_priority(rows)
 
+            # Finally try exact name match
             cur.execute("SELECT data FROM cards WHERE name = %s LIMIT 1", (name,))
             row = cur.fetchone()
             if row and isinstance(row[0], dict):
