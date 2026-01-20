@@ -1749,6 +1749,46 @@
         transition: all 0.15s ease;
     }
 
+    .arena-opponent-mini-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "name focus"
+            "hand hand";
+        column-gap: 0.75rem;
+        row-gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .arena-opponent-mini-name {
+        @apply min-w-0;
+        grid-area: name;
+    }
+
+    .arena-opponent-mini-hand {
+        @apply min-w-0;
+        grid-area: hand;
+    }
+
+    .arena-opponent-mini-header .arena-opponent-focus-btn {
+        grid-area: focus;
+        justify-self: end;
+    }
+
+    .arena-opponent-mini--compact .arena-opponent-mini-header {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+        grid-template-areas: "name hand focus";
+        row-gap: 0;
+        margin-bottom: 0.25rem;
+    }
+
+    .arena-opponent-mini--compact .arena-opponent-mini-hand {
+        @apply justify-start;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
     .arena-opponent-mini .card-battlefield {
         width: 90px;
         height: 126px;

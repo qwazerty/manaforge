@@ -940,19 +940,36 @@
         bind:this={gameBoardEl}>
         {#if boardData}
             {@const board = boardData}
+            {@const opponentTotal = Array.isArray(board.opponents) ? board.opponents.length : opponentCount}
+            {@const compactOpponents = opponentTotal >= 3}
             <div class="space-y-3">
                 {#if board.focusedOpponent}
                     <div
-                        class={`arena-card rounded-lg p-3 compact-zones ${board.focusedOpponent.isActive ? 'opponent-zone-active-turn' : ''}`}
+                        class={`arena-card rounded-lg p-3 compact-zones ${compactOpponents ? 'arena-opponent-mini--compact' : ''} ${board.focusedOpponent.isActive ? 'opponent-zone-active-turn' : ''}`}
                         data-player-zone="opponent"
                         data-player-owner={board.focusedOpponent.ownerId}>
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-3">
+                        <div class="arena-opponent-mini-header">
+                            <div class="arena-opponent-mini-name">
                                 {#if opponentCount > 1}
                                     <span class="font-semibold text-arena-accent">
                                         {board.focusedOpponent.displayName}
                                     </span>
                                 {/if}
+                            </div>
+                            <div
+                                class="opponent-hand-zone arena-opponent-mini-hand space-x-1 overflow-x-auto py-1"
+                                role="region"
+                                aria-label={`${board.focusedOpponent.displayName || 'Opponent'} hand`}
+                                data-card-count={board.focusedOpponent.hand.cardCount}
+                                data-player-owner={board.focusedOpponent.ownerId}
+                                data-hand-mode={board.focusedOpponent.hand.mode}
+                                data-zone-type="opponent-hand"
+                                data-zone-owner={board.focusedOpponent.ownerId}
+                                ondragover={handleZoneDragOver}
+                                ondragleave={handleZoneDragLeave}
+                                ondrop={(event) => handleZoneDrop(event, 'hand')}>
+                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                {@html board.focusedOpponent.hand.html}
                             </div>
                             {#if Array.isArray(board.opponents) && board.opponents.length > 1}
                                 <button
@@ -962,21 +979,6 @@
                                     Show all
                                 </button>
                             {/if}
-                        </div>
-                        <div
-                            class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
-                            role="region"
-                            aria-label={`${board.focusedOpponent.displayName || 'Opponent'} hand`}
-                            data-card-count={board.focusedOpponent.hand.cardCount}
-                            data-player-owner={board.focusedOpponent.ownerId}
-                            data-hand-mode={board.focusedOpponent.hand.mode}
-                            data-zone-type="opponent-hand"
-                            data-zone-owner={board.focusedOpponent.ownerId}
-                            ondragover={handleZoneDragOver}
-                            ondragleave={handleZoneDragLeave}
-                            ondrop={(event) => handleZoneDrop(event, 'hand')}>
-                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                            {@html board.focusedOpponent.hand.html}
                         </div>
                         <div class="battlefield-layout battlefield-layout-opponent">
                             {#each board.focusedOpponent.battlefieldZones as zone (zone.key)}
@@ -1006,16 +1008,31 @@
                     <div class={getOpponentGridClass(board.opponents.length)}>
                         {#each board.opponents as opponent (opponent.ownerId)}
                             <div
-                                class={`arena-card rounded-lg p-3 arena-opponent-mini ${opponent.isActive ? 'opponent-zone-active-turn' : ''}`}
+                                class={`arena-card rounded-lg p-3 arena-opponent-mini ${compactOpponents ? 'arena-opponent-mini--compact' : ''} ${opponent.isActive ? 'opponent-zone-active-turn' : ''}`}
                                 data-player-zone="opponent"
                                 data-player-owner={opponent.ownerId}>
-                                <div class="flex items-center justify-between gap-3 mb-2">
-                                    <div class="flex flex-col">
+                                <div class="arena-opponent-mini-header">
+                                    <div class="arena-opponent-mini-name">
                                         {#if opponentCount > 1}
                                             <span class="font-semibold text-arena-accent truncate max-w-[140px]">
                                                 {opponent.displayName}
                                             </span>
                                         {/if}
+                                    </div>
+                                    <div
+                                        class="opponent-hand-zone arena-opponent-mini-hand space-x-1 overflow-x-auto py-1"
+                                        role="region"
+                                        aria-label={`${opponent.displayName || 'Opponent'} hand`}
+                                        data-card-count={opponent.hand.cardCount}
+                                        data-player-owner={opponent.ownerId}
+                                        data-hand-mode={opponent.hand.mode}
+                                        data-zone-type="opponent-hand"
+                                        data-zone-owner={opponent.ownerId}
+                                        ondragover={handleZoneDragOver}
+                                        ondragleave={handleZoneDragLeave}
+                                        ondrop={(event) => handleZoneDrop(event, 'hand')}>
+                                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                        {@html opponent.hand.html}
                                     </div>
                                     <button
                                         class="arena-opponent-focus-btn"
@@ -1023,21 +1040,6 @@
                                         onclick={() => toggleOpponentFocus(opponent.ownerId)}>
                                         Focus
                                     </button>
-                                </div>
-                                <div
-                                    class="opponent-hand-zone space-x-1 overflow-x-auto py-1"
-                                    role="region"
-                                    aria-label={`${opponent.displayName || 'Opponent'} hand`}
-                                    data-card-count={opponent.hand.cardCount}
-                                    data-player-owner={opponent.ownerId}
-                                    data-hand-mode={opponent.hand.mode}
-                                    data-zone-type="opponent-hand"
-                                    data-zone-owner={opponent.ownerId}
-                                    ondragover={handleZoneDragOver}
-                                    ondragleave={handleZoneDragLeave}
-                                    ondrop={(event) => handleZoneDrop(event, 'hand')}>
-                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                                    {@html opponent.hand.html}
                                 </div>
                                 <div class="battlefield-layout battlefield-layout-opponent battlefield-layout-mini">
                                     {#each opponent.battlefieldZones as zone (zone.key)}
