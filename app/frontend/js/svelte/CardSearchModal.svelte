@@ -499,31 +499,39 @@
 
         isSubmitting = true;
 
+        const actionType = tokenOnly ? 'create_token' : 'search_and_add_card';
         const payload = tokenOnly
             ? {
-                  action_type: 'create_token',
-                  player_id: playerId,
                   scryfall_id: card.scryfall_id
               }
             : {
-                  action_type: 'search_and_add_card',
-                  player_id: playerId,
                   card_name: card.name,
                   target_zone: targetZone
               };
 
         try {
-            const response = await fetch(`/api/v1/games/${gameId}/action`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // Use GameActions.performGameAction to route through WebSocket if available
+            if (typeof window.GameActions?.performGameAction === 'function') {
+                window.GameActions.performGameAction(actionType, payload);
+                closeModal();
+            } else {
+                // Fallback to direct HTTP call if GameActions is not available
+                const response = await fetch(`/api/v1/games/${gameId}/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action_type: actionType,
+                        player_id: playerId,
+                        ...payload
+                    })
+                });
 
-            if (!response.ok) {
-                throw new Error('Request failed');
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                closeModal();
             }
-
-            closeModal();
         } catch (err) {
             console.error('[CardSearchModal] add card failed', err);
             error = 'Unable to add this card right now.';

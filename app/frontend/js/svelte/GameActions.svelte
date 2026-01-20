@@ -524,7 +524,14 @@
                     break;
                 case 'look_top_library':
                 case 'reveal_top_library':
+                case 'create_token':
+                case 'search_and_add_card':
                     endpoint = `/api/v1/games/${gameId}/action`;
+                    requestData = {
+                        action_type: actionType,
+                        player_id: currentSelectedPlayer,
+                        ...actionData
+                    };
                     break;
                 default:
                     throw new Error(`Unknown action type: ${actionType}`);
