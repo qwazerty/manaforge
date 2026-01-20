@@ -526,6 +526,9 @@
                 case 'reveal_top_library':
                 case 'create_token':
                 case 'search_and_add_card':
+                case 'coin_flip_choice':
+                case 'keep_hand':
+                case 'mulligan':
                     endpoint = `/api/v1/games/${gameId}/action`;
                     requestData = {
                         action_type: actionType,
