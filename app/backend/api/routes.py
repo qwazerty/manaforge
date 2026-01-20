@@ -27,7 +27,7 @@ from app.backend.api import action_handlers  # noqa: F401 - handlers are registe
 # fmt: on
 
 from app.backend.services.format_stats_service import get_cards_for_format
-from app.backend.services.pricing_service import get_memory_usage, lookup_prices
+from app.backend.services.pricing_service import get_pricing_status, lookup_prices
 
 
 router = APIRouter(prefix="/api/v1")
@@ -970,12 +970,12 @@ async def lookup_card_prices(request: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.get("/pricing/status")
-async def get_pricing_status() -> Dict[str, Any]:
+async def pricing_status() -> Dict[str, Any]:
     """
-    Get the status of the pricing data cache.
+    Get the status of the pricing data.
     Useful for debugging and monitoring.
     """
-    return get_memory_usage()
+    return get_pricing_status()
 
 
 @router.get("/formats/stats")
