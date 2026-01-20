@@ -204,33 +204,52 @@ def prepare_staging_schema(conn: psycopg.Connection) -> None:
 def create_indexes_on_staging(conn: psycopg.Connection) -> None:
     """Create indexes on staging tables after data import for better performance.
     
-    Note: Index names use the final table names (not _new suffix) so they remain
-    consistent after the table swap. PostgreSQL keeps index names unchanged during
-    ALTER TABLE RENAME.
+    Index names use _new suffix to avoid conflicts with existing indexes on the
+    current production tables. After the swap, rename_indexes_after_swap() will
+    rename them to their final names.
     """
 
     stmts = [
         "CREATE EXTENSION IF NOT EXISTS pg_trgm;",
-        # Cards table indexes (on cards_new, will become cards after swap)
-        "CREATE INDEX IF NOT EXISTS idx_cards_normalized_name ON cards_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_normalized_name_trgm ON cards_new USING gin (normalized_name gin_trgm_ops);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_oracle_id ON cards_new (oracle_id);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_set ON cards_new (set);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_rarity ON cards_new (rarity);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_cmc ON cards_new (cmc);",
-        "CREATE INDEX IF NOT EXISTS idx_cards_name ON cards_new (name);",
-        # Index for foreign language card lookups (printed_name in JSONB)
-        "CREATE INDEX IF NOT EXISTS idx_cards_printed_name ON cards_new ((data->>'printed_name'));",
-        # Cardmarket price indexes (on cardmarket_price_new, will become cardmarket_price after swap)
-        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name ON cardmarket_price_new (normalized_name);",
-        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_id_expansion ON cardmarket_price_new (id_expansion);",
-        # Trigram index for LIKE queries on double-faced card names
-        "CREATE INDEX IF NOT EXISTS idx_cardmarket_price_normalized_name_trgm ON cardmarket_price_new USING gin (normalized_name gin_trgm_ops);",
+        # Cards table indexes (on cards_new, using _new suffix to avoid conflicts)
+        "CREATE INDEX idx_cards_new_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX idx_cards_new_normalized_name_trgm ON cards_new USING gin (normalized_name gin_trgm_ops);",
+        "CREATE INDEX idx_cards_new_oracle_id ON cards_new (oracle_id);",
+        "CREATE INDEX idx_cards_new_set ON cards_new (set);",
+        "CREATE INDEX idx_cards_new_rarity ON cards_new (rarity);",
+        "CREATE INDEX idx_cards_new_cmc ON cards_new (cmc);",
+        "CREATE INDEX idx_cards_new_name ON cards_new (name);",
+        "CREATE INDEX idx_cards_new_printed_name ON cards_new ((data->>'printed_name'));",
+        # Cardmarket price indexes (on cardmarket_price_new)
+        "CREATE INDEX idx_cmp_new_normalized_name ON cardmarket_price_new (normalized_name);",
+        "CREATE INDEX idx_cmp_new_id_expansion ON cardmarket_price_new (id_expansion);",
+        "CREATE INDEX idx_cmp_new_normalized_name_trgm ON cardmarket_price_new USING gin (normalized_name gin_trgm_ops);",
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
             cur.execute(stmt)
     conn.commit()
+
+
+# Mapping of staging index names to final names after swap
+_CARDS_INDEX_RENAMES = [
+    ("cards_new_pkey", "cards_pkey"),
+    ("idx_cards_new_normalized_name", "idx_cards_normalized_name"),
+    ("idx_cards_new_normalized_name_trgm", "idx_cards_normalized_name_trgm"),
+    ("idx_cards_new_oracle_id", "idx_cards_oracle_id"),
+    ("idx_cards_new_set", "idx_cards_set"),
+    ("idx_cards_new_rarity", "idx_cards_rarity"),
+    ("idx_cards_new_cmc", "idx_cards_cmc"),
+    ("idx_cards_new_name", "idx_cards_name"),
+    ("idx_cards_new_printed_name", "idx_cards_printed_name"),
+]
+
+_CARDMARKET_INDEX_RENAMES = [
+    ("cardmarket_price_new_pkey", "cardmarket_price_pkey"),
+    ("idx_cmp_new_normalized_name", "idx_cardmarket_price_normalized_name"),
+    ("idx_cmp_new_id_expansion", "idx_cardmarket_price_id_expansion"),
+    ("idx_cmp_new_normalized_name_trgm", "idx_cardmarket_price_normalized_name_trgm"),
+]
 
 
 def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
@@ -240,6 +259,14 @@ def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
     base_old_id = sql.Identifier(f"{base}_old")
     staging_id = sql.Identifier(staging)
 
+    # Determine which index renames to apply
+    if base == "cards":
+        index_renames = _CARDS_INDEX_RENAMES
+    elif base == "cardmarket_price":
+        index_renames = _CARDMARKET_INDEX_RENAMES
+    else:
+        index_renames = []
+
     with conn.cursor() as cur:
         exists = _table_exists(cur, base)
 
@@ -248,17 +275,26 @@ def swap_tables(conn: psycopg.Connection, base: str, staging: str) -> None:
         if base == "cards":
             cur.execute("DROP MATERIALIZED VIEW IF EXISTS sets_cache CASCADE;")
 
-        # drop lingering old table to avoid rename collision
+        # drop lingering old table to avoid rename collision (also drops its indexes)
         cur.execute(sql.SQL("DROP TABLE IF EXISTS {} CASCADE").format(base_old_id))
 
-        # rename current base to _old if it exists
+        # rename current base to _old if it exists (its indexes go with it)
         if exists:
             cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(base_id, sql.Identifier(f"{base}_old")))
 
         # move staging into place
         cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(staging_id, base_id))
 
-        # drop old version if it was present
+        # Rename indexes from _new names to final names
+        for old_name, new_name in index_renames:
+            cur.execute(
+                sql.SQL("ALTER INDEX IF EXISTS {} RENAME TO {}").format(
+                    sql.Identifier(old_name),
+                    sql.Identifier(new_name)
+                )
+            )
+
+        # drop old version if it was present (also drops old indexes)
         cur.execute(sql.SQL("DROP TABLE IF EXISTS {} CASCADE").format(base_old_id))
 
         # analyze the new table for query planner optimization

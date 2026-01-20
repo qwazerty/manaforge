@@ -326,7 +326,7 @@ def _migration_004_cleanup_and_perf(cur: psycopg.Cursor) -> None:
     """Cleanup duplicate indexes and add missing performance indexes.
 
     Identified issues from DBA analysis:
-    1. Duplicate indexes from table swap mechanism (idx_*_new_*) - never used
+    1. Orphan indexes from old table swap mechanism (various naming conventions)
     2. Orphan staging tables that were not cleaned up
     3. Missing index on cards.data->>'printed_name' - causes 5s seq scans
     4. Missing trigram index on cardmarket_price for LIKE queries on DFC names
@@ -336,23 +336,22 @@ def _migration_004_cleanup_and_perf(cur: psycopg.Cursor) -> None:
     exist for databases that haven't been re-imported yet.
     """
     # -------------------------------------------------------------------------
-    # 1. Remove duplicate/orphan indexes from table swap mechanism
-    #    These have 0 scans and waste ~9.2 MB of disk space
+    # 1. Remove orphan indexes from old table swap mechanism
+    #    These may have various naming conventions from previous versions
     # -------------------------------------------------------------------------
-    duplicate_indexes = [
-        # cards table duplicates
+    orphan_indexes = [
+        # Old naming convention duplicates (without _new in staging)
         "idx_cards_new_cmc",
         "idx_cards_new_normalized_name",
         "idx_cards_new_rarity",
         "idx_cards_new_set",
-        # cardmarket_price table duplicates
         "idx_cmp_new_price",
         "idx_cmp_new_normalized_name",
         "idx_cmp_new_expansion",
-        # Unused price index (replaced by trigram for LIKE queries)
+        # Unused price index (not useful for queries)
         "idx_cardmarket_price_price",
     ]
-    for idx in duplicate_indexes:
+    for idx in orphan_indexes:
         cur.execute(f"DROP INDEX IF EXISTS {idx};")
 
     # -------------------------------------------------------------------------
