@@ -132,7 +132,8 @@ def fetch_cardmarket_payloads() -> Dict[str, List[Dict[str, Any]]]:
 
 def _table_exists(cur: psycopg.Cursor, name: str) -> bool:
     cur.execute("SELECT to_regclass(%s)", (name,))
-    return cur.fetchone()[0] is not None
+    row = cur.fetchone()
+    return row is not None and row[0] is not None
 
 
 def prepare_staging_schema(conn: psycopg.Connection) -> None:
@@ -197,7 +198,7 @@ def prepare_staging_schema(conn: psycopg.Connection) -> None:
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
-            cur.execute(stmt)
+            cur.execute(sql.SQL(stmt))  # type: ignore[arg-type]
     conn.commit()
 
 
@@ -227,7 +228,7 @@ def create_indexes_on_staging(conn: psycopg.Connection) -> None:
     ]
     with conn.cursor() as cur:
         for stmt in stmts:
-            cur.execute(stmt)
+            cur.execute(sql.SQL(stmt))  # type: ignore[arg-type]
     conn.commit()
 
 
@@ -394,6 +395,8 @@ def build_cardmarket_rows(
     products_by_id = {}
     for p in products:
         pid = p.get("idProduct")
+        if pid is None:
+            continue
         try:
             pid_int = int(pid)
         except (TypeError, ValueError):

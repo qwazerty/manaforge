@@ -352,7 +352,7 @@ def _migration_004_cleanup_and_perf(cur: psycopg.Cursor) -> None:
         "idx_cardmarket_price_price",
     ]
     for idx in orphan_indexes:
-        cur.execute(f"DROP INDEX IF EXISTS {idx};")
+        cur.execute(sql.SQL("DROP INDEX IF EXISTS {}").format(sql.Identifier(idx)))
 
     # -------------------------------------------------------------------------
     # 2. Remove orphan staging tables
