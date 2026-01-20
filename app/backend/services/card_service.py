@@ -129,11 +129,31 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
                 if rows:
                     return choose_with_booster_priority(rows)
 
+                # Try prefix match for double-faced cards (DFC)
+                # e.g. "ajani nacatl pariah" matches "ajani nacatl pariah ajani nacatl avenger"
+                cur.execute(
+                    "SELECT data FROM cards WHERE normalized_name LIKE %s",
+                    (normalized + " %",),
+                )
+                rows = [r[0] for r in cur.fetchall() if isinstance(r[0], dict)]
+                if rows:
+                    return choose_with_booster_priority(rows)
+
             # Finally try exact name match
             cur.execute("SELECT data FROM cards WHERE name = %s LIMIT 1", (name,))
             row = cur.fetchone()
             if row and isinstance(row[0], dict):
                 return row[0]
+
+            # Try printed_name match (for promo/special versions with different printed names)
+            # e.g. "Fire-Brained Scheme" is the printed_name for "Heroes' Hangout"
+            cur.execute(
+                "SELECT data FROM cards WHERE data->>'printed_name' = %s",
+                (name,),
+            )
+            rows = [r[0] for r in cur.fetchall() if isinstance(r[0], dict)]
+            if rows:
+                return choose_with_booster_priority(rows)
 
     return None
 
