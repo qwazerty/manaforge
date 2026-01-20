@@ -2,7 +2,6 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 from app.backend.main import app
 
@@ -27,12 +26,8 @@ class TestAPIEndpoints:
         api_routes = [path for path in api_paths if path.startswith("/api")]
         assert len(api_routes) > 0
 
-    @patch("app.backend.services.card_service._load_local_oracle_data")
-    def test_card_search_endpoint(self, mock_load, client):
+    def test_card_search_endpoint(self, client):
         """Test the card search endpoint."""
-        # Mock the load function to prevent database connection
-        mock_load.return_value = None
-
         # Test the endpoint
         response = client.get("/api/v1/cards/search?q=lightning")
 

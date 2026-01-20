@@ -53,7 +53,8 @@ def test_record_action_history_enriches_turn_metadata():
         },
     )
     assert entry is not None
-    assert state.action_history == []
+    # With use_db=False, action history is not persisted but entry is still enriched
+    assert engine.get_action_history(state.id) == []
     assert entry["phase"] == GamePhase.MAIN1.value
     assert entry["turn"] == 5
     assert entry["turn_player_id"] == "player2"
@@ -78,7 +79,8 @@ def test_record_action_history_preserves_existing_metadata():
         },
     )
     assert entry is not None
-    assert state.action_history == []
+    # With use_db=False, action history is not persisted but entry is still enriched
+    assert engine.get_action_history(state.id) == []
     assert entry["phase"] == "custom-phase"
     assert entry["turn"] == 42
     assert entry["turn_player_id"] == "override"
