@@ -205,7 +205,10 @@ def create_indexes_on_staging(conn: psycopg.Connection) -> None:
     """Create indexes on staging tables after data import for better performance."""
 
     stmts = [
+        "CREATE EXTENSION IF NOT EXISTS pg_trgm;",
         "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name ON cards_new (normalized_name);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_normalized_name_trgm ON cards_new USING gin (normalized_name gin_trgm_ops);",
+        "CREATE INDEX IF NOT EXISTS idx_cards_new_oracle_id ON cards_new (oracle_id);",
         "CREATE INDEX IF NOT EXISTS idx_cards_new_set ON cards_new (set);",
         "CREATE INDEX IF NOT EXISTS idx_cards_new_rarity ON cards_new (rarity);",
         "CREATE INDEX IF NOT EXISTS idx_cards_new_cmc ON cards_new (cmc);",

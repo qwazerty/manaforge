@@ -1,4 +1,4 @@
-"""Card service for managing Magic cards using the local oracle dump."""
+"""Card service for managing Magic cards using the database oracle data."""
 
 import re
 import time
@@ -24,98 +24,12 @@ from app.backend.utils.text import normalize_name as _normalize_name
 
 DeckEntry = Union[Tuple[int, str], Tuple[int, str, Optional[str]]]
 
-_LOCAL_ORACLE_CACHE: Dict[str, List[Dict[str, Any]]] = {}
-_LOCAL_ORACLE_CACHE_BY_ID: Dict[str, Dict[str, Any]] = {}
-_LOCAL_ORACLE_CACHE_BY_ORACLE_ID: Dict[str, Dict[str, Any]] = {}
-_LOCAL_ORACLE_LOADED = False
-
-
-def _load_local_oracle_data() -> None:
-    """Populate in-memory caches from Postgres cards table only."""
-
-    global _LOCAL_ORACLE_LOADED
-    if _LOCAL_ORACLE_LOADED:
-        return
-
-    def add_card(card: Dict[str, Any]) -> None:
-        def add_key(raw_name: Optional[str]) -> None:
-            key = _normalize_name(raw_name or "")
-            if not key:
-                return
-            bucket = _LOCAL_ORACLE_CACHE.setdefault(key, [])
-            bucket.append(card)
-
-        name = card.get("name")
-        printed_name = card.get("printed_name")
-
-        add_key(name)
-        add_key(printed_name)
-
-        face_names: List[str] = []
-        if isinstance(card.get("card_faces"), list):
-            for face in card["card_faces"]:
-                face_name = face.get("name")
-                printed_face_name = face.get("printed_name")
-                if isinstance(face_name, str):
-                    face_names.append(face_name)
-                if isinstance(printed_face_name, str):
-                    face_names.append(printed_face_name)
-
-        if isinstance(name, str) and "//" in name:
-            for part in name.split("//"):
-                face_names.append(part.strip())
-        if isinstance(printed_name, str) and "//" in printed_name:
-            for part in printed_name.split("//"):
-                face_names.append(part.strip())
-
-        for face_name in face_names:
-            add_key(face_name)
-
-        card_id = str(card.get("id") or "").strip()
-        if card_id and card_id not in _LOCAL_ORACLE_CACHE_BY_ID:
-            _LOCAL_ORACLE_CACHE_BY_ID[card_id] = card
-
-        oracle_id = str(card.get("oracle_id") or "").strip()
-        if oracle_id and oracle_id not in _LOCAL_ORACLE_CACHE_BY_ORACLE_ID:
-            _LOCAL_ORACLE_CACHE_BY_ORACLE_ID[oracle_id] = card
-
-    try:
-        with db.connect() as conn:
-            # Use server-side cursor to stream results and avoid memory spike
-            with conn.cursor(name="cards_loader") as cur:
-                cur.execute("SELECT data FROM cards")
-                row_count = 0
-                for (payload,) in cur:
-                    row_count += 1
-                    if isinstance(payload, dict):
-                        add_card(payload)
-                    else:
-                        raise RuntimeError("cards.data is not JSON")
-                if row_count == 0:
-                    raise RuntimeError("cards table is empty; run data import first")
-    except Exception as exc:  # pragma: no cover - startup fail fast
-        raise RuntimeError(f"Unable to load cards from database: {exc}") from exc
-
-    _LOCAL_ORACLE_LOADED = True
-
 
 def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
-    _load_local_oracle_data()
-    if not (
-        _LOCAL_ORACLE_CACHE
-        or _LOCAL_ORACLE_CACHE_BY_ID
-        or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID
-    ):
-        return None
     if not name:
         return None
 
     normalized = _normalize_name(name)
-    candidates = _LOCAL_ORACLE_CACHE.get(normalized, [])
-    if not candidates:
-        return _LOCAL_ORACLE_CACHE_BY_ID.get(
-            name
-        ) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(name)
 
     def latest(cards: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         def sort_key(card: Dict[str, Any]) -> datetime:
@@ -158,29 +72,24 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
                 result.append(card)
             return result
 
-        # Step 1: default filters (exclude rarity special, booster false, promo true)
         primary = filtered(cards)
         if primary:
             return latest(primary)
 
-        # Step 2: allow booster false
         allow_booster = filtered(cards, allow_booster=True)
         if allow_booster:
             return latest(allow_booster)
 
-        # Step 3: allow booster false
         allow_full_art = filtered(cards, allow_booster=True, allow_full_art=True)
         if allow_full_art:
             return latest(allow_full_art)
 
-        # Step 4: allow promo true
         allow_promo = filtered(
             cards, allow_full_art=True, allow_booster=True, allow_promo=True
         )
         if allow_promo:
             return latest(allow_promo)
 
-        # Step 5: allow rarity special
         allow_all = filtered(
             cards,
             allow_full_art=True,
@@ -190,57 +99,35 @@ def _lookup_local_card(name: str) -> Optional[Dict[str, Any]]:
         )
         return latest(allow_all)
 
-    # 1) printed_name match
-    printed_matches = [
-        card
-        for card in candidates
-        if _normalize_name(card.get("printed_name") or "") == normalized
-    ]
-    if printed_matches:
-        return choose_with_booster_priority(printed_matches)
+    with db.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT data FROM cards WHERE id = %s OR oracle_id = %s LIMIT 1",
+                (name, name),
+            )
+            row = cur.fetchone()
+            if row and isinstance(row[0], dict):
+                return row[0]
 
-    # Exclude entries that have printed_name if we didn't match it
-    candidates = [card for card in candidates if not card.get("printed_name")]
+            if normalized:
+                cur.execute(
+                    "SELECT data FROM cards WHERE normalized_name = %s",
+                    (normalized,),
+                )
+                rows = [r[0] for r in cur.fetchall() if isinstance(r[0], dict)]
+                if rows:
+                    return choose_with_booster_priority(rows)
 
-    # 2) flavor_name match
-    flavor_matches = [
-        card
-        for card in candidates
-        if _normalize_name(card.get("flavor_name") or "") == normalized
-    ]
-    if flavor_matches:
-        return choose_with_booster_priority(flavor_matches)
+            cur.execute("SELECT data FROM cards WHERE name = %s LIMIT 1", (name,))
+            row = cur.fetchone()
+            if row and isinstance(row[0], dict):
+                return row[0]
 
-    # Exclude entries that have flavor_name if we didn't match it
-    candidates = [card for card in candidates if not card.get("flavor_name")]
-
-    # 3) name match
-    name_matches = [
-        card
-        for card in candidates
-        if _normalize_name(card.get("name") or "") == normalized
-    ]
-    if name_matches:
-        return choose_with_booster_priority(name_matches)
-
-    # 4) card_faces fallback: match any face name
-    face_matches = []
-    for card in candidates:
-        faces = card.get("card_faces") or []
-        for face in faces:
-            if _normalize_name(face.get("name") or "") == normalized:
-                face_matches.append(card)
-                break
-    if face_matches:
-        return choose_with_booster_priority(face_matches)
-
-    return _LOCAL_ORACLE_CACHE_BY_ID.get(name) or _LOCAL_ORACLE_CACHE_BY_ORACLE_ID.get(
-        name
-    )
+    return None
 
 
 class CardService:
-    """Service for managing Magic cards using the local oracle data."""
+    """Service for managing Magic cards using the database oracle data."""
 
     _DEFAULT_HEADERS = {
         "User-Agent": "ManaForgeDeckImporter/1.0 (+https://manaforge.houke.fr/)"
@@ -251,7 +138,7 @@ class CardService:
         pass
 
     def get_card_data_from_oracle(self, identifier: str) -> Optional[Dict[str, Any]]:
-        """Retrieve card data strictly from the local oracle dump."""
+        """Retrieve card data strictly from the Postgres oracle table."""
         local_card = _lookup_local_card(identifier)
         if not local_card:
             return None
@@ -278,7 +165,6 @@ class CardService:
 
         def score(card: Dict[str, Any]) -> int:
             value = 0
-            # Prefer booster-legal, non-full-art, non-promo entries
             if card.get("booster") is False:
                 value -= 2
             else:
@@ -302,12 +188,8 @@ class CardService:
         exact: bool = False,
         set_code: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Search the local oracle dump for cards that match the query."""
+        """Search the Postgres oracle table for cards that match the query."""
         if not query or len(query.strip()) < 2:
-            return []
-
-        _load_local_oracle_data()
-        if not _LOCAL_ORACLE_CACHE:
             return []
 
         normalized_query = _normalize_name(query)
@@ -316,44 +198,64 @@ class CardService:
 
         normalized_set = (set_code or "").strip().lower() if set_code else None
 
+        conditions: List[str] = []
+        params: List[Any] = []
+
+        if exact:
+            conditions.append("normalized_name = %s")
+            params.append(normalized_query)
+        else:
+            conditions.append("normalized_name LIKE %s")
+            params.append(f"%{normalized_query}%")
+
+        if normalized_set:
+            conditions.append("set = %s")
+            params.append(normalized_set)
+
+        if tokens_only:
+            conditions.append("data->>'set_type' ILIKE %s")
+            params.append("%token%")
+
+        where_clause = " AND ".join(conditions) if conditions else "TRUE"
+
+        fetch_limit: Optional[int] = None
+        if limit and limit > 0:
+            fetch_limit = max(limit * 20, 200)
+
+        sql_query = (
+            "SELECT data, normalized_name FROM cards "
+            f"WHERE {where_clause} "
+            "ORDER BY normalized_name, released_at DESC"
+        )
+
+        if fetch_limit:
+            sql_query += " LIMIT %s"
+            params.append(fetch_limit)
+
+        buckets: Dict[str, List[Dict[str, Any]]] = {}
+        with db.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_query, params)
+                for data, name_key in cur.fetchall():
+                    if not isinstance(data, dict):
+                        continue
+                    key = str(name_key or _normalize_name(data.get("name") or ""))
+                    if not key:
+                        continue
+                    buckets.setdefault(key, []).append(data)
+
         results: List[Dict[str, Any]] = []
         seen: Set[str] = set()
         should_dedupe = not tokens_only
 
-        for name_key in sorted(_LOCAL_ORACLE_CACHE.keys()):
-            # Check exact match or contains based on exact flag
-            if exact:
-                if normalized_query != name_key:
-                    continue
-            else:
-                if normalized_query not in name_key:
-                    continue
-
-            pool = _LOCAL_ORACLE_CACHE.get(name_key, [])
+        for name_key in sorted(buckets.keys()):
+            pool = buckets[name_key]
             if tokens_only:
-                pool = [card for card in pool if self._is_token_card(card)]
-                if not pool:
-                    continue
-                # Apply set filter for tokens as well
-                if normalized_set:
-                    pool = [
-                        card
-                        for card in pool
-                        if str(card.get("set") or "").lower() == normalized_set
-                    ]
-                    if not pool:
-                        continue
                 for card in pool:
                     results.append(card)
                     if limit and limit > 0 and len(results) >= limit:
                         return results
                 continue
-            elif normalized_set:
-                pool = [
-                    card
-                    for card in pool
-                    if str(card.get("set") or "").lower() == normalized_set
-                ]
 
             chosen = self._select_best_local_print(pool)
             if not chosen:
@@ -373,81 +275,70 @@ class CardService:
 
         return results
 
-    def _local_card_pool(self) -> List[Dict[str, Any]]:
-        """Return a de-duplicated list of local oracle entries."""
-        _load_local_oracle_data()
-        if _LOCAL_ORACLE_CACHE_BY_ID:
-            return list(_LOCAL_ORACLE_CACHE_BY_ID.values())
-
-        dedup: Dict[str, Dict[str, Any]] = {}
-        for entries in _LOCAL_ORACLE_CACHE.values():
-            for card in entries:
-                key = str(
-                    card.get("id") or card.get("oracle_id") or card.get("name") or ""
-                )
-                if key and key not in dedup:
-                    dedup[key] = card
-        return list(dedup.values())
-
     def get_local_cards(
         self,
         set_code: Optional[str] = None,
         rarity: Optional[str] = None,
         include_tokens: bool = False,
     ) -> List[Dict[str, Any]]:
-        """Return local oracle cards filtered by set and rarity."""
-        cards = self._local_card_pool()
+        """Return oracle cards filtered by set and rarity (no in-memory caching)."""
+        conditions: List[str] = []
+        params: List[Any] = []
 
         if set_code:
-            normalized_set = set_code.strip().lower()
-            cards = [
-                card
-                for card in cards
-                if str(card.get("set") or "").lower() == normalized_set
-            ]
+            conditions.append("set = %s")
+            params.append(set_code.strip().lower())
 
         if rarity:
-            normalized_rarity = rarity.strip().lower()
-            cards = [
-                card
-                for card in cards
-                if str(card.get("rarity") or "").lower() == normalized_rarity
-            ]
+            conditions.append("rarity = %s")
+            params.append(rarity.strip().lower())
 
         if not include_tokens:
-            cards = [card for card in cards if not self._is_token_card(card)]
+            conditions.append("COALESCE(data->>'set_type', '') NOT ILIKE %s")
+            params.append("%token%")
 
-        return cards
+        where_clause = " AND ".join(conditions) if conditions else "TRUE"
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT data FROM cards WHERE {where_clause}",
+                    params,
+                )
+                return [row[0] for row in cur.fetchall() if isinstance(row[0], dict)]
 
     def list_local_sets(self) -> List[Dict[str, Any]]:
-        """Return available sets from the local oracle dump."""
-        sets: Dict[str, Dict[str, Any]] = {}
-        for card in self._local_card_pool():
-            code = str(card.get("set") or "").lower()
-            if not code:
-                continue
-            entry = sets.setdefault(
-                code,
-                {
-                    "code": code,
-                    "name": card.get("set_name"),
-                    "set_type": card.get("set_type"),
-                    "released_at": card.get("released_at") or "",
-                    "icon_svg_uri": card.get("icon_svg_uri") or None,
-                },
-            )
-            if not entry.get("name"):
-                entry["name"] = card.get("set_name")
-            if not entry.get("set_type"):
-                entry["set_type"] = card.get("set_type")
-            candidate_date = str(card.get("released_at") or "")
-            current_date = str(entry.get("released_at") or "")
-            if candidate_date and (not current_date or candidate_date > current_date):
-                entry["released_at"] = candidate_date
+        """Return available sets from the oracle table (no in-memory caching)."""
+        with db.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT ON (set)
+                        set,
+                        set_name,
+                        data->>'set_type' AS set_type,
+                        released_at,
+                        data->>'icon_svg_uri' AS icon_svg_uri
+                    FROM cards
+                    WHERE set IS NOT NULL AND set <> ''
+                    ORDER BY set, released_at DESC
+                    """
+                )
+                rows = cur.fetchall()
 
-        return sorted(
-            sets.values(), key=lambda s: s.get("released_at") or "", reverse=True
-        )
+        results: List[Dict[str, Any]] = []
+        for code, name, set_type, released_at, icon_svg_uri in rows:
+            results.append(
+                {
+                    "code": str(code).lower(),
+                    "name": name,
+                    "set_type": set_type,
+                    "released_at": released_at.isoformat() if released_at else "",
+                    "icon_svg_uri": icon_svg_uri,
+                }
+            )
+
+        return sorted(results, key=lambda s: s.get("released_at") or "", reverse=True)
 
     def _generate_deck_identity(
         self, preferred_name: Optional[str] = None
